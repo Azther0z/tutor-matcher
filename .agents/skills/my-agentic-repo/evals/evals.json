@@ -1,0 +1,23 @@
+{
+  "skill_name": "my-agentic-repo",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Initialize this repository for AI coding agents. Create whatever AGENTS.md guidance is appropriate, but do not add broad README-like project overviews. If tool-specific instruction files are useful, make them symlink to the canonical instructions instead of duplicating content.",
+      "expected_output": "Creates a concise AGENTS.md with high-signal non-discoverable repo rules, includes an agent contract to keep AGENTS.md updated, creates tool-specific compatibility files only as symlinks to AGENTS.md when justified, never as regular pointer files, and reports evidence inspected plus excluded discoverable material.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Our AGENTS.md has gotten huge and agents are still making mistakes. Audit it, prune anything generic or discoverable, and keep only instructions that would actually prevent repo-specific errors.",
+      "expected_output": "Rewrites an existing bloated AGENTS.md into a shorter high-signal file, removes duplicated README/config facts and generic best practices, preserves or sharpens landmines and command caveats, and explains every removal/retention decision in a full audit log.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "This monorepo has a root package and two packages with different test commands. Set up agent instructions and tell me whether nested AGENTS.md files are needed, but ask before creating nested files.",
+      "expected_output": "Creates or updates root AGENTS.md, identifies whether package-specific differences justify nested AGENTS.md files, recommends nested file paths without creating them, and explains what should remain global versus subtree-specific.",
+      "files": []
+    }
+  ]
+}

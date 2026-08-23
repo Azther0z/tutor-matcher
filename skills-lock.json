@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "skills": {
+    "my-agentic-repo": {
+      "source": "azther0z/my-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/my-agentic-repo/SKILL.md",
+      "computedHash": "1b6aa96716217997ed923b96cdf007b99f6c309f270fa37856b7e63b67d82de3"
+    },
+    "my-apply-change": {
+      "source": "azther0z/my-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/my-apply-change/SKILL.md",
+      "computedHash": "e324180061abc1d2363a43cb3c32ae5906458578b358d33b4e48d50b4803735e"
+    },
+    "my-archive-change": {
+      "source": "azther0z/my-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/my-archive-change/SKILL.md",
+      "computedHash": "975a85c07bea43cfb403fbf1d3cdad5de90ee76fabfb2fa709ffd066e10ca8f8"
+    },
+    "my-conventional-git": {
+      "source": "azther0z/my-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/my-conventional-git/SKILL.md",
+      "computedHash": "18e3f98275bb7274e4a6696bbfe36b830a8391c9769e221a1638a37168400ef0"
+    },
+    "my-explore-and-propose-spec": {
+      "source": "azther0z/my-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/my-explore-and-propose-spec/SKILL.md",
+      "computedHash": "6798cc6d93e64d565b195e291e7e683e8117a2f6c314c2ce7ad68cd01bee748c"
+    },
+    "my-grilling": {
+      "source": "azther0z/my-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/my-grilling/SKILL.md",
+      "computedHash": "410281fdef521dd335cc7ccf70fd0f918d12fdaf69913eead2daa073af8fa69d"
+    },
+    "my-init-spec": {
+      "source": "azther0z/my-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/my-init-spec/SKILL.md",
+      "computedHash": "513310362d61bb7a8c341ff4370df74a97652a27b997e6c1d90ae583b41b1919"
+    },
+    "my-llm-wiki": {
+      "source": "azther0z/my-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/my-llm-wiki/SKILL.md",
+      "computedHash": "4acc4da9b7428b13bb851138e39c665811c99618be187104d196e8aeafd6e608"
+    },
+    "my-skill-creator": {
+      "source": "azther0z/my-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/my-skill-creator/SKILL.md",
+      "computedHash": "bd637ae12f1dc12ee1ade6e4819f084fed697c61b78fa432ccc37d67712ac5db"
+    },
+    "my-verify-change": {
+      "source": "azther0z/my-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/my-verify-change/SKILL.md",
+      "computedHash": "c788105e4bd466f90aa4b57dc951f3505409bb22a3ae32f4d282f74cbbff8dbf"
+    }
+  }
+}
