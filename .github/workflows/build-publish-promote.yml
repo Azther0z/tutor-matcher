@@ -1,0 +1,154 @@
+name: Build, Publish, Promote
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  REGISTRY: docker.io
+  FRONTEND_IMAGE: docker.io/azther0z/tutor-matcher-frontend
+  BACKEND_IMAGE: docker.io/azther0z/tutor-matcher-backend
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/${{ matrix.app }}
+        run: npm ci
+
+      - name: Build ${{ matrix.app }}
+        working-directory: apps/${{ matrix.app }}
+        run: npm run build
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push frontend image
+        id: build_frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/frontend
+          push: true
+          tags: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+
+      - name: Build and push backend image
+        id: build_backend
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/backend
+          push: true
+          tags: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+
+      - name: Record image digests
+        run: |
+          printf 'FRONTEND_IMAGE_DIGEST=%s\n' '${{ steps.build_frontend.outputs.digest }}' >> "$GITHUB_ENV"
+          printf 'BACKEND_IMAGE_DIGEST=%s\n' '${{ steps.build_backend.outputs.digest }}' >> "$GITHUB_ENV"
+
+      - name: Verify pushed manifests
+        run: |
+          docker buildx imagetools inspect "$FRONTEND_IMAGE:$GITHUB_SHA" >/dev/null
+          docker buildx imagetools inspect "$BACKEND_IMAGE:$GITHUB_SHA" >/dev/null
+
+      - name: Promote immutable digest to GitOps
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_WRITE_TOKEN }}
+        run: |
+          set -eu
+          test -n "$GH_TOKEN"
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/azther0z-homelab/homelab-gitops.git" "$RUNNER_TEMP/homelab-gitops"
+          cd "$RUNNER_TEMP/homelab-gitops"
+          mkdir -p apps/tutor-matcher
+          cat > apps/tutor-matcher/compose.yaml <<YAML
+          services:
+            frontend:
+              image: ${FRONTEND_IMAGE}@${FRONTEND_IMAGE_DIGEST}
+              hostname: tutor-matcher-frontend
+              environment:
+                PORT: "3000"
+              ports:
+                - target: 3000
+                  published: 3333
+                  protocol: tcp
+              depends_on:
+                backend:
+                  condition: service_started
+              restart: unless-stopped
+
+            backend:
+              image: ${BACKEND_IMAGE}@${BACKEND_IMAGE_DIGEST}
+              hostname: tutor-matcher-backend
+              environment:
+                PORT: "3001"
+                DATABASE_URL: "postgresql://\${POSTGRES_USER:-postgres}:\${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/\${POSTGRES_DB:-tutor_matcher}"
+                FRONTEND_URL: "\${FRONTEND_URL:-http://localhost:3333}"
+              ports:
+                - "3001:3001"
+              depends_on:
+                postgres:
+                  condition: service_healthy
+              restart: unless-stopped
+
+            postgres:
+              image: postgres:16-alpine
+              hostname: tutor-matcher-postgres
+              environment:
+                POSTGRES_USER: "\${POSTGRES_USER:-postgres}"
+                POSTGRES_PASSWORD: "\${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+                POSTGRES_DB: "\${POSTGRES_DB:-tutor_matcher}"
+              volumes:
+                - postgres_data:/var/lib/postgresql/data
+              healthcheck:
+                test: ["CMD-SHELL", "pg_isready -U \$\${POSTGRES_USER:-postgres} -d \$\${POSTGRES_DB:-tutor_matcher}"]
+                interval: 10s
+                timeout: 5s
+                retries: 5
+              restart: unless-stopped
+
+          volumes:
+            postgres_data:
+          YAML
+          cat > apps/tutor-matcher/release.yaml <<YAML
+          source_repository: ${GITHUB_REPOSITORY}
+          source_sha: ${GITHUB_SHA}
+          images:
+            frontend: ${FRONTEND_IMAGE}@${FRONTEND_IMAGE_DIGEST}
+            backend: ${BACKEND_IMAGE}@${BACKEND_IMAGE_DIGEST}
+            database: postgres:16-alpine
+          built_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          YAML
+          git config user.name "tutor-matcher-ci"
+          git config user.email "tutor-matcher-ci@users.noreply.github.com"
+          git add apps/tutor-matcher/compose.yaml apps/tutor-matcher/release.yaml
+          git commit -m "chore(tutor-matcher): promote ${GITHUB_SHA}"
+          git pull --rebase origin main
+          git push origin HEAD:main
