@@ -76,7 +76,7 @@ cd apps/frontend && npm run dev
 
 ## CI/CD
 
-Pull requests run formatting, linting, tests, application builds, and Docker image builds. A push to `main` publishes immutable image digests and promotes them to the GitOps repository after validation succeeds.
+Pull requests run formatting, linting, tests, application builds, and Docker image builds. A push to `main` publishes the frontend and backend images with both immutable commit tags and the `latest` tag. Doco-CD polls this repository and deploys [`deploy/compose.yaml`](deploy/compose.yaml) after validation succeeds.
 
 ## Project Structure
 
@@ -85,6 +85,7 @@ apps/
   backend/        Express API (TypeScript, Prisma, PostgreSQL)
   frontend/       Next.js app (TypeScript, Tailwind CSS)
 docs/             Architecture, charter, schema, ADRs, review
+deploy/           Doco-CD deployment Compose manifest
 docker-compose.yml
 ```
 

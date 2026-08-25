@@ -1,0 +1,32 @@
+services:
+  frontend:
+    image: docker.io/azther0z/tutor-matcher-frontend:latest
+    hostname: tutor-matcher-frontend
+    environment:
+      PORT: '3000'
+    ports:
+      - target: 3000
+        published: 3333
+        protocol: tcp
+    restart: unless-stopped
+
+  backend:
+    image: docker.io/azther0z/tutor-matcher-backend:latest
+    hostname: tutor-matcher-backend
+    environment:
+      PORT: '3001'
+      FRONTEND_URL: '${FRONTEND_URL:-http://localhost:3333}'
+    ports:
+      - '3001:3001'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3001/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped

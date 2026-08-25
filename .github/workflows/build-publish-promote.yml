@@ -107,7 +107,9 @@ jobs:
         with:
           context: apps/frontend
           push: true
-          tags: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+            ${{ env.FRONTEND_IMAGE }}:latest
 
       - name: Build and push backend image
         id: build_backend
@@ -115,66 +117,11 @@ jobs:
         with:
           context: apps/backend
           push: true
-          tags: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-
-      - name: Record image digests
-        run: |
-          printf 'FRONTEND_IMAGE_DIGEST=%s\n' '${{ steps.build_frontend.outputs.digest }}' >> "$GITHUB_ENV"
-          printf 'BACKEND_IMAGE_DIGEST=%s\n' '${{ steps.build_backend.outputs.digest }}' >> "$GITHUB_ENV"
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+            ${{ env.BACKEND_IMAGE }}:latest
 
       - name: Verify pushed manifests
         run: |
           docker buildx imagetools inspect "$FRONTEND_IMAGE:$GITHUB_SHA" >/dev/null
           docker buildx imagetools inspect "$BACKEND_IMAGE:$GITHUB_SHA" >/dev/null
-
-      - name: Promote immutable digest to GitOps
-        env:
-          GH_TOKEN: ${{ secrets.GITOPS_WRITE_TOKEN }}
-        run: |
-          set -eu
-          test -n "$GH_TOKEN"
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/azther0z-homelab/homelab-gitops.git" "$RUNNER_TEMP/homelab-gitops"
-          git -C "$RUNNER_TEMP/homelab-gitops" pull --rebase origin main
-          mkdir -p "$RUNNER_TEMP/homelab-gitops/apps/tutor-matcher"
-          cd "$RUNNER_TEMP/homelab-gitops"
-          cat > apps/tutor-matcher/compose.yaml <<YAML
-          services:
-            frontend:
-              image: ${FRONTEND_IMAGE}@${FRONTEND_IMAGE_DIGEST}
-              hostname: tutor-matcher-frontend
-              environment:
-                PORT: "3000"
-              ports:
-                - target: 3000
-                  published: 3333
-                  protocol: tcp
-              restart: unless-stopped
-
-            backend:
-              image: ${BACKEND_IMAGE}@${BACKEND_IMAGE_DIGEST}
-              hostname: tutor-matcher-backend
-              environment:
-                PORT: "3001"
-                FRONTEND_URL: "\${FRONTEND_URL:-http://localhost:3333}"
-              ports:
-                - "3001:3001"
-              healthcheck:
-                test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
-                interval: 10s
-                timeout: 5s
-                retries: 5
-              restart: unless-stopped
-          YAML
-          cat > apps/tutor-matcher/release.yaml <<YAML
-          source_repository: ${GITHUB_REPOSITORY}
-          source_sha: ${GITHUB_SHA}
-          images:
-            frontend: ${FRONTEND_IMAGE}@${FRONTEND_IMAGE_DIGEST}
-            backend: ${BACKEND_IMAGE}@${BACKEND_IMAGE_DIGEST}
-          built_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-          YAML
-          git config user.name "tutor-matcher-ci"
-          git config user.email "tutor-matcher-ci@users.noreply.github.com"
-          git add apps/tutor-matcher/compose.yaml apps/tutor-matcher/release.yaml
-          git commit -m "chore(tutor-matcher): promote ${GITHUB_SHA}"
-          git push origin HEAD:main

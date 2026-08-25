@@ -1,0 +1,4 @@
+working_dir: deploy/
+compose_files:
+  - compose.yaml
+force_image_pull: true
