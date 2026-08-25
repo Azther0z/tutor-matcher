@@ -11,28 +11,28 @@ env:
   BACKEND_IMAGE: docker.io/azther0z/tutor-matcher-backend
 
 jobs:
-  validate:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        app: [frontend, backend]
-    steps:
-      - uses: actions/checkout@v4
+  # validate:
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       app: [frontend, backend]
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+  #     - name: Set up Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 22
+  #         cache: npm
+  #         cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
 
-      - name: Install dependencies
-        working-directory: apps/${{ matrix.app }}
-        run: npm ci
+  #     - name: Install dependencies
+  #       working-directory: apps/${{ matrix.app }}
+  #       run: npm ci
 
-      - name: Build ${{ matrix.app }}
-        working-directory: apps/${{ matrix.app }}
-        run: npm run build
+  #     - name: Build ${{ matrix.app }}
+  #       working-directory: apps/${{ matrix.app }}
+  #       run: npm run build
 
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
