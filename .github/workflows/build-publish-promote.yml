@@ -148,9 +148,6 @@ jobs:
                 - target: 3000
                   published: 3333
                   protocol: tcp
-              depends_on:
-                backend:
-                  condition: service_healthy
               restart: unless-stopped
 
             backend:
