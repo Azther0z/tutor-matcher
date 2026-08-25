@@ -1,5 +1,7 @@
 .playwright-mcp
 node_modules/
 .env
+deploy/secrets/*.env
+deploy/secrets/*.env.dec
 dist/
 .next/
