@@ -1,0 +1,28 @@
+{
+  "name": "tutor-matcher",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Azther0z/tutor-matcher.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Azther0z/tutor-matcher/issues"
+  },
+  "homepage": "https://github.com/Azther0z/tutor-matcher#readme",
+  "devDependencies": {
+    "prettier": "^3.9.6"
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.next/
+apps/*/node_modules/
+apps/*/dist/
+apps/*/.next/
