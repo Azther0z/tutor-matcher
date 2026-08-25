@@ -4,7 +4,7 @@ sources:
   - name: Tutor Matcher team, Final Report
     date: null
 raw:
-  - raw/tutor-matcher-final-report.md
+  - docs/sources/tutor-matcher-final-report.md
 updated: 2026-08-23
 statuses: []
 ---
@@ -25,5 +25,5 @@ The report presents the model for MongoDB usage and includes an insert example u
 
 ## See Also
 
-- [Tutor Matcher Platform Overview](platform-overview.md)
-- [Relational Database Model](relational-database-model.md)
+- [Project Charter](project-charter.md)
+- [Database Schema](project-schema.md)

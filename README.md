@@ -88,4 +88,4 @@ docs/             Architecture, charter, schema, ADRs, review
 docker-compose.yml
 ```
 
-See [`docs/project-architecture.md`](docs/project-architecture.md) for the full architecture overview.
+See [`docs/index.md`](docs/index.md) for the documentation index and [`docs/project-architecture.md`](docs/project-architecture.md) for the architecture overview.

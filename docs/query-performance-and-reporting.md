@@ -4,7 +4,7 @@ sources:
   - name: Tutor Matcher team, Final Report
     date: null
 raw:
-  - raw/tutor-matcher-final-report.md
+  - docs/sources/tutor-matcher-final-report.md
 updated: 2026-08-23
 statuses: []
 ---
@@ -34,5 +34,5 @@ For finding students with at least one booking, the `EXISTS` nested query can st
 
 ## See Also
 
-- [Relational Database Model](relational-database-model.md)
+- [Database Schema](project-schema.md)
 - [Database Operations And Integrity](database-operations-and-integrity.md)

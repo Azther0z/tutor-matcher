@@ -4,7 +4,7 @@ sources:
   - name: Tutor Matcher team, Final Report
     date: null
 raw:
-  - raw/tutor-matcher-final-report.md
+  - docs/sources/tutor-matcher-final-report.md
 updated: 2026-08-23
 statuses: []
 ---
@@ -36,5 +36,5 @@ The examples demonstrate failures caused by duplicate primary keys, duplicate un
 
 ## See Also
 
-- [Relational Database Model](relational-database-model.md)
-- [Tutor Matcher Platform Overview](platform-overview.md)
+- [Database Schema](project-schema.md)
+- [Project Charter](project-charter.md)

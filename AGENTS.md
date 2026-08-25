@@ -1,13 +1,16 @@
-## LLM Wiki
-- Treat `raw/` as immutable evidence. Preserve source text faithfully; do not add summaries, commentary, or cleanup rewrites to raw evidence files.
-- Treat `wiki/` as compiled knowledge. Ground every load-bearing fact in referenced raw evidence or cited wiki pages.
-- Before every wiki task, read `wiki/index.md` and use it to route to relevant pages. Then read those pages and search the wider wiki with key terms and synonyms before answering or writing.
-- Canonical domain vocabulary lives in wiki pages, not this file. Find it through `wiki/index.md` and use the relevant vocabulary page when interpreting terms.
-- Ingest writes evidence to `raw/`, updates affected wiki pages, then updates `wiki/index.md` and `wiki/log.md`. Queries do not write unless the user asks to archive.
+## Project Documentation And LLM Knowledge
+- This repository intentionally uses a project-specific convention that differs from the default `my-llm-wiki` skill layout.
+- Treat `docs/sources/` as immutable evidence. Preserve source text faithfully; do not add summaries, commentary, or cleanup rewrites to source files.
+- Treat canonical pages directly under `docs/` as authored project documentation. Avoid maintaining a second page for the same concept.
+- Treat `docs/` reference pages with evidence metadata as compiled knowledge when they summarize sources. Ground load-bearing facts in the declared source files.
+- Before a documentation task, read `docs/index.md`, then search `docs/` for the relevant terms and synonyms.
+- Canonical domain vocabulary lives in `CONTEXT.md`; use its terms in project and knowledge documentation.
+- Ingest or research writes evidence to `docs/sources/`, updates the affected canonical `docs/` pages, then updates `docs/index.md` and `docs/sources/knowledge-log.md`.
+- The `my-llm-wiki` skill may still be used for evidence discipline, but its default root-level `raw/` and `wiki/` paths do not apply here. Do not recreate those directories without an explicit workflow decision.
 - At task completion, update `Wiki Memory` only with confirmed user statements and explicit unresolved user concerns. Rewrite it to current state, leave it unchanged when nothing changed, and briefly report memory changes.
-- If `Wiki Memory`, wiki content, and the current user request conflict, pause and ask before acting.
-- Lint may repair only the managed LLM Wiki contract. Preserve `Wiki Memory` byte-for-byte unless the user asks to change it.
-- Use the `my-llm-wiki` skill when available before ingesting, querying, archiving, or linting this wiki.
+- If `Wiki Memory`, documentation content, and the current user request conflict, pause and ask before acting.
+- Lint may repair only the managed documentation contract. Preserve `Wiki Memory` byte-for-byte unless the user asks to change it.
+- Use the `my-llm-wiki` skill when available before ingesting, querying, archiving, or linting this knowledge base.
 
 ## Wiki Memory
 
