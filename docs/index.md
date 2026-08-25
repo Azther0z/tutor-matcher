@@ -18,24 +18,24 @@ immutable evidence; canonical pages may summarize it but must not rewrite it.
 
 ## Project Documentation
 
-| Document                                                                       | Purpose                                                                | Status                                          |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------- | ----------------------------------------------- |
-| [`project-charter.md`](project-charter.md)                                     | Product purpose, goals, roles, and scope                               | Current baseline                                |
-| [`project-architecture.md`](project-architecture.md)                           | Technology stack, repository layout, data flow, and deferred decisions | Needs reconciliation with implementation        |
-| [`project-schema.md`](project-schema.md)                                       | Relational schema, operations, constraints, and indexes                | Design reference; verify against Prisma         |
-| [`project-review.md`](project-review.md)                                       | Repository review findings and proposed fixes                          | Historical review; refresh before relying on it |
-| [`document-inventory.md`](document-inventory.md)                               | Documentation ownership, freshness, and coverage gaps                  | Current inventory                               |
-| [`database-operations-and-integrity.md`](database-operations-and-integrity.md) | Database procedures, functions, triggers, and integrity rules          | Evidence-backed reference                       |
-| [`query-performance-and-reporting.md`](query-performance-and-reporting.md)     | Indexes, execution paths, and reporting queries                        | Evidence-backed reference                       |
-| [`document-database-model.md`](document-database-model.md)                     | MongoDB class document and embedded reviews                            | Evidence-backed reference                       |
+| Document                                                                       | Purpose                                                                                 | Status                                          |
+| ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| [`project-charter.md`](project-charter.md)                                     | Product purpose, goals, roles, and scope                                                | Current baseline                                |
+| [`project-architecture.md`](project-architecture.md)                           | Technology stack, repository layout, data flow, deployment flow, and deferred decisions | Current baseline                                |
+| [`project-schema.md`](project-schema.md)                                       | Relational schema, operations, constraints, and indexes                                 | Design reference; verify against Prisma         |
+| [`project-review.md`](project-review.md)                                       | Repository review findings and proposed fixes                                           | Historical review; refresh before relying on it |
+| [`document-inventory.md`](document-inventory.md)                               | Documentation ownership, freshness, and coverage gaps                                   | Current inventory                               |
+| [`database-operations-and-integrity.md`](database-operations-and-integrity.md) | Database procedures, functions, triggers, and integrity rules                           | Evidence-backed reference                       |
+| [`query-performance-and-reporting.md`](query-performance-and-reporting.md)     | Indexes, execution paths, and reporting queries                                         | Evidence-backed reference                       |
+| [`document-database-model.md`](document-database-model.md)                     | MongoDB class document and embedded reviews                                             | Evidence-backed reference                       |
 
 ## Architecture Decisions
 
-| ADR                                             | Decision                                     | Status                                            |
-| ----------------------------------------------- | -------------------------------------------- | ------------------------------------------------- |
-| [`0001`](adr/0001-separate-express-backend.md)  | Use a separate Express backend               | Accepted direction                                |
-| [`0002`](adr/0002-monorepo-layout.md)           | Use a frontend/backend monorepo              | Accepted direction; path wording needs correction |
-| [`0003`](adr/0003-docker-compose-deployment.md) | Target single-host Docker Compose deployment | Target direction                                  |
+| ADR                                             | Decision                                                       | Status                                            |
+| ----------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------- |
+| [`0001`](adr/0001-separate-express-backend.md)  | Use a separate Express backend                                 | Accepted direction                                |
+| [`0002`](adr/0002-monorepo-layout.md)           | Use a frontend/backend monorepo                                | Accepted direction; path wording needs correction |
+| [`0003`](adr/0003-docker-compose-deployment.md) | Separate local and production Docker Compose deployment shapes | Current direction                                 |
 
 ## Evidence Sources
 
@@ -54,7 +54,6 @@ The knowledge derived from it is represented by the canonical database pages:
 - End-to-end domain flows and state transitions
 - Environment-variable reference and troubleshooting
 - Testing strategy and coverage expectations
-- Deployment and CI/CD operations
 - Source-of-truth relationship between Prisma schema, migrations, and design schema
 
 The source-of-truth rules are defined above and in `AGENTS.md`; keep this page
