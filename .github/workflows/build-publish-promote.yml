@@ -158,38 +158,15 @@ jobs:
               hostname: tutor-matcher-backend
               environment:
                 PORT: "3001"
-                DATABASE_URL: "postgresql://\${POSTGRES_USER:-postgres}:\${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/\${POSTGRES_DB:-tutor_matcher}"
                 FRONTEND_URL: "\${FRONTEND_URL:-http://localhost:3333}"
               ports:
                 - "3001:3001"
-              depends_on:
-                postgres:
-                  condition: service_healthy
               healthcheck:
                 test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
                 interval: 10s
                 timeout: 5s
                 retries: 5
               restart: unless-stopped
-
-            postgres:
-              image: postgres:16-alpine
-              hostname: tutor-matcher-postgres
-              environment:
-                POSTGRES_USER: "\${POSTGRES_USER:-postgres}"
-                POSTGRES_PASSWORD: "\${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
-                POSTGRES_DB: "\${POSTGRES_DB:-tutor_matcher}"
-              volumes:
-                - postgres_data:/var/lib/postgresql/data
-              healthcheck:
-                test: ["CMD-SHELL", "pg_isready -U \$\${POSTGRES_USER:-postgres} -d \$\${POSTGRES_DB:-tutor_matcher}"]
-                interval: 10s
-                timeout: 5s
-                retries: 5
-              restart: unless-stopped
-
-          volumes:
-            postgres_data:
           YAML
           cat > apps/tutor-matcher/release.yaml <<YAML
           source_repository: ${GITHUB_REPOSITORY}
@@ -197,7 +174,6 @@ jobs:
           images:
             frontend: ${FRONTEND_IMAGE}@${FRONTEND_IMAGE_DIGEST}
             backend: ${BACKEND_IMAGE}@${BACKEND_IMAGE_DIGEST}
-            database: postgres:16-alpine
           built_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
           YAML
           git config user.name "tutor-matcher-ci"

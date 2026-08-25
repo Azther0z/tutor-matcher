@@ -5,3 +5,4 @@ apps/*/node_modules/
 apps/*/dist/
 apps/*/.next/
 apps/backend/src/generated/prisma/
+apps/frontend/next-env.d.ts

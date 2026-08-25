@@ -25,4 +25,4 @@ RUN npm ci --omit=dev --ignore-scripts
 COPY --from=build /app/dist ./dist
 
 EXPOSE 3001
-CMD ["sh", "-c", "npm run db:migrate && npm run start"]
+CMD ["npm", "run", "start"]
