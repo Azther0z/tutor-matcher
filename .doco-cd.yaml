@@ -1,3 +1,4 @@
+name: tutor-matcher
 working_dir: deploy/
 compose_files:
   - compose.yaml
