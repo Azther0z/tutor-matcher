@@ -61,17 +61,22 @@ cd apps/frontend && npm run dev
 
 ## Commands
 
-| Command | Location | Description |
-|---|---|---|
-| `npm run dev` | `apps/backend` | Start Express with hot reload |
-| `npm run dev` | `apps/frontend` | Start Next.js dev server |
-| `npm test` | `apps/backend` | Run backend tests (Jest + Supertest) |
-| `npm test` | `apps/frontend` | Run frontend tests (Jest + RTL) |
-| `npm run lint` | `apps/backend` | Run ESLint on backend source |
-| `npm run format` | repo root | Format all files with Prettier |
-| `npm run format:check` | repo root | Check formatting without writing |
-| `npx prisma studio` | `apps/backend` | Open Prisma database browser |
-| `npx prisma migrate dev` | `apps/backend` | Create and apply a new migration |
+| Command                  | Location        | Description                                |
+| ------------------------ | --------------- | ------------------------------------------ |
+| `npm run dev`            | `apps/backend`  | Start Express with hot reload              |
+| `npm run dev`            | `apps/frontend` | Start Next.js dev server                   |
+| `npm test`               | `apps/backend`  | Run backend tests (Jest + Supertest)       |
+| `npm test`               | `apps/frontend` | Run frontend tests (Jest + RTL)            |
+| `npm run lint`           | `apps/backend`  | Run ESLint on backend source               |
+| `npm run format`         | repo root       | Format all files with Prettier             |
+| `npm run format:check`   | repo root       | Check formatting without writing           |
+| `npx prisma studio`      | `apps/backend`  | Open Prisma database browser               |
+| `npx prisma migrate dev` | `apps/backend`  | Create and apply a new migration           |
+| `npm run db:migrate`     | `apps/backend`  | Apply committed migrations in a deployment |
+
+## CI/CD
+
+Pull requests run formatting, linting, tests, application builds, and Docker image builds. A push to `main` publishes immutable image digests and promotes them to the GitOps repository after validation succeeds.
 
 ## Project Structure
 

@@ -7,6 +7,7 @@ const config: Config = {
   testEnvironment: 'jest-environment-jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   testMatch: ['**/__tests__/**/*.{ts,tsx}', '**/*.test.{ts,tsx}'],
+  modulePathIgnorePatterns: ['<rootDir>/.next/'],
 };
 
 export default createJestConfig(config);

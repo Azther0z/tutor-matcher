@@ -5,38 +5,86 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: tutor-matcher-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   REGISTRY: docker.io
   FRONTEND_IMAGE: docker.io/azther0z/tutor-matcher-frontend
   BACKEND_IMAGE: docker.io/azther0z/tutor-matcher-backend
 
 jobs:
-  # validate:
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       app: [frontend, backend]
-  #   steps:
-  #     - uses: actions/checkout@v4
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
 
-  #     - name: Set up Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 22
-  #         cache: npm
-  #         cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
 
-  #     - name: Install dependencies
-  #       working-directory: apps/${{ matrix.app }}
-  #       run: npm ci
+      - name: Install dependencies
+        working-directory: apps/${{ matrix.app }}
+        run: npm ci
 
-  #     - name: Build ${{ matrix.app }}
-  #       working-directory: apps/${{ matrix.app }}
-  #       run: npm run build
+      - name: Lint ${{ matrix.app }}
+        working-directory: apps/${{ matrix.app }}
+        run: npm run lint
+
+      - name: Test ${{ matrix.app }}
+        working-directory: apps/${{ matrix.app }}
+        run: npm test -- --runInBand --passWithNoTests
+
+      - name: Build ${{ matrix.app }}
+        working-directory: apps/${{ matrix.app }}
+        run: npm run build
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+  container:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.app }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/${{ matrix.app }}
+          push: false
+          tags: tutor-matcher/${{ matrix.app }}:ci
 
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    # needs: validate
+    needs: [validate, format, container]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -86,8 +134,9 @@ jobs:
           set -eu
           test -n "$GH_TOKEN"
           git clone "https://x-access-token:${GH_TOKEN}@github.com/azther0z-homelab/homelab-gitops.git" "$RUNNER_TEMP/homelab-gitops"
+          git -C "$RUNNER_TEMP/homelab-gitops" pull --rebase origin main
+          mkdir -p "$RUNNER_TEMP/homelab-gitops/apps/tutor-matcher"
           cd "$RUNNER_TEMP/homelab-gitops"
-          mkdir -p apps/tutor-matcher
           cat > apps/tutor-matcher/compose.yaml <<YAML
           services:
             frontend:
@@ -101,7 +150,7 @@ jobs:
                   protocol: tcp
               depends_on:
                 backend:
-                  condition: service_started
+                  condition: service_healthy
               restart: unless-stopped
 
             backend:
@@ -116,6 +165,11 @@ jobs:
               depends_on:
                 postgres:
                   condition: service_healthy
+              healthcheck:
+                test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+                interval: 10s
+                timeout: 5s
+                retries: 5
               restart: unless-stopped
 
             postgres:
@@ -150,5 +204,4 @@ jobs:
           git config user.email "tutor-matcher-ci@users.noreply.github.com"
           git add apps/tutor-matcher/compose.yaml apps/tutor-matcher/release.yaml
           git commit -m "chore(tutor-matcher): promote ${GITHUB_SHA}"
-          git pull --rebase origin main
           git push origin HEAD:main
