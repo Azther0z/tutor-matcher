@@ -1,28 +1,27 @@
 {
   "name": "tutor-matcher",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "description": "Matchmaking platform connecting tutors and students by subject, schedule, and price.",
   "scripts": {
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\""
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "prepare": "husky"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Azther0z/tutor-matcher.git"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/Azther0z/tutor-matcher/issues"
   },
   "homepage": "https://github.com/Azther0z/tutor-matcher#readme",
   "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
     "prettier": "^3.9.6"
+  },
+  "lint-staged": {
+    "apps/**/*.{ts,tsx,js,jsx,json,css,md}": ["prettier --write"]
   }
 }
