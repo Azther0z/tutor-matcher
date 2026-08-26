@@ -42,6 +42,11 @@ jobs:
         working-directory: apps/${{ matrix.app }}
         run: npm test -- --runInBand --passWithNoTests
 
+      - name: Test backend behavior
+        if: matrix.app == 'backend'
+        working-directory: apps/backend
+        run: npm run test:bdd
+
       - name: Build ${{ matrix.app }}
         working-directory: apps/${{ matrix.app }}
         run: npm run build

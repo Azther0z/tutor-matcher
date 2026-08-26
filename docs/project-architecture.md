@@ -9,7 +9,7 @@
 | Database           | PostgreSQL                                          | 16      |
 | ORM                | Prisma                                              | 7.x     |
 | Testing — Frontend | Jest, React Testing Library, jest-environment-jsdom | —       |
-| Testing — Backend  | Jest, Supertest, @swc/jest                          | —       |
+| Testing — Backend  | Jest, Supertest, @swc/jest, Cucumber.js             | —       |
 | Formatter          | Prettier                                            | 3.x     |
 | Container          | Docker Compose                                      | —       |
 
@@ -23,16 +23,23 @@ tutor-matcher/                  ← monorepo root
 │   │   ├── jest.config.ts
 │   │   └── jest.setup.ts
 │   └── backend/                ← Express API
+│       ├── features/           ← Cucumber.js behavior tests
+│       │   ├── step_definitions/
+│       │   ├── support/
+│       │   └── health.feature
 │       ├── src/
 │       │   ├── controllers/    ← Route handlers (one file per domain)
 │       │   ├── lib/
-│       │   │   └── db.ts       ← Prisma client singleton
+│       │   │   └── prisma.ts   ← Prisma client singleton
 │       │   ├── middleware/     ← Auth, error handler, etc.
 │       │   ├── routes/         ← Express routers
+│       │   ├── __tests__/
+│       │   │   └── health.test.ts
 │       │   ├── app.ts          ← Express app (no listen — importable by tests)
 │       │   └── index.ts        ← Server entry point (calls app.listen)
 │       ├── prisma/
 │       │   └── schema.prisma
+│       ├── cucumber.js
 │       └── jest.config.js
 ├── deploy/                    ← Doco-CD production deployment
 │   ├── compose.yaml           ← Frontend and backend production services
@@ -42,7 +49,8 @@ tutor-matcher/                  ← monorepo root
 │   ├── adr/                    ← Architecture Decision Records
 │   ├── project-architecture.md
 │   ├── project-charter.md
-│   └── project-schema.md
+│   ├── project-schema.md
+│   └── testing.md
 ├── .agents/skills/             ← Shared AI agent skills (my-* + prisma-*)
 ├── .claude/skills/             ← Symlinks → .agents/skills/
 ├── .doco-cd.yaml               ← Doco-CD deployment settings
@@ -87,19 +95,26 @@ cd apps/frontend && npm run dev
 
 # Run tests
 cd apps/backend && npm test
+cd apps/backend && npm run test:bdd
 cd apps/frontend && npm test
 
 # Format all files
 npm run format          # from repo root
 ```
 
+Jest and Supertest provide the conventional backend test suite. Cucumber.js provides the
+backend behavior suite from Gherkin features and TypeScript step definitions. Both suites
+exercise the exported Express app without requiring the development server to be started.
+See [Testing](testing.md) for the current coverage and extension conventions.
+
 ## Deployment Flow
 
 Production deployment is pull-based and is separate from the root development
 Compose file:
 
-1. A pull request runs formatting, linting, tests, application builds, and
-   Docker image builds in GitHub Actions.
+1. A pull request runs formatting, linting, frontend and backend Jest tests,
+   backend Cucumber.js behavior tests, application builds, and Docker image
+   builds in GitHub Actions.
 2. A successful push to `main` publishes frontend and backend images to Docker
    Hub with both the commit SHA and `latest` tags.
 3. Doco-CD polls the Tutor Matcher repository every five minutes. Its main

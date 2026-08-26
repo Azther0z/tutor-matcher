@@ -22,6 +22,7 @@ immutable evidence; canonical pages may summarize it but must not rewrite it.
 | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | [`project-charter.md`](project-charter.md)                                     | Product purpose, goals, roles, and scope                                                | Current baseline                                |
 | [`project-architecture.md`](project-architecture.md)                           | Technology stack, repository layout, data flow, deployment flow, and deferred decisions | Current baseline                                |
+| [`testing.md`](testing.md)                                                     | Test suites, Gherkin layout, commands, conventions, and CI enforcement                  | Current baseline                                |
 | [`project-schema.md`](project-schema.md)                                       | Relational schema, operations, constraints, and indexes                                 | Design reference; verify against Prisma         |
 | [`project-review.md`](project-review.md)                                       | Repository review findings and proposed fixes                                           | Historical review; refresh before relying on it |
 | [`document-inventory.md`](document-inventory.md)                               | Documentation ownership, freshness, and coverage gaps                                   | Current inventory                               |
@@ -53,7 +54,7 @@ The knowledge derived from it is represented by the canonical database pages:
 - Authentication and authorization behavior
 - End-to-end domain flows and state transitions
 - Environment-variable reference and troubleshooting
-- Testing strategy and coverage expectations
+- Coverage targets for domain and API flows beyond the current health checks
 - Source-of-truth relationship between Prisma schema, migrations, and design schema
 
 The source-of-truth rules are defined above and in `AGENTS.md`; keep this page

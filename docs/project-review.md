@@ -2,6 +2,12 @@
 
 Findings from reviewing the current repository state. Items are grouped by severity.
 
+> **Historical snapshot:** This review records an earlier repository state and is not the
+> current implementation checklist. The repository now has root onboarding documentation,
+> backend ESLint, Jest/Supertest tests, and a Cucumber.js Gherkin suite. See
+> [Project Architecture](project-architecture.md) and [Testing](testing.md) for the current
+> baseline. The original findings below remain unchanged as historical review evidence.
+
 ---
 
 ## Critical — Will Cause Bugs or Broken Dev Setup
@@ -18,8 +24,7 @@ import { PrismaClient } from '../generated/prisma';
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-export const prisma =
-  globalForPrisma.prisma ?? new PrismaClient();
+export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 ```
@@ -69,6 +74,7 @@ The generated Prisma client goes to `src/generated/prisma/` which is `.gitignore
 The `prisma` package (CLI) is a build tool, not a runtime dependency. Only `@prisma/client` belongs in `dependencies`.
 
 **Fix:**
+
 ```bash
 npm install -D prisma
 npm install @prisma/client
@@ -159,12 +165,14 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 The frontend has ESLint (via Next.js). The backend has none. Inconsistent linting rules across the monorepo will cause style drift.
 
 **Fix:**
+
 ```bash
 cd apps/backend
 npm install -D eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
 ```
 
 Create `apps/backend/.eslintrc.json`:
+
 ```json
 {
   "parser": "@typescript-eslint/parser",
@@ -185,6 +193,7 @@ npx husky init
 ```
 
 `package.json` addition:
+
 ```json
 "lint-staged": {
   "apps/**/*.{ts,tsx}": ["prettier --write", "eslint --fix"],
@@ -226,21 +235,21 @@ There is no top-level `README.md` or setup guide. New team members need to know:
 
 ## Summary Table
 
-| # | Issue | Severity | Action |
-|---|---|---|---|
-| 1 | `pg` pool + Prisma both active | Critical | Remove `pg`, use Prisma everywhere |
-| 2 | Frontend has no API base URL | Critical | Add `NEXT_PUBLIC_API_URL` env var |
-| 3 | Prisma schema has no models | Critical | Define models from project-schema.md |
-| 4 | No `prisma generate` on install | Critical | Add `postinstall` script |
-| 5 | `prisma` CLI in `dependencies` | Important | Move to `devDependencies` |
-| 6 | `pg` / `@types/pg` are dead weight | Important | Remove after Prisma migration |
-| 7 | No Express error handler | Important | Add error middleware to `app.ts` |
-| 8 | Jest types not in `tsconfig.json` | Important | Add `"types": ["jest", "node"]` |
-| 9 | Placeholder metadata in `layout.tsx` | Important | Update title/description |
-| 10 | Stale `.gitkeep` in `src/lib/` | Minor | Remove |
-| 11 | Noise fields in root `package.json` | Minor | Clean up |
-| 12 | No `frontend/.env.local.example` | Recommended | Add |
-| 13 | No ESLint in backend | Recommended | Add `@typescript-eslint` |
-| 14 | No pre-commit hook | Recommended | Add Husky + lint-staged |
-| 15 | No Postgres health check | Recommended | Add to docker-compose |
-| 16 | No setup guide | Recommended | Add root `README.md` |
+| #   | Issue                                | Severity    | Action                               |
+| --- | ------------------------------------ | ----------- | ------------------------------------ |
+| 1   | `pg` pool + Prisma both active       | Critical    | Remove `pg`, use Prisma everywhere   |
+| 2   | Frontend has no API base URL         | Critical    | Add `NEXT_PUBLIC_API_URL` env var    |
+| 3   | Prisma schema has no models          | Critical    | Define models from project-schema.md |
+| 4   | No `prisma generate` on install      | Critical    | Add `postinstall` script             |
+| 5   | `prisma` CLI in `dependencies`       | Important   | Move to `devDependencies`            |
+| 6   | `pg` / `@types/pg` are dead weight   | Important   | Remove after Prisma migration        |
+| 7   | No Express error handler             | Important   | Add error middleware to `app.ts`     |
+| 8   | Jest types not in `tsconfig.json`    | Important   | Add `"types": ["jest", "node"]`      |
+| 9   | Placeholder metadata in `layout.tsx` | Important   | Update title/description             |
+| 10  | Stale `.gitkeep` in `src/lib/`       | Minor       | Remove                               |
+| 11  | Noise fields in root `package.json`  | Minor       | Clean up                             |
+| 12  | No `frontend/.env.local.example`     | Recommended | Add                                  |
+| 13  | No ESLint in backend                 | Recommended | Add `@typescript-eslint`             |
+| 14  | No pre-commit hook                   | Recommended | Add Husky + lint-staged              |
+| 15  | No Postgres health check             | Recommended | Add to docker-compose                |
+| 16  | No setup guide                       | Recommended | Add root `README.md`                 |

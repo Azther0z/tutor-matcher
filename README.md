@@ -66,6 +66,7 @@ cd apps/frontend && npm run dev
 | `npm run dev`            | `apps/backend`  | Start Express with hot reload              |
 | `npm run dev`            | `apps/frontend` | Start Next.js dev server                   |
 | `npm test`               | `apps/backend`  | Run backend tests (Jest + Supertest)       |
+| `npm run test:bdd`       | `apps/backend`  | Run backend Gherkin tests (Cucumber.js)    |
 | `npm test`               | `apps/frontend` | Run frontend tests (Jest + RTL)            |
 | `npm run lint`           | `apps/backend`  | Run ESLint on backend source               |
 | `npm run format`         | repo root       | Format all files with Prettier             |
@@ -74,19 +75,44 @@ cd apps/frontend && npm run dev
 | `npx prisma migrate dev` | `apps/backend`  | Create and apply a new migration           |
 | `npm run db:migrate`     | `apps/backend`  | Apply committed migrations in a deployment |
 
+## Testing
+
+The backend has two complementary test suites:
+
+- Jest and Supertest tests under `apps/backend/src/__tests__/` cover API behavior in the
+  conventional test runner.
+- Cucumber.js runs Gherkin features under `apps/backend/features/`, with TypeScript step
+  definitions that exercise the exported Express app through Supertest.
+
+Run both backend suites from the repository root:
+
+```bash
+npm --prefix apps/backend test -- --runInBand
+npm --prefix apps/backend run test:bdd
+```
+
+The initial Gherkin scenario verifies `GET /health`. See
+[`docs/testing.md`](docs/testing.md) for the test layout, conventions, and CI behavior.
+
 ## CI/CD
 
-Pull requests run formatting, linting, tests, application builds, and Docker image builds. A push to `main` publishes the frontend and backend images with both immutable commit tags and the `latest` tag. Doco-CD polls this repository and deploys [`deploy/compose.yaml`](deploy/compose.yaml) after validation succeeds.
+Pull requests run formatting, linting, Jest tests, backend Gherkin tests, application builds,
+and Docker image builds. A push to `main` publishes the frontend and backend images with both
+immutable commit tags and the `latest` tag. Doco-CD polls this repository and deploys
+[`deploy/compose.yaml`](deploy/compose.yaml) after validation succeeds.
 
 ## Project Structure
 
 ```
 apps/
   backend/        Express API (TypeScript, Prisma, PostgreSQL)
+    features/     Cucumber.js features, support code, and step definitions
   frontend/       Next.js app (TypeScript, Tailwind CSS)
-docs/             Architecture, charter, schema, ADRs, review
+docs/             Architecture, testing, charter, schema, ADRs, review
 deploy/           Doco-CD deployment Compose manifest
 docker-compose.yml
 ```
 
-See [`docs/index.md`](docs/index.md) for the documentation index and [`docs/project-architecture.md`](docs/project-architecture.md) for the architecture overview.
+See [`docs/index.md`](docs/index.md) for the documentation index,
+[`docs/project-architecture.md`](docs/project-architecture.md) for the architecture overview,
+and [`docs/testing.md`](docs/testing.md) for the testing guide.
