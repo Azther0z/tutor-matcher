@@ -1,9 +1,9 @@
-Feature: Backend health
+Feature: Backend availability
   As an operator
   I want to check the backend health
   So that I know the API is available
 
-  Scenario: The backend reports that it is healthy
-    When I request the health endpoint
+  Scenario: The backend responds to a root request
+    When I request the backend root endpoint
     Then the response status is 200
-    And the response body reports an ok status
+    And the response body contains the greeting
