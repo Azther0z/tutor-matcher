@@ -25,7 +25,7 @@
     "postinstall": "prisma generate"
   },
   "lint-staged": {
-    "**/*.{ts,js,mjs,cjs,json,md}": "prettier --write",
+    "**/*.{ts,js,mjs,cjs,json}": "prettier --write",
     "{src,features}/**/*.ts": "eslint --fix"
   },
   "dependencies": {

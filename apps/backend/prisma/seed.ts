@@ -9,11 +9,11 @@
  *
  * When the domain schema lands, expand this to seed those models too.
  */
-import 'dotenv/config';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { faker } from '@faker-js/faker';
+import "dotenv/config";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { faker } from "@faker-js/faker";
 
-import { PrismaClient } from '../src/generated/prisma/client.ts';
+import { PrismaClient } from "../src/generated/prisma/client.ts";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -25,9 +25,9 @@ const prisma = new PrismaClient({ adapter });
 faker.seed(20260828);
 
 const FIXED_USERS = [
-  { name: 'Alice Johnson', email: 'alice@example.com' },
-  { name: 'Bob Smith', email: 'bob@example.com' },
-  { name: 'Carol Davis', email: 'carol@example.com' },
+  { name: "Alice Johnson", email: "alice@example.com" },
+  { name: "Bob Smith", email: "bob@example.com" },
+  { name: "Carol Davis", email: "carol@example.com" },
 ];
 
 const GENERATED_USERS = 20;

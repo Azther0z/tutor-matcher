@@ -8,8 +8,8 @@
 // on every OS.
 
 const common = {
-  script: 'npm',
-  watch: false, // ts-node-dev / next dev do their own watching
+  script: "npm",
+  watch: false, // `tsx watch` / `next dev` do their own watching
   autorestart: true,
   restart_delay: 2000,
   min_uptime: 5000,
@@ -19,7 +19,7 @@ const common = {
 
 module.exports = {
   apps: [
-    { ...common, name: 'backend', args: '--prefix apps/backend run dev' },
-    { ...common, name: 'frontend', args: '--prefix apps/frontend run dev' },
+    { ...common, name: "backend", args: "--prefix apps/backend run dev" },
+    { ...common, name: "frontend", args: "--prefix apps/frontend run dev" },
   ],
 };

@@ -33,7 +33,7 @@
     "prettier": "^3.9.6"
   },
   "lint-staged": {
-    "*.{js,mjs,cjs,json,md}": "prettier --write",
-    "{.github,deploy,docs}/**/*.{yml,yaml,json,md}": "prettier --write"
+    "*.{js,mjs,cjs,json}": "prettier --write",
+    "README.md": "prettier --write"
   }
 }
