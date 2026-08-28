@@ -9,6 +9,10 @@
     "lint": "eslint",
     "test": "jest"
   },
+  "lint-staged": {
+    "**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,md}": "prettier --write",
+    "**/*.{ts,tsx,js,jsx}": "eslint --fix"
+  },
   "dependencies": {
     "next": "16.3.2",
     "react": "19.2.8",

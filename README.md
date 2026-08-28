@@ -6,6 +6,11 @@ A matchmaking platform that connects tutors and students by subject, schedule, a
 
 - Node.js 20+
 - Docker + Docker Compose
+- [`just`](https://just.systems) — cross-platform command runner used for the
+  workflows below (`brew install just`, `winget install --id Casey.Just`, or see
+  the [install docs](https://just.systems/man/en/packages.html)). Each recipe is a
+  thin wrapper over an `npm run` script, shown in the comments if you'd rather not
+  install `just`.
 
 ## Setup
 
@@ -15,15 +20,12 @@ A matchmaking platform that connects tutors and students by subject, schedule, a
    git clone https://github.com/Azther0z/tutor-matcher.git
    cd tutor-matcher
 
-   # Install root tooling (Prettier, Husky)
-   npm install
-
-   # Install backend dependencies (also runs prisma generate via postinstall)
-   cd apps/backend && npm install && cd ../..
-
-   # Install frontend dependencies
-   cd apps/frontend && npm install && cd ../..
+   # Install root + backend + frontend dependencies in one step
+   just install      # npm run install:all
    ```
+
+   `just` recipes work the same on macOS, Linux, and Windows. The equivalent
+   `npm run` script is shown in a comment next to each command.
 
 2. **Configure environment variables**
 
@@ -37,19 +39,36 @@ A matchmaking platform that connects tutors and students by subject, schedule, a
 3. **Start Postgres**
 
    ```bash
-   docker-compose up -d
+   just db-up      # npm run db:up  (docker compose up -d)
    ```
 
 4. **Apply database migrations**
 
    ```bash
    cd apps/backend
-   npx prisma migrate dev
+   just migrate    # npm run db:migrate:dev  (prisma migrate dev)
    ```
 
 ## Development
 
-Run each in a separate terminal:
+Start Postgres plus both dev servers. They run **in the background** via
+[PM2](https://pm2.keymetrics.io/), so you can close the terminal and they keep
+running:
+
+```bash
+just up        # npm run up      — docker compose up -d, then backend + frontend (detached)
+just logs      # npm run logs    — stream both servers' output
+just status    # npm run status  — show whether they're running
+just restart   # npm run restart — restart both
+just down      # npm run down    — stop both
+```
+
+Both dev servers hot-reload on source changes. To run them attached to the
+current terminal instead (Ctrl+C stops both), use `just dev` (`npm run dev`);
+this assumes Postgres is already running.
+
+<details>
+<summary>Run each server in its own terminal</summary>
 
 ```bash
 # Backend (port 3001)
@@ -59,21 +78,49 @@ cd apps/backend && npm run dev
 cd apps/frontend && npm run dev
 ```
 
-## Commands
+</details>
 
-| Command                  | Location        | Description                                |
-| ------------------------ | --------------- | ------------------------------------------ |
-| `npm run dev`            | `apps/backend`  | Start Express with hot reload              |
-| `npm run dev`            | `apps/frontend` | Start Next.js dev server                   |
-| `npm test`               | `apps/backend`  | Run backend tests (Jest + Supertest)       |
-| `npm run test:bdd`       | `apps/backend`  | Run backend Gherkin tests (Cucumber.js)    |
-| `npm test`               | `apps/frontend` | Run frontend tests (Jest + RTL)            |
-| `npm run lint`           | `apps/backend`  | Run ESLint on backend source               |
-| `npm run format`         | repo root       | Format all files with Prettier             |
-| `npm run format:check`   | repo root       | Check formatting without writing           |
-| `npx prisma studio`      | `apps/backend`  | Open Prisma database browser               |
-| `npx prisma migrate dev` | `apps/backend`  | Create and apply a new migration           |
-| `npm run db:migrate`     | `apps/backend`  | Apply committed migrations in a deployment |
+### Task reference
+
+Run `just` in the repo root or in `apps/backend` to list every recipe. The
+matching `npm run` script (for use without `just`) is in the last column.
+
+| `just`                   | Location       | Description                                     | `npm run` equivalent        |
+| ------------------------ | -------------- | ----------------------------------------------- | --------------------------- |
+| `just install`           | repo root      | Install root + backend + frontend dependencies  | `npm run install:all`       |
+| `just up` / `down`       | repo root      | Start / stop Postgres + both servers (detached) | `npm run up` / `down`       |
+| `just logs` / `status`   | repo root      | Stream logs / show background-server status     | `npm run logs` / `status`   |
+| `just restart`           | repo root      | Restart both background servers                 | `npm run restart`           |
+| `just dev`               | repo root      | Run backend + frontend attached to the terminal | `npm run dev`               |
+| `just db-up` / `db-down` | repo root      | Start / stop the Postgres container             | `npm run db:up` / `db:down` |
+| `just gen`               | `apps/backend` | Regenerate the typed Prisma client              | `npm run gen`               |
+| `just gen-mock-data`     | `apps/backend` | Seed fake data (`@faker-js/faker`)              | `npm run gen-mock-data`     |
+| `just migrate`           | `apps/backend` | Create and apply a new migration                | `npm run db:migrate:dev`    |
+| `just reset`             | `apps/backend` | Drop, re-migrate, and re-seed the database      | `npm run db:reset`          |
+| `just studio`            | `apps/backend` | Open Prisma Studio                              | `npm run db:studio`         |
+
+### More recipes
+
+Beyond the table above, `apps/backend` also exposes:
+
+| `just`                | Description                         | `npm run` equivalent      |
+| --------------------- | ----------------------------------- | ------------------------- |
+| `just test`           | Backend tests (Jest + Supertest)    | `npm test`                |
+| `just test-bdd`       | Backend Gherkin tests (Cucumber.js) | `npm run test:bdd`        |
+| `just lint`           | ESLint on backend source            | `npm run lint`            |
+| `just validate`       | Validate `schema.prisma`            | `npm run prisma:validate` |
+| `just format`         | Format `schema.prisma`              | `npm run prisma:format`   |
+| `just migrate-deploy` | Apply committed migrations (deploy) | `npm run db:migrate`      |
+
+From the repo root, `npm run format` / `npm run format:check` run Prettier over
+all files. The frontend test suite is `npm test` in `apps/frontend`.
+
+### Git hooks
+
+A Husky `pre-commit` hook runs `lint-staged` on staged files — `prettier --write`
+plus the per-app `eslint --fix` for `apps/backend` and `apps/frontend` — and then
+`npm run format:check` as a gate. Formatting and lint fixes are applied and
+re-staged automatically; no need to run them by hand before committing.
 
 ## Testing
 
