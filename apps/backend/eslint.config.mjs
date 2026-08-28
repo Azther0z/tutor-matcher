@@ -19,7 +19,7 @@ export default [
     rules: tsPlugin.configs.recommended.rules,
   },
   {
-    files: ['src/**/*.test.ts', 'src/**/__tests__/**/*.ts'],
+    files: ['src/**/*.test.ts', 'src/**/__tests__/**/*.ts', 'test/**/*.test.ts'],
     languageOptions: {
       globals: {
         describe: 'readonly',

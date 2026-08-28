@@ -17,7 +17,7 @@ default:
 install:
     npm run install:all
 
-# Start Postgres + backend (3001) + frontend (3000) detached (PM2) — terminal-free; stop with `just down`.
+# Start Postgres + backend (8000) + frontend (3000) detached (PM2) — terminal-free; stop with `just down`.
 up:
     npm run up
 

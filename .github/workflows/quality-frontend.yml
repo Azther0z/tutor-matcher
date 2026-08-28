@@ -1,0 +1,41 @@
+name: Quality Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/frontend/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'docker-compose.yml'
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - 'apps/frontend/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'docker-compose.yml'
+      - '.github/workflows/**'
+
+concurrency:
+  group: tutor-matcher-quality-frontend-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+      - working-directory: apps/frontend
+        run: npm ci
+      - working-directory: apps/frontend
+        run: npm run lint
+      - working-directory: apps/frontend
+        run: npm test -- --runInBand --passWithNoTests
+      - working-directory: apps/frontend
+        run: npm run build

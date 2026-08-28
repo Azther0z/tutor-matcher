@@ -71,7 +71,7 @@ this assumes Postgres is already running.
 <summary>Run each server in its own terminal</summary>
 
 ```bash
-# Backend (port 3001)
+# Backend (port 8000)
 cd apps/backend && npm run dev
 
 # Frontend (port 3000)

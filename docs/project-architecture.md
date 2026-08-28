@@ -30,18 +30,18 @@ tutor-matcher/                  ← monorepo root
 │       ├── src/
 │       │   ├── controllers/    ← Route handlers (one file per domain)
 │       │   ├── lib/
-│       │   │   └── prisma.ts   ← Prisma client singleton
+│       │   │   └── db.ts       ← PostgreSQL connection pool
 │       │   ├── middleware/     ← Auth, error handler, etc.
 │       │   ├── routes/         ← Express routers
-│       │   ├── __tests__/
-│       │   │   └── health.test.ts
-│       │   ├── app.ts          ← Express app (no listen — importable by tests)
-│       │   └── index.ts        ← Server entry point (calls app.listen)
+│       │   ├── apps.ts         ← Express app (no listen — importable by tests)
+│       │   └── server.ts       ← Server entry point (calls app.listen)
+│       ├── test/
+│       │   └── app.test.ts
 │       ├── prisma/
 │       │   ├── schema.prisma
 │       │   └── seed.ts        ← Mock-data seed (@faker-js/faker)
 │       ├── justfile           ← Backend Prisma/dev recipes
-│       ├── cucumber.js
+│       ├── cucumber.cjs
 │       └── jest.config.js
 ├── deploy/                    ← Doco-CD production deployment
 │   ├── compose.yaml           ← Frontend and backend production services
@@ -79,8 +79,8 @@ See `docs/adr/` for full records. Summary:
 ```
 Browser
   └── Next.js (port 3000)
-        └── fetch / axios → Express API (port 3001)
-                              └── Prisma → PostgreSQL (port 5432)
+        └── fetch / axios → Express API (port 8000)
+                              └── PostgreSQL (port 5432)
 ```
 
 Next.js is **CSR-first**: the browser calls the Express API directly. No Next.js server-side data fetching is used for authenticated flows (rendering mode is deferred).
@@ -93,7 +93,7 @@ without `just`. See the task reference in [`README.md`](../README.md) for the fu
 list.
 
 ```bash
-# Start Postgres + backend (3001) + frontend (3000) in the background (PM2)
+# Start Postgres + backend (8000) + frontend (3000) in the background (PM2)
 just up                 # or: npm run up   — servers survive closing the terminal
 just logs               # stream output
 just down               # stop them
@@ -115,7 +115,8 @@ npm run format          # from repo root
 
 Jest and Supertest provide the conventional backend test suite. Cucumber.js provides the
 backend behavior suite from Gherkin features and TypeScript step definitions. Both suites
-exercise the exported Express app without requiring the development server to be started.
+exercise the exported Express app from `src/apps.ts` without requiring the development server
+to be started.
 See [Testing](testing.md) for the current coverage and extension conventions.
 
 ## Deployment Flow
