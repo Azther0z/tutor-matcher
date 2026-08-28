@@ -1,0 +1,31 @@
+name: Quality Format
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'docker-compose.yml'
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - 'apps/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'docker-compose.yml'
+      - '.github/workflows/**'
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run format:check
