@@ -1,0 +1,21 @@
+id: AUTH-1
+title: "Create a Student or Tutor account"
+description: "As a new user, I want to sign up as either a Student or a Tutor so that I get an account tailored to my role."
+epic: "Account Registration & Authentication"
+role: "new user"
+lifecycle: backlog
+story_points: 5
+dependencies: []
+acceptance_criteria:
+  - given: "a visitor is on the sign-up page,"
+    when: "they submit a valid email, password, AND select a role (Student/Tutor),"
+    then: "an account is created and a verification email is sent."
+  - given: "the email is already registered,"
+    when: "the visitor tries to sign up,"
+    then: "the system shows an error and suggests logging in instead."
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: "Account Registration & Authentication / US1-1"
+journey:
+  - route: "(auth)/signup"
+    action: "Sign up"

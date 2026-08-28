@@ -1,0 +1,21 @@
+id: DISC-3
+title: "To view a tutor's detailed profile page"
+description: "As a Student, I want to view a tutor's detailed profile page so that I can decide whether to book a lesson."
+epic: "Tutor Search & Discovery"
+role: "Student"
+lifecycle: backlog
+story_points: 2
+dependencies: ["US3-1"]
+acceptance_criteria:
+  - given: "a Student clicks a tutor card,"
+    when: "the profile page loads,"
+    then: "bio, reviews, rate, availability, AND video intro are displayed."
+  - given: "a Student selects a tutor profile that is unavailable,"
+    when: "the profile page loads,"
+    then: "the profile details are not displayed and an unavailable message is shown."
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: "Tutor Search & Discovery / US3-3"
+journey:
+  - route: "/tutors/:id"
+    action: "Tutor Profile Detail"

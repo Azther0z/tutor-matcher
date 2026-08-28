@@ -1,0 +1,21 @@
+id: PROF-4
+title: "To edit my profile and account settings"
+description: "As a user, I want to edit my profile and account settings so that my information stays accurate."
+epic: "User Profile Management"
+role: "user"
+lifecycle: backlog
+story_points: 2
+dependencies: ["US1-1"]
+acceptance_criteria:
+  - given: "a user edits profile fields,"
+    when: "they save changes,"
+    then: "updates are reflected immediately across the platform."
+  - given: "a user enters an invalid value in a profile or account setting,"
+    when: "they save the changes,"
+    then: "the update is rejected and the invalid field is highlighted."
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: "User Profile Management / US2-4"
+journey:
+  - route: "/settings"
+    action: "Update account"

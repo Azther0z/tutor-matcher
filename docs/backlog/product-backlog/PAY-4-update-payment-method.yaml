@@ -1,0 +1,21 @@
+id: PAY-4
+title: "Update payment method"
+description: "As a Student, I want to update my payment method so that future lesson payments use my preferred account."
+epic: "Payments & Billing"
+role: "Student"
+lifecycle: backlog
+story_points: 3
+dependencies: []
+acceptance_criteria:
+  - given: "a Student is viewing their payment settings,"
+    when: "they submit a valid payment method,"
+    then: "the new method is saved for future payments."
+  - given: "a Student submits invalid payment details,"
+    when: "the method is saved,"
+    then: "the system rejects it and does not replace the current method."
+sources:
+  - file: ../../sources/Untitled-2026-08-28-2348.svg
+    locator: "/payments / Update payment method"
+journey:
+  - route: "/payments"
+    action: "Update payment method"

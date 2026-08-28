@@ -1,0 +1,38 @@
+id: AUTH-4
+path: product-backlog/AUTH-4-verify-identity-and-teaching-credentials.yaml
+assignees: []
+status: todo
+order: 3
+estimate_hours: 20
+tasks:
+  - id: AUTH-4-T1
+    title: "Design the document-upload and verification-status UI"
+    assignees: ["Poom", "Pee"]
+    role: "UXUI"
+    status: todo
+    estimate_hours: 3
+  - id: AUTH-4-T2
+    title: "Build the ID/certificate upload form"
+    assignees: ["Nesta", "Washi"]
+    role: "Frontend"
+    status: todo
+    estimate_hours: 4
+  - id: AUTH-4-T3
+    title: "Implement document storage and 'Pending Verification' status"
+    assignees: ["Nesta", "Washi"]
+    role: "Backend"
+    status: todo
+    estimate_hours: 6
+  - id: AUTH-4-T4
+    title: "Implement the admin approval workflow and 'Verified' badge"
+    assignees: ["Nesta", "Washi"]
+    role: "Backend"
+    status: todo
+    estimate_hours: 5
+  - id: AUTH-4-T5
+    title: "Write acceptance tests for the Tutor verification flow"
+    assignees: ["Saint", "Yongfu"]
+    role: "QA"
+    status: todo
+    estimate_hours: 2
+notes: "Migrated from Sprint 1 v1.1.html"

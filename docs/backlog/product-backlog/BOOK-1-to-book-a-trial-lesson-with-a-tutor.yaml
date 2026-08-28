@@ -1,0 +1,23 @@
+id: BOOK-1
+title: "To book a trial lesson with a Tutor"
+description: "As a Student, I want to book a trial lesson with a Tutor so that I can evaluate fit before committing to a package."
+epic: "Lesson Booking & Scheduling"
+role: "Student"
+lifecycle: backlog
+story_points: 5
+dependencies: ["US1-2", "US2-2", "US2-3", "US3-3"]
+acceptance_criteria:
+  - given: "a Student selects an open slot and confirms,"
+    when: "payment (if required) succeeds,"
+    then: "the trial lesson is booked and both parties are notified."
+  - given: "the selected slot becomes unavailable before confirmation,"
+    when: "the Student tries to book,"
+    then: "the system shows an error and refreshes available slots."
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: "Lesson Booking & Scheduling / US4-1"
+journey:
+  - route: "/booking"
+    action: "Booking"
+  - route: "/bookings/:id"
+    action: "View booking"

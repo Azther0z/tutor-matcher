@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "Matchmaking platform connecting tutors and students by subject, schedule, and price.",
   "scripts": {
-    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"docs/backlog/**/*.{yaml,yml,md,html}\" \"scripts/**/*.mjs\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"docs/backlog/**/*.{yaml,yml,md,html}\" \"scripts/**/*.mjs\"",
+    "backlog:check": "node scripts/validate-backlog.mjs",
     "prepare": "husky",
     "install:all": "npm install && npm --prefix apps/backend install && npm --prefix apps/frontend install",
     "setup:env": "node scripts/setup-env.mjs",
@@ -35,6 +36,9 @@
     "prettier": "^3.9.6"
   },
   "lint-staged": {
+    "apps/**/*.{ts,tsx,js,jsx,json,css,md}": [
+      "prettier --write"
+    ],
     "*.{js,mjs,cjs,json}": "prettier --write",
     "scripts/**/*.{js,mjs,cjs}": "prettier --write",
     "README.md": "prettier --write"

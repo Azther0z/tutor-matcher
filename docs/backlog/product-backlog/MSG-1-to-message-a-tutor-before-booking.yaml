@@ -1,0 +1,21 @@
+id: MSG-1
+title: "To message a Tutor before booking"
+description: "As a Student, I want to message a Tutor before booking so that I can ask questions about their teaching style."
+epic: "Messaging & Notifications"
+role: "Student"
+lifecycle: backlog
+story_points: 5
+dependencies: ["US3-3"]
+acceptance_criteria:
+  - given: "a Student opens a tutor profile,"
+    when: "they send a message,"
+    then: "the Tutor receives it in their inbox and via notification."
+  - given: "a Student opens a tutor profile,"
+    when: "they send an empty or invalid message,"
+    then: "the message is rejected and the Tutor does not receive a notification."
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: "Messaging & Notifications / US7-1"
+journey:
+  - route: "/tutors/:id"
+    action: "Message this tutor"

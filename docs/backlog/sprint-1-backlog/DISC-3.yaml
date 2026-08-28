@@ -1,0 +1,32 @@
+id: DISC-3
+path: product-backlog/DISC-3-to-view-a-tutor-s-detailed-profile-page.yaml
+assignees: []
+status: todo
+order: 10
+estimate_hours: 8
+tasks:
+  - id: DISC-3-T1
+    title: "Design the Tutor detail page layout"
+    assignees: ["Poom", "Pee"]
+    role: "UXUI"
+    status: todo
+    estimate_hours: 2
+  - id: DISC-3-T2
+    title: "Build the detail page (bio, reviews, rate, availability, video)"
+    assignees: ["Ideal", "Pooh"]
+    role: "Frontend"
+    status: todo
+    estimate_hours: 3
+  - id: DISC-3-T3
+    title: "Implement the tutor-detail fetch endpoint and unavailable-profile handling"
+    assignees: ["Ideal", "Pooh"]
+    role: "Backend"
+    status: todo
+    estimate_hours: 2
+  - id: DISC-3-T4
+    title: "Write acceptance tests for the Tutor detail page"
+    assignees: ["Saint", "Yongfu"]
+    role: "QA"
+    status: todo
+    estimate_hours: 1
+notes: "Migrated from Sprint 1 v1.1.html"

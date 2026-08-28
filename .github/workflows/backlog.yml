@@ -1,0 +1,33 @@
+name: Backlog
+
+on:
+  pull_request:
+    paths:
+      - 'docs/backlog/**'
+      - 'docs/sources/**'
+      - 'scripts/validate-backlog.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/backlog.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/backlog/**'
+      - 'docs/sources/**'
+      - 'scripts/validate-backlog.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/backlog.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run backlog:check
