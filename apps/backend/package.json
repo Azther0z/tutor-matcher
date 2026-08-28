@@ -2,47 +2,33 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "test": "jest",
-    "test:bdd": "cucumber-js",
-    "lint": "eslint src features",
-    "db:migrate": "prisma migrate deploy",
-    "postinstall": "prisma generate"
+    "start": "tsc && node dist/src/server.js",
+    "dev": "tsx watch src/server.ts",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "@prisma/adapter-pg": "^7.9.1",
-    "@prisma/client": "^7.9.1",
-    "cors": "^2.8.6",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "pg": "^8.23.0",
-    "prisma": "^7.9.1"
+    "pg": "^8.23.0"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^12.9.0",
-    "@eslint/js": "^10.0.1",
-    "@swc/core": "^1.16.1",
-    "@swc/jest": "^0.2.39",
-    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
-    "@types/node": "^26.3.0",
+    "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
-    "@typescript-eslint/eslint-plugin": "^8.68.0",
-    "@typescript-eslint/parser": "^8.68.0",
-    "eslint": "^10.9.1",
-    "jest": "^30.4.2",
+    "jest": "^30.5.0",
+    "prisma": "^7.10.0",
     "supertest": "^7.2.2",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.9.3"
+    "ts-jest": "^29.4.12",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3"
   }
 }
