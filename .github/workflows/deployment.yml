@@ -1,0 +1,26 @@
+name: Deployment Configuration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/**'
+      - '.doco-cd.yaml'
+  pull_request:
+    paths:
+      - 'deploy/**'
+      - '.doco-cd.yaml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose and image references
+        working-directory: deploy
+        run: |
+          docker compose -f compose.yaml config >/dev/null
+          images=$(docker compose -f compose.yaml config --images)
+          grep -Fx 'docker.io/azther0z/tutor-matcher-frontend:latest' <<< "$images"
+          grep -Fx 'docker.io/azther0z/tutor-matcher-backend:latest' <<< "$images"
