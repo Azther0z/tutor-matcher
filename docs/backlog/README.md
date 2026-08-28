@@ -32,8 +32,14 @@ source/journey references. Lifecycle values are `backlog`, `todo`, `review`,
 
 Source references identify the source filename and visible epic/story label.
 Journey references identify a route and action label, such as `/search` and
-`Search & Browse Tutors`. Reconciliation with the updated journey is additive
-and minimal: retain existing stories and add only uncovered capabilities.
+`Search & Browse Tutors`. The `journey_coverage` section in `backlog.yaml` is
+the canonical route/action coverage index. Its entries classify meaningful
+journey pairs as `story` or `non-story` and list the relevant stable story IDs.
+SVG labels are evidence, not an instruction to create a story for every label.
+Implementation and navigation details may therefore be explicitly `non-story`.
+Independent uncovered capabilities are recorded as new product stories with
+the journey SVG as their source. Reconciliation is additive and minimal:
+retain existing stories and add only uncovered capabilities.
 
 ## Sprints
 

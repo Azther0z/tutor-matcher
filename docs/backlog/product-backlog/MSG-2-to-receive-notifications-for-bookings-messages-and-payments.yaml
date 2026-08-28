@@ -17,7 +17,5 @@ sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: 'Messaging & Notifications / US7-2'
 journey:
-  - route: '/messages'
-    action: 'Message this tutor'
   - route: '/settings/notification'
-    action: 'Update notification settings'
+    action: 'Notification settings'

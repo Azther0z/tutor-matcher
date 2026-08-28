@@ -17,9 +17,5 @@ sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: 'User Profile Management / US2-3'
 journey:
-  - route: '/dashboard'
+  - route: '/settings/tutor'
     action: 'Update availability'
-  - route: '/settings'
-    action: 'Update account'
-  - route: '/enroll-tutor'
-    action: 'Become a Tutor'

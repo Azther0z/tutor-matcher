@@ -1,0 +1,21 @@
+id: BOOK-5
+title: 'Invite a classmate'
+description: 'As a Student, I want to invite a classmate to a lesson so that we can learn together.'
+epic: 'Lesson Booking & Scheduling'
+role: 'Student'
+lifecycle: backlog
+story_points: 3
+dependencies: []
+acceptance_criteria:
+  - given: 'a Student has a confirmed lesson,'
+    when: 'they invite a classmate,'
+    then: 'the classmate receives an invitation linked to the lesson.'
+  - given: 'a Student does not have a confirmed lesson,'
+    when: 'they try to invite a classmate,'
+    then: 'the system prevents the invitation and explains why.'
+sources:
+  - file: ../../sources/Untitled-2026-08-28-2348.svg
+    locator: '/booking / Invite classmate'
+journey:
+  - route: '/booking'
+    action: 'Invite classmate'

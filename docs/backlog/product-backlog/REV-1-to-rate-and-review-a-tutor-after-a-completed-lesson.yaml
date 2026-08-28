@@ -17,5 +17,5 @@ sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: 'Reviews & Ratings / US8-1'
 journey:
-  - route: '/tutors/:id'
+  - route: '/tutors/:id/:subjectId'
     action: 'Review list'

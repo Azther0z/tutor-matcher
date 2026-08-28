@@ -20,5 +20,5 @@ sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: 'Virtual Classroom & Lesson Delivery / US6-1'
 journey:
-  - route: '/booking'
+  - route: '/bookings/:id'
     action: 'Get zoom meeting link'

@@ -1,0 +1,23 @@
+id: PROF-5
+title: 'View tutor dashboard stats'
+description: 'As a Tutor, I want to view dashboard stats and learner engagement so that I can understand my teaching activity and improve it.'
+epic: 'User Profile Management'
+role: 'Tutor'
+lifecycle: backlog
+story_points: 5
+dependencies: []
+acceptance_criteria:
+  - given: 'a Tutor opens the tutor dashboard,'
+    when: 'the dashboard loads,'
+    then: 'lesson, student, status, and engagement statistics are displayed.'
+  - given: 'a Tutor has no completed lessons,'
+    when: 'the dashboard loads,'
+    then: 'the dashboard displays zero-state statistics without an error.'
+sources:
+  - file: ../../sources/Untitled-2026-08-28-2348.svg
+    locator: '/dashboard/tutor / Stats / engagement'
+journey:
+  - route: '/dashboard/tutor'
+    action: 'Stats'
+  - route: '/dashboard/tutor'
+    action: 'engagement'

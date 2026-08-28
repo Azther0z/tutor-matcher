@@ -19,5 +19,3 @@ sources:
 journey:
   - route: '/search'
     action: 'Search & Browse Tutors'
-  - route: '/tutors/:id'
-    action: 'Tutor Profile Detail'

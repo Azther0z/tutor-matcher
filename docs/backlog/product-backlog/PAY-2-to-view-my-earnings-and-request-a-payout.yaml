@@ -18,6 +18,6 @@ sources:
     locator: 'Payments & Billing / US5-2'
 journey:
   - route: '/payments'
-    action: 'Payment History'
-  - route: '/payments/:id'
-    action: 'View status'
+    action: 'View earning'
+  - route: '/payments'
+    action: 'Request payout'

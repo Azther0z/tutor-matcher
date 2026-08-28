@@ -377,6 +377,32 @@
             ]
           },
           {
+            "id": "BOOK-5",
+            "title": "Invite a classmate",
+            "description": "As a Student, I want to invite a classmate to a lesson so that we can learn together.",
+            "epic": "Lesson Booking & Scheduling",
+            "role": "Student",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              "a Student has a confirmed lesson, they invite a classmate, the classmate receives an invitation linked to the lesson.",
+              "a Student does not have a confirmed lesson, they try to invite a classmate, the system prevents the invitation and explains why."
+            ]
+          },
+          {
+            "id": "BOOK-6",
+            "title": "Accept a lesson invitation",
+            "description": "As an invited Student, I want to accept a lesson invitation so that I can join the scheduled learning session.",
+            "epic": "Lesson Booking & Scheduling",
+            "role": "Student",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              "a Student receives a valid lesson invitation, they accept the invitation, they are added to the lesson and can view its booking details.",
+              "a lesson invitation is expired or invalid, the Student tries to accept it, the system rejects it and explains that it is no longer available."
+            ]
+          },
+          {
             "id": "CLASS-1",
             "title": "Join an automatically created Zoom lesson",
             "description": "As a user, I want to join my lesson through a Zoom meeting that's automatically created for my booking so that I don't need to install anything extra or coordinate a video call link myself.",
@@ -509,6 +535,19 @@
             ]
           },
           {
+            "id": "PAY-4",
+            "title": "Update payment method",
+            "description": "As a Student, I want to update my payment method so that future lesson payments use my preferred account.",
+            "epic": "Payments & Billing",
+            "role": "Student",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              "a Student is viewing their payment settings, they submit a valid payment method, the new method is saved for future payments.",
+              "a Student submits invalid payment details, the method is saved, the system rejects it and does not replace the current method."
+            ]
+          },
+          {
             "id": "PROF-1",
             "title": "To build a learner profile (subjects of interest, level, goals)",
             "description": "As a Student, I want to build a learner profile (subjects of interest, level, goals) so that I get better tutor recommendations.",
@@ -558,6 +597,19 @@
             "criteria": [
               "a user edits profile fields, they save changes, updates are reflected immediately across the platform.",
               "a user enters an invalid value in a profile or account setting, they save the changes, the update is rejected and the invalid field is highlighted."
+            ]
+          },
+          {
+            "id": "PROF-5",
+            "title": "View tutor dashboard stats",
+            "description": "As a Tutor, I want to view dashboard stats and learner engagement so that I can understand my teaching activity and improve it.",
+            "epic": "User Profile Management",
+            "role": "Tutor",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a Tutor opens the tutor dashboard, the dashboard loads, lesson, student, status, and engagement statistics are displayed.",
+              "a Tutor has no completed lessons, the dashboard loads, the dashboard displays zero-state statistics without an error."
             ]
           },
           {

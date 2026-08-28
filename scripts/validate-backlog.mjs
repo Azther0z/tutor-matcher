@@ -25,10 +25,23 @@ for (const file of storyFiles) {
     errors.push(`${file}: missing acceptance_criteria`);
   if (!/^\s+- given:\s*.+\n\s+when:\s*.+\n\s+then:\s*.+/m.test(content))
     errors.push(`${file}: acceptance criteria must use given/when/then`);
-  if (!content.includes('file: ../../sources/Product Backlog v1.2.html'))
-    errors.push(`${file}: missing product source reference`);
+  if (
+    !content.includes('file: ../../sources/Product Backlog v1.2.html') &&
+    !content.includes('file: ../../sources/Untitled-2026-08-28-2348.svg')
+  )
+    errors.push(`${file}: missing product or journey source reference`);
   if (!content.includes('route: ') || !content.includes('action: '))
     errors.push(`${file}: missing journey route/action reference`);
+}
+
+const backlogContent = await readFile(join(backlog, 'backlog.yaml'), 'utf8');
+for (const match of backlogContent.matchAll(/^\s+story_ids:\s*\[([^\]]*)\]$/gm)) {
+  for (const id of match[1]
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)) {
+    if (!storyIds.has(id)) errors.push(`backlog.yaml: unknown journey coverage story ${id}`);
+  }
 }
 
 const sprintDirs = (await readdir(backlog, { withFileTypes: true }))

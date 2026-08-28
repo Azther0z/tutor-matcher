@@ -18,4 +18,4 @@ sources:
     locator: 'Reviews & Ratings / US8-2'
 journey:
   - route: '/tutors/:id'
-    action: 'Review list'
+    action: 'Tutor Review list'

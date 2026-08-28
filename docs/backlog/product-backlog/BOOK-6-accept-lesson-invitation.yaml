@@ -1,0 +1,21 @@
+id: BOOK-6
+title: 'Accept a lesson invitation'
+description: 'As an invited Student, I want to accept a lesson invitation so that I can join the scheduled learning session.'
+epic: 'Lesson Booking & Scheduling'
+role: 'Student'
+lifecycle: backlog
+story_points: 3
+dependencies: []
+acceptance_criteria:
+  - given: 'a Student receives a valid lesson invitation,'
+    when: 'they accept the invitation,'
+    then: 'they are added to the lesson and can view its booking details.'
+  - given: 'a lesson invitation is expired or invalid,'
+    when: 'the Student tries to accept it,'
+    then: 'the system rejects it and explains that it is no longer available.'
+sources:
+  - file: ../../sources/Untitled-2026-08-28-2348.svg
+    locator: '/booking / Accept invite'
+journey:
+  - route: '/booking'
+    action: 'Accept invite'

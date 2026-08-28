@@ -17,9 +17,5 @@ sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: 'Account Registration & Authentication / US1-5'
 journey:
-  - route: '/auth'
+  - route: '(auth)/signup'
     action: 'Sign up'
-  - route: '/auth'
-    action: 'Log in'
-  - route: '/auth'
-    action: 'Reset password'

@@ -17,7 +17,5 @@ sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: 'Tutor Search & Discovery / US3-3'
 journey:
-  - route: '/search'
-    action: 'Search & Browse Tutors'
   - route: '/tutors/:id'
     action: 'Tutor Profile Detail'
