@@ -30,16 +30,16 @@ tutor-matcher/                  ← monorepo root
 │       ├── src/
 │       │   ├── controllers/    ← Route handlers (one file per domain)
 │       │   ├── lib/
-│       │   │   └── prisma.ts   ← Prisma client singleton
+│       │   │   └── db.ts       ← PostgreSQL connection pool
 │       │   ├── middleware/     ← Auth, error handler, etc.
 │       │   ├── routes/         ← Express routers
-│       │   ├── __tests__/
-│       │   │   └── health.test.ts
-│       │   ├── app.ts          ← Express app (no listen — importable by tests)
-│       │   └── index.ts        ← Server entry point (calls app.listen)
+│       │   ├── apps.ts         ← Express app (no listen — importable by tests)
+│       │   └── server.ts       ← Server entry point (calls app.listen)
+│       ├── test/
+│       │   └── app.test.ts
 │       ├── prisma/
 │       │   └── schema.prisma
-│       ├── cucumber.js
+│       ├── cucumber.cjs
 │       └── jest.config.js
 ├── deploy/                    ← Doco-CD production deployment
 │   ├── compose.yaml           ← Frontend and backend production services
@@ -75,8 +75,8 @@ See `docs/adr/` for full records. Summary:
 ```
 Browser
   └── Next.js (port 3000)
-        └── fetch / axios → Express API (port 3001)
-                              └── Prisma → PostgreSQL (port 5432)
+        └── fetch / axios → Express API (port 8000)
+                              └── PostgreSQL (port 5432)
 ```
 
 Next.js is **CSR-first**: the browser calls the Express API directly. No Next.js server-side data fetching is used for authenticated flows (rendering mode is deferred).
@@ -87,7 +87,7 @@ Next.js is **CSR-first**: the browser calls the Express API directly. No Next.js
 # Start Postgres
 docker-compose up -d
 
-# Backend (port 3001)
+# Backend (port 8000)
 cd apps/backend && npm run dev
 
 # Frontend (port 3000)
@@ -104,7 +104,8 @@ npm run format          # from repo root
 
 Jest and Supertest provide the conventional backend test suite. Cucumber.js provides the
 backend behavior suite from Gherkin features and TypeScript step definitions. Both suites
-exercise the exported Express app without requiring the development server to be started.
+exercise the exported Express app from `src/apps.ts` without requiring the development server
+to be started.
 See [Testing](testing.md) for the current coverage and extension conventions.
 
 ## Deployment Flow
