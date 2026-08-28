@@ -1,0 +1,23 @@
+id: DISC-2
+title: 'To view a ranked list of recommended tutors'
+description: 'As a Student, I want to view a ranked list of recommended tutors so that I can quickly find a good match without extensive searching.'
+epic: 'Tutor Search & Discovery'
+role: 'Student'
+lifecycle: backlog
+story_points: 5
+dependencies: ['US2-1', 'US3-1']
+acceptance_criteria:
+  - given: 'a Student has a profile with subjects/goals,'
+    when: 'they open the discovery page,'
+    then: 'a ranked list based on relevance, rating, AND availability is shown.'
+  - given: 'a Student has no subjects or goals in their profile,'
+    when: 'they open the discovery page,'
+    then: 'tutors are ranked using non-personal factors such as rating and availability.'
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: 'Tutor Search & Discovery / US3-2'
+journey:
+  - route: '/search'
+    action: 'Search & Browse Tutors'
+  - route: '/tutors/:id'
+    action: 'Tutor Profile Detail'

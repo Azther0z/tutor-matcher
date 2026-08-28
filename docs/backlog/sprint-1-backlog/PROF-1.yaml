@@ -1,0 +1,32 @@
+id: PROF-1
+path: product-backlog/PROF-1-to-build-a-learner-profile-subjects-of-interest-level-goals.yaml
+assignees: []
+status: todo
+order: 16
+estimate_hours: 8
+tasks:
+  - id: PROF-1-T1
+    title: 'Design the learner profile setup page'
+    assignees: ['Poom', 'Pee']
+    role: UXUI
+    status: todo
+    estimate_hours: 2
+  - id: PROF-1-T2
+    title: 'Build the subjects/level/goals form and validation'
+    assignees: ['Poom', 'Pee']
+    role: Frontend
+    status: todo
+    estimate_hours: 3
+  - id: PROF-1-T3
+    title: 'Implement profile storage and expose data for search ranking'
+    assignees: ['Poom', 'Pee']
+    role: Backend
+    status: todo
+    estimate_hours: 2
+  - id: PROF-1-T4
+    title: 'Write acceptance tests for the learner profile (complete, missing fields)'
+    assignees: ['Santa', 'Plai']
+    role: QA
+    status: todo
+    estimate_hours: 1
+notes: 'Migrated from Sprint 1 v1.1.html'

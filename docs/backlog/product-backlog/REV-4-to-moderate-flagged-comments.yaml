@@ -1,0 +1,21 @@
+id: REV-4
+title: 'To moderate flagged comments'
+description: 'As an Admin, I want to moderate flagged comments so that abusive or fake content is removed.'
+epic: 'Reviews & Ratings'
+role: 'Admin'
+lifecycle: backlog
+story_points: 3
+dependencies: ['US8-3']
+acceptance_criteria:
+  - given: "a review's comment is flagged by a user,"
+    when: 'an Admin reviews it and finds it does not violate policy,'
+    then: "the Admin approves the comment, it remains visible on the Tutor's profile, and the reporter is notified of the outcome."
+  - given: "a review's comment is flagged by a user,"
+    when: 'an Admin reviews it and finds it violates policy,'
+    then: "the Admin removes the comment, it no longer appears on the Tutor's profile, and both the reporter and the comment's author are notified of the outcome."
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: 'Reviews & Ratings / US8-4'
+journey:
+  - route: '/tutors/:id'
+    action: 'Review list'

@@ -1,0 +1,24 @@
+id: CLASS-1
+title: 'Join an automatically created Zoom lesson'
+description: "As a user, I want to join my lesson through a Zoom meeting that's automatically created for my booking so that I don't need to install anything extra or coordinate a video call link myself."
+epic: 'Virtual Classroom & Lesson Delivery'
+role: 'user'
+lifecycle: backlog
+story_points: 5
+dependencies: ['US4-1']
+acceptance_criteria:
+  - given: 'a booking is confirmed,'
+    when: 'confirmation completes,'
+    then: 'the system calls the Zoom API to create a scheduled meeting and attaches the join link to the booking.'
+  - given: 'a lesson start time arrives,'
+    when: "a user clicks 'Join Lesson',"
+    then: 'they are taken directly to that Zoom meeting.'
+  - given: 'the Zoom API call fails,'
+    when: 'meeting creation is attempted,'
+    then: "the Tutor is notified to manually add a meeting link instead, so the booking isn't blocked."
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: 'Virtual Classroom & Lesson Delivery / US6-1'
+journey:
+  - route: '/booking'
+    action: 'Get zoom meeting link'

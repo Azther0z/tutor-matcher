@@ -1,0 +1,37 @@
+format_version: 1
+source_policy: Original HTML and SVG sources are immutable; YAML is the editable planning authority.
+epics:
+  - id: EPIC-1
+    acronym: AUTH
+    name: 'Account Registration & Authentication'
+  - id: EPIC-2
+    acronym: PROF
+    name: 'User Profile Management'
+  - id: EPIC-3
+    acronym: DISC
+    name: 'Tutor Search & Discovery'
+  - id: EPIC-4
+    acronym: BOOK
+    name: 'Lesson Booking & Scheduling'
+  - id: EPIC-5
+    acronym: PAY
+    name: 'Payments & Billing'
+  - id: EPIC-6
+    acronym: CLASS
+    name: 'Virtual Classroom & Lesson Delivery'
+  - id: EPIC-7
+    acronym: MSG
+    name: 'Messaging & Notifications'
+  - id: EPIC-8
+    acronym: REV
+    name: 'Reviews & Ratings'
+  - id: EPIC-9
+    acronym: SAFE
+    name: 'Admin, Trust & Safety'
+sources:
+  - file: ../sources/Product Backlog v1.2.html
+    kind: product-backlog
+  - file: ../sources/Sprint 1 v1.1.html
+    kind: sprint-backlog
+  - file: ../sources/Untitled-2026-08-28-2348.svg
+    kind: user-journey

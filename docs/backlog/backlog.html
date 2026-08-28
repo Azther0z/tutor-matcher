@@ -1,0 +1,1654 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tutor Matcher Backlog</title>
+    <style>
+      :root {
+        --ink: #1d2733;
+        --muted: #687585;
+        --line: #dce4e8;
+        --paper: #f7f9f8;
+        --card: #fff;
+        --accent: #d95d39;
+        --teal: #167d78;
+        --yellow: #f2c14e;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font:
+          15px/1.5 Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      header {
+        padding: 42px clamp(20px, 6vw, 88px) 34px;
+        background: #183642;
+        color: #f7f1e8;
+      }
+      header h1 {
+        max-width: 1100px;
+        margin: 0 auto 8px;
+        font:
+          600 clamp(2rem, 4vw, 3.6rem)/1.05 Georgia,
+          serif;
+        letter-spacing: -0.04em;
+      }
+      header p {
+        max-width: 1100px;
+        margin: 0 auto;
+        color: #bad0ce;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 28px clamp(20px, 6vw, 88px) 72px;
+      }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 22px;
+      }
+      input,
+      select {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 11px 13px;
+        color: var(--ink);
+        background: var(--card);
+        font: inherit;
+      }
+      input {
+        flex: 1 1 260px;
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 22px;
+        border-bottom: 1px solid var(--line);
+      }
+      button {
+        cursor: pointer;
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 16px;
+        background: #e8efed;
+        color: var(--ink);
+        font: 600 13px inherit;
+      }
+      button.active {
+        color: #fff;
+        background: var(--accent);
+      }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 28px;
+      }
+      .metric {
+        padding: 17px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--card);
+      }
+      .metric b {
+        display: block;
+        font:
+          600 30px/1 Georgia,
+          serif;
+        color: var(--teal);
+      }
+      .metric span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(275px, 1fr));
+        gap: 14px;
+      }
+      .story {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--card);
+        overflow: hidden;
+      }
+      .story summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 17px;
+      }
+      .story summary::-webkit-details-marker {
+        display: none;
+      }
+      .story summary:hover {
+        background: #fbfcfb;
+      }
+      .story-id {
+        color: var(--accent);
+        font-weight: 700;
+        font-size: 12px;
+        letter-spacing: 0.06em;
+      }
+      .story h2 {
+        margin: 7px 0 9px;
+        font:
+          600 20px/1.15 Georgia,
+          serif;
+      }
+      .story p {
+        margin: 0;
+        color: var(--muted);
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 14px;
+      }
+      .chip {
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #edf4f2;
+        color: var(--teal);
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .chip.status {
+        background: #fff3d4;
+        color: #8a6500;
+      }
+      .detail {
+        border-top: 1px solid var(--line);
+        padding: 16px 17px;
+        background: #fcfdfc;
+      }
+      .detail h3 {
+        margin: 0 0 8px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      .detail ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .task {
+        margin: 7px 0;
+      }
+      .task small {
+        display: block;
+        color: var(--muted);
+      }
+      .empty {
+        padding: 40px;
+        text-align: center;
+        color: var(--muted);
+        grid-column: 1/-1;
+      }
+      .sprint-note {
+        margin-bottom: 22px;
+        padding: 18px 20px;
+        border-left: 4px solid var(--yellow);
+        background: #fffdf5;
+      }
+      .sprint-note strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+      @media (max-width: 680px) {
+        .metrics {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        header {
+          padding-top: 30px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Tutor Matcher backlog</h1>
+      <p>A readable view of the product roadmap and Sprint 1 execution plan.</p>
+    </header>
+    <main>
+      <nav class="tabs" aria-label="Backlog views">
+        <button class="active" data-view="product">Product backlog</button
+        ><button data-view="sprint">Sprint 1</button>
+      </nav>
+      <section class="toolbar">
+        <input id="search" type="search" placeholder="Search stories, roles, or tasks" /><select
+          id="epic"
+        >
+          <option value="">All epics</option></select
+        ><select id="status">
+          <option value="">All statuses</option>
+        </select>
+        <select id="assignee">
+          <option value="">All assignees</option>
+        </select>
+      </section>
+      <section class="metrics" id="metrics"></section>
+      <section id="sprint-note"></section>
+      <section class="grid" id="stories"></section>
+    </main>
+    <script id="backlog-data" type="application/json">
+      {
+        "product": [
+          {
+            "id": "AUTH-1",
+            "title": "Create a Student or Tutor account",
+            "description": "As a new user, I want to sign up as either a Student or a Tutor so that I get an account tailored to my role.",
+            "epic": "Account Registration & Authentication",
+            "role": "new user",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a visitor is on the sign-up page, they submit a valid email, password, AND select a role (Student/Tutor), an account is created and a verification email is sent.",
+              "the email is already registered, the visitor tries to sign up, the system shows an error and suggests logging in instead."
+            ]
+          },
+          {
+            "id": "AUTH-2",
+            "title": "To log in with my email and password",
+            "description": "As a user, I want to log in with my email and password so that I can access my account.",
+            "epic": "Account Registration & Authentication",
+            "role": "user",
+            "status": "backlog",
+            "points": 2,
+            "criteria": [
+              "valid credentials, the user submits the login form, they are redirected to their dashboard.",
+              "invalid credentials, the user submits the login form, an error message is shown without revealing whether the email exists."
+            ]
+          },
+          {
+            "id": "AUTH-3",
+            "title": "To reset my password",
+            "description": "As a user, I want to reset my password so that I can regain access if I forget it.",
+            "epic": "Account Registration & Authentication",
+            "role": "user",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              "a user requests a password reset, they enter a registered email, a time-limited reset link is emailed.",
+              "the reset link is expired or used, the user opens it, the system shows an error and offers to resend."
+            ]
+          },
+          {
+            "id": "AUTH-4",
+            "title": "Verify identity and teaching credentials",
+            "description": "As a Tutor, I want to verify my identity and teaching credentials so that students can trust my profile.",
+            "epic": "Account Registration & Authentication",
+            "role": "Tutor",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a Tutor uploads an ID and certificates, submitted, the status shows 'Pending Verification' until an admin reviews it.",
+              "the admin approves the documents, review completes, the Tutor profile displays a 'Verified' badge."
+            ]
+          },
+          {
+            "id": "AUTH-5",
+            "title": "Accept privacy policy and terms",
+            "description": "As a Student, I want to review and accept the Privacy Policy and Terms of Service during sign-up so that I understand how my personal and learning data will be used before an account is created.",
+            "epic": "Account Registration & Authentication",
+            "role": "Student",
+            "status": "backlog",
+            "points": 2,
+            "criteria": [
+              "a Student visitor has checked the consent checkbox, they submit the sign-up form, the account is created and the consent timestamp is recorded.",
+              "a Student visitor reaches the final sign-up step, they have not checked the consent checkbox, account creation is blocked and the requirement is highlighted."
+            ]
+          },
+          {
+            "id": "AUTH-6",
+            "title": "Consent to privacy and data processing",
+            "description": "As a Tutor, I want to review and accept the Privacy Policy and Terms of Service, including how my identity documents, teaching credentials, and payout information will be processed, during sign-up so that I understand and control how my sensitive data is used before an account is created.",
+            "epic": "Account Registration & Authentication",
+            "role": "Tutor",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              "a Tutor visitor has checked the consent checkbox, they submit the sign-up form, the account is created and the consent timestamp is recorded.",
+              "a Tutor visitor reaches the final sign-up step, they have not checked the consent checkbox covering identity, credential, AND payout data processing, account creation is blocked and the requirement is highlighted."
+            ]
+          },
+          {
+            "id": "BOOK-1",
+            "title": "To book a trial lesson with a Tutor",
+            "description": "As a Student, I want to book a trial lesson with a Tutor so that I can evaluate fit before committing to a package.",
+            "epic": "Lesson Booking & Scheduling",
+            "role": "Student",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a Student selects an open slot and confirms, payment (if required) succeeds, the trial lesson is booked and both parties are notified.",
+              "the selected slot becomes unavailable before confirmation, the Student tries to book, the system shows an error and refreshes available slots."
+            ]
+          },
+          {
+            "id": "BOOK-2",
+            "title": "To book recurring lessons with a Tutor",
+            "description": "As a Student, I want to book recurring lessons with a Tutor so that I can maintain a consistent learning schedule.",
+            "epic": "Lesson Booking & Scheduling",
+            "role": "Student",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a Student selects a recurrence pattern (e.g. weekly), confirmed, lessons are created on the calendar for the chosen number of occurrences.",
+              "a Student selects a recurrence pattern that conflicts with an existing lesson, they confirm the recurring booking, the booking is rejected and the conflicting slots are identified."
+            ]
+          },
+          {
+            "id": "BOOK-3",
+            "title": "To reschedule or cancel a lesson within the allowed policy window",
+            "description": "As a Student, I want to reschedule or cancel a lesson within the allowed policy window so that I can handle changes in my schedule fairly.",
+            "epic": "Lesson Booking & Scheduling",
+            "role": "Student",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              "a lesson is more than 24 hours away, a Student requests to reschedule/cancel, the change is applied without penalty.",
+              "a lesson is within 24 hours, a Student cancels, the lesson credit is refunded to the Student's balance minus the cancellation fee per policy, and both parties are notified."
+            ]
+          },
+          {
+            "id": "BOOK-4",
+            "title": "To reschedule or cancel a lesson within the allowed policy window",
+            "description": "As a Tutor, I want to reschedule or cancel a lesson within the allowed policy window so that I can handle changes in my schedule while maintaining the Student's trust in the platform.",
+            "epic": "Lesson Booking & Scheduling",
+            "role": "Tutor",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              "a lesson is more than 24 hours away, a Tutor requests to reschedule/cancel, the change is applied without penalty.",
+              "a lesson is within 24 hours, a Tutor cancels, the lesson credit is fully refunded to the Student's balance with no fee, and both parties are notified."
+            ]
+          },
+          {
+            "id": "CLASS-1",
+            "title": "Join an automatically created Zoom lesson",
+            "description": "As a user, I want to join my lesson through a Zoom meeting that's automatically created for my booking so that I don't need to install anything extra or coordinate a video call link myself.",
+            "epic": "Virtual Classroom & Lesson Delivery",
+            "role": "user",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a booking is confirmed, confirmation completes, the system calls the Zoom API to create a scheduled meeting and attaches the join link to the booking.",
+              "a lesson start time arrives, a user clicks 'Join Lesson', they are taken directly to that Zoom meeting.",
+              "the Zoom API call fails, meeting creation is attempted, the Tutor is notified to manually add a meeting link instead, so the booking isn't blocked."
+            ]
+          },
+          {
+            "id": "CLASS-2",
+            "title": "Automatically complete lessons",
+            "description": "As a user, I want the system to log a lesson as 'completed' automatically so that payment settlement and reviews are triggered correctly.",
+            "epic": "Virtual Classroom & Lesson Delivery",
+            "role": "user",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              "both participants join and stay for the minimum required duration, the session ends, the lesson status changes to 'Completed'.",
+              "one participant does not attend for the minimum required duration, the lesson ends, the lesson is not marked as Completed."
+            ]
+          },
+          {
+            "id": "DISC-1",
+            "title": "Search tutors with filters",
+            "description": "As a Student, I want to search tutors by subject, price, availability, rating, and language so that I can find a tutor that fits my needs.",
+            "epic": "Tutor Search & Discovery",
+            "role": "Student",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a Student applies filters, they run a search, results match all selected filters and are paginated.",
+              "no tutors match the filters, the search runs, a 'no results' state with suggestions to broaden filters is shown."
+            ]
+          },
+          {
+            "id": "DISC-2",
+            "title": "To view a ranked list of recommended tutors",
+            "description": "As a Student, I want to view a ranked list of recommended tutors so that I can quickly find a good match without extensive searching.",
+            "epic": "Tutor Search & Discovery",
+            "role": "Student",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a Student has a profile with subjects/goals, they open the discovery page, a ranked list based on relevance, rating, AND availability is shown.",
+              "a Student has no subjects or goals in their profile, they open the discovery page, tutors are ranked using non-personal factors such as rating and availability."
+            ]
+          },
+          {
+            "id": "DISC-3",
+            "title": "To view a tutor's detailed profile page",
+            "description": "As a Student, I want to view a tutor's detailed profile page so that I can decide whether to book a lesson.",
+            "epic": "Tutor Search & Discovery",
+            "role": "Student",
+            "status": "backlog",
+            "points": 2,
+            "criteria": [
+              "a Student clicks a tutor card, the profile page loads, bio, reviews, rate, availability, AND video intro are displayed.",
+              "a Student selects a tutor profile that is unavailable, the profile page loads, the profile details are not displayed and an unavailable message is shown."
+            ]
+          },
+          {
+            "id": "MSG-1",
+            "title": "To message a Tutor before booking",
+            "description": "As a Student, I want to message a Tutor before booking so that I can ask questions about their teaching style.",
+            "epic": "Messaging & Notifications",
+            "role": "Student",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a Student opens a tutor profile, they send a message, the Tutor receives it in their inbox and via notification.",
+              "a Student opens a tutor profile, they send an empty or invalid message, the message is rejected and the Tutor does not receive a notification."
+            ]
+          },
+          {
+            "id": "MSG-2",
+            "title": "To receive notifications for bookings, messages, and payments",
+            "description": "As a user, I want to receive notifications for bookings, messages, and payments so that I stay informed of important account activity.",
+            "epic": "Messaging & Notifications",
+            "role": "user",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              "a triggering event occurs (new booking, new message, payment processed), the event fires, an email notification is sent based on user preferences.",
+              "a user has disabled notifications for a specific event type, that event occurs, no notification is sent for that event type."
+            ]
+          },
+          {
+            "id": "PAY-1",
+            "title": "Purchase lesson credits",
+            "description": "As a Student, I want to purchase lesson credits/packages via PromptPay QR (mobile banking) so that I can pay for lessons in advance and use recurring bookings without paying each time.",
+            "epic": "Payments & Billing",
+            "role": "Student",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a Student selects a package and scans the generated PromptPay QR, the transfer is confirmed, credits are added to their balance and a receipt is emailed.",
+              "payment fails or isn't confirmed, checkout is attempted, an error is shown and no credits are added."
+            ]
+          },
+          {
+            "id": "PAY-2",
+            "title": "To view my earnings and request a payout",
+            "description": "As a Tutor, I want to view my earnings and request a payout so that I get paid for completed lessons.",
+            "epic": "Payments & Billing",
+            "role": "Tutor",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a Tutor has completed lessons with settled payments, they request a payout, funds (minus platform fee) are transferred to their linked payout account.",
+              "the requested payout amount is below the platform's minimum payout amount (e.g., THB 500), a Tutor requests payout, the system blocks the request and shows the minimum payout amount required."
+            ]
+          },
+          {
+            "id": "PAY-3",
+            "title": "To request a refund for an unsatisfactory or missed lesson",
+            "description": "As a Student, I want to request a refund for an unsatisfactory or missed lesson so that I don't lose money for issues outside my control.",
+            "epic": "Payments & Billing",
+            "role": "Student",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a lesson did not occur due to Tutor no-show, the Student files a refund request, credits are automatically refunded.",
+              "a dispute requires review, the Student submits a refund request, it is routed to Support/Admin for manual resolution.",
+              "a lesson was completed successfully, the Student requests a refund, the refund request is rejected and the reason is shown."
+            ]
+          },
+          {
+            "id": "PROF-1",
+            "title": "To build a learner profile (subjects of interest, level, goals)",
+            "description": "As a Student, I want to build a learner profile (subjects of interest, level, goals) so that I get better tutor recommendations.",
+            "epic": "User Profile Management",
+            "role": "Student",
+            "status": "backlog",
+            "points": 2,
+            "criteria": [
+              "a Student is on the profile setup page, they save subjects, level, AND goals, the profile is stored and used for search ranking.",
+              "a Student is on the profile setup page, they save without providing subjects, level, OR goals, the profile is not stored and the missing fields are highlighted."
+            ]
+          },
+          {
+            "id": "PROF-2",
+            "title": "Create a public tutor profile",
+            "description": "As a Tutor, I want to create a public profile with bio, video intro, subjects, and hourly rate so that students can evaluate me before booking.",
+            "epic": "User Profile Management",
+            "role": "Tutor",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              "a Tutor fills in bio, subjects, rate, AND uploads an intro video, they publish the profile, it becomes visible in search results.",
+              "required fields are missing, the Tutor tries to publish, the system blocks publishing and highlights missing fields."
+            ]
+          },
+          {
+            "id": "PROF-3",
+            "title": "To set my weekly availability",
+            "description": "As a Tutor, I want to set my weekly availability so that students only see bookable slots.",
+            "epic": "User Profile Management",
+            "role": "Tutor",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              "a Tutor updates their availability calendar, saved, only open slots appear to students.",
+              "a Tutor enters an availability slot that overlaps an existing slot, they save the availability calendar, the overlapping slot is rejected and an error is shown."
+            ]
+          },
+          {
+            "id": "PROF-4",
+            "title": "To edit my profile and account settings",
+            "description": "As a user, I want to edit my profile and account settings so that my information stays accurate.",
+            "epic": "User Profile Management",
+            "role": "user",
+            "status": "backlog",
+            "points": 2,
+            "criteria": [
+              "a user edits profile fields, they save changes, updates are reflected immediately across the platform.",
+              "a user enters an invalid value in a profile or account setting, they save the changes, the update is rejected and the invalid field is highlighted."
+            ]
+          },
+          {
+            "id": "REV-1",
+            "title": "To rate and review a Tutor after a completed lesson",
+            "description": "As a Student, I want to rate and review a Tutor after a completed lesson so that other students benefit from my feedback.",
+            "epic": "Reviews & Ratings",
+            "role": "Student",
+            "status": "backlog",
+            "points": 2,
+            "criteria": [
+              "a lesson is marked 'Completed', the Student submits a rating (1-5) and optional comment, it is published on the Tutor's profile within moderation guidelines.",
+              "a lesson is not completed or the rating value is outside the allowed range, the Student submits a review, the review is rejected and an error is shown."
+            ]
+          },
+          {
+            "id": "REV-2",
+            "title": "To respond publicly to a review",
+            "description": "As a Tutor, I want to respond publicly to a review so that I can address feedback professionally.",
+            "epic": "Reviews & Ratings",
+            "role": "Tutor",
+            "status": "backlog",
+            "points": 2,
+            "criteria": [
+              "a review exists on a Tutor's profile, the Tutor submits a reply, the reply is displayed beneath the review.",
+              "the review has been deleted, the Tutor submits a reply, the reply is rejected and an error indicating the review no longer exists is shown."
+            ]
+          },
+          {
+            "id": "REV-3",
+            "title": "To flag a review's comment as inappropriate",
+            "description": "As a user, I want to flag a review's comment as inappropriate so that Admin can review and take action on abusive or fake content.",
+            "epic": "Reviews & Ratings",
+            "role": "user",
+            "status": "backlog",
+            "points": 2,
+            "criteria": [
+              "a user is viewing a review's comment on a Tutor's profile, they submit a flag with a reason, the comment is marked 'Flagged' and queued for Admin review.",
+              "a user has already flagged a specific comment, they attempt to flag it again, the duplicate flag is rejected."
+            ]
+          },
+          {
+            "id": "REV-4",
+            "title": "To moderate flagged comments",
+            "description": "As an Admin, I want to moderate flagged comments so that abusive or fake content is removed.",
+            "epic": "Reviews & Ratings",
+            "role": "Admin",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              "a review's comment is flagged by a user, an Admin reviews it and finds it does not violate policy, the Admin approves the comment, it remains visible on the Tutor's profile, and the reporter is notified of the outcome.",
+              "a review's comment is flagged by a user, an Admin reviews it and finds it violates policy, the Admin removes the comment, it no longer appears on the Tutor's profile, and both the reporter and the comment's author are notified of the outcome."
+            ]
+          },
+          {
+            "id": "SAFE-1",
+            "title": "To suspend or ban accounts that violate policy",
+            "description": "As an Admin, I want to suspend or ban accounts that violate policy so that the platform stays safe and trustworthy.",
+            "epic": "Admin, Trust & Safety",
+            "role": "Admin",
+            "status": "backlog",
+            "points": 2,
+            "criteria": [
+              "an Admin reviews a reported account, they choose to suspend/ban, the account loses access and is notified of the reason.",
+              "an Admin attempts to ban an account that is already banned, the Admin submits the ban action, the system rejects the duplicate action and shows that the account is already banned."
+            ]
+          },
+          {
+            "id": "SAFE-2",
+            "title": "To review and approve Tutor verification submissions",
+            "description": "As an Admin, I want to review and approve Tutor verification submissions so that only qualified tutors are listed.",
+            "epic": "Admin, Trust & Safety",
+            "role": "Admin",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              "a Tutor submits verification documents, an Admin reviews them, the Admin can approve or reject with a reason sent to the Tutor.",
+              "a Tutor submits an identity or teaching-credential file with an unsupported extension, an Admin reviews the submission, approval is rejected and the unsupported file format is identified."
+            ]
+          }
+        ],
+        "sprint": {
+          "goal": "Deliver the first authentication, profile, discovery, booking, messaging, and notification slices.",
+          "start": "2026-08-25",
+          "end": "2026-09-14",
+          "status": "planned",
+          "hours": 272,
+          "stories": [
+            {
+              "id": "AUTH-1",
+              "productPath": "product-backlog/AUTH-1-create-a-student-or-tutor-account.yaml",
+              "status": "todo",
+              "hours": 20,
+              "tasks": [
+                {
+                  "id": "AUTH-1-T1",
+                  "title": "Design the Student and Tutor sign-up page layouts",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "AUTH-1-T2",
+                  "title": "Build the sign-up form inputs and role-based page routing",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 4,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "AUTH-1-T3",
+                  "title": "Implement client-side validation and duplicate-email error message",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "AUTH-1-T4",
+                  "title": "Create the user account database schema (Student/Tutor)",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "AUTH-1-T5",
+                  "title": "Implement the registration API endpoint and email-uniqueness check",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 4,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "AUTH-1-T6",
+                  "title": "Implement the verification email flow",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "AUTH-1-T7",
+                  "title": "Write acceptance tests for sign-up (valid, duplicate email)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Ideal", "Pooh"]
+                }
+              ],
+              "title": "Create a Student or Tutor account",
+              "description": "As a new user, I want to sign up as either a Student or a Tutor so that I get an account tailored to my role.",
+              "epic": "Account Registration & Authentication",
+              "assignees": ["Ideal", "Pooh", "Santa", "Plai"]
+            },
+            {
+              "id": "AUTH-2",
+              "productPath": "product-backlog/AUTH-2-to-log-in-with-my-email-and-password.yaml",
+              "status": "todo",
+              "hours": 8,
+              "tasks": [
+                {
+                  "id": "AUTH-2-T1",
+                  "title": "Design the login page layout",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 1,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "AUTH-2-T2",
+                  "title": "Build the login form and client-side validation",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "AUTH-2-T3",
+                  "title": "Implement the invalid-credentials error display",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 1,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "AUTH-2-T4",
+                  "title": "Implement the authentication endpoint and session handling",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "AUTH-2-T5",
+                  "title": "Implement redirect-to-dashboard logic",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 1,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "AUTH-2-T6",
+                  "title": "Write acceptance tests for login (valid, invalid credentials)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 1,
+                  "assignees": ["Nesta", "Washi"]
+                }
+              ],
+              "title": "To log in with my email and password",
+              "description": "As a user, I want to log in with my email and password so that I can access my account.",
+              "epic": "Account Registration & Authentication",
+              "assignees": ["Ideal", "Pooh", "Santa", "Plai", "Nesta", "Washi"]
+            },
+            {
+              "id": "AUTH-3",
+              "productPath": "product-backlog/AUTH-3-to-reset-my-password.yaml",
+              "status": "todo",
+              "hours": 12,
+              "tasks": [
+                {
+                  "id": "AUTH-3-T1",
+                  "title": "Design the password-reset request and confirmation pages",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "AUTH-3-T2",
+                  "title": "Build the reset-request form and new-password form",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "AUTH-3-T3",
+                  "title": "Generate and email a time-limited reset token",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "AUTH-3-T4",
+                  "title": "Implement token validation, expiry, and resend handling",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "AUTH-3-T5",
+                  "title": "Write acceptance tests for password reset (valid, expired/used link)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Nesta", "Washi"]
+                }
+              ],
+              "title": "To reset my password",
+              "description": "As a user, I want to reset my password so that I can regain access if I forget it.",
+              "epic": "Account Registration & Authentication",
+              "assignees": ["Ideal", "Pooh", "Poom", "Pee", "Nesta", "Washi"]
+            },
+            {
+              "id": "AUTH-4",
+              "productPath": "product-backlog/AUTH-4-verify-identity-and-teaching-credentials.yaml",
+              "status": "todo",
+              "hours": 20,
+              "tasks": [
+                {
+                  "id": "AUTH-4-T1",
+                  "title": "Design the document-upload and verification-status UI",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "AUTH-4-T2",
+                  "title": "Build the ID/certificate upload form",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 4,
+                  "assignees": ["Nesta", "Washi"]
+                },
+                {
+                  "id": "AUTH-4-T3",
+                  "title": "Implement document storage and 'Pending Verification' status",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 6,
+                  "assignees": ["Nesta", "Washi"]
+                },
+                {
+                  "id": "AUTH-4-T4",
+                  "title": "Implement the admin approval workflow and 'Verified' badge",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 5,
+                  "assignees": ["Nesta", "Washi"]
+                },
+                {
+                  "id": "AUTH-4-T5",
+                  "title": "Write acceptance tests for the Tutor verification flow",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Saint", "Yongfu"]
+                }
+              ],
+              "title": "Verify identity and teaching credentials",
+              "description": "As a Tutor, I want to verify my identity and teaching credentials so that students can trust my profile.",
+              "epic": "Account Registration & Authentication",
+              "assignees": ["Poom", "Pee", "Nesta", "Washi", "Saint", "Yongfu"]
+            },
+            {
+              "id": "AUTH-5",
+              "productPath": "product-backlog/AUTH-5-accept-privacy-policy-and-terms.yaml",
+              "status": "todo",
+              "hours": 8,
+              "tasks": [
+                {
+                  "id": "AUTH-5-T1",
+                  "title": "Design the consent checkbox and Privacy Policy/ToS link placement",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "AUTH-5-T2",
+                  "title": "Implement the consent-checkbox gate on the sign-up form",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "AUTH-5-T3",
+                  "title": "Record the consent timestamp on account creation",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "AUTH-5-T4",
+                  "title": "Write acceptance tests for the Student consent gate",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 1,
+                  "assignees": ["Santa", "Plai"]
+                }
+              ],
+              "title": "Accept privacy policy and terms",
+              "description": "As a Student, I want to review and accept the Privacy Policy and Terms of Service during sign-up so that I understand how my personal and learning data will be used before an account is created.",
+              "epic": "Account Registration & Authentication",
+              "assignees": ["Ideal", "Pooh", "Poom", "Pee", "Santa", "Plai"]
+            },
+            {
+              "id": "AUTH-6",
+              "productPath": "product-backlog/AUTH-6-consent-to-privacy-and-data-processing.yaml",
+              "status": "todo",
+              "hours": 12,
+              "tasks": [
+                {
+                  "id": "AUTH-6-T1",
+                  "title": "Design the extended consent copy covering ID/payout data",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "AUTH-6-T2",
+                  "title": "Implement the Tutor consent-checkbox gate on sign-up",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Nesta", "Washi"]
+                },
+                {
+                  "id": "AUTH-6-T3",
+                  "title": "Record the extended consent (ID, credentials, payout) with timestamp",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 4,
+                  "assignees": ["Nesta", "Washi"]
+                },
+                {
+                  "id": "AUTH-6-T4",
+                  "title": "Write acceptance tests for the Tutor consent gate",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Poom", "Pee"]
+                }
+              ],
+              "title": "Consent to privacy and data processing",
+              "description": "As a Tutor, I want to review and accept the Privacy Policy and Terms of Service, including how my identity documents, teaching credentials, and payout information will be processed, during sign-up so that I understand and control how my sensitive data is used before an account is created.",
+              "epic": "Account Registration & Authentication",
+              "assignees": ["Poom", "Pee", "Nesta", "Washi"]
+            },
+            {
+              "id": "BOOK-1",
+              "productPath": "product-backlog/BOOK-1-to-book-a-trial-lesson-with-a-tutor.yaml",
+              "status": "todo",
+              "hours": 20,
+              "tasks": [
+                {
+                  "id": "BOOK-1-T1",
+                  "title": "Design the slot-selection and booking-confirmation flow",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "BOOK-1-T2",
+                  "title": "Build the slot-selection UI and booking confirmation",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 5,
+                  "assignees": ["Nesta", "Washi"]
+                },
+                {
+                  "id": "BOOK-1-T3",
+                  "title": "Implement booking creation and the conflict/availability check",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 5,
+                  "assignees": ["Nesta", "Washi"]
+                },
+                {
+                  "id": "BOOK-1-T4",
+                  "title": "Integrate payment confirmation (if required) and notifications",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 5,
+                  "assignees": ["Nesta", "Washi"]
+                },
+                {
+                  "id": "BOOK-1-T5",
+                  "title": "Write acceptance tests for trial booking (success, slot-taken)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Saint", "Yongfu"]
+                }
+              ],
+              "title": "To book a trial lesson with a Tutor",
+              "description": "As a Student, I want to book a trial lesson with a Tutor so that I can evaluate fit before committing to a package.",
+              "epic": "Lesson Booking & Scheduling",
+              "assignees": ["Poom", "Pee", "Nesta", "Washi", "Saint", "Yongfu"]
+            },
+            {
+              "id": "BOOK-2",
+              "productPath": "product-backlog/BOOK-2-to-book-recurring-lessons-with-a-tutor.yaml",
+              "status": "todo",
+              "hours": 20,
+              "tasks": [
+                {
+                  "id": "BOOK-2-T1",
+                  "title": "Design the recurrence-pattern selection UI",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 4,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "BOOK-2-T2",
+                  "title": "Build the recurrence-pattern picker",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 5,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "BOOK-2-T3",
+                  "title": "Implement recurring-lesson creation and conflict detection",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 8,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "BOOK-2-T4",
+                  "title": "Write acceptance tests for recurring booking (success, conflict)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Santa", "Plai"]
+                }
+              ],
+              "title": "To book recurring lessons with a Tutor",
+              "description": "As a Student, I want to book recurring lessons with a Tutor so that I can maintain a consistent learning schedule.",
+              "epic": "Lesson Booking & Scheduling",
+              "assignees": ["Poom", "Pee", "Santa", "Plai"]
+            },
+            {
+              "id": "BOOK-3",
+              "productPath": "product-backlog/BOOK-3-to-reschedule-or-cancel-a-lesson-within-the-allowed-policy-window.yaml",
+              "status": "todo",
+              "hours": 12,
+              "tasks": [
+                {
+                  "id": "BOOK-3-T1",
+                  "title": "Build the cancel/reschedule action and policy-window messaging",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 4,
+                  "assignees": ["Saint", "Yongfu"]
+                },
+                {
+                  "id": "BOOK-3-T2",
+                  "title": "Implement the &gt;24h no-penalty and &lt;24h refund-minus-fee logic",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 6,
+                  "assignees": ["Saint", "Yongfu"]
+                },
+                {
+                  "id": "BOOK-3-T3",
+                  "title": "Write acceptance tests for Student cancellation (both time windows)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Poom", "Pee"]
+                }
+              ],
+              "title": "To reschedule or cancel a lesson within the allowed policy window",
+              "description": "As a Student, I want to reschedule or cancel a lesson within the allowed policy window so that I can handle changes in my schedule fairly.",
+              "epic": "Lesson Booking & Scheduling",
+              "assignees": ["Saint", "Yongfu", "Poom", "Pee"]
+            },
+            {
+              "id": "BOOK-4",
+              "productPath": "product-backlog/BOOK-4-to-reschedule-or-cancel-a-lesson-within-the-allowed-policy-window.yaml",
+              "status": "todo",
+              "hours": 12,
+              "tasks": [
+                {
+                  "id": "BOOK-4-T1",
+                  "title": "Build the Tutor cancel/reschedule action",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 4,
+                  "assignees": ["Nesta", "Washi"]
+                },
+                {
+                  "id": "BOOK-4-T2",
+                  "title": "Implement the &gt;24h no-penalty and &lt;24h full-refund + reliability-log logic",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 5,
+                  "assignees": ["Nesta", "Washi"]
+                },
+                {
+                  "id": "BOOK-4-T3",
+                  "title": "Write acceptance tests for Tutor cancellation (both time windows)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Saint", "Yongfu"]
+                }
+              ],
+              "title": "To reschedule or cancel a lesson within the allowed policy window",
+              "description": "As a Tutor, I want to reschedule or cancel a lesson within the allowed policy window so that I can handle changes in my schedule while maintaining the Student's trust in the platform.",
+              "epic": "Lesson Booking & Scheduling",
+              "assignees": ["Nesta", "Washi", "Saint", "Yongfu"]
+            },
+            {
+              "id": "DISC-1",
+              "productPath": "product-backlog/DISC-1-search-tutors-with-filters.yaml",
+              "status": "todo",
+              "hours": 20,
+              "tasks": [
+                {
+                  "id": "DISC-1-T1",
+                  "title": "Design the search and filter interface",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "DISC-1-T2",
+                  "title": "Build the filter UI (subject, price, availability, rating, language)",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 6,
+                  "assignees": ["Saint", "Yongfu"]
+                },
+                {
+                  "id": "DISC-1-T3",
+                  "title": "Implement pagination and the no-results state",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 4,
+                  "assignees": ["Saint", "Yongfu"]
+                },
+                {
+                  "id": "DISC-1-T4",
+                  "title": "Implement the multi-filter search query and pagination endpoint",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 5,
+                  "assignees": ["Saint", "Yongfu"]
+                },
+                {
+                  "id": "DISC-1-T5",
+                  "title": "Write acceptance tests for search (matching, no-results)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Ideal", "Pooh"]
+                }
+              ],
+              "title": "Search tutors with filters",
+              "description": "As a Student, I want to search tutors by subject, price, availability, rating, and language so that I can find a tutor that fits my needs.",
+              "epic": "Tutor Search & Discovery",
+              "assignees": ["Poom", "Pee", "Saint", "Yongfu", "Ideal", "Pooh"]
+            },
+            {
+              "id": "DISC-2",
+              "productPath": "product-backlog/DISC-2-to-view-a-ranked-list-of-recommended-tutors.yaml",
+              "status": "todo",
+              "hours": 20,
+              "tasks": [
+                {
+                  "id": "DISC-2-T1",
+                  "title": "Design the recommended-tutors discovery page",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "DISC-2-T2",
+                  "title": "Build the ranked-list display",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 4,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "DISC-2-T3",
+                  "title": "Implement the ranking algorithm (relevance, rating, availability)",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 6,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "DISC-2-T4",
+                  "title": "Implement fallback ranking for profiles without subjects/goals",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 4,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "DISC-2-T5",
+                  "title": "Write acceptance tests for recommendations (personalized, fallback)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Nesta", "Washi"]
+                }
+              ],
+              "title": "To view a ranked list of recommended tutors",
+              "description": "As a Student, I want to view a ranked list of recommended tutors so that I can quickly find a good match without extensive searching.",
+              "epic": "Tutor Search & Discovery",
+              "assignees": ["Ideal", "Pooh", "Santa", "Plai", "Nesta", "Washi"]
+            },
+            {
+              "id": "DISC-3",
+              "productPath": "product-backlog/DISC-3-to-view-a-tutor-s-detailed-profile-page.yaml",
+              "status": "todo",
+              "hours": 8,
+              "tasks": [
+                {
+                  "id": "DISC-3-T1",
+                  "title": "Design the Tutor detail page layout",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "DISC-3-T2",
+                  "title": "Build the detail page (bio, reviews, rate, availability, video)",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "DISC-3-T3",
+                  "title": "Implement the tutor-detail fetch endpoint and unavailable-profile handling",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "DISC-3-T4",
+                  "title": "Write acceptance tests for the Tutor detail page",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 1,
+                  "assignees": ["Saint", "Yongfu"]
+                }
+              ],
+              "title": "To view a tutor's detailed profile page",
+              "description": "As a Student, I want to view a tutor's detailed profile page so that I can decide whether to book a lesson.",
+              "epic": "Tutor Search & Discovery",
+              "assignees": ["Poom", "Pee", "Ideal", "Pooh", "Saint", "Yongfu"]
+            },
+            {
+              "id": "MSG-1",
+              "productPath": "product-backlog/MSG-1-to-message-a-tutor-before-booking.yaml",
+              "status": "todo",
+              "hours": 20,
+              "tasks": [
+                {
+                  "id": "MSG-1-T1",
+                  "title": "Design the tutor-profile messaging UI",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 4,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "MSG-1-T2",
+                  "title": "Build the message compose box and inbox notification indicator",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 7,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "MSG-1-T3",
+                  "title": "Implement message delivery and empty/invalid message rejection",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 6,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "MSG-1-T4",
+                  "title": "Write acceptance tests for messaging (valid, empty message)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Santa", "Plai"]
+                }
+              ],
+              "title": "To message a Tutor before booking",
+              "description": "As a Student, I want to message a Tutor before booking so that I can ask questions about their teaching style.",
+              "epic": "Messaging & Notifications",
+              "assignees": ["Ideal", "Pooh", "Santa", "Plai"]
+            },
+            {
+              "id": "MSG-2",
+              "productPath": "product-backlog/MSG-2-to-receive-notifications-for-bookings-messages-and-payments.yaml",
+              "status": "todo",
+              "hours": 12,
+              "tasks": [
+                {
+                  "id": "MSG-2-T1",
+                  "title": "Build the notification preferences settings UI",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "MSG-2-T2",
+                  "title": "Implement the event-based notification service (booking, message, payment)",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 4,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "MSG-2-T3",
+                  "title": "Implement per-user preference filtering (respect disabled types)",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Santa", "Plai"]
+                },
+                {
+                  "id": "MSG-2-T4",
+                  "title": "Write acceptance tests for notifications (sent, suppressed)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Ideal", "Pooh"]
+                }
+              ],
+              "title": "To receive notifications for bookings, messages, and payments",
+              "description": "As a user, I want to receive notifications for bookings, messages, and payments so that I stay informed of important account activity.",
+              "epic": "Messaging & Notifications",
+              "assignees": ["Santa", "Plai", "Ideal", "Pooh"]
+            },
+            {
+              "id": "PROF-1",
+              "productPath": "product-backlog/PROF-1-to-build-a-learner-profile-subjects-of-interest-level-goals.yaml",
+              "status": "todo",
+              "hours": 8,
+              "tasks": [
+                {
+                  "id": "PROF-1-T1",
+                  "title": "Design the learner profile setup page",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "PROF-1-T2",
+                  "title": "Build the subjects/level/goals form and validation",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "PROF-1-T3",
+                  "title": "Implement profile storage and expose data for search ranking",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Poom", "Pee"]
+                },
+                {
+                  "id": "PROF-1-T4",
+                  "title": "Write acceptance tests for the learner profile (complete, missing fields)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 1,
+                  "assignees": ["Santa", "Plai"]
+                }
+              ],
+              "title": "To build a learner profile (subjects of interest, level, goals)",
+              "description": "As a Student, I want to build a learner profile (subjects of interest, level, goals) so that I get better tutor recommendations.",
+              "epic": "User Profile Management",
+              "assignees": ["Poom", "Pee", "Santa", "Plai"]
+            },
+            {
+              "id": "PROF-2",
+              "productPath": "product-backlog/PROF-2-create-a-public-tutor-profile.yaml",
+              "status": "todo",
+              "hours": 20,
+              "tasks": [
+                {
+                  "id": "PROF-2-T1",
+                  "title": "Design the Tutor public profile page (bio, video, rate)",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "PROF-2-T2",
+                  "title": "Build the profile form and intro-video upload",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 6,
+                  "assignees": ["Saint", "Yongfu"]
+                },
+                {
+                  "id": "PROF-2-T3",
+                  "title": "Implement the publish gate for required fields",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Saint", "Yongfu"]
+                },
+                {
+                  "id": "PROF-2-T4",
+                  "title": "Implement profile storage and publish-to-search-index logic",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 5,
+                  "assignees": ["Saint", "Yongfu"]
+                },
+                {
+                  "id": "PROF-2-T5",
+                  "title": "Write acceptance tests for Tutor profile publishing",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Ideal", "Pooh"]
+                }
+              ],
+              "title": "Create a public tutor profile",
+              "description": "As a Tutor, I want to create a public profile with bio, video intro, subjects, and hourly rate so that students can evaluate me before booking.",
+              "epic": "User Profile Management",
+              "assignees": ["Ideal", "Pooh", "Saint", "Yongfu"]
+            },
+            {
+              "id": "PROF-3",
+              "productPath": "product-backlog/PROF-3-to-set-my-weekly-availability.yaml",
+              "status": "todo",
+              "hours": 12,
+              "tasks": [
+                {
+                  "id": "PROF-3-T1",
+                  "title": "Design the weekly availability calendar UI",
+                  "role": "UXUI",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "PROF-3-T2",
+                  "title": "Build the availability calendar with slot selection",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "PROF-3-T3",
+                  "title": "Implement overlap detection and slot storage",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "PROF-3-T4",
+                  "title": "Expose open slots to search and booking",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Ideal", "Pooh"]
+                },
+                {
+                  "id": "PROF-3-T5",
+                  "title": "Write acceptance tests for availability (valid, overlapping slots)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Nesta", "Washi"]
+                }
+              ],
+              "title": "To set my weekly availability",
+              "description": "As a Tutor, I want to set my weekly availability so that students only see bookable slots.",
+              "epic": "User Profile Management",
+              "assignees": ["Ideal", "Pooh", "Nesta", "Washi"]
+            },
+            {
+              "id": "PROF-4",
+              "productPath": "product-backlog/PROF-4-to-edit-my-profile-and-account-settings.yaml",
+              "status": "todo",
+              "hours": 8,
+              "tasks": [
+                {
+                  "id": "PROF-4-T1",
+                  "title": "Build the profile/account-settings editor",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 3,
+                  "assignees": ["Saint", "Yongfu"]
+                },
+                {
+                  "id": "PROF-4-T2",
+                  "title": "Implement inline validation and error display",
+                  "role": "Frontend",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Saint", "Yongfu"]
+                },
+                {
+                  "id": "PROF-4-T3",
+                  "title": "Implement the update/save endpoint with validation",
+                  "role": "Backend",
+                  "status": "todo",
+                  "hours": 2,
+                  "assignees": ["Saint", "Yongfu"]
+                },
+                {
+                  "id": "PROF-4-T4",
+                  "title": "Write acceptance tests for profile editing (valid, invalid input)",
+                  "role": "QA",
+                  "status": "todo",
+                  "hours": 1,
+                  "assignees": ["Poom", "Pee"]
+                }
+              ],
+              "title": "To edit my profile and account settings",
+              "description": "As a user, I want to edit my profile and account settings so that my information stays accurate.",
+              "epic": "User Profile Management",
+              "assignees": ["Saint", "Yongfu", "Poom", "Pee"]
+            }
+          ],
+          "tasks": 86
+        }
+      }
+    </script>
+    <script>
+      const data = JSON.parse(document.getElementById('backlog-data').textContent);
+      let view = 'product';
+      const $ = (id) => document.getElementById(id);
+      const esc = (value) =>
+        String(value ?? '').replace(
+          /[&<>"']/g,
+          (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]
+        );
+      const refresh = () => {
+        const stories = view === 'product' ? data.product : data.sprint.stories;
+        const query = $('search').value.toLowerCase();
+        const epic = $('epic').value;
+        const status = $('status').value;
+        const assignee = $('assignee').value;
+        const filtered = stories.filter((story) => {
+          const text = JSON.stringify(story).toLowerCase();
+          const assignees =
+            view === 'product'
+              ? data.sprint.stories.find((item) => item.id === story.id)?.assignees || []
+              : story.assignees || [];
+          return (
+            (!query || text.includes(query)) &&
+            (!epic || story.epic === epic) &&
+            (!status || story.status === status) &&
+            (!assignee || assignees.includes(assignee))
+          );
+        });
+        const totalHours =
+          view === 'product'
+            ? stories.reduce((sum, story) => sum + Number(story.points || 0), 0)
+            : stories.reduce((sum, story) => sum + Number(story.hours || 0), 0);
+        $('metrics').innerHTML =
+          view === 'product'
+            ? `<div class="metric"><b>${stories.length}</b><span>product stories</span></div><div class="metric"><b>${new Set(stories.map((s) => s.epic)).size}</b><span>epics</span></div><div class="metric"><b>${totalHours}</b><span>story points</span></div><div class="metric"><b>${filtered.length}</b><span>visible now</span></div>`
+            : `<div class="metric"><b>${stories.length}</b><span>sprint stories</span></div><div class="metric"><b>${data.sprint.tasks}</b><span>tasks</span></div><div class="metric"><b>${data.sprint.hours}</b><span>estimated hours</span></div><div class="metric"><b>${filtered.length}</b><span>visible now</span></div>`;
+        $('sprint-note').innerHTML =
+          view === 'sprint'
+            ? `<div class="sprint-note"><strong>${esc(data.sprint.goal)}</strong>${esc(data.sprint.start)} to ${esc(data.sprint.end)} · ${esc(data.sprint.status)}</div>`
+            : '';
+        $('stories').innerHTML = filtered.length
+          ? filtered.map(card).join('')
+          : '<div class="empty">No stories match these filters.</div>';
+      };
+      const card = (story) =>
+        `<details class="story"><summary><span class="story-id">${esc(story.id)}</span><h2>${esc(story.title)}</h2><p>${esc(story.description || '')}</p><div class="chips"><span class="chip">${esc(story.epic || 'Sprint 1')}</span><span class="chip status">${esc(story.status)}</span>${story.points ? `<span class="chip">${story.points} pts</span>` : `<span class="chip">${story.hours} hrs</span>`}</div></summary>${view === 'product' ? `<div class="detail"><h3>Role</h3><p>${esc(story.role)}</p><h3>Acceptance criteria</h3><ul>${(story.criteria || []).map((item) => `<li>${esc(item)}</li>`).join('')}</ul></div>` : `<div class="detail"><h3>Product story</h3><p>${esc(story.productPath)}</p><h3>Tasks</h3><ul>${(story.tasks || []).map((task) => `<li class="task">${esc(task.title)}<small>${esc(task.role)} · ${esc(task.hours)} hrs · ${esc(task.status)}</small></li>`).join('')}</ul></div>`}</details>`;
+      const setFilters = () => {
+        const stories = view === 'product' ? data.product : data.sprint.stories;
+        $('epic').innerHTML = `<option value="">All epics</option>${[
+          ...new Set(stories.map((s) => s.epic).filter(Boolean)),
+        ]
+          .sort()
+          .map((e) => `<option>${esc(e)}</option>`)
+          .join('')}`;
+        $('status').innerHTML = `<option value="">All statuses</option>${[
+          ...new Set(stories.map((s) => s.status)),
+        ]
+          .sort()
+          .map((s) => `<option>${esc(s)}</option>`)
+          .join('')}`;
+        const assignees = [
+          ...new Set(data.sprint.stories.flatMap((story) => story.assignees || [])),
+        ].sort();
+        $('assignee').innerHTML =
+          `<option value="">All assignees</option>${assignees.map((name) => `<option>${esc(name)}</option>`).join('')}`;
+      };
+      document.querySelectorAll('[data-view]').forEach((button) =>
+        button.addEventListener('click', () => {
+          view = button.dataset.view;
+          document
+            .querySelectorAll('[data-view]')
+            .forEach((item) => item.classList.toggle('active', item === button));
+          $('search').value = '';
+          setFilters();
+          refresh();
+        })
+      );
+      ['search', 'epic', 'status', 'assignee'].forEach((id) =>
+        $(id).addEventListener('input', refresh)
+      );
+      setFilters();
+      refresh();
+    </script>
+  </body>
+</html>

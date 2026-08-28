@@ -1,0 +1,23 @@
+id: BOOK-4
+title: 'To reschedule or cancel a lesson within the allowed policy window'
+description: "As a Tutor, I want to reschedule or cancel a lesson within the allowed policy window so that I can handle changes in my schedule while maintaining the Student's trust in the platform."
+epic: 'Lesson Booking & Scheduling'
+role: 'Tutor'
+lifecycle: backlog
+story_points: 3
+dependencies: ['US4-1']
+acceptance_criteria:
+  - given: 'a lesson is more than 24 hours away,'
+    when: 'a Tutor requests to reschedule/cancel,'
+    then: 'the change is applied without penalty.'
+  - given: 'a lesson is within 24 hours,'
+    when: 'a Tutor cancels,'
+    then: "the lesson credit is fully refunded to the Student's balance with no fee, and both parties are notified."
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: 'Lesson Booking & Scheduling / US4-4'
+journey:
+  - route: '/booking'
+    action: 'Booking'
+  - route: '/bookings/:id'
+    action: 'View booking'

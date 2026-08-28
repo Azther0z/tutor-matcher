@@ -1,0 +1,38 @@
+id: PROF-3
+path: product-backlog/PROF-3-to-set-my-weekly-availability.yaml
+assignees: []
+status: todo
+order: 7
+estimate_hours: 12
+tasks:
+  - id: PROF-3-T1
+    title: 'Design the weekly availability calendar UI'
+    assignees: ['Ideal', 'Pooh']
+    role: 'UXUI'
+    status: todo
+    estimate_hours: 2
+  - id: PROF-3-T2
+    title: 'Build the availability calendar with slot selection'
+    assignees: ['Ideal', 'Pooh']
+    role: 'Frontend'
+    status: todo
+    estimate_hours: 3
+  - id: PROF-3-T3
+    title: 'Implement overlap detection and slot storage'
+    assignees: ['Ideal', 'Pooh']
+    role: 'Backend'
+    status: todo
+    estimate_hours: 3
+  - id: PROF-3-T4
+    title: 'Expose open slots to search and booking'
+    assignees: ['Ideal', 'Pooh']
+    role: 'Backend'
+    status: todo
+    estimate_hours: 2
+  - id: PROF-3-T5
+    title: 'Write acceptance tests for availability (valid, overlapping slots)'
+    assignees: ['Nesta', 'Washi']
+    role: 'QA'
+    status: todo
+    estimate_hours: 2
+notes: 'Migrated from Sprint 1 v1.1.html'

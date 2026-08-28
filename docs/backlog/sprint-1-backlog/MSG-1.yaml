@@ -1,0 +1,32 @@
+id: MSG-1
+path: product-backlog/MSG-1-to-message-a-tutor-before-booking.yaml
+assignees: []
+status: todo
+order: 19
+estimate_hours: 20
+tasks:
+  - id: MSG-1-T1
+    title: 'Design the tutor-profile messaging UI'
+    assignees: ['Ideal', 'Pooh']
+    role: UXUI
+    status: todo
+    estimate_hours: 4
+  - id: MSG-1-T2
+    title: 'Build the message compose box and inbox notification indicator'
+    assignees: ['Ideal', 'Pooh']
+    role: Frontend
+    status: todo
+    estimate_hours: 7
+  - id: MSG-1-T3
+    title: 'Implement message delivery and empty/invalid message rejection'
+    assignees: ['Ideal', 'Pooh']
+    role: Backend
+    status: todo
+    estimate_hours: 6
+  - id: MSG-1-T4
+    title: 'Write acceptance tests for messaging (valid, empty message)'
+    assignees: ['Santa', 'Plai']
+    role: QA
+    status: todo
+    estimate_hours: 3
+notes: 'Migrated from Sprint 1 v1.1.html'

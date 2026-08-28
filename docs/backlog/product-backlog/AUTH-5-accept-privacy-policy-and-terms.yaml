@@ -1,0 +1,25 @@
+id: AUTH-5
+title: 'Accept privacy policy and terms'
+description: 'As a Student, I want to review and accept the Privacy Policy and Terms of Service during sign-up so that I understand how my personal and learning data will be used before an account is created.'
+epic: 'Account Registration & Authentication'
+role: 'Student'
+lifecycle: backlog
+story_points: 2
+dependencies: ['US1-1']
+acceptance_criteria:
+  - given: 'a Student visitor has checked the consent checkbox,'
+    when: 'they submit the sign-up form,'
+    then: 'the account is created and the consent timestamp is recorded.'
+  - given: 'a Student visitor reaches the final sign-up step,'
+    when: 'they have not checked the consent checkbox,'
+    then: 'account creation is blocked and the requirement is highlighted.'
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: 'Account Registration & Authentication / US1-5'
+journey:
+  - route: '/auth'
+    action: 'Sign up'
+  - route: '/auth'
+    action: 'Log in'
+  - route: '/auth'
+    action: 'Reset password'

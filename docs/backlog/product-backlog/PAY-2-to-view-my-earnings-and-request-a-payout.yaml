@@ -1,0 +1,23 @@
+id: PAY-2
+title: 'To view my earnings and request a payout'
+description: 'As a Tutor, I want to view my earnings and request a payout so that I get paid for completed lessons.'
+epic: 'Payments & Billing'
+role: 'Tutor'
+lifecycle: backlog
+story_points: 5
+dependencies: ['US5-1', 'US6-2']
+acceptance_criteria:
+  - given: 'a Tutor has completed lessons with settled payments,'
+    when: 'they request a payout,'
+    then: 'funds (minus platform fee) are transferred to their linked payout account.'
+  - given: "the requested payout amount is below the platform's minimum payout amount (e.g., THB 500),"
+    when: 'a Tutor requests payout,'
+    then: 'the system blocks the request and shows the minimum payout amount required.'
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: 'Payments & Billing / US5-2'
+journey:
+  - route: '/payments'
+    action: 'Payment History'
+  - route: '/payments/:id'
+    action: 'View status'

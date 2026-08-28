@@ -1,0 +1,25 @@
+id: PROF-3
+title: 'To set my weekly availability'
+description: 'As a Tutor, I want to set my weekly availability so that students only see bookable slots.'
+epic: 'User Profile Management'
+role: 'Tutor'
+lifecycle: backlog
+story_points: 3
+dependencies: ['US1-1', 'US2-2']
+acceptance_criteria:
+  - given: 'a Tutor updates their availability calendar,'
+    when: 'saved,'
+    then: 'only open slots appear to students.'
+  - given: 'a Tutor enters an availability slot that overlaps an existing slot,'
+    when: 'they save the availability calendar,'
+    then: 'the overlapping slot is rejected and an error is shown.'
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: 'User Profile Management / US2-3'
+journey:
+  - route: '/dashboard'
+    action: 'Update availability'
+  - route: '/settings'
+    action: 'Update account'
+  - route: '/enroll-tutor'
+    action: 'Become a Tutor'

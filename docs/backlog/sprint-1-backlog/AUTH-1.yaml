@@ -1,0 +1,50 @@
+id: AUTH-1
+path: product-backlog/AUTH-1-create-a-student-or-tutor-account.yaml
+assignees: []
+status: todo
+order: 15
+estimate_hours: 20
+tasks:
+  - id: AUTH-1-T1
+    title: 'Design the Student and Tutor sign-up page layouts'
+    assignees: ['Ideal', 'Pooh']
+    role: UXUI
+    status: todo
+    estimate_hours: 2
+  - id: AUTH-1-T2
+    title: 'Build the sign-up form inputs and role-based page routing'
+    assignees: ['Santa', 'Plai']
+    role: Frontend
+    status: todo
+    estimate_hours: 4
+  - id: AUTH-1-T3
+    title: 'Implement client-side validation and duplicate-email error message'
+    assignees: ['Santa', 'Plai']
+    role: Frontend
+    status: todo
+    estimate_hours: 3
+  - id: AUTH-1-T4
+    title: 'Create the user account database schema (Student/Tutor)'
+    assignees: ['Santa', 'Plai']
+    role: Backend
+    status: todo
+    estimate_hours: 2
+  - id: AUTH-1-T5
+    title: 'Implement the registration API endpoint and email-uniqueness check'
+    assignees: ['Santa', 'Plai']
+    role: Backend
+    status: todo
+    estimate_hours: 4
+  - id: AUTH-1-T6
+    title: 'Implement the verification email flow'
+    assignees: ['Santa', 'Plai']
+    role: Backend
+    status: todo
+    estimate_hours: 3
+  - id: AUTH-1-T7
+    title: 'Write acceptance tests for sign-up (valid, duplicate email)'
+    assignees: ['Ideal', 'Pooh']
+    role: QA
+    status: todo
+    estimate_hours: 2
+notes: 'Migrated from Sprint 1 v1.1.html'

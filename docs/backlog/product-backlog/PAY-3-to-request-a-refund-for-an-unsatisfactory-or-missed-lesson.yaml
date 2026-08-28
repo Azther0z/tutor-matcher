@@ -1,0 +1,26 @@
+id: PAY-3
+title: 'To request a refund for an unsatisfactory or missed lesson'
+description: "As a Student, I want to request a refund for an unsatisfactory or missed lesson so that I don't lose money for issues outside my control."
+epic: 'Payments & Billing'
+role: 'Student'
+lifecycle: backlog
+story_points: 5
+dependencies: ['US4-1', 'US5-1', 'US6-2']
+acceptance_criteria:
+  - given: 'a lesson did not occur due to Tutor no-show,'
+    when: 'the Student files a refund request,'
+    then: 'credits are automatically refunded.'
+  - given: 'a dispute requires review,'
+    when: 'the Student submits a refund request,'
+    then: 'it is routed to Support/Admin for manual resolution.'
+  - given: 'a lesson was completed successfully,'
+    when: 'the Student requests a refund,'
+    then: 'the refund request is rejected and the reason is shown.'
+sources:
+  - file: ../../sources/Product Backlog v1.2.html
+    locator: 'Payments & Billing / US5-3'
+journey:
+  - route: '/payments'
+    action: 'Payment History'
+  - route: '/payments/:id'
+    action: 'View status'

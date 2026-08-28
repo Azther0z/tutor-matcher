@@ -18,6 +18,8 @@ immutable evidence; canonical pages may summarize it but must not rewrite it.
 
 ## Project Documentation
 
+The Git-managed backlog contract is [`backlog/README.md`](backlog/README.md).
+
 | Document                                                                       | Purpose                                                                                 | Status                                          |
 | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | [`project-charter.md`](project-charter.md)                                     | Product purpose, goals, roles, and scope                                                | Current baseline                                |

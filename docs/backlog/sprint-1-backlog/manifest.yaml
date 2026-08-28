@@ -1,0 +1,50 @@
+id: sprint-1
+status: planned
+goal: 'Deliver the first authentication, profile, discovery, booking, messaging, and notification slices.'
+dates:
+  start: 2026-08-25
+  end: 2026-09-14
+capacity_hours: 272
+commitments:
+  - 'Migrate the Sprint 1 source plan into linked YAML records.'
+review: 'Not yet recorded'
+retrospective: 'Not yet recorded'
+story_files:
+  - id: AUTH-2
+    path: AUTH-2.yaml
+  - id: AUTH-1
+    path: AUTH-1.yaml
+  - id: PROF-1
+    path: PROF-1.yaml
+  - id: DISC-1
+    path: DISC-1.yaml
+  - id: BOOK-1
+    path: BOOK-1.yaml
+  - id: MSG-1
+    path: MSG-1.yaml
+  - id: AUTH-3
+    path: AUTH-3.yaml
+  - id: AUTH-4
+    path: AUTH-4.yaml
+  - id: AUTH-5
+    path: AUTH-5.yaml
+  - id: AUTH-6
+    path: AUTH-6.yaml
+  - id: PROF-2
+    path: PROF-2.yaml
+  - id: PROF-3
+    path: PROF-3.yaml
+  - id: PROF-4
+    path: PROF-4.yaml
+  - id: DISC-2
+    path: DISC-2.yaml
+  - id: DISC-3
+    path: DISC-3.yaml
+  - id: BOOK-2
+    path: BOOK-2.yaml
+  - id: BOOK-3
+    path: BOOK-3.yaml
+  - id: BOOK-4
+    path: BOOK-4.yaml
+  - id: MSG-2
+    path: MSG-2.yaml

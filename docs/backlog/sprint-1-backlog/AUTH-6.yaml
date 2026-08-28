@@ -1,0 +1,32 @@
+id: AUTH-6
+path: product-backlog/AUTH-6-consent-to-privacy-and-data-processing.yaml
+assignees: []
+status: todo
+order: 5
+estimate_hours: 12
+tasks:
+  - id: AUTH-6-T1
+    title: 'Design the extended consent copy covering ID/payout data'
+    assignees: ['Poom', 'Pee']
+    role: 'UXUI'
+    status: todo
+    estimate_hours: 3
+  - id: AUTH-6-T2
+    title: 'Implement the Tutor consent-checkbox gate on sign-up'
+    assignees: ['Nesta', 'Washi']
+    role: 'Frontend'
+    status: todo
+    estimate_hours: 3
+  - id: AUTH-6-T3
+    title: 'Record the extended consent (ID, credentials, payout) with timestamp'
+    assignees: ['Nesta', 'Washi']
+    role: 'Backend'
+    status: todo
+    estimate_hours: 4
+  - id: AUTH-6-T4
+    title: 'Write acceptance tests for the Tutor consent gate'
+    assignees: ['Poom', 'Pee']
+    role: 'QA'
+    status: todo
+    estimate_hours: 2
+notes: 'Migrated from Sprint 1 v1.1.html'

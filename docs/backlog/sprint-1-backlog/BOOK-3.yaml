@@ -1,0 +1,26 @@
+id: BOOK-3
+path: product-backlog/BOOK-3-to-reschedule-or-cancel-a-lesson-within-the-allowed-policy-window.yaml
+assignees: []
+status: todo
+order: 12
+estimate_hours: 12
+tasks:
+  - id: BOOK-3-T1
+    title: 'Build the cancel/reschedule action and policy-window messaging'
+    assignees: ['Saint', 'Yongfu']
+    role: 'Frontend'
+    status: todo
+    estimate_hours: 4
+  - id: BOOK-3-T2
+    title: 'Implement the &gt;24h no-penalty and &lt;24h refund-minus-fee logic'
+    assignees: ['Saint', 'Yongfu']
+    role: 'Backend'
+    status: todo
+    estimate_hours: 6
+  - id: BOOK-3-T3
+    title: 'Write acceptance tests for Student cancellation (both time windows)'
+    assignees: ['Poom', 'Pee']
+    role: 'QA'
+    status: todo
+    estimate_hours: 2
+notes: 'Migrated from Sprint 1 v1.1.html'
