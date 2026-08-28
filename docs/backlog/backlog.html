@@ -1620,24 +1620,24 @@
       }
     </script>
     <script>
-      const data = JSON.parse(document.getElementById('backlog-data').textContent);
-      let view = 'product';
+      const data = JSON.parse(document.getElementById("backlog-data").textContent);
+      let view = "product";
       const $ = (id) => document.getElementById(id);
       const esc = (value) =>
-        String(value ?? '').replace(
+        String(value ?? "").replace(
           /[&<>"']/g,
-          (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]
+          (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]
         );
       const refresh = () => {
-        const stories = view === 'product' ? data.product : data.sprint.stories;
-        const query = $('search').value.toLowerCase();
-        const epic = $('epic').value;
-        const status = $('status').value;
-        const assignee = $('assignee').value;
+        const stories = view === "product" ? data.product : data.sprint.stories;
+        const query = $("search").value.toLowerCase();
+        const epic = $("epic").value;
+        const status = $("status").value;
+        const assignee = $("assignee").value;
         const filtered = stories.filter((story) => {
           const text = JSON.stringify(story).toLowerCase();
           const assignees =
-            view === 'product'
+            view === "product"
               ? data.sprint.stories.find((item) => item.id === story.id)?.assignees || []
               : story.assignees || [];
           return (
@@ -1648,56 +1648,56 @@
           );
         });
         const totalHours =
-          view === 'product'
+          view === "product"
             ? stories.reduce((sum, story) => sum + Number(story.points || 0), 0)
             : stories.reduce((sum, story) => sum + Number(story.hours || 0), 0);
-        $('metrics').innerHTML =
-          view === 'product'
+        $("metrics").innerHTML =
+          view === "product"
             ? `<div class="metric"><b>${stories.length}</b><span>product stories</span></div><div class="metric"><b>${new Set(stories.map((s) => s.epic)).size}</b><span>epics</span></div><div class="metric"><b>${totalHours}</b><span>story points</span></div><div class="metric"><b>${filtered.length}</b><span>visible now</span></div>`
             : `<div class="metric"><b>${stories.length}</b><span>sprint stories</span></div><div class="metric"><b>${data.sprint.tasks}</b><span>tasks</span></div><div class="metric"><b>${data.sprint.hours}</b><span>estimated hours</span></div><div class="metric"><b>${filtered.length}</b><span>visible now</span></div>`;
-        $('sprint-note').innerHTML =
-          view === 'sprint'
+        $("sprint-note").innerHTML =
+          view === "sprint"
             ? `<div class="sprint-note"><strong>${esc(data.sprint.goal)}</strong>${esc(data.sprint.start)} to ${esc(data.sprint.end)} · ${esc(data.sprint.status)}</div>`
-            : '';
-        $('stories').innerHTML = filtered.length
-          ? filtered.map(card).join('')
+            : "";
+        $("stories").innerHTML = filtered.length
+          ? filtered.map(card).join("")
           : '<div class="empty">No stories match these filters.</div>';
       };
       const card = (story) =>
-        `<details class="story"><summary><span class="story-id">${esc(story.id)}</span><h2>${esc(story.title)}</h2><p>${esc(story.description || '')}</p><div class="chips"><span class="chip">${esc(story.epic || 'Sprint 1')}</span><span class="chip status">${esc(story.status)}</span>${story.points ? `<span class="chip">${story.points} pts</span>` : `<span class="chip">${story.hours} hrs</span>`}</div></summary>${view === 'product' ? `<div class="detail"><h3>Role</h3><p>${esc(story.role)}</p><h3>Acceptance criteria</h3><ul>${(story.criteria || []).map((item) => `<li>${esc(item)}</li>`).join('')}</ul></div>` : `<div class="detail"><h3>Product story</h3><p>${esc(story.productPath)}</p><h3>Tasks</h3><ul>${(story.tasks || []).map((task) => `<li class="task">${esc(task.title)}<small>${esc(task.role)} · ${esc(task.hours)} hrs · ${esc(task.status)}</small></li>`).join('')}</ul></div>`}</details>`;
+        `<details class="story"><summary><span class="story-id">${esc(story.id)}</span><h2>${esc(story.title)}</h2><p>${esc(story.description || "")}</p><div class="chips"><span class="chip">${esc(story.epic || "Sprint 1")}</span><span class="chip status">${esc(story.status)}</span>${story.points ? `<span class="chip">${story.points} pts</span>` : `<span class="chip">${story.hours} hrs</span>`}</div></summary>${view === "product" ? `<div class="detail"><h3>Role</h3><p>${esc(story.role)}</p><h3>Acceptance criteria</h3><ul>${(story.criteria || []).map((item) => `<li>${esc(item)}</li>`).join("")}</ul></div>` : `<div class="detail"><h3>Product story</h3><p>${esc(story.productPath)}</p><h3>Tasks</h3><ul>${(story.tasks || []).map((task) => `<li class="task">${esc(task.title)}<small>${esc(task.role)} · ${esc(task.hours)} hrs · ${esc(task.status)}</small></li>`).join("")}</ul></div>`}</details>`;
       const setFilters = () => {
-        const stories = view === 'product' ? data.product : data.sprint.stories;
-        $('epic').innerHTML = `<option value="">All epics</option>${[
+        const stories = view === "product" ? data.product : data.sprint.stories;
+        $("epic").innerHTML = `<option value="">All epics</option>${[
           ...new Set(stories.map((s) => s.epic).filter(Boolean)),
         ]
           .sort()
           .map((e) => `<option>${esc(e)}</option>`)
-          .join('')}`;
-        $('status').innerHTML = `<option value="">All statuses</option>${[
+          .join("")}`;
+        $("status").innerHTML = `<option value="">All statuses</option>${[
           ...new Set(stories.map((s) => s.status)),
         ]
           .sort()
           .map((s) => `<option>${esc(s)}</option>`)
-          .join('')}`;
+          .join("")}`;
         const assignees = [
           ...new Set(data.sprint.stories.flatMap((story) => story.assignees || [])),
         ].sort();
-        $('assignee').innerHTML =
-          `<option value="">All assignees</option>${assignees.map((name) => `<option>${esc(name)}</option>`).join('')}`;
+        $("assignee").innerHTML =
+          `<option value="">All assignees</option>${assignees.map((name) => `<option>${esc(name)}</option>`).join("")}`;
       };
-      document.querySelectorAll('[data-view]').forEach((button) =>
-        button.addEventListener('click', () => {
+      document.querySelectorAll("[data-view]").forEach((button) =>
+        button.addEventListener("click", () => {
           view = button.dataset.view;
           document
-            .querySelectorAll('[data-view]')
-            .forEach((item) => item.classList.toggle('active', item === button));
-          $('search').value = '';
+            .querySelectorAll("[data-view]")
+            .forEach((item) => item.classList.toggle("active", item === button));
+          $("search").value = "";
           setFilters();
           refresh();
         })
       );
-      ['search', 'epic', 'status', 'assignee'].forEach((id) =>
-        $(id).addEventListener('input', refresh)
+      ["search", "epic", "status", "assignee"].forEach((id) =>
+        $(id).addEventListener("input", refresh)
       );
       setFilters();
       refresh();

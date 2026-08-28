@@ -6,6 +6,6 @@ export const app = express();
 
 app.use(express.json());
 
-app.get("/", (req:Request, res:Response) => {
-    res.json({ message: "hi" });
-})
+app.get("/", (req: Request, res: Response) => {
+  res.json({ message: "hi" });
+});

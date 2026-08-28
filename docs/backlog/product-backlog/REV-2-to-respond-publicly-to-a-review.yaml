@@ -1,21 +1,21 @@
 id: REV-2
-title: 'To respond publicly to a review'
-description: 'As a Tutor, I want to respond publicly to a review so that I can address feedback professionally.'
-epic: 'Reviews & Ratings'
-role: 'Tutor'
+title: "To respond publicly to a review"
+description: "As a Tutor, I want to respond publicly to a review so that I can address feedback professionally."
+epic: "Reviews & Ratings"
+role: "Tutor"
 lifecycle: backlog
 story_points: 2
-dependencies: ['US8-1']
+dependencies: ["US8-1"]
 acceptance_criteria:
   - given: "a review exists on a Tutor's profile,"
-    when: 'the Tutor submits a reply,'
-    then: 'the reply is displayed beneath the review.'
-  - given: 'the review has been deleted,'
-    when: 'the Tutor submits a reply,'
-    then: 'the reply is rejected and an error indicating the review no longer exists is shown.'
+    when: "the Tutor submits a reply,"
+    then: "the reply is displayed beneath the review."
+  - given: "the review has been deleted,"
+    when: "the Tutor submits a reply,"
+    then: "the reply is rejected and an error indicating the review no longer exists is shown."
 sources:
   - file: ../../sources/Product Backlog v1.2.html
-    locator: 'Reviews & Ratings / US8-2'
+    locator: "Reviews & Ratings / US8-2"
 journey:
-  - route: '/tutors/:id'
-    action: 'Tutor Review list'
+  - route: "/tutors/:id"
+    action: "Tutor Review list"

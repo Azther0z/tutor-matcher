@@ -6,27 +6,27 @@ order: 4
 estimate_hours: 8
 tasks:
   - id: AUTH-5-T1
-    title: 'Design the consent checkbox and Privacy Policy/ToS link placement'
-    assignees: ['Ideal', 'Pooh']
-    role: 'UXUI'
+    title: "Design the consent checkbox and Privacy Policy/ToS link placement"
+    assignees: ["Ideal", "Pooh"]
+    role: "UXUI"
     status: todo
     estimate_hours: 3
   - id: AUTH-5-T2
-    title: 'Implement the consent-checkbox gate on the sign-up form'
-    assignees: ['Poom', 'Pee']
-    role: 'Frontend'
+    title: "Implement the consent-checkbox gate on the sign-up form"
+    assignees: ["Poom", "Pee"]
+    role: "Frontend"
     status: todo
     estimate_hours: 2
   - id: AUTH-5-T3
-    title: 'Record the consent timestamp on account creation'
-    assignees: ['Poom', 'Pee']
-    role: 'Backend'
+    title: "Record the consent timestamp on account creation"
+    assignees: ["Poom", "Pee"]
+    role: "Backend"
     status: todo
     estimate_hours: 2
   - id: AUTH-5-T4
-    title: 'Write acceptance tests for the Student consent gate'
-    assignees: ['Santa', 'Plai']
-    role: 'QA'
+    title: "Write acceptance tests for the Student consent gate"
+    assignees: ["Santa", "Plai"]
+    role: "QA"
     status: todo
     estimate_hours: 1
-notes: 'Migrated from Sprint 1 v1.1.html'
+notes: "Migrated from Sprint 1 v1.1.html"

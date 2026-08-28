@@ -3,31 +3,31 @@ source_policy: Original HTML and SVG sources are immutable; YAML is the editable
 epics:
   - id: EPIC-1
     acronym: AUTH
-    name: 'Account Registration & Authentication'
+    name: "Account Registration & Authentication"
   - id: EPIC-2
     acronym: PROF
-    name: 'User Profile Management'
+    name: "User Profile Management"
   - id: EPIC-3
     acronym: DISC
-    name: 'Tutor Search & Discovery'
+    name: "Tutor Search & Discovery"
   - id: EPIC-4
     acronym: BOOK
-    name: 'Lesson Booking & Scheduling'
+    name: "Lesson Booking & Scheduling"
   - id: EPIC-5
     acronym: PAY
-    name: 'Payments & Billing'
+    name: "Payments & Billing"
   - id: EPIC-6
     acronym: CLASS
-    name: 'Virtual Classroom & Lesson Delivery'
+    name: "Virtual Classroom & Lesson Delivery"
   - id: EPIC-7
     acronym: MSG
-    name: 'Messaging & Notifications'
+    name: "Messaging & Notifications"
   - id: EPIC-8
     acronym: REV
-    name: 'Reviews & Ratings'
+    name: "Reviews & Ratings"
   - id: EPIC-9
     acronym: SAFE
-    name: 'Admin, Trust & Safety'
+    name: "Admin, Trust & Safety"
 sources:
   - file: ../sources/Product Backlog v1.2.html
     kind: product-backlog
@@ -38,136 +38,136 @@ sources:
 journey_coverage:
   source: ../sources/Untitled-2026-08-28-2348.svg
   notes:
-    - 'Coverage maps meaningful route/action pairs; SVG labels are not automatically product stories.'
-    - 'Implementation and navigation details are classified as non-story.'
-    - 'Independent journey gaps are invitations, payment method, and tutor stats/engagement.'
+    - "Coverage maps meaningful route/action pairs; SVG labels are not automatically product stories."
+    - "Implementation and navigation details are classified as non-story."
+    - "Independent journey gaps are invitations, payment method, and tutor stats/engagement."
   entries:
     - classification: story
-      route: '(auth)/signup'
-      action: 'Sign up'
+      route: "(auth)/signup"
+      action: "Sign up"
       story_ids: [AUTH-1, AUTH-5, AUTH-6]
     - classification: story
-      route: '(auth)/Login'
-      action: 'Login'
+      route: "(auth)/Login"
+      action: "Login"
       story_ids: [AUTH-2]
     - classification: story
-      route: '(auth)/Login'
-      action: 'Reset password'
+      route: "(auth)/Login"
+      action: "Reset password"
       story_ids: [AUTH-3]
     - classification: story
-      route: '(auth)/enroll-tutor'
-      action: 'Upload ID, certification'
+      route: "(auth)/enroll-tutor"
+      action: "Upload ID, certification"
       story_ids: [AUTH-4]
     - classification: story
-      route: '/booking'
-      action: 'Booking'
+      route: "/booking"
+      action: "Booking"
       story_ids: [BOOK-1, BOOK-2, BOOK-3, BOOK-4]
     - classification: story
-      route: '/bookings/:id'
-      action: 'View booking'
+      route: "/bookings/:id"
+      action: "View booking"
       story_ids: [BOOK-1, BOOK-2, BOOK-3, BOOK-4]
     - classification: story
-      route: '/booking'
-      action: 'Invite classmate'
+      route: "/booking"
+      action: "Invite classmate"
       story_ids: [BOOK-5]
     - classification: story
-      route: '/booking'
-      action: 'Accept invite'
+      route: "/booking"
+      action: "Accept invite"
       story_ids: [BOOK-6]
     - classification: story
-      route: '/bookings/:id'
-      action: 'Get zoom meeting link'
+      route: "/bookings/:id"
+      action: "Get zoom meeting link"
       story_ids: [CLASS-1]
     - classification: story
-      route: '/bookings/:id'
-      action: 'booking status'
+      route: "/bookings/:id"
+      action: "booking status"
       story_ids: [CLASS-2]
     - classification: story
-      route: '/search'
-      action: 'Search & Browse Tutors'
+      route: "/search"
+      action: "Search & Browse Tutors"
       story_ids: [DISC-1, DISC-2]
     - classification: story
-      route: '/tutors/:id'
-      action: 'Tutor Profile Detail'
+      route: "/tutors/:id"
+      action: "Tutor Profile Detail"
       story_ids: [DISC-3]
     - classification: story
-      route: '/tutors/:id'
-      action: 'Message this tutor'
+      route: "/tutors/:id"
+      action: "Message this tutor"
       story_ids: [MSG-1]
     - classification: story
-      route: '/settings/notification'
-      action: 'Notification settings'
+      route: "/settings/notification"
+      action: "Notification settings"
       story_ids: [MSG-2]
     - classification: story
-      route: '/topup'
-      action: 'Topup'
+      route: "/topup"
+      action: "Topup"
       story_ids: [PAY-1]
     - classification: story
-      route: '/payments'
-      action: 'View earning'
+      route: "/payments"
+      action: "View earning"
       story_ids: [PAY-2]
     - classification: story
-      route: '/payments'
-      action: 'Request payout'
+      route: "/payments"
+      action: "Request payout"
       story_ids: [PAY-2]
     - classification: story
-      route: '/payments/:id'
-      action: 'View status'
+      route: "/payments/:id"
+      action: "View status"
       story_ids: [PAY-3]
     - classification: story
-      route: '/payments'
-      action: 'Update payment method'
+      route: "/payments"
+      action: "Update payment method"
       story_ids: [PAY-4]
     - classification: story
-      route: '/settings'
-      action: 'Update subject'
+      route: "/settings"
+      action: "Update subject"
       story_ids: [PROF-1]
     - classification: story
-      route: '/settings'
-      action: 'Update account'
+      route: "/settings"
+      action: "Update account"
       story_ids: [PROF-4]
     - classification: story
-      route: '/settings/tutor'
-      action: 'Upload profile information'
+      route: "/settings/tutor"
+      action: "Upload profile information"
       story_ids: [PROF-2]
     - classification: story
-      route: '/settings/tutor'
-      action: 'Publish'
+      route: "/settings/tutor"
+      action: "Publish"
       story_ids: [PROF-2]
     - classification: story
-      route: '/settings/tutor'
-      action: 'Update availability'
+      route: "/settings/tutor"
+      action: "Update availability"
       story_ids: [PROF-3]
     - classification: story
-      route: '/dashboard/tutor'
-      action: 'Stats'
+      route: "/dashboard/tutor"
+      action: "Stats"
       story_ids: [PROF-5]
     - classification: story
-      route: '/dashboard/tutor'
-      action: 'engagement'
+      route: "/dashboard/tutor"
+      action: "engagement"
       story_ids: [PROF-5]
     - classification: story
-      route: '/tutors/:id/:subjectId'
-      action: 'Review list'
+      route: "/tutors/:id/:subjectId"
+      action: "Review list"
       story_ids: [REV-1]
     - classification: story
-      route: '/tutors/:id'
-      action: 'Tutor Review list'
+      route: "/tutors/:id"
+      action: "Tutor Review list"
       story_ids: [REV-2]
     - classification: story
-      route: '/tutors/:id'
-      action: 'Review list'
+      route: "/tutors/:id"
+      action: "Review list"
       story_ids: [REV-3]
     - classification: story
-      route: '/dashboard'
-      action: 'Review'
+      route: "/dashboard"
+      action: "Review"
       story_ids: [REV-4, SAFE-1, SAFE-2]
     - classification: non-story
-      route: '/dashboard'
-      action: 'nav: settings menu'
+      route: "/dashboard"
+      action: "nav: settings menu"
     - classification: non-story
-      route: '/'
-      action: 'Landing Page'
+      route: "/"
+      action: "Landing Page"
     - classification: non-story
-      route: '/dashboard'
-      action: 'Student Dashboard'
+      route: "/dashboard"
+      action: "Student Dashboard"

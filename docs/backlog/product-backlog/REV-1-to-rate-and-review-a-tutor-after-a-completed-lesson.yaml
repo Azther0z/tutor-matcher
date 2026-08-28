@@ -1,21 +1,21 @@
 id: REV-1
-title: 'To rate and review a Tutor after a completed lesson'
-description: 'As a Student, I want to rate and review a Tutor after a completed lesson so that other students benefit from my feedback.'
-epic: 'Reviews & Ratings'
-role: 'Student'
+title: "To rate and review a Tutor after a completed lesson"
+description: "As a Student, I want to rate and review a Tutor after a completed lesson so that other students benefit from my feedback."
+epic: "Reviews & Ratings"
+role: "Student"
 lifecycle: backlog
 story_points: 2
-dependencies: ['US6-2']
+dependencies: ["US6-2"]
 acceptance_criteria:
   - given: "a lesson is marked 'Completed',"
-    when: 'the Student submits a rating (1-5) and optional comment,'
+    when: "the Student submits a rating (1-5) and optional comment,"
     then: "it is published on the Tutor's profile within moderation guidelines."
-  - given: 'a lesson is not completed or the rating value is outside the allowed range,'
-    when: 'the Student submits a review,'
-    then: 'the review is rejected and an error is shown.'
+  - given: "a lesson is not completed or the rating value is outside the allowed range,"
+    when: "the Student submits a review,"
+    then: "the review is rejected and an error is shown."
 sources:
   - file: ../../sources/Product Backlog v1.2.html
-    locator: 'Reviews & Ratings / US8-1'
+    locator: "Reviews & Ratings / US8-1"
 journey:
-  - route: '/tutors/:id/:subjectId'
-    action: 'Review list'
+  - route: "/tutors/:id/:subjectId"
+    action: "Review list"

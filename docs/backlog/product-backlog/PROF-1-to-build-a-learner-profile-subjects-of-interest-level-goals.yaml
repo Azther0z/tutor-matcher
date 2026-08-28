@@ -1,21 +1,21 @@
 id: PROF-1
-title: 'To build a learner profile (subjects of interest, level, goals)'
-description: 'As a Student, I want to build a learner profile (subjects of interest, level, goals) so that I get better tutor recommendations.'
-epic: 'User Profile Management'
-role: 'Student'
+title: "To build a learner profile (subjects of interest, level, goals)"
+description: "As a Student, I want to build a learner profile (subjects of interest, level, goals) so that I get better tutor recommendations."
+epic: "User Profile Management"
+role: "Student"
 lifecycle: backlog
 story_points: 2
-dependencies: ['US1-1']
+dependencies: ["US1-1"]
 acceptance_criteria:
-  - given: 'a Student is on the profile setup page,'
-    when: 'they save subjects, level, AND goals,'
-    then: 'the profile is stored and used for search ranking.'
-  - given: 'a Student is on the profile setup page,'
-    when: 'they save without providing subjects, level, OR goals,'
-    then: 'the profile is not stored and the missing fields are highlighted.'
+  - given: "a Student is on the profile setup page,"
+    when: "they save subjects, level, AND goals,"
+    then: "the profile is stored and used for search ranking."
+  - given: "a Student is on the profile setup page,"
+    when: "they save without providing subjects, level, OR goals,"
+    then: "the profile is not stored and the missing fields are highlighted."
 sources:
   - file: ../../sources/Product Backlog v1.2.html
-    locator: 'User Profile Management / US2-1'
+    locator: "User Profile Management / US2-1"
 journey:
-  - route: '/settings'
-    action: 'Update subject'
+  - route: "/settings"
+    action: "Update subject"

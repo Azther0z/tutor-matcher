@@ -1,23 +1,23 @@
 id: BOOK-2
-title: 'To book recurring lessons with a Tutor'
-description: 'As a Student, I want to book recurring lessons with a Tutor so that I can maintain a consistent learning schedule.'
-epic: 'Lesson Booking & Scheduling'
-role: 'Student'
+title: "To book recurring lessons with a Tutor"
+description: "As a Student, I want to book recurring lessons with a Tutor so that I can maintain a consistent learning schedule."
+epic: "Lesson Booking & Scheduling"
+role: "Student"
 lifecycle: backlog
 story_points: 5
-dependencies: ['US4-1', 'US2-3']
+dependencies: ["US4-1", "US2-3"]
 acceptance_criteria:
-  - given: 'a Student selects a recurrence pattern (e.g. weekly),'
-    when: 'confirmed,'
-    then: 'lessons are created on the calendar for the chosen number of occurrences.'
-  - given: 'a Student selects a recurrence pattern that conflicts with an existing lesson,'
-    when: 'they confirm the recurring booking,'
-    then: 'the booking is rejected and the conflicting slots are identified.'
+  - given: "a Student selects a recurrence pattern (e.g. weekly),"
+    when: "confirmed,"
+    then: "lessons are created on the calendar for the chosen number of occurrences."
+  - given: "a Student selects a recurrence pattern that conflicts with an existing lesson,"
+    when: "they confirm the recurring booking,"
+    then: "the booking is rejected and the conflicting slots are identified."
 sources:
   - file: ../../sources/Product Backlog v1.2.html
-    locator: 'Lesson Booking & Scheduling / US4-2'
+    locator: "Lesson Booking & Scheduling / US4-2"
 journey:
-  - route: '/booking'
-    action: 'Booking'
-  - route: '/bookings/:id'
-    action: 'View booking'
+  - route: "/booking"
+    action: "Booking"
+  - route: "/bookings/:id"
+    action: "View booking"

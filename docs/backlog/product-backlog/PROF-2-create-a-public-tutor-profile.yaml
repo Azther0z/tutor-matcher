@@ -1,23 +1,23 @@
 id: PROF-2
-title: 'Create a public tutor profile'
-description: 'As a Tutor, I want to create a public profile with bio, video intro, subjects, and hourly rate so that students can evaluate me before booking.'
-epic: 'User Profile Management'
-role: 'Tutor'
+title: "Create a public tutor profile"
+description: "As a Tutor, I want to create a public profile with bio, video intro, subjects, and hourly rate so that students can evaluate me before booking."
+epic: "User Profile Management"
+role: "Tutor"
 lifecycle: backlog
 story_points: 5
-dependencies: ['US1-1']
+dependencies: ["US1-1"]
 acceptance_criteria:
-  - given: 'a Tutor fills in bio, subjects, rate, AND uploads an intro video,'
-    when: 'they publish the profile,'
-    then: 'it becomes visible in search results.'
-  - given: 'required fields are missing,'
-    when: 'the Tutor tries to publish,'
-    then: 'the system blocks publishing and highlights missing fields.'
+  - given: "a Tutor fills in bio, subjects, rate, AND uploads an intro video,"
+    when: "they publish the profile,"
+    then: "it becomes visible in search results."
+  - given: "required fields are missing,"
+    when: "the Tutor tries to publish,"
+    then: "the system blocks publishing and highlights missing fields."
 sources:
   - file: ../../sources/Product Backlog v1.2.html
-    locator: 'User Profile Management / US2-2'
+    locator: "User Profile Management / US2-2"
 journey:
-  - route: '/settings/tutor'
-    action: 'Upload profile information'
-  - route: '/settings/tutor'
-    action: 'Publish'
+  - route: "/settings/tutor"
+    action: "Upload profile information"
+  - route: "/settings/tutor"
+    action: "Publish"

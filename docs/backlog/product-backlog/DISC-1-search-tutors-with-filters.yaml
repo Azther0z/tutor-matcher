@@ -1,21 +1,21 @@
 id: DISC-1
-title: 'Search tutors with filters'
-description: 'As a Student, I want to search tutors by subject, price, availability, rating, and language so that I can find a tutor that fits my needs.'
-epic: 'Tutor Search & Discovery'
-role: 'Student'
+title: "Search tutors with filters"
+description: "As a Student, I want to search tutors by subject, price, availability, rating, and language so that I can find a tutor that fits my needs."
+epic: "Tutor Search & Discovery"
+role: "Student"
 lifecycle: backlog
 story_points: 5
-dependencies: ['US2-2', 'US2-3']
+dependencies: ["US2-2", "US2-3"]
 acceptance_criteria:
-  - given: 'a Student applies filters,'
-    when: 'they run a search,'
-    then: 'results match all selected filters and are paginated.'
-  - given: 'no tutors match the filters,'
-    when: 'the search runs,'
+  - given: "a Student applies filters,"
+    when: "they run a search,"
+    then: "results match all selected filters and are paginated."
+  - given: "no tutors match the filters,"
+    when: "the search runs,"
     then: "a 'no results' state with suggestions to broaden filters is shown."
 sources:
   - file: ../../sources/Product Backlog v1.2.html
-    locator: 'Tutor Search & Discovery / US3-1'
+    locator: "Tutor Search & Discovery / US3-1"
 journey:
-  - route: '/search'
-    action: 'Search & Browse Tutors'
+  - route: "/search"
+    action: "Search & Browse Tutors"

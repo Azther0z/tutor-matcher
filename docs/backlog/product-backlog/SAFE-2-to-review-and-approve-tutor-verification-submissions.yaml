@@ -1,21 +1,21 @@
 id: SAFE-2
-title: 'To review and approve Tutor verification submissions'
-description: 'As an Admin, I want to review and approve Tutor verification submissions so that only qualified tutors are listed.'
-epic: 'Admin, Trust & Safety'
-role: 'Admin'
+title: "To review and approve Tutor verification submissions"
+description: "As an Admin, I want to review and approve Tutor verification submissions so that only qualified tutors are listed."
+epic: "Admin, Trust & Safety"
+role: "Admin"
 lifecycle: backlog
 story_points: 3
-dependencies: ['US1-4']
+dependencies: ["US1-4"]
 acceptance_criteria:
-  - given: 'a Tutor submits verification documents,'
-    when: 'an Admin reviews them,'
-    then: 'the Admin can approve or reject with a reason sent to the Tutor.'
-  - given: 'a Tutor submits an identity or teaching-credential file with an unsupported extension,'
-    when: 'an Admin reviews the submission,'
-    then: 'approval is rejected and the unsupported file format is identified.'
+  - given: "a Tutor submits verification documents,"
+    when: "an Admin reviews them,"
+    then: "the Admin can approve or reject with a reason sent to the Tutor."
+  - given: "a Tutor submits an identity or teaching-credential file with an unsupported extension,"
+    when: "an Admin reviews the submission,"
+    then: "approval is rejected and the unsupported file format is identified."
 sources:
   - file: ../../sources/Product Backlog v1.2.html
-    locator: 'Admin, Trust & Safety / US9-2'
+    locator: "Admin, Trust & Safety / US9-2"
 journey:
-  - route: '/dashboard'
-    action: 'Review'
+  - route: "/dashboard"
+    action: "Review"

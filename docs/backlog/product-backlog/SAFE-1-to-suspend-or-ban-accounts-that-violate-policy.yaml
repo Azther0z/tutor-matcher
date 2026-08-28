@@ -1,21 +1,21 @@
 id: SAFE-1
-title: 'To suspend or ban accounts that violate policy'
-description: 'As an Admin, I want to suspend or ban accounts that violate policy so that the platform stays safe and trustworthy.'
-epic: 'Admin, Trust & Safety'
-role: 'Admin'
+title: "To suspend or ban accounts that violate policy"
+description: "As an Admin, I want to suspend or ban accounts that violate policy so that the platform stays safe and trustworthy."
+epic: "Admin, Trust & Safety"
+role: "Admin"
 lifecycle: backlog
 story_points: 2
-dependencies: ['US1-2']
+dependencies: ["US1-2"]
 acceptance_criteria:
-  - given: 'an Admin reviews a reported account,'
-    when: 'they choose to suspend/ban,'
-    then: 'the account loses access and is notified of the reason.'
-  - given: 'an Admin attempts to ban an account that is already banned,'
-    when: 'the Admin submits the ban action,'
-    then: 'the system rejects the duplicate action and shows that the account is already banned.'
+  - given: "an Admin reviews a reported account,"
+    when: "they choose to suspend/ban,"
+    then: "the account loses access and is notified of the reason."
+  - given: "an Admin attempts to ban an account that is already banned,"
+    when: "the Admin submits the ban action,"
+    then: "the system rejects the duplicate action and shows that the account is already banned."
 sources:
   - file: ../../sources/Product Backlog v1.2.html
-    locator: 'Admin, Trust & Safety / US9-1'
+    locator: "Admin, Trust & Safety / US9-1"
 journey:
-  - route: '/dashboard'
-    action: 'Review'
+  - route: "/dashboard"
+    action: "Review"

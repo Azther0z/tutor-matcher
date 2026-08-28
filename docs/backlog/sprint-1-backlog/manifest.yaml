@@ -1,14 +1,14 @@
 id: sprint-1
 status: planned
-goal: 'Deliver the first authentication, profile, discovery, booking, messaging, and notification slices.'
+goal: "Deliver the first authentication, profile, discovery, booking, messaging, and notification slices."
 dates:
   start: 2026-08-25
   end: 2026-09-14
 capacity_hours: 272
 commitments:
-  - 'Migrate the Sprint 1 source plan into linked YAML records.'
-review: 'Not yet recorded'
-retrospective: 'Not yet recorded'
+  - "Migrate the Sprint 1 source plan into linked YAML records."
+review: "Not yet recorded"
+retrospective: "Not yet recorded"
 story_files:
   - id: AUTH-2
     path: AUTH-2.yaml

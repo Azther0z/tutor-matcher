@@ -6,33 +6,33 @@ order: 6
 estimate_hours: 20
 tasks:
   - id: PROF-2-T1
-    title: 'Design the Tutor public profile page (bio, video, rate)'
-    assignees: ['Ideal', 'Pooh']
-    role: 'UXUI'
+    title: "Design the Tutor public profile page (bio, video, rate)"
+    assignees: ["Ideal", "Pooh"]
+    role: "UXUI"
     status: todo
     estimate_hours: 3
   - id: PROF-2-T2
-    title: 'Build the profile form and intro-video upload'
-    assignees: ['Saint', 'Yongfu']
-    role: 'Frontend'
+    title: "Build the profile form and intro-video upload"
+    assignees: ["Saint", "Yongfu"]
+    role: "Frontend"
     status: todo
     estimate_hours: 6
   - id: PROF-2-T3
-    title: 'Implement the publish gate for required fields'
-    assignees: ['Saint', 'Yongfu']
-    role: 'Frontend'
+    title: "Implement the publish gate for required fields"
+    assignees: ["Saint", "Yongfu"]
+    role: "Frontend"
     status: todo
     estimate_hours: 3
   - id: PROF-2-T4
-    title: 'Implement profile storage and publish-to-search-index logic'
-    assignees: ['Saint', 'Yongfu']
-    role: 'Backend'
+    title: "Implement profile storage and publish-to-search-index logic"
+    assignees: ["Saint", "Yongfu"]
+    role: "Backend"
     status: todo
     estimate_hours: 5
   - id: PROF-2-T5
-    title: 'Write acceptance tests for Tutor profile publishing'
-    assignees: ['Ideal', 'Pooh']
-    role: 'QA'
+    title: "Write acceptance tests for Tutor profile publishing"
+    assignees: ["Ideal", "Pooh"]
+    role: "QA"
     status: todo
     estimate_hours: 3
-notes: 'Migrated from Sprint 1 v1.1.html'
+notes: "Migrated from Sprint 1 v1.1.html"

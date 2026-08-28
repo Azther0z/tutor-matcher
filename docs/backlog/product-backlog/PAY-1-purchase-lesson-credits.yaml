@@ -1,21 +1,21 @@
 id: PAY-1
-title: 'Purchase lesson credits'
-description: 'As a Student, I want to purchase lesson credits/packages via PromptPay QR (mobile banking) so that I can pay for lessons in advance and use recurring bookings without paying each time.'
-epic: 'Payments & Billing'
-role: 'Student'
+title: "Purchase lesson credits"
+description: "As a Student, I want to purchase lesson credits/packages via PromptPay QR (mobile banking) so that I can pay for lessons in advance and use recurring bookings without paying each time."
+epic: "Payments & Billing"
+role: "Student"
 lifecycle: backlog
 story_points: 5
-dependencies: ['US1-2']
+dependencies: ["US1-2"]
 acceptance_criteria:
-  - given: 'a Student selects a package and scans the generated PromptPay QR,'
-    when: 'the transfer is confirmed,'
-    then: 'credits are added to their balance and a receipt is emailed.'
+  - given: "a Student selects a package and scans the generated PromptPay QR,"
+    when: "the transfer is confirmed,"
+    then: "credits are added to their balance and a receipt is emailed."
   - given: "payment fails or isn't confirmed,"
-    when: 'checkout is attempted,'
-    then: 'an error is shown and no credits are added.'
+    when: "checkout is attempted,"
+    then: "an error is shown and no credits are added."
 sources:
   - file: ../../sources/Product Backlog v1.2.html
-    locator: 'Payments & Billing / US5-1'
+    locator: "Payments & Billing / US5-1"
 journey:
-  - route: '/topup'
-    action: 'Topup'
+  - route: "/topup"
+    action: "Topup"

@@ -1,21 +1,21 @@
 id: AUTH-6
-title: 'Consent to privacy and data processing'
-description: 'As a Tutor, I want to review and accept the Privacy Policy and Terms of Service, including how my identity documents, teaching credentials, and payout information will be processed, during sign-up so that I understand and control how my sensitive data is used before an account is created.'
-epic: 'Account Registration & Authentication'
-role: 'Tutor'
+title: "Consent to privacy and data processing"
+description: "As a Tutor, I want to review and accept the Privacy Policy and Terms of Service, including how my identity documents, teaching credentials, and payout information will be processed, during sign-up so that I understand and control how my sensitive data is used before an account is created."
+epic: "Account Registration & Authentication"
+role: "Tutor"
 lifecycle: backlog
 story_points: 3
-dependencies: ['US1-1']
+dependencies: ["US1-1"]
 acceptance_criteria:
-  - given: 'a Tutor visitor has checked the consent checkbox,'
-    when: 'they submit the sign-up form,'
-    then: 'the account is created and the consent timestamp is recorded.'
-  - given: 'a Tutor visitor reaches the final sign-up step,'
-    when: 'they have not checked the consent checkbox covering identity, credential, AND payout data processing,'
-    then: 'account creation is blocked and the requirement is highlighted.'
+  - given: "a Tutor visitor has checked the consent checkbox,"
+    when: "they submit the sign-up form,"
+    then: "the account is created and the consent timestamp is recorded."
+  - given: "a Tutor visitor reaches the final sign-up step,"
+    when: "they have not checked the consent checkbox covering identity, credential, AND payout data processing,"
+    then: "account creation is blocked and the requirement is highlighted."
 sources:
   - file: ../../sources/Product Backlog v1.2.html
-    locator: 'Account Registration & Authentication / US1-6'
+    locator: "Account Registration & Authentication / US1-6"
 journey:
-  - route: '(auth)/signup'
-    action: 'Sign up'
+  - route: "(auth)/signup"
+    action: "Sign up"

@@ -38,7 +38,9 @@ tutor-matcher/                  ← monorepo root
 │       ├── test/
 │       │   └── app.test.ts
 │       ├── prisma/
-│       │   └── schema.prisma
+│       │   ├── schema.prisma
+│       │   └── seed.ts        ← Mock-data seed (@faker-js/faker)
+│       ├── justfile           ← Backend Prisma/dev recipes
 │       ├── cucumber.cjs
 │       └── jest.config.js
 ├── deploy/                    ← Doco-CD production deployment
@@ -56,8 +58,11 @@ tutor-matcher/                  ← monorepo root
 ├── .doco-cd.yaml               ← Doco-CD deployment settings
 ├── .sops.yaml                  ← SOPS/age encryption policy
 ├── docker-compose.yml          ← Postgres service for local development
+├── ecosystem.config.js         ← PM2 config: backend + frontend background dev servers
+├── scripts/                    ← Repo tooling (setup-env.mjs: copy .env templates)
 ├── .prettierrc                 ← Shared Prettier config
-└── package.json                ← Root: format/format:check scripts
+├── justfile                    ← Cross-platform dev recipes (setup/up/down/install/…)
+└── package.json                ← Root: setup + format + up/down/dev/db:* scripts
 ```
 
 ## Architecture Decisions
@@ -83,15 +88,25 @@ Next.js is **CSR-first**: the browser calls the Express API directly. No Next.js
 
 ## Development
 
+Common tasks are wrapped as [`just`](https://just.systems) recipes (repo root and
+`apps/backend`), each a thin alias over an `npm run` script so they also work
+without `just`. See the task reference in [`README.md`](../README.md) for the full
+list.
+
 ```bash
-# Start Postgres
-docker-compose up -d
+# First-run only: deps, env files, Postgres (wait for healthy), migrate, seed
+just setup               # or: npm run setup
 
-# Backend (port 8000)
-cd apps/backend && npm run dev
+# Start Postgres + backend (8000) + frontend (3000) in the background (PM2)
+just up                 # or: npm run up   — servers survive closing the terminal
+just logs               # stream output
+just down               # stop them
 
-# Frontend (port 3000)
-cd apps/frontend && npm run dev
+# Or run backend + frontend attached to the terminal (Ctrl+C stops both)
+just dev                # or: npm run dev
+
+# Seed the database with fake data
+cd apps/backend && just gen-mock-data     # or: npm run gen-mock-data
 
 # Run tests
 cd apps/backend && npm test

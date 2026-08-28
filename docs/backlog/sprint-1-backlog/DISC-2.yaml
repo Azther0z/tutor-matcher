@@ -6,33 +6,33 @@ order: 9
 estimate_hours: 20
 tasks:
   - id: DISC-2-T1
-    title: 'Design the recommended-tutors discovery page'
-    assignees: ['Ideal', 'Pooh']
-    role: 'UXUI'
+    title: "Design the recommended-tutors discovery page"
+    assignees: ["Ideal", "Pooh"]
+    role: "UXUI"
     status: todo
     estimate_hours: 3
   - id: DISC-2-T2
-    title: 'Build the ranked-list display'
-    assignees: ['Santa', 'Plai']
-    role: 'Frontend'
+    title: "Build the ranked-list display"
+    assignees: ["Santa", "Plai"]
+    role: "Frontend"
     status: todo
     estimate_hours: 4
   - id: DISC-2-T3
-    title: 'Implement the ranking algorithm (relevance, rating, availability)'
-    assignees: ['Santa', 'Plai']
-    role: 'Backend'
+    title: "Implement the ranking algorithm (relevance, rating, availability)"
+    assignees: ["Santa", "Plai"]
+    role: "Backend"
     status: todo
     estimate_hours: 6
   - id: DISC-2-T4
-    title: 'Implement fallback ranking for profiles without subjects/goals'
-    assignees: ['Santa', 'Plai']
-    role: 'Backend'
+    title: "Implement fallback ranking for profiles without subjects/goals"
+    assignees: ["Santa", "Plai"]
+    role: "Backend"
     status: todo
     estimate_hours: 4
   - id: DISC-2-T5
-    title: 'Write acceptance tests for recommendations (personalized, fallback)'
-    assignees: ['Nesta', 'Washi']
-    role: 'QA'
+    title: "Write acceptance tests for recommendations (personalized, fallback)"
+    assignees: ["Nesta", "Washi"]
+    role: "QA"
     status: todo
     estimate_hours: 3
-notes: 'Migrated from Sprint 1 v1.1.html'
+notes: "Migrated from Sprint 1 v1.1.html"
