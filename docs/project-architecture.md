@@ -59,9 +59,10 @@ tutor-matcher/                  ← monorepo root
 ├── .sops.yaml                  ← SOPS/age encryption policy
 ├── docker-compose.yml          ← Postgres service for local development
 ├── ecosystem.config.js         ← PM2 config: backend + frontend background dev servers
+├── scripts/                    ← Repo tooling (setup-env.mjs: copy .env templates)
 ├── .prettierrc                 ← Shared Prettier config
-├── justfile                    ← Cross-platform dev recipes (up/down/install/…)
-└── package.json                ← Root: format + up/down/dev/db:* scripts
+├── justfile                    ← Cross-platform dev recipes (setup/up/down/install/…)
+└── package.json                ← Root: setup + format + up/down/dev/db:* scripts
 ```
 
 ## Architecture Decisions
@@ -93,6 +94,9 @@ without `just`. See the task reference in [`README.md`](../README.md) for the fu
 list.
 
 ```bash
+# First-run only: deps, env files, Postgres (wait for healthy), migrate, seed
+just setup               # or: npm run setup
+
 # Start Postgres + backend (8000) + frontend (3000) in the background (PM2)
 just up                 # or: npm run up   — servers survive closing the terminal
 just logs               # stream output

@@ -14,40 +14,34 @@ A matchmaking platform that connects tutors and students by subject, schedule, a
 
 ## Setup
 
-1. **Clone and install dependencies**
+```bash
+git clone https://github.com/Azther0z/tutor-matcher.git
+cd tutor-matcher
 
-   ```bash
-   git clone https://github.com/Azther0z/tutor-matcher.git
-   cd tutor-matcher
+just setup      # npm run setup
+```
 
-   # Install root + backend + frontend dependencies in one step
-   just install      # npm run install:all
-   ```
+`just setup` installs all dependencies, copies missing `.env` files from their
+`.env.example` templates, starts Postgres (waiting until it is healthy), applies
+migrations, and seeds mock data. It is safe to re-run. Edit the generated `.env`
+files if your local setup differs from the defaults, then start the app with
+`just up` (see [Development](#development)).
 
-   `just` recipes work the same on macOS, Linux, and Windows. The equivalent
-   `npm run` script is shown in a comment next to each command.
+`just` recipes work the same on macOS, Linux, and Windows; the equivalent
+`npm run` script is shown in a comment next to each command.
 
-2. **Configure environment variables**
+<details>
+<summary>Manual setup, step by step</summary>
 
-   ```bash
-   cp apps/backend/.env.example apps/backend/.env
-   cp apps/frontend/.env.local.example apps/frontend/.env.local
-   ```
+```bash
+just install                                   # npm run install:all
+cp apps/backend/.env.example apps/backend/.env
+just db-up                                      # npm run db:up  (docker compose up -d --wait)
+cd apps/backend && just migrate                 # npm run db:migrate:dev  (prisma migrate dev)
+cd apps/backend && just gen-mock-data           # npm run gen-mock-data  (prisma db seed)
+```
 
-   Edit the copied files if your local setup differs from the defaults.
-
-3. **Start Postgres**
-
-   ```bash
-   just db-up      # npm run db:up  (docker compose up -d)
-   ```
-
-4. **Apply database migrations**
-
-   ```bash
-   cd apps/backend
-   just migrate    # npm run db:migrate:dev  (prisma migrate dev)
-   ```
+</details>
 
 ## Development
 
@@ -87,12 +81,13 @@ matching `npm run` script (for use without `just`) is in the last column.
 
 | `just`                   | Location       | Description                                     | `npm run` equivalent        |
 | ------------------------ | -------------- | ----------------------------------------------- | --------------------------- |
+| `just setup`             | repo root      | First-run: deps, env files, db, migrate, seed   | `npm run setup`             |
 | `just install`           | repo root      | Install root + backend + frontend dependencies  | `npm run install:all`       |
 | `just up` / `down`       | repo root      | Start / stop Postgres + both servers (detached) | `npm run up` / `down`       |
 | `just logs` / `status`   | repo root      | Stream logs / show background-server status     | `npm run logs` / `status`   |
 | `just restart`           | repo root      | Restart both background servers                 | `npm run restart`           |
 | `just dev`               | repo root      | Run backend + frontend attached to the terminal | `npm run dev`               |
-| `just db-up` / `db-down` | repo root      | Start / stop the Postgres container             | `npm run db:up` / `db:down` |
+| `just db-up` / `db-down` | repo root      | Start (wait for healthy) / stop Postgres        | `npm run db:up` / `db:down` |
 | `just gen`               | `apps/backend` | Regenerate the typed Prisma client              | `npm run gen`               |
 | `just gen-mock-data`     | `apps/backend` | Seed fake data (`@faker-js/faker`)              | `npm run gen-mock-data`     |
 | `just migrate`           | `apps/backend` | Create and apply a new migration                | `npm run db:migrate:dev`    |
