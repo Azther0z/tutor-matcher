@@ -7,7 +7,9 @@
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "prepare": "husky",
     "install:all": "npm install && npm --prefix apps/backend install && npm --prefix apps/frontend install",
-    "db:up": "docker compose up -d",
+    "setup:env": "node scripts/setup-env.mjs",
+    "setup": "npm run install:all && npm run setup:env && npm run db:up && npm --prefix apps/backend run db:migrate:dev && npm --prefix apps/backend run gen-mock-data",
+    "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "dev": "concurrently --kill-others --names backend,frontend --prefix-colors blue,green \"npm --prefix apps/backend run dev\" \"npm --prefix apps/frontend run dev\"",
     "up": "npm run db:up && pm2 start ecosystem.config.js && pm2 list",
@@ -34,6 +36,7 @@
   },
   "lint-staged": {
     "*.{js,mjs,cjs,json}": "prettier --write",
+    "scripts/**/*.{js,mjs,cjs}": "prettier --write",
     "README.md": "prettier --write"
   }
 }

@@ -6,12 +6,16 @@
 # can also run the `npm run` form directly if you don't have `just`.
 #
 #   just            list recipes
-#   just install    install all dependencies
+#   just setup      prepare a fresh checkout (deps, env, db, migrate, seed)
 #   just up         start Postgres + backend + frontend (detached)
 
 # Default recipe: show the list.
 default:
     @just --list
+
+# First-run setup: install deps, copy env files, start Postgres, migrate, seed (then run `just up`).
+setup:
+    npm run setup
 
 # Install root + backend + frontend dependencies.
 install:
@@ -41,7 +45,7 @@ status:
 dev:
     npm run dev
 
-# Start the Postgres container.
+# Start the Postgres container and wait until it is healthy.
 db-up:
     npm run db:up
 
