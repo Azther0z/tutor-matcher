@@ -5,7 +5,16 @@
   "scripts": {
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "prepare": "husky"
+    "prepare": "husky",
+    "install:all": "npm install && npm --prefix apps/backend install && npm --prefix apps/frontend install",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "dev": "concurrently --kill-others --names backend,frontend --prefix-colors blue,green \"npm --prefix apps/backend run dev\" \"npm --prefix apps/frontend run dev\"",
+    "up": "npm run db:up && pm2 start ecosystem.config.js && pm2 list",
+    "down": "pm2 delete ecosystem.config.js",
+    "restart": "pm2 restart ecosystem.config.js",
+    "logs": "pm2 logs",
+    "status": "pm2 list"
   },
   "repository": {
     "type": "git",
@@ -17,11 +26,14 @@
   },
   "homepage": "https://github.com/Azther0z/tutor-matcher#readme",
   "devDependencies": {
+    "concurrently": "^10.0.5",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
+    "pm2": "^7.0.4",
     "prettier": "^3.9.6"
   },
   "lint-staged": {
-    "apps/**/*.{ts,tsx,js,jsx,json,css,md}": ["prettier --write"]
+    "*.{js,mjs,cjs,json}": "prettier --write",
+    "README.md": "prettier --write"
   }
 }

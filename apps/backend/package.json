@@ -13,8 +13,20 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:bdd": "cucumber-js",
     "lint": "eslint src features",
+    "gen": "prisma generate",
+    "gen-mock-data": "prisma db seed",
     "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:reset": "prisma migrate reset",
+    "db:studio": "prisma studio",
+    "db:push": "prisma db push",
+    "prisma:validate": "prisma validate",
+    "prisma:format": "prisma format",
     "postinstall": "prisma generate"
+  },
+  "lint-staged": {
+    "**/*.{ts,js,mjs,cjs,json}": "prettier --write",
+    "{src,features}/**/*.ts": "eslint --fix"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
@@ -26,6 +38,7 @@
   "devDependencies": {
     "@cucumber/cucumber": "^12.9.0",
     "@eslint/js": "^10.0.1",
+    "@faker-js/faker": "^10.6.0",
     "@swc/core": "^1.16.1",
     "@swc/jest": "^0.2.39",
     "@types/cors": "^2.8.19",

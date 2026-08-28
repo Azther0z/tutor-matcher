@@ -53,6 +53,13 @@ npm run format:check
 
 The frontend suite runs separately from `apps/frontend` with `npm test`.
 
+### Pre-commit hook
+
+A Husky `pre-commit` hook runs `lint-staged`, which applies `prettier --write` and the
+per-app `eslint --fix` to staged backend and frontend files (auto-restaging the fixes),
+then runs `npm run format:check` as a gate. Formatting and lint fixes therefore happen
+automatically on commit; the checks above still run in CI.
+
 ## Adding Behavior Coverage
 
 1. Add or extend a `.feature` file under `apps/backend/features/` using domain terms from

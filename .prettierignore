@@ -6,3 +6,11 @@ apps/*/dist/
 apps/*/.next/
 apps/backend/src/generated/prisma/
 apps/frontend/next-env.d.ts
+
+# Agent-managed / immutable docs — do not reformat
+AGENTS.md
+CLAUDE.md
+CONTEXT.md
+docs/sources/
+.agents/
+package-lock.json

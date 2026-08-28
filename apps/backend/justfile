@@ -1,0 +1,68 @@
+# Tutor Matcher backend — Prisma & dev recipes.
+#
+# Uses `just` (https://just.systems) as a cross-platform command runner. Every
+# recipe delegates to an `npm run` script in package.json, so there is no
+# shell-specific logic — run the `npm run` form directly if you don't have `just`.
+#
+#   just                  list recipes
+#   just gen-mock-data    seed the database with fake data
+
+# Default recipe: show the list.
+default:
+    @just --list
+
+# Install backend dependencies (runs prisma generate via postinstall).
+install:
+    npm install
+
+# Start the Express dev server with hot reload.
+dev:
+    npm run dev
+
+# Regenerate the typed Prisma client (src/generated/prisma).
+gen:
+    npm run gen
+
+# Seed the database with fake data (@faker-js/faker).
+gen-mock-data:
+    npm run gen-mock-data
+
+# Create and apply a new migration in development.
+migrate:
+    npm run db:migrate:dev
+
+# Apply committed migrations (deployment).
+migrate-deploy:
+    npm run db:migrate
+
+# Drop the database, re-run all migrations, then re-seed.
+reset:
+    npm run db:reset
+
+# Open Prisma Studio (database browser).
+studio:
+    npm run db:studio
+
+# Push the schema without a migration (prototyping).
+db-push:
+    npm run db:push
+
+# Validate schema.prisma.
+validate:
+    npm run prisma:validate
+
+# Format schema.prisma.
+format:
+    npm run prisma:format
+
+# Run Jest + Supertest tests.
+test:
+    npm test
+
+# Run Cucumber.js Gherkin tests.
+test-bdd:
+    npm run test:bdd
+
+# Run ESLint on backend source.
+lint:
+    npm run lint
