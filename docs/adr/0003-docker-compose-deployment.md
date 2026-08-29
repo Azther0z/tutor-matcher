@@ -18,8 +18,7 @@ Swarm stack after repository changes. Images are published by GitHub Actions
 with commit SHA and `latest` tags; the deployment configuration enables image
 pulling when a Git-triggered deployment occurs.
 
-The production manifest defines PostgreSQL as an internal persistent service and
-attaches the frontend and backend to the shared external `observability` network.
-It declares SOPS-encrypted Docker secrets for the PostgreSQL password and backend
+The production manifest defines PostgreSQL as an internal persistent service. It
+declares SOPS-encrypted Docker secrets for the PostgreSQL password and backend
 database URL. Doco-CD decrypts those files before deploying the stack. The
 repository stores no plaintext production secret value.

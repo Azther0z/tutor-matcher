@@ -18,13 +18,14 @@ A matchmaking platform that connects tutors and students by subject, schedule, a
 git clone https://github.com/Azther0z/tutor-matcher.git
 cd tutor-matcher
 
+just db-up      # npm run db:up
 just setup      # npm run setup
 ```
 
 `just setup` installs all dependencies, copies missing `.env` files from their
-`.env.example` templates, starts Postgres (waiting until it is healthy), applies
-migrations, and seeds mock data. It is safe to re-run. Start the complete local
-Compose stack with `just up` (see [Development](#development)).
+`.env.example` templates, applies migrations, and seeds mock data. It requires
+Postgres to be reachable, so run `just db-up` first. It is safe to re-run. Start
+the complete local Compose stack with `just up` (see [Development](#development)).
 
 `just` recipes work the same on macOS, Linux, and Windows; the equivalent
 `npm run` script is shown in a comment next to each command.
@@ -50,7 +51,7 @@ background** via Docker Compose, so you can close the terminal and they keep
 running:
 
 ```bash
-just up        # npm run up      — build and start Postgres + backend + frontend
+just up        # npm run up      — build and start Postgres + backend + frontend; print URLs
 just logs      # npm run logs    — stream all container output
 just status    # npm run status  — show Compose service status
 just restart   # npm run restart — restart all services
@@ -82,7 +83,7 @@ matching `npm run` script (for use without `just`) is in the last column.
 
 | `just`                   | Location       | Description                                     | `npm run` equivalent        |
 | ------------------------ | -------------- | ----------------------------------------------- | --------------------------- |
-| `just setup`             | repo root      | First-run: deps, env files, db, migrate, seed   | `npm run setup`             |
+| `just setup`             | repo root      | First-run: deps, env files, migrate, seed       | `npm run setup`             |
 | `just install`           | repo root      | Install root + backend + frontend dependencies  | `npm run install:all`       |
 | `just up` / `down`       | repo root      | Start / stop the local Compose stack            | `npm run up` / `down`       |
 | `just logs` / `status`   | repo root      | Stream logs / show Compose service status       | `npm run logs` / `status`   |

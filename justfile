@@ -13,7 +13,8 @@
 default:
     @just --list
 
-# First-run setup: install deps, copy env files, start Postgres, migrate, seed (then run `just up`).
+# First-run setup: install deps, copy env files, migrate, seed. Run `just db-up`
+# first so Postgres is reachable for migrate/seed. Then start with `just up`.
 setup:
     npm run setup
 
@@ -21,7 +22,8 @@ setup:
 install:
     npm run install:all
 
-# Start Postgres + backend (8000) + frontend (3000) detached through Compose.
+# Start Postgres + backend (8000) + frontend (3000) detached through Compose;
+# print the local URLs when ready.
 up:
     npm run up
 

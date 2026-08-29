@@ -90,12 +90,13 @@ without `just`. See the task reference in [`README.md`](../README.md) for the fu
 list.
 
 ```bash
-# First-run only: deps, env files, Postgres (wait for healthy), migrate, seed
+# First-run only: start Postgres, then deps, env files, migrate, seed
+just db-up               # or: npm run db:up
 just setup               # or: npm run setup
 
 # Start Postgres + backend (8000) + frontend (3000) in the background (Compose;
 # rebuild after source changes)
-just up                 # or: npm run up   — containers survive closing the terminal
+just up                 # or: npm run up   — containers survive closing the terminal; prints URLs
 just logs               # stream output
 just down               # stop them
 

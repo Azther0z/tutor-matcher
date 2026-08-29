@@ -31,15 +31,12 @@ services:
     hostname: tutor-matcher-frontend
     environment:
       PORT: "3000"
-    labels:
-      observability.logs: "true"
     ports:
       - target: 3000
         published: 3333
         protocol: tcp
     networks:
       - default
-      - observability
     deploy:
       replicas: 1
       update_config:
@@ -61,7 +58,6 @@ services:
       - "3001:3001"
     networks:
       - default
-      - observability
     deploy:
       replicas: 1
       update_config:
@@ -81,5 +77,3 @@ secrets:
 
 networks:
   default: {}
-  observability:
-    external: true
