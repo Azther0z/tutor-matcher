@@ -64,38 +64,15 @@ for (const match of backlogContent.matchAll(/^\s+story_ids:\s*\[([^\]]*)\]$/gm))
   }
 }
 
-const sprintDirs = (await readdir(backlog, { withFileTypes: true }))
-  .filter((entry) => entry.isDirectory() && /^sprint-\d+-backlog$/.test(entry.name))
-  .map((entry) => entry.name);
-for (const directory of sprintDirs) {
-  const manifest = `${directory}/manifest.yaml`;
+const sprintManifests = (await readdir(backlog)).filter((file) => /^sprint-\d+\.yaml$/.test(file));
+for (const manifest of sprintManifests) {
   const manifestContent = await readFile(join(backlog, manifest), "utf8");
   if (!/^status:\s*(planned|in_progress|done)$/m.test(manifestContent))
     errors.push(`${manifest}: invalid or missing sprint status`);
-  const referencedFiles = new Set();
-  for (const match of manifestContent.matchAll(/^\s+- id: (\S+)\n\s+path: (\S+)$/gm)) {
-    const [, id, path] = match;
-    referencedFiles.add(path);
+  const selectedStories = manifestContent.match(/^story_ids:\n((?:\s+- \S+\n?)+)/m)?.[1] ?? "";
+  for (const match of selectedStories.matchAll(/^\s+- (\S+)$/gm)) {
+    const [, id] = match;
     if (!storyIds.has(id)) errors.push(`${manifest}: unknown story ${id}`);
-    if (!path.endsWith(".yaml")) errors.push(`${manifest}: invalid story path ${path}`);
-  }
-  const sprintStories = (await readdir(join(backlog, directory))).filter(
-    (file) => file.endsWith(".yaml") && file !== "manifest.yaml"
-  );
-  for (const file of sprintStories) {
-    const content = await readFile(join(backlog, directory, file), "utf8");
-    const id = content.match(/^id:\s*(\S+)$/m)?.[1];
-    const productPath = content.match(/^path:\s*(\S+)$/m)?.[1];
-    if (!referencedFiles.has(file)) errors.push(`${manifest}: unlisted story file ${file}`);
-    if (!storyIds.has(id)) errors.push(`${directory}/${file}: unknown story ${id}`);
-    if (!productPath || !productPath.startsWith("product-backlog/"))
-      errors.push(`${directory}/${file}: invalid story path ${productPath ?? ""}`);
-    if (productPath && !storyFiles.includes(productPath.slice("product-backlog/".length)))
-      errors.push(`${directory}/${file}: missing product story ${productPath}`);
-    for (const match of content.matchAll(/^\s*status:\s*(\S+)/gm)) {
-      if (!["planned", "todo", "in_progress", "done", "blocked"].includes(match[1]))
-        errors.push(`${directory}/${file}: invalid story/task status ${match[1]}`);
-    }
   }
 }
 
@@ -116,6 +93,6 @@ if (errors.length) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Validated ${storyFiles.length} product stories and ${sprintDirs.length} sprint backlogs.`
+    `Validated ${storyFiles.length} product stories and ${sprintManifests.length} sprint backlogs.`
   );
 }
