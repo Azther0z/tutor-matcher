@@ -6,7 +6,10 @@
  */
 import { existsSync, copyFileSync } from "node:fs";
 
-const PAIRS = [["apps/backend/.env.example", "apps/backend/.env"]];
+const PAIRS = [
+  [".env.example", ".env"],
+  ["apps/backend/.env.example", "apps/backend/.env"],
+];
 
 let created = 0;
 

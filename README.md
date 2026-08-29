@@ -36,7 +36,7 @@ the complete local Compose stack with `just up` (see [Development](#development)
 ```bash
 just install                                   # npm run install:all
 cp apps/backend/.env.example apps/backend/.env
-just db-up                                      # npm run db:up  (docker compose up -d --wait)
+just db-up                                      # npm run db:up  (creates .env; starts Postgres)
 cd apps/backend
 just migrate                                      # npm run db:migrate:dev  (prisma migrate dev)
 just gen-mock-data                                # npm run gen-mock-data  (prisma db seed)
@@ -51,7 +51,7 @@ background** via Docker Compose, so you can close the terminal and they keep
 running:
 
 ```bash
-just up        # npm run up      — build and start Postgres + backend + frontend; print URLs
+just up        # npm run up      — build and start Postgres + backend + frontend
 just logs      # npm run logs    — stream all container output
 just status    # npm run status  — show Compose service status
 just restart   # npm run restart — restart all services
@@ -62,6 +62,9 @@ The detached Compose stack uses production-style images and does not hot-reload
 source changes; rerun `just up` after changing application code. To run both dev
 servers with hot reload attached to the current terminal instead (Ctrl+C stops
 both), use `just dev` (`npm run dev`); this assumes Postgres is already running.
+
+The root `.env` file is created from `.env.example` automatically. Edit
+`FRONTEND_PORT` or `BACKEND_PORT` there to avoid port conflicts on your device.
 
 <details>
 <summary>Run each server in its own terminal</summary>

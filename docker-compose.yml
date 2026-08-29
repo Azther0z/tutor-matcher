@@ -24,7 +24,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tutor_matcher
       PORT: "8000"
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,7 +36,7 @@ services:
     environment:
       PORT: "3000"
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       backend:
         condition: service_started

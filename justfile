@@ -22,8 +22,7 @@ setup:
 install:
     npm run install:all
 
-# Start Postgres + backend (8000) + frontend (3000) detached through Compose;
-# print the local URLs when ready.
+# Start Postgres + backend (8000) + frontend (3000) detached through Compose.
 up:
     npm run up
 
