@@ -1,7 +1,7 @@
 /**
  * Mock-data seed for local development.
  *
- * Seeds the database with fake `TestUser` rows using @faker-js/faker, plus a few
+ * Seeds the database with fake `User` rows using @faker-js/faker, plus a few
  * fixed named users so tests and manual checks have stable data. Idempotent —
  * re-running upserts by email.
  *
@@ -25,19 +25,19 @@ const prisma = new PrismaClient({ adapter });
 faker.seed(20260828);
 
 const FIXED_USERS = [
-  { name: "Alice Johnson", email: "alice@example.com" },
-  { name: "Bob Smith", email: "bob@example.com" },
-  { name: "Carol Davis", email: "carol@example.com" },
+  { firstName: "Alice", lastName: "Johnson", email: "alice@example.com" },
+  { firstName: "Bob", lastName: "Smith", email: "bob@example.com" },
+  { firstName: "Carol", lastName: "Davis", email: "carol@example.com" },
 ];
 
 const GENERATED_USERS = 20;
 
 async function main() {
   for (const user of FIXED_USERS) {
-    await prisma.testUser.upsert({
+    await prisma.user.upsert({
       where: { email: user.email },
       update: {},
-      create: user,
+      create: { ...user, password: "development-only" },
     });
   }
 
@@ -46,15 +46,15 @@ async function main() {
     const lastName = faker.person.lastName();
     const email = faker.internet.email({ firstName, lastName }).toLowerCase();
 
-    await prisma.testUser.upsert({
+    await prisma.user.upsert({
       where: { email },
       update: {},
-      create: { name: `${firstName} ${lastName}`, email },
+      create: { firstName, lastName, email, password: "development-only" },
     });
   }
 
-  const count = await prisma.testUser.count();
-  console.log(`Seed complete: ${count} TestUser rows`);
+  const count = await prisma.user.count();
+  console.log(`Seed complete: ${count} User rows`);
 }
 
 main()
