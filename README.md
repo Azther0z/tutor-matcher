@@ -18,14 +18,16 @@ A matchmaking platform that connects tutors and students by subject, schedule, a
 git clone https://github.com/Azther0z/tutor-matcher.git
 cd tutor-matcher
 
+just db-up      # npm run db:up   (docker compose up -d --wait)
 just setup      # npm run setup
 ```
 
 `just setup` installs all dependencies, copies missing `.env` files from their
-`.env.example` templates, starts Postgres (waiting until it is healthy), applies
-migrations, and seeds mock data. It is safe to re-run. Edit the generated `.env`
-files if your local setup differs from the defaults, then start the app with
-`just up` (see [Development](#development)).
+`.env.example` templates, applies migrations, and seeds mock data. It needs
+Postgres reachable, so run `just db-up` first (or `just up`, which also starts
+it). It is safe to re-run. Edit the generated `.env` files if your local setup
+differs from the defaults, then start the app with `just up` (see
+[Development](#development)).
 
 `just` recipes work the same on macOS, Linux, and Windows; the equivalent
 `npm run` script is shown in a comment next to each command.
@@ -50,12 +52,15 @@ Start Postgres plus both dev servers. They run **in the background** via
 running:
 
 ```bash
-just up        # npm run up      — docker compose up -d, then backend + frontend (detached)
+just up        # npm run up      — Postgres, then backend + frontend (detached); prints the local URLs
 just logs      # npm run logs    — stream both servers' output
 just status    # npm run status  — show whether they're running
 just restart   # npm run restart — restart both
 just down      # npm run down    — stop both
 ```
+
+`just up` prints the local URLs once the servers are registered — the frontend
+on <http://localhost:3000> and the backend on <http://localhost:8000>.
 
 Both dev servers hot-reload on source changes. To run them attached to the
 current terminal instead (Ctrl+C stops both), use `just dev` (`npm run dev`);
@@ -81,7 +86,7 @@ matching `npm run` script (for use without `just`) is in the last column.
 
 | `just`                   | Location       | Description                                     | `npm run` equivalent        |
 | ------------------------ | -------------- | ----------------------------------------------- | --------------------------- |
-| `just setup`             | repo root      | First-run: deps, env files, db, migrate, seed   | `npm run setup`             |
+| `just setup`             | repo root      | First-run: deps, env files, migrate, seed       | `npm run setup`             |
 | `just install`           | repo root      | Install root + backend + frontend dependencies  | `npm run install:all`       |
 | `just up` / `down`       | repo root      | Start / stop Postgres + both servers (detached) | `npm run up` / `down`       |
 | `just logs` / `status`   | repo root      | Stream logs / show background-server status     | `npm run logs` / `status`   |
