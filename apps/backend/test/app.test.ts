@@ -1,5 +1,5 @@
 import request from "supertest";
-import { app } from "../src/apps.ts";
+import { app } from "../src/app.ts";
 
 describe("GET /", () => {
   it("return 200 and get the message hi", async () => {
