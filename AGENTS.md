@@ -3,7 +3,7 @@
 - **Strings use double quotes** in TypeScript, JavaScript, JSON, and JSX (`"foo"`, not `'foo'`). Use single quotes only to avoid escaping an embedded double quote; prefer template literals for interpolation.
 - Prettier is the authority for formatting (`.prettierrc`: double quotes, semicolons, 2-space indent, `printWidth` 100, `trailingComma: "es5"`). Do not hand-format against it.
 - Formatting and ESLint `--fix` run on staged files via the Husky `pre-commit` hook; `npm run format` / `just format` reformat the whole tree. CI (`Quality Format`) rejects unformatted code.
-- `npm run format` only covers `apps/**` — do not reformat `docs/` (especially `docs/sources/`, which is immutable evidence).
+- `npm run format` covers managed application, documentation, deployment, workflow, and script files; do not reformat `docs/sources/`, which is immutable evidence.
 
 ## Project Documentation And LLM Knowledge
 - This repository intentionally uses a project-specific convention that differs from the default `my-llm-wiki` skill layout.

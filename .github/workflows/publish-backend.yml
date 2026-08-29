@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/backend/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'docker-compose.yml'
-      - '.github/workflows/**'
+      - "apps/backend/**"
+      - "package.json"
+      - "package-lock.json"
+      - "docker-compose.yml"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 concurrency:

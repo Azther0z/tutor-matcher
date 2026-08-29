@@ -3,6 +3,8 @@ export default {
   testEnvironment: "node",
   extensionsToTreatAsEsm: [".ts"],
   forceExit: true,
+  testPathIgnorePatterns: ["/node_modules/", "/dist/", "/generated/"],
+  modulePathIgnorePatterns: ["/dist/", "/generated/"],
   transform: {
     "^.+\\.ts$": [
       "ts-jest",
