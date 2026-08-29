@@ -1,23 +1,26 @@
 {
   "name": "tutor-matcher",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=22"
+  },
   "description": "Matchmaking platform connecting tutors and students by subject, schedule, and price.",
   "scripts": {
-    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"docs/backlog/**/*.{yaml,yml,md,html}\" \"scripts/**/*.mjs\"",
-    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"docs/backlog/**/*.{yaml,yml,md,html}\" \"scripts/**/*.mjs\"",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,md,yaml,yml,html}\" \"docs/**/*.{md,yaml,yml,html}\" \"deploy/**/*.{md,yaml,yml,json}\" \".github/**/*.{md,yaml,yml,json}\" \"scripts/**/*.{mjs,cjs,js}\" \"README.md\" \"package.json\" \".doco-cd.yaml\" \".prettierrc\" \".sops.yaml\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,md,yaml,yml,html}\" \"docs/**/*.{md,yaml,yml,html}\" \"deploy/**/*.{md,yaml,yml,json}\" \".github/**/*.{md,yaml,yml,json}\" \"scripts/**/*.{mjs,cjs,js}\" \"README.md\" \"package.json\" \".doco-cd.yaml\" \".prettierrc\" \".sops.yaml\"",
     "backlog:check": "node scripts/validate-backlog.mjs",
     "prepare": "husky",
     "install:all": "npm install && npm --prefix apps/backend install && npm --prefix apps/frontend install",
     "setup:env": "node scripts/setup-env.mjs",
     "setup": "npm run install:all && npm run setup:env && npm run db:up && npm --prefix apps/backend run db:migrate:dev && npm --prefix apps/backend run gen-mock-data",
-    "db:up": "docker compose up -d --wait",
-    "db:down": "docker compose down",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose stop postgres",
     "dev": "concurrently --kill-others --names backend,frontend --prefix-colors blue,green \"npm --prefix apps/backend run dev\" \"npm --prefix apps/frontend run dev\"",
-    "up": "npm run db:up && pm2 start ecosystem.config.js && pm2 list",
-    "down": "pm2 delete ecosystem.config.js",
-    "restart": "pm2 restart ecosystem.config.js",
-    "logs": "pm2 logs",
-    "status": "pm2 list"
+    "up": "docker compose up -d --build --wait",
+    "down": "docker compose down",
+    "restart": "docker compose restart",
+    "logs": "docker compose logs -f",
+    "status": "docker compose ps"
   },
   "repository": {
     "type": "git",
@@ -32,15 +35,25 @@
     "concurrently": "^10.0.5",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
-    "pm2": "^7.0.4",
     "prettier": "^3.9.6"
   },
   "lint-staged": {
-    "apps/**/*.{ts,tsx,js,jsx,json,css,md}": [
-      "prettier --write"
+    "apps/backend/**/*.ts": [
+      "prettier --write",
+      "npm --prefix apps/backend run lint -- --fix"
     ],
-    "*.{js,mjs,cjs,json}": "prettier --write",
-    "scripts/**/*.{js,mjs,cjs}": "prettier --write",
-    "README.md": "prettier --write"
+    "apps/frontend/**/*.{ts,tsx,js,jsx}": [
+      "prettier --write",
+      "npm --prefix apps/frontend run lint -- --fix"
+    ],
+    "apps/**/*.{mjs,cjs,json,css,md,yaml,yml,html}": "prettier --write",
+    "docs/**/*.{md,yaml,yml,html}": "prettier --write",
+    "deploy/**/*.{md,yaml,yml,json}": "prettier --write",
+    ".github/**/*.{md,yaml,yml,json}": "prettier --write",
+    "scripts/**/*.{mjs,cjs,js}": "prettier --write",
+    "*.{js,mjs,cjs,json,md,yaml,yml}": "prettier --write",
+    ".doco-cd.yaml": "prettier --write",
+    ".prettierrc": "prettier --write",
+    ".sops.yaml": "prettier --write"
   }
 }
