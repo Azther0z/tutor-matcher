@@ -1,32 +1,85 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    hostname: tutor-matcher-postgres
+    environment:
+      POSTGRES_DB: tutor_matcher
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - tutor_matcher_postgres_data:/var/lib/postgresql/data
+    networks:
+      - default
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-tutor_matcher}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      replicas: 1
+      update_config:
+        order: stop-first
+        failure_action: rollback
+      restart_policy:
+        condition: any
+
   frontend:
     image: docker.io/azther0z/tutor-matcher-frontend:latest
     hostname: tutor-matcher-frontend
     environment:
-      PORT: '3000'
+      PORT: "3000"
+    labels:
+      observability.logs: "true"
     ports:
       - target: 3000
         published: 3333
         protocol: tcp
-    restart: unless-stopped
+    networks:
+      - default
+      - observability
+    deploy:
+      replicas: 1
+      update_config:
+        order: stop-first
+        failure_action: rollback
+      restart_policy:
+        condition: any
 
   backend:
     image: docker.io/azther0z/tutor-matcher-backend:latest
     hostname: tutor-matcher-backend
     environment:
-      PORT: '3001'
-      FRONTEND_URL: '${FRONTEND_URL:-http://localhost:3333}'
+      DATABASE_URL_FILE: /run/secrets/backend_database_url
+      PORT: "3001"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3333}"
+    secrets:
+      - backend_database_url
     ports:
-      - '3001:3001'
-    healthcheck:
-      test:
-        [
-          'CMD',
-          'node',
-          '-e',
-          "fetch('http://localhost:3001/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+      - "3001:3001"
+    networks:
+      - default
+      - observability
+    deploy:
+      replicas: 1
+      update_config:
+        order: stop-first
+        failure_action: rollback
+      restart_policy:
+        condition: any
+
+volumes:
+  tutor_matcher_postgres_data:
+
+secrets:
+  backend_database_url:
+    file: ./secrets/backend_database_url.enc.txt
+  postgres_password:
+    file: ./secrets/postgres_password.enc.txt
+
+networks:
+  default: {}
+  observability:
+    external: true

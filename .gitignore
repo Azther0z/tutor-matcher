@@ -2,6 +2,9 @@
 node_modules/
 .env
 deploy/secrets/*.env
+!deploy/secrets/*.enc.env
 deploy/secrets/*.env.dec
+deploy/secrets/*.txt
+!deploy/secrets/*.enc.txt
 dist/
 .next/
