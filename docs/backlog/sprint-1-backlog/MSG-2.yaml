@@ -18,7 +18,7 @@ tasks:
     status: todo
     estimate_hours: 4
   - id: MSG-2-T3
-    title: "Implement per-user preference filtering (respect disabled types)"
+    title: "Implement per-member preference filtering (respect disabled types)"
     assignees: ["Santa", "Plai"]
     role: "Backend"
     status: todo

@@ -6,7 +6,7 @@ order: 16
 estimate_hours: 8
 tasks:
   - id: PROF-1-T1
-    title: "Design the learner profile setup page"
+    title: "Design the student profile setup page"
     assignees: ["Poom", "Pee"]
     role: UXUI
     status: todo
@@ -24,7 +24,7 @@ tasks:
     status: todo
     estimate_hours: 2
   - id: PROF-1-T4
-    title: "Write acceptance tests for the learner profile (complete, missing fields)"
+    title: "Write acceptance tests for the student profile (complete, missing fields)"
     assignees: ["Santa", "Plai"]
     role: QA
     status: todo

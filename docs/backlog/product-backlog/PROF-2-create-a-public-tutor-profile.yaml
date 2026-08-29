@@ -5,7 +5,7 @@ epic: "User Profile Management"
 role: "Tutor"
 lifecycle: backlog
 story_points: 5
-dependencies: ["US1-1"]
+dependencies: ["AUTH-1"]
 acceptance_criteria:
   - given: "a Tutor fills in bio, subjects, rate, AND uploads an intro video,"
     when: "they publish the profile,"

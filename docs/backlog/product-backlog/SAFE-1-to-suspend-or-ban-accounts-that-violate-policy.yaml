@@ -5,7 +5,7 @@ epic: "Admin, Trust & Safety"
 role: "Admin"
 lifecycle: backlog
 story_points: 2
-dependencies: ["US1-2"]
+dependencies: ["AUTH-2"]
 acceptance_criteria:
   - given: "an Admin reviews a reported account,"
     when: "they choose to suspend/ban,"

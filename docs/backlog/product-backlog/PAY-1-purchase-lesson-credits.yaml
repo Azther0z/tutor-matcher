@@ -5,11 +5,11 @@ epic: "Payments & Billing"
 role: "Student"
 lifecycle: backlog
 story_points: 5
-dependencies: ["US1-2"]
+dependencies: ["AUTH-2"]
 acceptance_criteria:
   - given: "a Student selects a package and scans the generated PromptPay QR,"
     when: "the transfer is confirmed,"
-    then: "credits are added to their balance and a receipt is emailed."
+    then: "credits are added to their balance and a transfer confirmation is emailed."
   - given: "payment fails or isn't confirmed,"
     when: "checkout is attempted,"
     then: "an error is shown and no credits are added."

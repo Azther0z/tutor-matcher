@@ -25,8 +25,8 @@ backlog and Sprint 1.
 
 ## Product Stories
 
-Story files contain the user story, epic, role, lifecycle, story points,
-dependencies, structured Given/When/Then acceptance criteria, and inline
+Story files contain the product story, epic, role, lifecycle, story points,
+dependencies by stable product-story ID, structured Given/When/Then acceptance criteria, and inline
 source/journey references. Lifecycle values are `backlog`, `todo`, `review`,
 `done`, and `cancelled`.
 
@@ -56,5 +56,6 @@ Completed and cancelled story files remain in place.
 ## Checks
 
 Run `npm run format:check` and `npm run backlog:check`. CI checks formatting,
-YAML structure, required fields, stable IDs, duplicate IDs, filename/path
-agreement, valid links, allowed values, and required immutable source files.
+YAML structure, required fields, stable IDs, dependency IDs, duplicate IDs,
+filename/path agreement, valid links, allowed values, and required immutable
+source files.

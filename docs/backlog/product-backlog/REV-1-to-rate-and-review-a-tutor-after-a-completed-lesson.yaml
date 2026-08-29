@@ -1,11 +1,11 @@
 id: REV-1
 title: "To rate and review a Tutor after a completed lesson"
-description: "As a Student, I want to rate and review a Tutor after a completed lesson so that other students benefit from my feedback."
+description: "As a Student, I want to rate and review a Tutor after a completed lesson so that other students benefit from my comment."
 epic: "Reviews & Ratings"
 role: "Student"
 lifecycle: backlog
 story_points: 2
-dependencies: ["US6-2"]
+dependencies: ["CLASS-2"]
 acceptance_criteria:
   - given: "a lesson is marked 'Completed',"
     when: "the Student submits a rating (1-5) and optional comment,"

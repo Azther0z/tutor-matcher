@@ -1,14 +1,14 @@
 id: CLASS-2
 title: "Automatically complete lessons"
-description: "As a user, I want the system to log a lesson as 'completed' automatically so that payment settlement and reviews are triggered correctly."
+description: "As a member, I want the system to log a lesson as 'completed' automatically so that payment settlement and reviews are triggered correctly."
 epic: "Virtual Classroom & Lesson Delivery"
-role: "user"
+role: "member"
 lifecycle: backlog
 story_points: 3
-dependencies: ["US6-1"]
+dependencies: ["CLASS-1"]
 acceptance_criteria:
   - given: "both participants join and stay for the minimum required duration,"
-    when: "the session ends,"
+    when: "the lesson ends,"
     then: "the lesson status changes to 'Completed'."
   - given: "one participant does not attend for the minimum required duration,"
     when: "the lesson ends,"

@@ -5,7 +5,7 @@ epic: "Tutor Search & Discovery"
 role: "Student"
 lifecycle: backlog
 story_points: 5
-dependencies: ["US2-1", "US3-1"]
+dependencies: ["PROF-1", "DISC-1"]
 acceptance_criteria:
   - given: "a Student has a profile with subjects/goals,"
     when: "they open the discovery page,"

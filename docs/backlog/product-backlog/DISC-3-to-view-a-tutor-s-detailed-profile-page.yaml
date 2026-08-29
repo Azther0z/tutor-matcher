@@ -5,7 +5,7 @@ epic: "Tutor Search & Discovery"
 role: "Student"
 lifecycle: backlog
 story_points: 2
-dependencies: ["US3-1"]
+dependencies: ["DISC-1"]
 acceptance_criteria:
   - given: "a Student clicks a tutor card,"
     when: "the profile page loads,"

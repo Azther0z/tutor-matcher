@@ -5,7 +5,7 @@ epic: "Lesson Booking & Scheduling"
 role: "Student"
 lifecycle: backlog
 story_points: 5
-dependencies: ["US4-1", "US2-3"]
+dependencies: ["BOOK-1", "PROF-3"]
 acceptance_criteria:
   - given: "a Student selects a recurrence pattern (e.g. weekly),"
     when: "confirmed,"

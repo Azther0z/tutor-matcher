@@ -1,6 +1,6 @@
 id: BOOK-6
 title: "Accept a lesson invitation"
-description: "As an invited Student, I want to accept a lesson invitation so that I can join the scheduled learning session."
+description: "As an invited Student, I want to accept a lesson invitation so that I can join the scheduled lesson."
 epic: "Lesson Booking & Scheduling"
 role: "Student"
 lifecycle: backlog

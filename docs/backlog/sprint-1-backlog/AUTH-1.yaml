@@ -24,7 +24,7 @@ tasks:
     status: todo
     estimate_hours: 3
   - id: AUTH-1-T4
-    title: "Create the user account database schema (Student/Tutor)"
+    title: "Create the member account database schema (Student/Tutor)"
     assignees: ["Santa", "Plai"]
     role: Backend
     status: todo

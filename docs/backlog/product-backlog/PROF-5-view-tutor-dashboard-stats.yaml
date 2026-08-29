@@ -1,6 +1,6 @@
 id: PROF-5
 title: "View tutor dashboard stats"
-description: "As a Tutor, I want to view dashboard stats and learner engagement so that I can understand my teaching activity and improve it."
+description: "As a Tutor, I want to view dashboard stats and student engagement so that I can understand my teaching activity and improve it."
 epic: "User Profile Management"
 role: "Tutor"
 lifecycle: backlog

@@ -249,9 +249,9 @@
           {
             "id": "AUTH-1",
             "title": "Create a Student or Tutor account",
-            "description": "As a new user, I want to sign up as either a Student or a Tutor so that I get an account tailored to my role.",
+            "description": "As a new member, I want to sign up as either a Student or a Tutor so that I get an account tailored to my role.",
             "epic": "Account Registration & Authentication",
-            "role": "new user",
+            "role": "new member",
             "status": "backlog",
             "points": 5,
             "criteria": [
@@ -262,27 +262,27 @@
           {
             "id": "AUTH-2",
             "title": "To log in with my email and password",
-            "description": "As a user, I want to log in with my email and password so that I can access my account.",
+            "description": "As a member, I want to log in with my email and password so that I can access my account.",
             "epic": "Account Registration & Authentication",
-            "role": "user",
+            "role": "member",
             "status": "backlog",
             "points": 2,
             "criteria": [
-              "valid credentials, the user submits the login form, they are redirected to their dashboard.",
-              "invalid credentials, the user submits the login form, an error message is shown without revealing whether the email exists."
+              "valid credentials, the member submits the login form, they are redirected to their dashboard.",
+              "invalid credentials, the member submits the login form, an error message is shown without revealing whether the email exists."
             ]
           },
           {
             "id": "AUTH-3",
             "title": "To reset my password",
-            "description": "As a user, I want to reset my password so that I can regain access if I forget it.",
+            "description": "As a member, I want to reset my password so that I can regain access if I forget it.",
             "epic": "Account Registration & Authentication",
-            "role": "user",
+            "role": "member",
             "status": "backlog",
             "points": 3,
             "criteria": [
-              "a user requests a password reset, they enter a registered email, a time-limited reset link is emailed.",
-              "the reset link is expired or used, the user opens it, the system shows an error and offers to resend."
+              "a member requests a password reset, they enter a registered email, a time-limited reset link is emailed.",
+              "the reset link is expired or used, the member opens it, the system shows an error and offers to resend."
             ]
           },
           {
@@ -392,7 +392,7 @@
           {
             "id": "BOOK-6",
             "title": "Accept a lesson invitation",
-            "description": "As an invited Student, I want to accept a lesson invitation so that I can join the scheduled learning session.",
+            "description": "As an invited Student, I want to accept a lesson invitation so that I can join the scheduled lesson.",
             "epic": "Lesson Booking & Scheduling",
             "role": "Student",
             "status": "backlog",
@@ -405,27 +405,27 @@
           {
             "id": "CLASS-1",
             "title": "Join an automatically created Zoom lesson",
-            "description": "As a user, I want to join my lesson through a Zoom meeting that's automatically created for my booking so that I don't need to install anything extra or coordinate a video call link myself.",
+            "description": "As a member, I want to join my lesson through a Zoom meeting that's automatically created for my booking so that I don't need to install anything extra or coordinate a video call link myself.",
             "epic": "Virtual Classroom & Lesson Delivery",
-            "role": "user",
+            "role": "member",
             "status": "backlog",
             "points": 5,
             "criteria": [
               "a booking is confirmed, confirmation completes, the system calls the Zoom API to create a scheduled meeting and attaches the join link to the booking.",
-              "a lesson start time arrives, a user clicks 'Join Lesson', they are taken directly to that Zoom meeting.",
+              "a lesson start time arrives, a member clicks 'Join Lesson', they are taken directly to that Zoom meeting.",
               "the Zoom API call fails, meeting creation is attempted, the Tutor is notified to manually add a meeting link instead, so the booking isn't blocked."
             ]
           },
           {
             "id": "CLASS-2",
             "title": "Automatically complete lessons",
-            "description": "As a user, I want the system to log a lesson as 'completed' automatically so that payment settlement and reviews are triggered correctly.",
+            "description": "As a member, I want the system to log a lesson as 'completed' automatically so that payment settlement and reviews are triggered correctly.",
             "epic": "Virtual Classroom & Lesson Delivery",
-            "role": "user",
+            "role": "member",
             "status": "backlog",
             "points": 3,
             "criteria": [
-              "both participants join and stay for the minimum required duration, the session ends, the lesson status changes to 'Completed'.",
+              "both participants join and stay for the minimum required duration, the lesson ends, the lesson status changes to 'Completed'.",
               "one participant does not attend for the minimum required duration, the lesson ends, the lesson is not marked as Completed."
             ]
           },
@@ -484,14 +484,14 @@
           {
             "id": "MSG-2",
             "title": "To receive notifications for bookings, messages, and payments",
-            "description": "As a user, I want to receive notifications for bookings, messages, and payments so that I stay informed of important account activity.",
+            "description": "As a member, I want to receive notifications for bookings, messages, and payments so that I stay informed of important account activity.",
             "epic": "Messaging & Notifications",
-            "role": "user",
+            "role": "member",
             "status": "backlog",
             "points": 3,
             "criteria": [
-              "a triggering event occurs (new booking, new message, payment processed), the event fires, an email notification is sent based on user preferences.",
-              "a user has disabled notifications for a specific event type, that event occurs, no notification is sent for that event type."
+              "a triggering event occurs (new booking, new message, payment processed), the event fires, an email notification is sent based on member preferences.",
+              "a member has disabled notifications for a specific event type, that event occurs, no notification is sent for that event type."
             ]
           },
           {
@@ -503,7 +503,7 @@
             "status": "backlog",
             "points": 5,
             "criteria": [
-              "a Student selects a package and scans the generated PromptPay QR, the transfer is confirmed, credits are added to their balance and a receipt is emailed.",
+              "a Student selects a package and scans the generated PromptPay QR, the transfer is confirmed, credits are added to their balance and a transfer confirmation is emailed.",
               "payment fails or isn't confirmed, checkout is attempted, an error is shown and no credits are added."
             ]
           },
@@ -549,8 +549,8 @@
           },
           {
             "id": "PROF-1",
-            "title": "To build a learner profile (subjects of interest, level, goals)",
-            "description": "As a Student, I want to build a learner profile (subjects of interest, level, goals) so that I get better tutor recommendations.",
+            "title": "To build a student profile (subjects of interest, level, goals)",
+            "description": "As a Student, I want to build a student profile (subjects of interest, level, goals) so that I get better tutor recommendations.",
             "epic": "User Profile Management",
             "role": "Student",
             "status": "backlog",
@@ -589,20 +589,20 @@
           {
             "id": "PROF-4",
             "title": "To edit my profile and account settings",
-            "description": "As a user, I want to edit my profile and account settings so that my information stays accurate.",
+            "description": "As a member, I want to edit my profile and account settings so that my information stays accurate.",
             "epic": "User Profile Management",
-            "role": "user",
+            "role": "member",
             "status": "backlog",
             "points": 2,
             "criteria": [
-              "a user edits profile fields, they save changes, updates are reflected immediately across the platform.",
-              "a user enters an invalid value in a profile or account setting, they save the changes, the update is rejected and the invalid field is highlighted."
+              "a member edits profile fields, they save changes, updates are reflected immediately across the platform.",
+              "a member enters an invalid value in a profile or account setting, they save the changes, the update is rejected and the invalid field is highlighted."
             ]
           },
           {
             "id": "PROF-5",
             "title": "View tutor dashboard stats",
-            "description": "As a Tutor, I want to view dashboard stats and learner engagement so that I can understand my teaching activity and improve it.",
+            "description": "As a Tutor, I want to view dashboard stats and student engagement so that I can understand my teaching activity and improve it.",
             "epic": "User Profile Management",
             "role": "Tutor",
             "status": "backlog",
@@ -615,7 +615,7 @@
           {
             "id": "REV-1",
             "title": "To rate and review a Tutor after a completed lesson",
-            "description": "As a Student, I want to rate and review a Tutor after a completed lesson so that other students benefit from my feedback.",
+            "description": "As a Student, I want to rate and review a Tutor after a completed lesson so that other students benefit from my comment.",
             "epic": "Reviews & Ratings",
             "role": "Student",
             "status": "backlog",
@@ -628,7 +628,7 @@
           {
             "id": "REV-2",
             "title": "To respond publicly to a review",
-            "description": "As a Tutor, I want to respond publicly to a review so that I can address feedback professionally.",
+            "description": "As a Tutor, I want to respond publicly to a review so that I can address the comment professionally.",
             "epic": "Reviews & Ratings",
             "role": "Tutor",
             "status": "backlog",
@@ -641,14 +641,14 @@
           {
             "id": "REV-3",
             "title": "To flag a review's comment as inappropriate",
-            "description": "As a user, I want to flag a review's comment as inappropriate so that Admin can review and take action on abusive or fake content.",
+            "description": "As a member, I want to flag a review's comment as inappropriate so that Admin can review and take action on abusive or fake content.",
             "epic": "Reviews & Ratings",
-            "role": "user",
+            "role": "member",
             "status": "backlog",
             "points": 2,
             "criteria": [
-              "a user is viewing a review's comment on a Tutor's profile, they submit a flag with a reason, the comment is marked 'Flagged' and queued for Admin review.",
-              "a user has already flagged a specific comment, they attempt to flag it again, the duplicate flag is rejected."
+              "a member is viewing a review's comment on a Tutor's profile, they submit a flag with a reason, the comment is marked 'Flagged' and queued for Admin review.",
+              "a member has already flagged a specific comment, they attempt to flag it again, the duplicate flag is rejected."
             ]
           },
           {
@@ -660,8 +660,8 @@
             "status": "backlog",
             "points": 3,
             "criteria": [
-              "a review's comment is flagged by a user, an Admin reviews it and finds it does not violate policy, the Admin approves the comment, it remains visible on the Tutor's profile, and the reporter is notified of the outcome.",
-              "a review's comment is flagged by a user, an Admin reviews it and finds it violates policy, the Admin removes the comment, it no longer appears on the Tutor's profile, and both the reporter and the comment's author are notified of the outcome."
+              "a review's comment is flagged by a member, an Admin reviews it and finds it does not violate policy, the Admin approves the comment, it remains visible on the Tutor's profile, and the reporter is notified of the outcome.",
+              "a review's comment is flagged by a member, an Admin reviews it and finds it violates policy, the Admin removes the comment, it no longer appears on the Tutor's profile, and both the reporter and the comment's author are notified of the outcome."
             ]
           },
           {
@@ -730,7 +730,7 @@
                 },
                 {
                   "id": "AUTH-1-T4",
-                  "title": "Create the user account database schema (Student/Tutor)",
+                  "title": "Create the member account database schema (Student/Tutor)",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 2,
@@ -762,7 +762,7 @@
                 }
               ],
               "title": "Create a Student or Tutor account",
-              "description": "As a new user, I want to sign up as either a Student or a Tutor so that I get an account tailored to my role.",
+              "description": "As a new member, I want to sign up as either a Student or a Tutor so that I get an account tailored to my role.",
               "epic": "Account Registration & Authentication",
               "assignees": ["Ideal", "Pooh", "Santa", "Plai"]
             },
@@ -822,7 +822,7 @@
                 }
               ],
               "title": "To log in with my email and password",
-              "description": "As a user, I want to log in with my email and password so that I can access my account.",
+              "description": "As a member, I want to log in with my email and password so that I can access my account.",
               "epic": "Account Registration & Authentication",
               "assignees": ["Ideal", "Pooh", "Santa", "Plai", "Nesta", "Washi"]
             },
@@ -874,7 +874,7 @@
                 }
               ],
               "title": "To reset my password",
-              "description": "As a user, I want to reset my password so that I can regain access if I forget it.",
+              "description": "As a member, I want to reset my password so that I can regain access if I forget it.",
               "epic": "Account Registration & Authentication",
               "assignees": ["Ideal", "Pooh", "Poom", "Pee", "Nesta", "Washi"]
             },
@@ -1402,7 +1402,7 @@
                 },
                 {
                   "id": "MSG-2-T3",
-                  "title": "Implement per-user preference filtering (respect disabled types)",
+                  "title": "Implement per-member preference filtering (respect disabled types)",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 3,
@@ -1418,7 +1418,7 @@
                 }
               ],
               "title": "To receive notifications for bookings, messages, and payments",
-              "description": "As a user, I want to receive notifications for bookings, messages, and payments so that I stay informed of important account activity.",
+              "description": "As a member, I want to receive notifications for bookings, messages, and payments so that I stay informed of important account activity.",
               "epic": "Messaging & Notifications",
               "assignees": ["Santa", "Plai", "Ideal", "Pooh"]
             },
@@ -1430,7 +1430,7 @@
               "tasks": [
                 {
                   "id": "PROF-1-T1",
-                  "title": "Design the learner profile setup page",
+                  "title": "Design the student profile setup page",
                   "role": "UXUI",
                   "status": "todo",
                   "hours": 2,
@@ -1454,15 +1454,15 @@
                 },
                 {
                   "id": "PROF-1-T4",
-                  "title": "Write acceptance tests for the learner profile (complete, missing fields)",
+                  "title": "Write acceptance tests for the student profile (complete, missing fields)",
                   "role": "QA",
                   "status": "todo",
                   "hours": 1,
                   "assignees": ["Santa", "Plai"]
                 }
               ],
-              "title": "To build a learner profile (subjects of interest, level, goals)",
-              "description": "As a Student, I want to build a learner profile (subjects of interest, level, goals) so that I get better tutor recommendations.",
+              "title": "To build a student profile (subjects of interest, level, goals)",
+              "description": "As a Student, I want to build a student profile (subjects of interest, level, goals) so that I get better tutor recommendations.",
               "epic": "User Profile Management",
               "assignees": ["Poom", "Pee", "Santa", "Plai"]
             },
@@ -1610,7 +1610,7 @@
                 }
               ],
               "title": "To edit my profile and account settings",
-              "description": "As a user, I want to edit my profile and account settings so that my information stays accurate.",
+              "description": "As a member, I want to edit my profile and account settings so that my information stays accurate.",
               "epic": "User Profile Management",
               "assignees": ["Saint", "Yongfu", "Poom", "Pee"]
             }

@@ -5,7 +5,7 @@ epic: "Payments & Billing"
 role: "Tutor"
 lifecycle: backlog
 story_points: 5
-dependencies: ["US5-1", "US6-2"]
+dependencies: ["PAY-1", "CLASS-2"]
 acceptance_criteria:
   - given: "a Tutor has completed lessons with settled payments,"
     when: "they request a payout,"

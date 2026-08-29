@@ -5,7 +5,7 @@ epic: "Messaging & Notifications"
 role: "Student"
 lifecycle: backlog
 story_points: 5
-dependencies: ["US3-3"]
+dependencies: ["DISC-3"]
 acceptance_criteria:
   - given: "a Student opens a tutor profile,"
     when: "they send a message,"

@@ -5,7 +5,7 @@ epic: "User Profile Management"
 role: "Tutor"
 lifecycle: backlog
 story_points: 3
-dependencies: ["US1-1", "US2-2"]
+dependencies: ["AUTH-1", "PROF-2"]
 acceptance_criteria:
   - given: "a Tutor updates their availability calendar,"
     when: "saved,"
