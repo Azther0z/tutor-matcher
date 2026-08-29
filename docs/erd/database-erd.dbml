@@ -1,0 +1,379 @@
+// TutorMatcher database structure
+// Docs: https://dbml.dbdiagram.io/docs
+// Scope: real app model for 1-1 instant-paid tutoring, subject-specific availability,
+// unified wallet ledger, tutor review workflow, messages, reviews, and admin moderation.
+
+Enum user_role {
+  student
+  tutor
+  admin
+}
+
+Enum tutor_application_status {
+  draft
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+Enum review_status {
+  pending
+  approved
+  rejected
+}
+
+Enum subject_status {
+  draft
+  published
+  archived
+}
+
+Enum booking_status {
+  draft
+  payment_due
+  confirmed
+  completed
+  cancelled
+  refunded
+  disputed
+}
+
+Enum booking_format {
+  online
+  in_person
+}
+
+Enum transaction_type {
+  topup
+  lesson_payment
+  earning
+  refund
+  payout
+}
+
+Enum transaction_direction {
+  credit
+  debit
+}
+
+Enum transaction_status {
+  pending
+  succeeded
+  failed
+  cancelled
+}
+
+Enum admin_review_type {
+  tutor_application
+  listing_change
+  document
+  review
+  message
+  refund_dispute
+}
+
+Enum admin_review_status {
+  pending
+  approved
+  rejected
+  resolved
+}
+
+Table users {
+  id integer [primary key]
+  email varchar [not null, unique]
+  password_hash varchar [not null]
+  display_name varchar [not null]
+  role user_role [not null, default: 'student']
+  is_tutor boolean [not null, default: false]
+  created_at timestamp [not null]
+  updated_at timestamp
+  suspended_at timestamp
+}
+
+Table user_profiles {
+  user_id integer [primary key]
+  username varchar [unique]
+  avatar_url varchar
+  timezone varchar [not null, default: 'Asia/Bangkok']
+  public_email varchar
+  bio text
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table tutor_applications {
+  id integer [primary key]
+  user_id integer [not null]
+  bio text [not null]
+  status tutor_application_status [not null, default: 'pending']
+  submitted_at timestamp [not null]
+  reviewed_at timestamp
+  reviewed_by_user_id integer
+  rejection_reason text
+}
+
+Table tutor_documents {
+  id integer [primary key]
+  tutor_application_id integer [not null]
+  user_id integer [not null]
+  document_type varchar [not null, note: 'government_id or teaching_certification']
+  file_url varchar [not null]
+  status review_status [not null, default: 'pending']
+  uploaded_at timestamp [not null]
+}
+
+Table tutor_profiles {
+  user_id integer [primary key]
+  headline varchar
+  bio text
+  intro_video_url varchar
+  published boolean [not null, default: false]
+  average_rating decimal(3,2) [not null, default: 0]
+  review_count integer [not null, default: 0]
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table tutor_listing_revisions {
+  id integer [primary key]
+  tutor_user_id integer [not null]
+  name varchar
+  headline varchar
+  bio text
+  intro_video_url varchar
+  published boolean
+  status admin_review_status [not null, default: 'pending']
+  submitted_at timestamp [not null]
+  reviewed_at timestamp
+  reviewed_by_user_id integer
+  rejection_reason text
+}
+
+Table tutor_subjects {
+  id integer [primary key]
+  tutor_user_id integer [not null]
+  slug varchar [not null]
+  name varchar [not null]
+  description text [not null]
+  hourly_rate_baht integer [not null]
+  format booking_format [not null, default: 'online']
+  status subject_status [not null, default: 'published']
+  created_at timestamp [not null]
+  updated_at timestamp
+
+  indexes {
+    (tutor_user_id, slug) [unique]
+  }
+}
+
+Table tutor_availability_slots {
+  id integer [primary key]
+  tutor_user_id integer [not null]
+  starts_at timestamp [not null]
+  ends_at timestamp [not null]
+  is_open boolean [not null, default: true]
+  booked_booking_id integer
+  created_at timestamp [not null]
+  updated_at timestamp
+
+  indexes {
+    (tutor_user_id, starts_at) [unique]
+  }
+}
+
+Table availability_slot_subjects {
+  availability_slot_id integer [not null]
+  tutor_subject_id integer [not null]
+
+  indexes {
+    (availability_slot_id, tutor_subject_id) [pk]
+  }
+}
+
+Table bookings {
+  id integer [primary key]
+  booking_number varchar [not null, unique]
+  student_user_id integer [not null]
+  tutor_user_id integer [not null]
+  tutor_subject_id integer [not null]
+  status booking_status [not null, default: 'draft']
+  format booking_format [not null, default: 'online']
+  starts_at timestamp [not null]
+  ends_at timestamp [not null]
+  duration_minutes integer [not null]
+  price_baht integer [not null]
+  student_note text
+  zoom_url varchar
+  paid_transaction_id integer
+  cancelled_at timestamp
+  completed_at timestamp
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table booking_slots {
+  booking_id integer [not null]
+  availability_slot_id integer [not null]
+
+  indexes {
+    (booking_id, availability_slot_id) [pk]
+  }
+}
+
+Table wallets {
+  id integer [primary key]
+  user_id integer [not null, unique]
+  available_balance_baht integer [not null, default: 0]
+  pending_balance_baht integer [not null, default: 0]
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table wallet_transactions {
+  id integer [primary key]
+  wallet_id integer [not null]
+  user_id integer [not null]
+  booking_id integer
+  type transaction_type [not null]
+  direction transaction_direction [not null]
+  status transaction_status [not null, default: 'pending']
+  amount_baht integer [not null]
+  balance_after_baht integer
+  external_reference varchar
+  description varchar
+  created_at timestamp [not null]
+  settled_at timestamp
+}
+
+Table payout_accounts {
+  id integer [primary key]
+  user_id integer [not null]
+  account_holder_name varchar [not null]
+  bank_name varchar
+  bank_account_last4 varchar
+  promptpay_id_hash varchar
+  is_default boolean [not null, default: true]
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table conversations {
+  id integer [primary key]
+  student_user_id integer [not null]
+  tutor_user_id integer [not null]
+  tutor_subject_id integer
+  booking_id integer
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table messages {
+  id integer [primary key]
+  conversation_id integer [not null]
+  sender_user_id integer [not null]
+  body text [not null]
+  read_at timestamp
+  created_at timestamp [not null]
+}
+
+Table reviews {
+  id integer [primary key]
+  booking_id integer [not null, unique]
+  tutor_user_id integer [not null]
+  student_user_id integer [not null]
+  tutor_subject_id integer [not null]
+  rating integer [not null]
+  headline varchar
+  body text
+  status review_status [not null, default: 'approved']
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table review_replies {
+  id integer [primary key]
+  review_id integer [not null, unique]
+  tutor_user_id integer [not null]
+  body text [not null]
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table notification_preferences {
+  id integer [primary key]
+  user_id integer [not null]
+  event_type varchar [not null, note: 'booking, lesson, message, wallet, payout, product']
+  email_enabled boolean [not null, default: true]
+  push_enabled boolean [not null, default: true]
+  updated_at timestamp
+
+  indexes {
+    (user_id, event_type) [unique]
+  }
+}
+
+Table admin_reviews {
+  id integer [primary key]
+  review_type admin_review_type [not null]
+  status admin_review_status [not null, default: 'pending']
+  subject_table varchar [not null]
+  subject_id integer [not null]
+  submitted_by_user_id integer
+  reviewed_by_user_id integer
+  reason text
+  admin_note text
+  submitted_at timestamp [not null]
+  reviewed_at timestamp
+}
+
+Table audit_logs {
+  id integer [primary key]
+  actor_user_id integer
+  action varchar [not null]
+  target_table varchar [not null]
+  target_id integer [not null]
+  metadata json
+  created_at timestamp [not null]
+}
+
+Ref user_profiles_user: user_profiles.user_id - users.id
+Ref tutor_applications_user: tutor_applications.user_id > users.id
+Ref tutor_applications_reviewer: tutor_applications.reviewed_by_user_id > users.id
+Ref tutor_documents_application: tutor_documents.tutor_application_id > tutor_applications.id
+Ref tutor_documents_user: tutor_documents.user_id > users.id
+Ref tutor_profiles_user: tutor_profiles.user_id - users.id
+Ref tutor_listing_revisions_tutor: tutor_listing_revisions.tutor_user_id > users.id
+Ref tutor_listing_revisions_reviewer: tutor_listing_revisions.reviewed_by_user_id > users.id
+Ref tutor_subjects_tutor: tutor_subjects.tutor_user_id > users.id
+Ref availability_tutor: tutor_availability_slots.tutor_user_id > users.id
+Ref slot_subjects_slot: availability_slot_subjects.availability_slot_id > tutor_availability_slots.id
+Ref slot_subjects_subject: availability_slot_subjects.tutor_subject_id > tutor_subjects.id
+Ref bookings_student: bookings.student_user_id > users.id
+Ref bookings_tutor: bookings.tutor_user_id > users.id
+Ref bookings_subject: bookings.tutor_subject_id > tutor_subjects.id
+Ref bookings_paid_transaction: bookings.paid_transaction_id > wallet_transactions.id
+Ref booking_slots_booking: booking_slots.booking_id > bookings.id
+Ref booking_slots_slot: booking_slots.availability_slot_id > tutor_availability_slots.id
+Ref wallets_user: wallets.user_id - users.id
+Ref wallet_transactions_wallet: wallet_transactions.wallet_id > wallets.id
+Ref wallet_transactions_user: wallet_transactions.user_id > users.id
+Ref wallet_transactions_booking: wallet_transactions.booking_id > bookings.id
+Ref payout_accounts_user: payout_accounts.user_id > users.id
+Ref conversations_student: conversations.student_user_id > users.id
+Ref conversations_tutor: conversations.tutor_user_id > users.id
+Ref conversations_subject: conversations.tutor_subject_id > tutor_subjects.id
+Ref conversations_booking: conversations.booking_id > bookings.id
+Ref messages_conversation: messages.conversation_id > conversations.id
+Ref messages_sender: messages.sender_user_id > users.id
+Ref reviews_booking: reviews.booking_id - bookings.id
+Ref reviews_tutor: reviews.tutor_user_id > users.id
+Ref reviews_student: reviews.student_user_id > users.id
+Ref reviews_subject: reviews.tutor_subject_id > tutor_subjects.id
+Ref review_replies_review: review_replies.review_id - reviews.id
+Ref review_replies_tutor: review_replies.tutor_user_id > users.id
+Ref notification_preferences_user: notification_preferences.user_id > users.id
+Ref admin_reviews_submitter: admin_reviews.submitted_by_user_id > users.id
+Ref admin_reviews_reviewer: admin_reviews.reviewed_by_user_id > users.id
+Ref audit_logs_actor: audit_logs.actor_user_id > users.id

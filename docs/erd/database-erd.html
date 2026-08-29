@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TutorMatcher — Database ERD</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #656d76; --line: #d0d7de;
+    --accent: #4c6ef5; --panel: #f6f8fa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #30363d; --panel: #161b22; }
+    #erd { background: #ffffff; border-radius: 8px; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         color: var(--fg); background: var(--bg); }
+  header { padding: 20px 24px; border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0 0 4px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; max-width: 70ch; }
+  .layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 74px); }
+  aside { border-right: 1px solid var(--line); padding: 16px; overflow-y: auto; background: var(--panel); }
+  aside .grp { margin-bottom: 14px; }
+  aside h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  aside ul { margin: 0; padding: 0; list-style: none; }
+  aside li { padding: 1px 0; }
+  code { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  main { position: relative; overflow: hidden; }
+  .toolbar { position: absolute; top: 12px; right: 16px; z-index: 5; display: flex; gap: 6px;
+             background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 4px; }
+  .toolbar button { font: 13px/1 sans-serif; border: 0; background: transparent; color: var(--fg);
+                    padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+  .toolbar button:hover { background: var(--panel); }
+  #viewport { position: absolute; inset: 0; overflow: auto; cursor: grab; }
+  #viewport.drag { cursor: grabbing; }
+  #stage { transform-origin: 0 0; padding: 24px; width: max-content; }
+  #erd { display: block; }
+  details.enums { margin: 16px; }
+  details.enums summary { cursor: pointer; font-weight: 600; }
+  details.enums table { border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  details.enums td { border: 1px solid var(--line); padding: 4px 8px; vertical-align: top; }
+  details.enums td:first-child { font-family: ui-monospace, monospace; white-space: nowrap; color: var(--accent); }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } aside { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>TutorMatcher — Database ERD</h1>
+  <p>Proposed data model for the full app (1‑to‑1 instant‑paid tutoring, subject availability,
+     wallet ledger, review workflow, messaging, admin moderation). Design reference —
+     <code>apps/backend/prisma/schema.prisma</code> is authoritative for what is built.
+     Drag to pan, use the buttons or scroll to zoom.</p>
+</header>
+<div class="layout">
+  <aside>
+    <div class="grp"><h3>Identity & moderation</h3><ul><li><code>users</code></li><li><code>user_profiles</code></li><li><code>notification_preferences</code></li><li><code>admin_reviews</code></li><li><code>audit_logs</code></li></ul></div><div class="grp"><h3>Tutor onboarding</h3><ul><li><code>tutor_applications</code></li><li><code>tutor_documents</code></li><li><code>tutor_profiles</code></li><li><code>tutor_listing_revisions</code></li></ul></div><div class="grp"><h3>Catalog & availability</h3><ul><li><code>tutor_subjects</code></li><li><code>tutor_availability_slots</code></li><li><code>availability_slot_subjects</code></li></ul></div><div class="grp"><h3>Bookings & messaging</h3><ul><li><code>bookings</code></li><li><code>booking_slots</code></li><li><code>conversations</code></li><li><code>messages</code></li></ul></div><div class="grp"><h3>Wallet & payout</h3><ul><li><code>wallets</code></li><li><code>wallet_transactions</code></li><li><code>payout_accounts</code></li></ul></div><div class="grp"><h3>Reviews</h3><ul><li><code>reviews</code></li><li><code>review_replies</code></li></ul></div>
+    <details class="enums" open>
+      <summary>Enum types</summary>
+      <table>
+        <tr><td>user_role</td><td>student, tutor, admin</td></tr>
+        <tr><td>tutor_application_status</td><td>draft, pending, approved, rejected, cancelled</td></tr>
+        <tr><td>review_status</td><td>pending, approved, rejected</td></tr>
+        <tr><td>subject_status</td><td>draft, published, archived</td></tr>
+        <tr><td>booking_status</td><td>draft, payment_due, confirmed, completed, cancelled, refunded, disputed</td></tr>
+        <tr><td>booking_format</td><td>online, in_person</td></tr>
+        <tr><td>transaction_type</td><td>topup, lesson_payment, earning, refund, payout</td></tr>
+        <tr><td>transaction_direction</td><td>credit, debit</td></tr>
+        <tr><td>transaction_status</td><td>pending, succeeded, failed, cancelled</td></tr>
+        <tr><td>admin_review_type</td><td>tutor_application, listing_change, document, review, message, refund_dispute</td></tr>
+        <tr><td>admin_review_status</td><td>pending, approved, rejected, resolved</td></tr>
+      </table>
+    </details>
+  </aside>
+  <main>
+    <div class="toolbar">
+      <button id="zoom-out" title="Zoom out">−</button>
+      <button id="zoom-reset" title="Reset">Fit</button>
+      <button id="zoom-in" title="Zoom in">+</button>
+    </div>
+    <div id="viewport">
+      <div id="stage">
+        <svg id="erd" xmlns="http://www.w3.org/2000/svg" width="2480" height="1318" viewBox="0 0 2480 1318" font-family="ui-sans-serif,system-ui,sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<defs>
+<marker id="crow" markerWidth="16" markerHeight="16" refX="13" refY="8" orient="auto"><path d="M13,8 L3,3 M13,8 L3,13 M3,3 L3,13" stroke="#7c8291" fill="none" stroke-width="1.3"/></marker>
+<marker id="one" markerWidth="16" markerHeight="16" refX="13" refY="8" orient="auto"><path d="M9,3 L9,13" stroke="#7c8291" stroke-width="1.6"/></marker>
+<marker id="oneS" markerWidth="16" markerHeight="16" refX="3" refY="8" orient="auto"><path d="M7,3 L7,13" stroke="#7c8291" stroke-width="1.6"/></marker>
+</defs>
+<path d="M300,349 H316 V79 H40" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#one)"/>
+<path d="M400,101 H384 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M400,211 H376 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M660,349 H676 V79 H400" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M400,371 H384 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M400,553 H384 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#one)"/>
+<path d="M400,845 H384 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M400,1043 H376 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M760,101 H744 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M760,393 H744 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1020,619 H1036 V371 H760" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1020,641 H1044 V79 H760" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1120,123 H1104 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1120,145 H1096 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1120,167 H1088 V79 H1020" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1380,365 H1396 V283 H1480" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1380,547 H1396 V79 H1120" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1120,569 H1104 V371 H1020" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1480,101 H1464 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#one)"/>
+<path d="M1740,305 H1756 V79 H1480" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1480,327 H1464 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1480,349 H1456 V79 H1380" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1480,663 H1464 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1120,685 H1104 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1120,707 H1096 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1120,729 H1088 V79 H1020" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1380,751 H1396 V79 H1120" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1380,911 H1396 V663 H1120" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1120,933 H1104 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1840,101 H1824 V79 H1380" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#one)"/>
+<path d="M1840,123 H1816 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1840,145 H1808 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M1840,167 H1800 V79 H1020" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M2100,415 H2116 V79 H1840" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#one)"/>
+<path d="M1840,437 H1824 V79 H300" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M300,619 H316 V79 H40" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M300,911 H316 V79 H40" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M300,933 H324 V79 H40" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<path d="M300,1137 H316 V79 H40" fill="none" stroke="#c3c8d0" stroke-width="1" opacity="0.9" marker-start="url(#oneS)" marker-end="url(#crow)"/>
+<g>
+<rect x="40" y="40" width="260" height="226" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="40" y="40" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="40" y="62" width="260" height="6" fill="#4C6EF5"/>
+<text x="170" y="59" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">users</text>
+<text x="48" y="83" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="90" y="83" font-size="11" fill="#212529" font-weight="700">id</text><text x="292" y="83" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="40" y1="90" x2="300" y2="90" stroke="#e9ecef"/>
+<text x="48" y="105" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="105" font-size="11" fill="#212529">email</text><text x="292" y="105" font-size="9" fill="#868E96" text-anchor="end">varchar U</text>
+<line x1="40" y1="112" x2="300" y2="112" stroke="#e9ecef"/>
+<text x="48" y="127" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="127" font-size="11" fill="#212529">password_hash</text><text x="292" y="127" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="40" y1="134" x2="300" y2="134" stroke="#e9ecef"/>
+<text x="48" y="149" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="149" font-size="11" fill="#212529">display_name</text><text x="292" y="149" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="40" y1="156" x2="300" y2="156" stroke="#e9ecef"/>
+<text x="48" y="171" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="171" font-size="11" fill="#212529">role</text><text x="292" y="171" font-size="9" fill="#868E96" text-anchor="end">user_role</text>
+<line x1="40" y1="178" x2="300" y2="178" stroke="#e9ecef"/>
+<text x="48" y="193" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="193" font-size="11" fill="#212529">is_tutor</text><text x="292" y="193" font-size="9" fill="#868E96" text-anchor="end">boolean</text>
+<line x1="40" y1="200" x2="300" y2="200" stroke="#e9ecef"/>
+<text x="48" y="215" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="215" font-size="11" fill="#212529">created_at</text><text x="292" y="215" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="40" y1="222" x2="300" y2="222" stroke="#e9ecef"/>
+<text x="48" y="237" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="237" font-size="11" fill="#212529">updated_at</text><text x="292" y="237" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="40" y1="244" x2="300" y2="244" stroke="#e9ecef"/>
+<text x="48" y="259" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="259" font-size="11" fill="#212529">suspended_at</text><text x="292" y="259" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="40" y="310" width="260" height="204" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="40" y="310" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="40" y="332" width="260" height="6" fill="#4C6EF5"/>
+<text x="170" y="329" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">user_profiles</text>
+<text x="48" y="353" font-size="9" fill="#B197FC" font-weight="700">PK FK</text><text x="90" y="353" font-size="11" fill="#212529" font-weight="700">user_id</text><text x="292" y="353" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="40" y1="360" x2="300" y2="360" stroke="#e9ecef"/>
+<text x="48" y="375" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="375" font-size="11" fill="#212529">username</text><text x="292" y="375" font-size="9" fill="#868E96" text-anchor="end">varchar U</text>
+<line x1="40" y1="382" x2="300" y2="382" stroke="#e9ecef"/>
+<text x="48" y="397" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="397" font-size="11" fill="#212529">avatar_url</text><text x="292" y="397" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="40" y1="404" x2="300" y2="404" stroke="#e9ecef"/>
+<text x="48" y="419" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="419" font-size="11" fill="#212529">timezone</text><text x="292" y="419" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="40" y1="426" x2="300" y2="426" stroke="#e9ecef"/>
+<text x="48" y="441" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="441" font-size="11" fill="#212529">public_email</text><text x="292" y="441" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="40" y1="448" x2="300" y2="448" stroke="#e9ecef"/>
+<text x="48" y="463" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="463" font-size="11" fill="#212529">bio</text><text x="292" y="463" font-size="9" fill="#868E96" text-anchor="end">text</text>
+<line x1="40" y1="470" x2="300" y2="470" stroke="#e9ecef"/>
+<text x="48" y="485" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="485" font-size="11" fill="#212529">created_at</text><text x="292" y="485" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="40" y1="492" x2="300" y2="492" stroke="#e9ecef"/>
+<text x="48" y="507" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="507" font-size="11" fill="#212529">updated_at</text><text x="292" y="507" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="40" y="558" width="260" height="160" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="40" y="558" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="40" y="580" width="260" height="6" fill="#4C6EF5"/>
+<text x="170" y="577" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">notification_preferences</text>
+<text x="48" y="601" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="90" y="601" font-size="11" fill="#212529" font-weight="700">id</text><text x="292" y="601" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="40" y1="608" x2="300" y2="608" stroke="#e9ecef"/>
+<text x="48" y="623" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="90" y="623" font-size="11" fill="#212529">user_id</text><text x="292" y="623" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="40" y1="630" x2="300" y2="630" stroke="#e9ecef"/>
+<text x="48" y="645" font-size="9" fill="#B197FC" font-weight="700">U</text><text x="90" y="645" font-size="11" fill="#212529">event_type</text><text x="292" y="645" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="40" y1="652" x2="300" y2="652" stroke="#e9ecef"/>
+<text x="48" y="667" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="667" font-size="11" fill="#212529">email_enabled</text><text x="292" y="667" font-size="9" fill="#868E96" text-anchor="end">boolean</text>
+<line x1="40" y1="674" x2="300" y2="674" stroke="#e9ecef"/>
+<text x="48" y="689" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="689" font-size="11" fill="#212529">push_enabled</text><text x="292" y="689" font-size="9" fill="#868E96" text-anchor="end">boolean</text>
+<line x1="40" y1="696" x2="300" y2="696" stroke="#e9ecef"/>
+<text x="48" y="711" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="711" font-size="11" fill="#212529">updated_at</text><text x="292" y="711" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="40" y="762" width="260" height="270" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="40" y="762" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="40" y="784" width="260" height="6" fill="#4C6EF5"/>
+<text x="170" y="781" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">admin_reviews</text>
+<text x="48" y="805" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="90" y="805" font-size="11" fill="#212529" font-weight="700">id</text><text x="292" y="805" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="40" y1="812" x2="300" y2="812" stroke="#e9ecef"/>
+<text x="48" y="827" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="827" font-size="11" fill="#212529">review_type</text><text x="292" y="827" font-size="9" fill="#868E96" text-anchor="end">admin_review_type</text>
+<line x1="40" y1="834" x2="300" y2="834" stroke="#e9ecef"/>
+<text x="48" y="849" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="849" font-size="11" fill="#212529">status</text><text x="292" y="849" font-size="9" fill="#868E96" text-anchor="end">admin_review_status</text>
+<line x1="40" y1="856" x2="300" y2="856" stroke="#e9ecef"/>
+<text x="48" y="871" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="871" font-size="11" fill="#212529">subject_table</text><text x="292" y="871" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="40" y1="878" x2="300" y2="878" stroke="#e9ecef"/>
+<text x="48" y="893" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="893" font-size="11" fill="#212529">subject_id</text><text x="292" y="893" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="40" y1="900" x2="300" y2="900" stroke="#e9ecef"/>
+<text x="48" y="915" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="90" y="915" font-size="11" fill="#212529">submitted_by_user_id</text><text x="292" y="915" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="40" y1="922" x2="300" y2="922" stroke="#e9ecef"/>
+<text x="48" y="937" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="90" y="937" font-size="11" fill="#212529">reviewed_by_user_id</text><text x="292" y="937" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="40" y1="944" x2="300" y2="944" stroke="#e9ecef"/>
+<text x="48" y="959" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="959" font-size="11" fill="#212529">reason</text><text x="292" y="959" font-size="9" fill="#868E96" text-anchor="end">text</text>
+<line x1="40" y1="966" x2="300" y2="966" stroke="#e9ecef"/>
+<text x="48" y="981" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="981" font-size="11" fill="#212529">admin_note</text><text x="292" y="981" font-size="9" fill="#868E96" text-anchor="end">text</text>
+<line x1="40" y1="988" x2="300" y2="988" stroke="#e9ecef"/>
+<text x="48" y="1003" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="1003" font-size="11" fill="#212529">submitted_at</text><text x="292" y="1003" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="40" y1="1010" x2="300" y2="1010" stroke="#e9ecef"/>
+<text x="48" y="1025" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="1025" font-size="11" fill="#212529">reviewed_at</text><text x="292" y="1025" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="40" y="1076" width="260" height="182" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="40" y="1076" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="40" y="1098" width="260" height="6" fill="#4C6EF5"/>
+<text x="170" y="1095" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">audit_logs</text>
+<text x="48" y="1119" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="90" y="1119" font-size="11" fill="#212529" font-weight="700">id</text><text x="292" y="1119" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="40" y1="1126" x2="300" y2="1126" stroke="#e9ecef"/>
+<text x="48" y="1141" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="90" y="1141" font-size="11" fill="#212529">actor_user_id</text><text x="292" y="1141" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="40" y1="1148" x2="300" y2="1148" stroke="#e9ecef"/>
+<text x="48" y="1163" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="1163" font-size="11" fill="#212529">action</text><text x="292" y="1163" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="40" y1="1170" x2="300" y2="1170" stroke="#e9ecef"/>
+<text x="48" y="1185" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="1185" font-size="11" fill="#212529">target_table</text><text x="292" y="1185" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="40" y1="1192" x2="300" y2="1192" stroke="#e9ecef"/>
+<text x="48" y="1207" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="1207" font-size="11" fill="#212529">target_id</text><text x="292" y="1207" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="40" y1="1214" x2="300" y2="1214" stroke="#e9ecef"/>
+<text x="48" y="1229" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="1229" font-size="11" fill="#212529">metadata</text><text x="292" y="1229" font-size="9" fill="#868E96" text-anchor="end">json</text>
+<line x1="40" y1="1236" x2="300" y2="1236" stroke="#e9ecef"/>
+<text x="48" y="1251" font-size="9" fill="#B197FC" font-weight="700"></text><text x="90" y="1251" font-size="11" fill="#212529">created_at</text><text x="292" y="1251" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="400" y="40" width="260" height="204" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="400" y="40" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="400" y="62" width="260" height="6" fill="#4C6EF5"/>
+<text x="530" y="59" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">tutor_applications</text>
+<text x="408" y="83" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="450" y="83" font-size="11" fill="#212529" font-weight="700">id</text><text x="652" y="83" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="400" y1="90" x2="660" y2="90" stroke="#e9ecef"/>
+<text x="408" y="105" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="450" y="105" font-size="11" fill="#212529">user_id</text><text x="652" y="105" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="400" y1="112" x2="660" y2="112" stroke="#e9ecef"/>
+<text x="408" y="127" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="127" font-size="11" fill="#212529">bio</text><text x="652" y="127" font-size="9" fill="#868E96" text-anchor="end">text</text>
+<line x1="400" y1="134" x2="660" y2="134" stroke="#e9ecef"/>
+<text x="408" y="149" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="149" font-size="11" fill="#212529">status</text><text x="652" y="149" font-size="9" fill="#868E96" text-anchor="end">tutor_application_status</text>
+<line x1="400" y1="156" x2="660" y2="156" stroke="#e9ecef"/>
+<text x="408" y="171" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="171" font-size="11" fill="#212529">submitted_at</text><text x="652" y="171" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="400" y1="178" x2="660" y2="178" stroke="#e9ecef"/>
+<text x="408" y="193" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="193" font-size="11" fill="#212529">reviewed_at</text><text x="652" y="193" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="400" y1="200" x2="660" y2="200" stroke="#e9ecef"/>
+<text x="408" y="215" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="450" y="215" font-size="11" fill="#212529">reviewed_by_user_id</text><text x="652" y="215" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="400" y1="222" x2="660" y2="222" stroke="#e9ecef"/>
+<text x="408" y="237" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="237" font-size="11" fill="#212529">rejection_reason</text><text x="652" y="237" font-size="9" fill="#868E96" text-anchor="end">text</text>
+</g>
+<g>
+<rect x="400" y="288" width="260" height="182" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="400" y="288" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="400" y="310" width="260" height="6" fill="#4C6EF5"/>
+<text x="530" y="307" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">tutor_documents</text>
+<text x="408" y="331" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="450" y="331" font-size="11" fill="#212529" font-weight="700">id</text><text x="652" y="331" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="400" y1="338" x2="660" y2="338" stroke="#e9ecef"/>
+<text x="408" y="353" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="450" y="353" font-size="11" fill="#212529">tutor_application_id</text><text x="652" y="353" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="400" y1="360" x2="660" y2="360" stroke="#e9ecef"/>
+<text x="408" y="375" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="450" y="375" font-size="11" fill="#212529">user_id</text><text x="652" y="375" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="400" y1="382" x2="660" y2="382" stroke="#e9ecef"/>
+<text x="408" y="397" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="397" font-size="11" fill="#212529">document_type</text><text x="652" y="397" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="400" y1="404" x2="660" y2="404" stroke="#e9ecef"/>
+<text x="408" y="419" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="419" font-size="11" fill="#212529">file_url</text><text x="652" y="419" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="400" y1="426" x2="660" y2="426" stroke="#e9ecef"/>
+<text x="408" y="441" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="441" font-size="11" fill="#212529">status</text><text x="652" y="441" font-size="9" fill="#868E96" text-anchor="end">review_status</text>
+<line x1="400" y1="448" x2="660" y2="448" stroke="#e9ecef"/>
+<text x="408" y="463" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="463" font-size="11" fill="#212529">uploaded_at</text><text x="652" y="463" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="400" y="514" width="260" height="226" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="400" y="514" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="400" y="536" width="260" height="6" fill="#4C6EF5"/>
+<text x="530" y="533" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">tutor_profiles</text>
+<text x="408" y="557" font-size="9" fill="#B197FC" font-weight="700">PK FK</text><text x="450" y="557" font-size="11" fill="#212529" font-weight="700">user_id</text><text x="652" y="557" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="400" y1="564" x2="660" y2="564" stroke="#e9ecef"/>
+<text x="408" y="579" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="579" font-size="11" fill="#212529">headline</text><text x="652" y="579" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="400" y1="586" x2="660" y2="586" stroke="#e9ecef"/>
+<text x="408" y="601" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="601" font-size="11" fill="#212529">bio</text><text x="652" y="601" font-size="9" fill="#868E96" text-anchor="end">text</text>
+<line x1="400" y1="608" x2="660" y2="608" stroke="#e9ecef"/>
+<text x="408" y="623" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="623" font-size="11" fill="#212529">intro_video_url</text><text x="652" y="623" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="400" y1="630" x2="660" y2="630" stroke="#e9ecef"/>
+<text x="408" y="645" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="645" font-size="11" fill="#212529">published</text><text x="652" y="645" font-size="9" fill="#868E96" text-anchor="end">boolean</text>
+<line x1="400" y1="652" x2="660" y2="652" stroke="#e9ecef"/>
+<text x="408" y="667" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="667" font-size="11" fill="#212529">average_rating</text><text x="652" y="667" font-size="9" fill="#868E96" text-anchor="end">decimal(3,2)</text>
+<line x1="400" y1="674" x2="660" y2="674" stroke="#e9ecef"/>
+<text x="408" y="689" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="689" font-size="11" fill="#212529">review_count</text><text x="652" y="689" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="400" y1="696" x2="660" y2="696" stroke="#e9ecef"/>
+<text x="408" y="711" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="711" font-size="11" fill="#212529">created_at</text><text x="652" y="711" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="400" y1="718" x2="660" y2="718" stroke="#e9ecef"/>
+<text x="408" y="733" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="733" font-size="11" fill="#212529">updated_at</text><text x="652" y="733" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="400" y="784" width="260" height="292" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="400" y="784" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="400" y="806" width="260" height="6" fill="#4C6EF5"/>
+<text x="530" y="803" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">tutor_listing_revisions</text>
+<text x="408" y="827" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="450" y="827" font-size="11" fill="#212529" font-weight="700">id</text><text x="652" y="827" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="400" y1="834" x2="660" y2="834" stroke="#e9ecef"/>
+<text x="408" y="849" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="450" y="849" font-size="11" fill="#212529">tutor_user_id</text><text x="652" y="849" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="400" y1="856" x2="660" y2="856" stroke="#e9ecef"/>
+<text x="408" y="871" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="871" font-size="11" fill="#212529">name</text><text x="652" y="871" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="400" y1="878" x2="660" y2="878" stroke="#e9ecef"/>
+<text x="408" y="893" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="893" font-size="11" fill="#212529">headline</text><text x="652" y="893" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="400" y1="900" x2="660" y2="900" stroke="#e9ecef"/>
+<text x="408" y="915" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="915" font-size="11" fill="#212529">bio</text><text x="652" y="915" font-size="9" fill="#868E96" text-anchor="end">text</text>
+<line x1="400" y1="922" x2="660" y2="922" stroke="#e9ecef"/>
+<text x="408" y="937" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="937" font-size="11" fill="#212529">intro_video_url</text><text x="652" y="937" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="400" y1="944" x2="660" y2="944" stroke="#e9ecef"/>
+<text x="408" y="959" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="959" font-size="11" fill="#212529">published</text><text x="652" y="959" font-size="9" fill="#868E96" text-anchor="end">boolean</text>
+<line x1="400" y1="966" x2="660" y2="966" stroke="#e9ecef"/>
+<text x="408" y="981" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="981" font-size="11" fill="#212529">status</text><text x="652" y="981" font-size="9" fill="#868E96" text-anchor="end">admin_review_status</text>
+<line x1="400" y1="988" x2="660" y2="988" stroke="#e9ecef"/>
+<text x="408" y="1003" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="1003" font-size="11" fill="#212529">submitted_at</text><text x="652" y="1003" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="400" y1="1010" x2="660" y2="1010" stroke="#e9ecef"/>
+<text x="408" y="1025" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="1025" font-size="11" fill="#212529">reviewed_at</text><text x="652" y="1025" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="400" y1="1032" x2="660" y2="1032" stroke="#e9ecef"/>
+<text x="408" y="1047" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="450" y="1047" font-size="11" fill="#212529">reviewed_by_user_id</text><text x="652" y="1047" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="400" y1="1054" x2="660" y2="1054" stroke="#e9ecef"/>
+<text x="408" y="1069" font-size="9" fill="#B197FC" font-weight="700"></text><text x="450" y="1069" font-size="11" fill="#212529">rejection_reason</text><text x="652" y="1069" font-size="9" fill="#868E96" text-anchor="end">text</text>
+</g>
+<g>
+<rect x="760" y="40" width="260" height="248" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="760" y="40" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="760" y="62" width="260" height="6" fill="#4C6EF5"/>
+<text x="890" y="59" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">tutor_subjects</text>
+<text x="768" y="83" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="810" y="83" font-size="11" fill="#212529" font-weight="700">id</text><text x="1012" y="83" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="760" y1="90" x2="1020" y2="90" stroke="#e9ecef"/>
+<text x="768" y="105" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="810" y="105" font-size="11" fill="#212529">tutor_user_id</text><text x="1012" y="105" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="760" y1="112" x2="1020" y2="112" stroke="#e9ecef"/>
+<text x="768" y="127" font-size="9" fill="#B197FC" font-weight="700">U</text><text x="810" y="127" font-size="11" fill="#212529">slug</text><text x="1012" y="127" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="760" y1="134" x2="1020" y2="134" stroke="#e9ecef"/>
+<text x="768" y="149" font-size="9" fill="#B197FC" font-weight="700"></text><text x="810" y="149" font-size="11" fill="#212529">name</text><text x="1012" y="149" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="760" y1="156" x2="1020" y2="156" stroke="#e9ecef"/>
+<text x="768" y="171" font-size="9" fill="#B197FC" font-weight="700"></text><text x="810" y="171" font-size="11" fill="#212529">description</text><text x="1012" y="171" font-size="9" fill="#868E96" text-anchor="end">text</text>
+<line x1="760" y1="178" x2="1020" y2="178" stroke="#e9ecef"/>
+<text x="768" y="193" font-size="9" fill="#B197FC" font-weight="700"></text><text x="810" y="193" font-size="11" fill="#212529">hourly_rate_baht</text><text x="1012" y="193" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="760" y1="200" x2="1020" y2="200" stroke="#e9ecef"/>
+<text x="768" y="215" font-size="9" fill="#B197FC" font-weight="700"></text><text x="810" y="215" font-size="11" fill="#212529">format</text><text x="1012" y="215" font-size="9" fill="#868E96" text-anchor="end">booking_format</text>
+<line x1="760" y1="222" x2="1020" y2="222" stroke="#e9ecef"/>
+<text x="768" y="237" font-size="9" fill="#B197FC" font-weight="700"></text><text x="810" y="237" font-size="11" fill="#212529">status</text><text x="1012" y="237" font-size="9" fill="#868E96" text-anchor="end">subject_status</text>
+<line x1="760" y1="244" x2="1020" y2="244" stroke="#e9ecef"/>
+<text x="768" y="259" font-size="9" fill="#B197FC" font-weight="700"></text><text x="810" y="259" font-size="11" fill="#212529">created_at</text><text x="1012" y="259" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="760" y1="266" x2="1020" y2="266" stroke="#e9ecef"/>
+<text x="768" y="281" font-size="9" fill="#B197FC" font-weight="700"></text><text x="810" y="281" font-size="11" fill="#212529">updated_at</text><text x="1012" y="281" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="760" y="332" width="260" height="204" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="760" y="332" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="760" y="354" width="260" height="6" fill="#4C6EF5"/>
+<text x="890" y="351" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">tutor_availability_slots</text>
+<text x="768" y="375" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="810" y="375" font-size="11" fill="#212529" font-weight="700">id</text><text x="1012" y="375" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="760" y1="382" x2="1020" y2="382" stroke="#e9ecef"/>
+<text x="768" y="397" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="810" y="397" font-size="11" fill="#212529">tutor_user_id</text><text x="1012" y="397" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="760" y1="404" x2="1020" y2="404" stroke="#e9ecef"/>
+<text x="768" y="419" font-size="9" fill="#B197FC" font-weight="700">U</text><text x="810" y="419" font-size="11" fill="#212529">starts_at</text><text x="1012" y="419" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="760" y1="426" x2="1020" y2="426" stroke="#e9ecef"/>
+<text x="768" y="441" font-size="9" fill="#B197FC" font-weight="700"></text><text x="810" y="441" font-size="11" fill="#212529">ends_at</text><text x="1012" y="441" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="760" y1="448" x2="1020" y2="448" stroke="#e9ecef"/>
+<text x="768" y="463" font-size="9" fill="#B197FC" font-weight="700"></text><text x="810" y="463" font-size="11" fill="#212529">is_open</text><text x="1012" y="463" font-size="9" fill="#868E96" text-anchor="end">boolean</text>
+<line x1="760" y1="470" x2="1020" y2="470" stroke="#e9ecef"/>
+<text x="768" y="485" font-size="9" fill="#B197FC" font-weight="700"></text><text x="810" y="485" font-size="11" fill="#212529">booked_booking_id</text><text x="1012" y="485" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="760" y1="492" x2="1020" y2="492" stroke="#e9ecef"/>
+<text x="768" y="507" font-size="9" fill="#B197FC" font-weight="700"></text><text x="810" y="507" font-size="11" fill="#212529">created_at</text><text x="1012" y="507" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="760" y1="514" x2="1020" y2="514" stroke="#e9ecef"/>
+<text x="768" y="529" font-size="9" fill="#B197FC" font-weight="700"></text><text x="810" y="529" font-size="11" fill="#212529">updated_at</text><text x="1012" y="529" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="760" y="580" width="260" height="72" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="760" y="580" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="760" y="602" width="260" height="6" fill="#4C6EF5"/>
+<text x="890" y="599" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">availability_slot_subjects</text>
+<text x="768" y="623" font-size="9" fill="#B197FC" font-weight="700">PK FK</text><text x="810" y="623" font-size="11" fill="#212529" font-weight="700">availability_slot_id</text><text x="1012" y="623" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="760" y1="630" x2="1020" y2="630" stroke="#e9ecef"/>
+<text x="768" y="645" font-size="9" fill="#B197FC" font-weight="700">PK FK</text><text x="810" y="645" font-size="11" fill="#212529" font-weight="700">tutor_subject_id</text><text x="1012" y="645" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+</g>
+<g>
+<rect x="1120" y="40" width="260" height="424" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="1120" y="40" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="1120" y="62" width="260" height="6" fill="#4C6EF5"/>
+<text x="1250" y="59" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">bookings</text>
+<text x="1128" y="83" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="1170" y="83" font-size="11" fill="#212529" font-weight="700">id</text><text x="1372" y="83" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="90" x2="1380" y2="90" stroke="#e9ecef"/>
+<text x="1128" y="105" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="105" font-size="11" fill="#212529">booking_number</text><text x="1372" y="105" font-size="9" fill="#868E96" text-anchor="end">varchar U</text>
+<line x1="1120" y1="112" x2="1380" y2="112" stroke="#e9ecef"/>
+<text x="1128" y="127" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1170" y="127" font-size="11" fill="#212529">student_user_id</text><text x="1372" y="127" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="134" x2="1380" y2="134" stroke="#e9ecef"/>
+<text x="1128" y="149" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1170" y="149" font-size="11" fill="#212529">tutor_user_id</text><text x="1372" y="149" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="156" x2="1380" y2="156" stroke="#e9ecef"/>
+<text x="1128" y="171" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1170" y="171" font-size="11" fill="#212529">tutor_subject_id</text><text x="1372" y="171" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="178" x2="1380" y2="178" stroke="#e9ecef"/>
+<text x="1128" y="193" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="193" font-size="11" fill="#212529">status</text><text x="1372" y="193" font-size="9" fill="#868E96" text-anchor="end">booking_status</text>
+<line x1="1120" y1="200" x2="1380" y2="200" stroke="#e9ecef"/>
+<text x="1128" y="215" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="215" font-size="11" fill="#212529">format</text><text x="1372" y="215" font-size="9" fill="#868E96" text-anchor="end">booking_format</text>
+<line x1="1120" y1="222" x2="1380" y2="222" stroke="#e9ecef"/>
+<text x="1128" y="237" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="237" font-size="11" fill="#212529">starts_at</text><text x="1372" y="237" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="1120" y1="244" x2="1380" y2="244" stroke="#e9ecef"/>
+<text x="1128" y="259" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="259" font-size="11" fill="#212529">ends_at</text><text x="1372" y="259" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="1120" y1="266" x2="1380" y2="266" stroke="#e9ecef"/>
+<text x="1128" y="281" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="281" font-size="11" fill="#212529">duration_minutes</text><text x="1372" y="281" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="288" x2="1380" y2="288" stroke="#e9ecef"/>
+<text x="1128" y="303" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="303" font-size="11" fill="#212529">price_baht</text><text x="1372" y="303" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="310" x2="1380" y2="310" stroke="#e9ecef"/>
+<text x="1128" y="325" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="325" font-size="11" fill="#212529">student_note</text><text x="1372" y="325" font-size="9" fill="#868E96" text-anchor="end">text</text>
+<line x1="1120" y1="332" x2="1380" y2="332" stroke="#e9ecef"/>
+<text x="1128" y="347" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="347" font-size="11" fill="#212529">zoom_url</text><text x="1372" y="347" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="1120" y1="354" x2="1380" y2="354" stroke="#e9ecef"/>
+<text x="1128" y="369" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1170" y="369" font-size="11" fill="#212529">paid_transaction_id</text><text x="1372" y="369" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="376" x2="1380" y2="376" stroke="#e9ecef"/>
+<text x="1128" y="391" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="391" font-size="11" fill="#212529">cancelled_at</text><text x="1372" y="391" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="1120" y1="398" x2="1380" y2="398" stroke="#e9ecef"/>
+<text x="1128" y="413" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="413" font-size="11" fill="#212529">completed_at</text><text x="1372" y="413" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="1120" y1="420" x2="1380" y2="420" stroke="#e9ecef"/>
+<text x="1128" y="435" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="435" font-size="11" fill="#212529">created_at</text><text x="1372" y="435" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="1120" y1="442" x2="1380" y2="442" stroke="#e9ecef"/>
+<text x="1128" y="457" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="457" font-size="11" fill="#212529">updated_at</text><text x="1372" y="457" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="1120" y="508" width="260" height="72" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="1120" y="508" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="1120" y="530" width="260" height="6" fill="#4C6EF5"/>
+<text x="1250" y="527" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">booking_slots</text>
+<text x="1128" y="551" font-size="9" fill="#B197FC" font-weight="700">PK FK</text><text x="1170" y="551" font-size="11" fill="#212529" font-weight="700">booking_id</text><text x="1372" y="551" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="558" x2="1380" y2="558" stroke="#e9ecef"/>
+<text x="1128" y="573" font-size="9" fill="#B197FC" font-weight="700">PK FK</text><text x="1170" y="573" font-size="11" fill="#212529" font-weight="700">availability_slot_id</text><text x="1372" y="573" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+</g>
+<g>
+<rect x="1120" y="624" width="260" height="182" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="1120" y="624" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="1120" y="646" width="260" height="6" fill="#4C6EF5"/>
+<text x="1250" y="643" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">conversations</text>
+<text x="1128" y="667" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="1170" y="667" font-size="11" fill="#212529" font-weight="700">id</text><text x="1372" y="667" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="674" x2="1380" y2="674" stroke="#e9ecef"/>
+<text x="1128" y="689" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1170" y="689" font-size="11" fill="#212529">student_user_id</text><text x="1372" y="689" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="696" x2="1380" y2="696" stroke="#e9ecef"/>
+<text x="1128" y="711" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1170" y="711" font-size="11" fill="#212529">tutor_user_id</text><text x="1372" y="711" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="718" x2="1380" y2="718" stroke="#e9ecef"/>
+<text x="1128" y="733" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1170" y="733" font-size="11" fill="#212529">tutor_subject_id</text><text x="1372" y="733" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="740" x2="1380" y2="740" stroke="#e9ecef"/>
+<text x="1128" y="755" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1170" y="755" font-size="11" fill="#212529">booking_id</text><text x="1372" y="755" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="762" x2="1380" y2="762" stroke="#e9ecef"/>
+<text x="1128" y="777" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="777" font-size="11" fill="#212529">created_at</text><text x="1372" y="777" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="1120" y1="784" x2="1380" y2="784" stroke="#e9ecef"/>
+<text x="1128" y="799" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="799" font-size="11" fill="#212529">updated_at</text><text x="1372" y="799" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="1120" y="850" width="260" height="160" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="1120" y="850" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="1120" y="872" width="260" height="6" fill="#4C6EF5"/>
+<text x="1250" y="869" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">messages</text>
+<text x="1128" y="893" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="1170" y="893" font-size="11" fill="#212529" font-weight="700">id</text><text x="1372" y="893" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="900" x2="1380" y2="900" stroke="#e9ecef"/>
+<text x="1128" y="915" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1170" y="915" font-size="11" fill="#212529">conversation_id</text><text x="1372" y="915" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="922" x2="1380" y2="922" stroke="#e9ecef"/>
+<text x="1128" y="937" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1170" y="937" font-size="11" fill="#212529">sender_user_id</text><text x="1372" y="937" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1120" y1="944" x2="1380" y2="944" stroke="#e9ecef"/>
+<text x="1128" y="959" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="959" font-size="11" fill="#212529">body</text><text x="1372" y="959" font-size="9" fill="#868E96" text-anchor="end">text</text>
+<line x1="1120" y1="966" x2="1380" y2="966" stroke="#e9ecef"/>
+<text x="1128" y="981" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="981" font-size="11" fill="#212529">read_at</text><text x="1372" y="981" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="1120" y1="988" x2="1380" y2="988" stroke="#e9ecef"/>
+<text x="1128" y="1003" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1170" y="1003" font-size="11" fill="#212529">created_at</text><text x="1372" y="1003" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="1480" y="40" width="260" height="160" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="1480" y="40" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="1480" y="62" width="260" height="6" fill="#4C6EF5"/>
+<text x="1610" y="59" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">wallets</text>
+<text x="1488" y="83" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="1530" y="83" font-size="11" fill="#212529" font-weight="700">id</text><text x="1732" y="83" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1480" y1="90" x2="1740" y2="90" stroke="#e9ecef"/>
+<text x="1488" y="105" font-size="9" fill="#B197FC" font-weight="700">FK U</text><text x="1530" y="105" font-size="11" fill="#212529">user_id</text><text x="1732" y="105" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1480" y1="112" x2="1740" y2="112" stroke="#e9ecef"/>
+<text x="1488" y="127" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="127" font-size="11" fill="#212529">available_balance_baht</text><text x="1732" y="127" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1480" y1="134" x2="1740" y2="134" stroke="#e9ecef"/>
+<text x="1488" y="149" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="149" font-size="11" fill="#212529">pending_balance_baht</text><text x="1732" y="149" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1480" y1="156" x2="1740" y2="156" stroke="#e9ecef"/>
+<text x="1488" y="171" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="171" font-size="11" fill="#212529">created_at</text><text x="1732" y="171" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="1480" y1="178" x2="1740" y2="178" stroke="#e9ecef"/>
+<text x="1488" y="193" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="193" font-size="11" fill="#212529">updated_at</text><text x="1732" y="193" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="1480" y="244" width="260" height="314" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="1480" y="244" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="1480" y="266" width="260" height="6" fill="#4C6EF5"/>
+<text x="1610" y="263" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">wallet_transactions</text>
+<text x="1488" y="287" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="1530" y="287" font-size="11" fill="#212529" font-weight="700">id</text><text x="1732" y="287" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1480" y1="294" x2="1740" y2="294" stroke="#e9ecef"/>
+<text x="1488" y="309" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1530" y="309" font-size="11" fill="#212529">wallet_id</text><text x="1732" y="309" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1480" y1="316" x2="1740" y2="316" stroke="#e9ecef"/>
+<text x="1488" y="331" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1530" y="331" font-size="11" fill="#212529">user_id</text><text x="1732" y="331" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1480" y1="338" x2="1740" y2="338" stroke="#e9ecef"/>
+<text x="1488" y="353" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1530" y="353" font-size="11" fill="#212529">booking_id</text><text x="1732" y="353" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1480" y1="360" x2="1740" y2="360" stroke="#e9ecef"/>
+<text x="1488" y="375" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="375" font-size="11" fill="#212529">type</text><text x="1732" y="375" font-size="9" fill="#868E96" text-anchor="end">transaction_type</text>
+<line x1="1480" y1="382" x2="1740" y2="382" stroke="#e9ecef"/>
+<text x="1488" y="397" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="397" font-size="11" fill="#212529">direction</text><text x="1732" y="397" font-size="9" fill="#868E96" text-anchor="end">transaction_direction</text>
+<line x1="1480" y1="404" x2="1740" y2="404" stroke="#e9ecef"/>
+<text x="1488" y="419" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="419" font-size="11" fill="#212529">status</text><text x="1732" y="419" font-size="9" fill="#868E96" text-anchor="end">transaction_status</text>
+<line x1="1480" y1="426" x2="1740" y2="426" stroke="#e9ecef"/>
+<text x="1488" y="441" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="441" font-size="11" fill="#212529">amount_baht</text><text x="1732" y="441" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1480" y1="448" x2="1740" y2="448" stroke="#e9ecef"/>
+<text x="1488" y="463" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="463" font-size="11" fill="#212529">balance_after_baht</text><text x="1732" y="463" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1480" y1="470" x2="1740" y2="470" stroke="#e9ecef"/>
+<text x="1488" y="485" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="485" font-size="11" fill="#212529">external_reference</text><text x="1732" y="485" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="1480" y1="492" x2="1740" y2="492" stroke="#e9ecef"/>
+<text x="1488" y="507" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="507" font-size="11" fill="#212529">description</text><text x="1732" y="507" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="1480" y1="514" x2="1740" y2="514" stroke="#e9ecef"/>
+<text x="1488" y="529" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="529" font-size="11" fill="#212529">created_at</text><text x="1732" y="529" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="1480" y1="536" x2="1740" y2="536" stroke="#e9ecef"/>
+<text x="1488" y="551" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="551" font-size="11" fill="#212529">settled_at</text><text x="1732" y="551" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="1480" y="602" width="260" height="226" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="1480" y="602" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="1480" y="624" width="260" height="6" fill="#4C6EF5"/>
+<text x="1610" y="621" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">payout_accounts</text>
+<text x="1488" y="645" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="1530" y="645" font-size="11" fill="#212529" font-weight="700">id</text><text x="1732" y="645" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1480" y1="652" x2="1740" y2="652" stroke="#e9ecef"/>
+<text x="1488" y="667" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1530" y="667" font-size="11" fill="#212529">user_id</text><text x="1732" y="667" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1480" y1="674" x2="1740" y2="674" stroke="#e9ecef"/>
+<text x="1488" y="689" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="689" font-size="11" fill="#212529">account_holder_name</text><text x="1732" y="689" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="1480" y1="696" x2="1740" y2="696" stroke="#e9ecef"/>
+<text x="1488" y="711" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="711" font-size="11" fill="#212529">bank_name</text><text x="1732" y="711" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="1480" y1="718" x2="1740" y2="718" stroke="#e9ecef"/>
+<text x="1488" y="733" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="733" font-size="11" fill="#212529">bank_account_last4</text><text x="1732" y="733" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="1480" y1="740" x2="1740" y2="740" stroke="#e9ecef"/>
+<text x="1488" y="755" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="755" font-size="11" fill="#212529">promptpay_id_hash</text><text x="1732" y="755" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="1480" y1="762" x2="1740" y2="762" stroke="#e9ecef"/>
+<text x="1488" y="777" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="777" font-size="11" fill="#212529">is_default</text><text x="1732" y="777" font-size="9" fill="#868E96" text-anchor="end">boolean</text>
+<line x1="1480" y1="784" x2="1740" y2="784" stroke="#e9ecef"/>
+<text x="1488" y="799" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="799" font-size="11" fill="#212529">created_at</text><text x="1732" y="799" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="1480" y1="806" x2="1740" y2="806" stroke="#e9ecef"/>
+<text x="1488" y="821" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1530" y="821" font-size="11" fill="#212529">updated_at</text><text x="1732" y="821" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="1840" y="40" width="260" height="270" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="1840" y="40" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="1840" y="62" width="260" height="6" fill="#4C6EF5"/>
+<text x="1970" y="59" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">reviews</text>
+<text x="1848" y="83" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="1890" y="83" font-size="11" fill="#212529" font-weight="700">id</text><text x="2092" y="83" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1840" y1="90" x2="2100" y2="90" stroke="#e9ecef"/>
+<text x="1848" y="105" font-size="9" fill="#B197FC" font-weight="700">FK U</text><text x="1890" y="105" font-size="11" fill="#212529">booking_id</text><text x="2092" y="105" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1840" y1="112" x2="2100" y2="112" stroke="#e9ecef"/>
+<text x="1848" y="127" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1890" y="127" font-size="11" fill="#212529">tutor_user_id</text><text x="2092" y="127" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1840" y1="134" x2="2100" y2="134" stroke="#e9ecef"/>
+<text x="1848" y="149" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1890" y="149" font-size="11" fill="#212529">student_user_id</text><text x="2092" y="149" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1840" y1="156" x2="2100" y2="156" stroke="#e9ecef"/>
+<text x="1848" y="171" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1890" y="171" font-size="11" fill="#212529">tutor_subject_id</text><text x="2092" y="171" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1840" y1="178" x2="2100" y2="178" stroke="#e9ecef"/>
+<text x="1848" y="193" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1890" y="193" font-size="11" fill="#212529">rating</text><text x="2092" y="193" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1840" y1="200" x2="2100" y2="200" stroke="#e9ecef"/>
+<text x="1848" y="215" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1890" y="215" font-size="11" fill="#212529">headline</text><text x="2092" y="215" font-size="9" fill="#868E96" text-anchor="end">varchar</text>
+<line x1="1840" y1="222" x2="2100" y2="222" stroke="#e9ecef"/>
+<text x="1848" y="237" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1890" y="237" font-size="11" fill="#212529">body</text><text x="2092" y="237" font-size="9" fill="#868E96" text-anchor="end">text</text>
+<line x1="1840" y1="244" x2="2100" y2="244" stroke="#e9ecef"/>
+<text x="1848" y="259" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1890" y="259" font-size="11" fill="#212529">status</text><text x="2092" y="259" font-size="9" fill="#868E96" text-anchor="end">review_status</text>
+<line x1="1840" y1="266" x2="2100" y2="266" stroke="#e9ecef"/>
+<text x="1848" y="281" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1890" y="281" font-size="11" fill="#212529">created_at</text><text x="2092" y="281" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="1840" y1="288" x2="2100" y2="288" stroke="#e9ecef"/>
+<text x="1848" y="303" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1890" y="303" font-size="11" fill="#212529">updated_at</text><text x="2092" y="303" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g>
+<rect x="1840" y="354" width="260" height="160" rx="6" fill="#ffffff" stroke="#4C6EF5" stroke-width="1.5"/>
+<rect x="1840" y="354" width="260" height="28" rx="6" fill="#4C6EF5"/>
+<rect x="1840" y="376" width="260" height="6" fill="#4C6EF5"/>
+<text x="1970" y="373" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">review_replies</text>
+<text x="1848" y="397" font-size="9" fill="#B197FC" font-weight="700">PK</text><text x="1890" y="397" font-size="11" fill="#212529" font-weight="700">id</text><text x="2092" y="397" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1840" y1="404" x2="2100" y2="404" stroke="#e9ecef"/>
+<text x="1848" y="419" font-size="9" fill="#B197FC" font-weight="700">FK U</text><text x="1890" y="419" font-size="11" fill="#212529">review_id</text><text x="2092" y="419" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1840" y1="426" x2="2100" y2="426" stroke="#e9ecef"/>
+<text x="1848" y="441" font-size="9" fill="#B197FC" font-weight="700">FK</text><text x="1890" y="441" font-size="11" fill="#212529">tutor_user_id</text><text x="2092" y="441" font-size="9" fill="#868E96" text-anchor="end">integer</text>
+<line x1="1840" y1="448" x2="2100" y2="448" stroke="#e9ecef"/>
+<text x="1848" y="463" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1890" y="463" font-size="11" fill="#212529">body</text><text x="2092" y="463" font-size="9" fill="#868E96" text-anchor="end">text</text>
+<line x1="1840" y1="470" x2="2100" y2="470" stroke="#e9ecef"/>
+<text x="1848" y="485" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1890" y="485" font-size="11" fill="#212529">created_at</text><text x="2092" y="485" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+<line x1="1840" y1="492" x2="2100" y2="492" stroke="#e9ecef"/>
+<text x="1848" y="507" font-size="9" fill="#B197FC" font-weight="700"></text><text x="1890" y="507" font-size="11" fill="#212529">updated_at</text><text x="2092" y="507" font-size="9" fill="#868E96" text-anchor="end">timestamp</text>
+</g>
+<g><rect x="2200" y="40" width="340" height="420" rx="6" fill="#FFF9DB" stroke="#F1C40F"/>
+<text x="2212" y="62" font-size="12" font-weight="700">Enum types</text>
+<text x="2212" y="82" font-size="10" font-weight="700">user_role</text><text x="2212" y="95" font-size="9" fill="#555">student, tutor, admin</text>
+<text x="2212" y="116" font-size="10" font-weight="700">tutor_application_status</text><text x="2212" y="129" font-size="9" fill="#555">draft, pending, approved, rejected, cancelled</text>
+<text x="2212" y="150" font-size="10" font-weight="700">review_status</text><text x="2212" y="163" font-size="9" fill="#555">pending, approved, rejected</text>
+<text x="2212" y="184" font-size="10" font-weight="700">subject_status</text><text x="2212" y="197" font-size="9" fill="#555">draft, published, archived</text>
+<text x="2212" y="218" font-size="10" font-weight="700">booking_status</text><text x="2212" y="231" font-size="9" fill="#555">draft, payment_due, confirmed, completed, cancelled, refun…</text>
+<text x="2212" y="252" font-size="10" font-weight="700">booking_format</text><text x="2212" y="265" font-size="9" fill="#555">online, in_person</text>
+<text x="2212" y="286" font-size="10" font-weight="700">transaction_type</text><text x="2212" y="299" font-size="9" fill="#555">topup, lesson_payment, earning, refund, payout</text>
+<text x="2212" y="320" font-size="10" font-weight="700">transaction_direction</text><text x="2212" y="333" font-size="9" fill="#555">credit, debit</text>
+<text x="2212" y="354" font-size="10" font-weight="700">transaction_status</text><text x="2212" y="367" font-size="9" fill="#555">pending, succeeded, failed, cancelled</text>
+<text x="2212" y="388" font-size="10" font-weight="700">admin_review_type</text><text x="2212" y="401" font-size="9" fill="#555">tutor_application, listing_change, document, review, messa…</text>
+<text x="2212" y="422" font-size="10" font-weight="700">admin_review_status</text><text x="2212" y="435" font-size="9" fill="#555">pending, approved, rejected, resolved</text>
+</g></svg>
+
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+(function () {
+  var vp = document.getElementById("viewport");
+  var stage = document.getElementById("stage");
+  var svg = document.getElementById("erd");
+  var scale = 1, minS = 0.15, maxS = 3;
+  function apply() { stage.style.transform = "scale(" + scale + ")"; }
+  function fit() {
+    var w = svg.viewBox.baseVal.width || svg.width.baseVal.value;
+    scale = Math.min(1, (vp.clientWidth - 48) / w);
+    apply();
+  }
+  document.getElementById("zoom-in").onclick = function () { scale = Math.min(maxS, scale * 1.2); apply(); };
+  document.getElementById("zoom-out").onclick = function () { scale = Math.max(minS, scale / 1.2); apply(); };
+  document.getElementById("zoom-reset").onclick = fit;
+  vp.addEventListener("wheel", function (e) {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    scale = Math.max(minS, Math.min(maxS, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
+    apply();
+  }, { passive: false });
+  var down = false, sx = 0, sy = 0, sl = 0, st = 0;
+  vp.addEventListener("pointerdown", function (e) {
+    down = true; vp.classList.add("drag"); sx = e.clientX; sy = e.clientY; sl = vp.scrollLeft; st = vp.scrollTop;
+  });
+  window.addEventListener("pointerup", function () { down = false; vp.classList.remove("drag"); });
+  window.addEventListener("pointermove", function (e) {
+    if (!down) return;
+    vp.scrollLeft = sl - (e.clientX - sx);
+    vp.scrollTop = st - (e.clientY - sy);
+  });
+  fit();
+  window.addEventListener("resize", fit);
+})();
+</script>
+</body>
+</html>

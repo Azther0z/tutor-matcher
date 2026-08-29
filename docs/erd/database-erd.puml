@@ -1,0 +1,327 @@
+@startuml TutorMatcher
+' Source of truth: database-erd.dbml  ·  Render: java -jar plantuml.jar -tsvg database-erd.puml
+hide circle
+hide empty members
+skinparam linetype ortho
+skinparam roundcorner 8
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam class {
+  BackgroundColor #EDF2FF
+  BorderColor #4C6EF5
+  ArrowColor #7C8291
+  FontColor #1E1E1E
+}
+
+entity "users" as users {
+  * id : integer
+  --
+  email : varchar <<unique>>
+  password_hash : varchar
+  display_name : varchar
+  role : user_role
+  is_tutor : boolean
+  created_at : timestamp
+  updated_at : timestamp
+  suspended_at : timestamp
+}
+
+entity "user_profiles" as user_profiles {
+  * user_id : integer <<FK>>
+  --
+  username : varchar <<unique>>
+  avatar_url : varchar
+  timezone : varchar
+  public_email : varchar
+  bio : text
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "notification_preferences" as notification_preferences {
+  * id : integer
+  --
+  user_id : integer <<FK>>
+  event_type : varchar <<unique>>
+  email_enabled : boolean
+  push_enabled : boolean
+  updated_at : timestamp
+}
+
+entity "admin_reviews" as admin_reviews {
+  * id : integer
+  --
+  review_type : admin_review_type
+  status : admin_review_status
+  subject_table : varchar
+  subject_id : integer
+  submitted_by_user_id : integer <<FK>>
+  reviewed_by_user_id : integer <<FK>>
+  reason : text
+  admin_note : text
+  submitted_at : timestamp
+  reviewed_at : timestamp
+}
+
+entity "audit_logs" as audit_logs {
+  * id : integer
+  --
+  actor_user_id : integer <<FK>>
+  action : varchar
+  target_table : varchar
+  target_id : integer
+  metadata : json
+  created_at : timestamp
+}
+
+entity "tutor_applications" as tutor_applications {
+  * id : integer
+  --
+  user_id : integer <<FK>>
+  bio : text
+  status : tutor_application_status
+  submitted_at : timestamp
+  reviewed_at : timestamp
+  reviewed_by_user_id : integer <<FK>>
+  rejection_reason : text
+}
+
+entity "tutor_documents" as tutor_documents {
+  * id : integer
+  --
+  tutor_application_id : integer <<FK>>
+  user_id : integer <<FK>>
+  document_type : varchar
+  file_url : varchar
+  status : review_status
+  uploaded_at : timestamp
+}
+
+entity "tutor_profiles" as tutor_profiles {
+  * user_id : integer <<FK>>
+  --
+  headline : varchar
+  bio : text
+  intro_video_url : varchar
+  published : boolean
+  average_rating : decimal(3,2)
+  review_count : integer
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "tutor_listing_revisions" as tutor_listing_revisions {
+  * id : integer
+  --
+  tutor_user_id : integer <<FK>>
+  name : varchar
+  headline : varchar
+  bio : text
+  intro_video_url : varchar
+  published : boolean
+  status : admin_review_status
+  submitted_at : timestamp
+  reviewed_at : timestamp
+  reviewed_by_user_id : integer <<FK>>
+  rejection_reason : text
+}
+
+entity "tutor_subjects" as tutor_subjects {
+  * id : integer
+  --
+  tutor_user_id : integer <<FK>>
+  slug : varchar <<unique>>
+  name : varchar
+  description : text
+  hourly_rate_baht : integer
+  format : booking_format
+  status : subject_status
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "tutor_availability_slots" as tutor_availability_slots {
+  * id : integer
+  --
+  tutor_user_id : integer <<FK>>
+  starts_at : timestamp <<unique>>
+  ends_at : timestamp
+  is_open : boolean
+  booked_booking_id : integer
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "availability_slot_subjects" as availability_slot_subjects {
+  * availability_slot_id : integer <<FK>>
+  * tutor_subject_id : integer <<FK>>
+}
+
+entity "bookings" as bookings {
+  * id : integer
+  --
+  booking_number : varchar <<unique>>
+  student_user_id : integer <<FK>>
+  tutor_user_id : integer <<FK>>
+  tutor_subject_id : integer <<FK>>
+  status : booking_status
+  format : booking_format
+  starts_at : timestamp
+  ends_at : timestamp
+  duration_minutes : integer
+  price_baht : integer
+  student_note : text
+  zoom_url : varchar
+  paid_transaction_id : integer <<FK>>
+  cancelled_at : timestamp
+  completed_at : timestamp
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "booking_slots" as booking_slots {
+  * booking_id : integer <<FK>>
+  * availability_slot_id : integer <<FK>>
+}
+
+entity "conversations" as conversations {
+  * id : integer
+  --
+  student_user_id : integer <<FK>>
+  tutor_user_id : integer <<FK>>
+  tutor_subject_id : integer <<FK>>
+  booking_id : integer <<FK>>
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "messages" as messages {
+  * id : integer
+  --
+  conversation_id : integer <<FK>>
+  sender_user_id : integer <<FK>>
+  body : text
+  read_at : timestamp
+  created_at : timestamp
+}
+
+entity "wallets" as wallets {
+  * id : integer
+  --
+  user_id : integer <<FK,unique>>
+  available_balance_baht : integer
+  pending_balance_baht : integer
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "wallet_transactions" as wallet_transactions {
+  * id : integer
+  --
+  wallet_id : integer <<FK>>
+  user_id : integer <<FK>>
+  booking_id : integer <<FK>>
+  type : transaction_type
+  direction : transaction_direction
+  status : transaction_status
+  amount_baht : integer
+  balance_after_baht : integer
+  external_reference : varchar
+  description : varchar
+  created_at : timestamp
+  settled_at : timestamp
+}
+
+entity "payout_accounts" as payout_accounts {
+  * id : integer
+  --
+  user_id : integer <<FK>>
+  account_holder_name : varchar
+  bank_name : varchar
+  bank_account_last4 : varchar
+  promptpay_id_hash : varchar
+  is_default : boolean
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "reviews" as reviews {
+  * id : integer
+  --
+  booking_id : integer <<FK,unique>>
+  tutor_user_id : integer <<FK>>
+  student_user_id : integer <<FK>>
+  tutor_subject_id : integer <<FK>>
+  rating : integer
+  headline : varchar
+  body : text
+  status : review_status
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "review_replies" as review_replies {
+  * id : integer
+  --
+  review_id : integer <<FK,unique>>
+  tutor_user_id : integer <<FK>>
+  body : text
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+users ||--|| user_profiles : user_id
+users ||--o{ tutor_applications : user_id
+users ||--o{ tutor_applications : reviewed_by_user_id
+tutor_applications ||--o{ tutor_documents : tutor_application_id
+users ||--o{ tutor_documents : user_id
+users ||--|| tutor_profiles : user_id
+users ||--o{ tutor_listing_revisions : tutor_user_id
+users ||--o{ tutor_listing_revisions : reviewed_by_user_id
+users ||--o{ tutor_subjects : tutor_user_id
+users ||--o{ tutor_availability_slots : tutor_user_id
+tutor_availability_slots ||--o{ availability_slot_subjects : availability_slot_id
+tutor_subjects ||--o{ availability_slot_subjects : tutor_subject_id
+users ||--o{ bookings : student_user_id
+users ||--o{ bookings : tutor_user_id
+tutor_subjects ||--o{ bookings : tutor_subject_id
+wallet_transactions ||--o{ bookings : paid_transaction_id
+bookings ||--o{ booking_slots : booking_id
+tutor_availability_slots ||--o{ booking_slots : availability_slot_id
+users ||--|| wallets : user_id
+wallets ||--o{ wallet_transactions : wallet_id
+users ||--o{ wallet_transactions : user_id
+bookings ||--o{ wallet_transactions : booking_id
+users ||--o{ payout_accounts : user_id
+users ||--o{ conversations : student_user_id
+users ||--o{ conversations : tutor_user_id
+tutor_subjects ||--o{ conversations : tutor_subject_id
+bookings ||--o{ conversations : booking_id
+conversations ||--o{ messages : conversation_id
+users ||--o{ messages : sender_user_id
+bookings ||--|| reviews : booking_id
+users ||--o{ reviews : tutor_user_id
+users ||--o{ reviews : student_user_id
+tutor_subjects ||--o{ reviews : tutor_subject_id
+reviews ||--|| review_replies : review_id
+users ||--o{ review_replies : tutor_user_id
+users ||--o{ notification_preferences : user_id
+users ||--o{ admin_reviews : submitted_by_user_id
+users ||--o{ admin_reviews : reviewed_by_user_id
+users ||--o{ audit_logs : actor_user_id
+
+note as EnumTypes
+  **user_role**: student, tutor, admin
+  **tutor_application_status**: draft, pending, approved, rejected, cancelled
+  **review_status**: pending, approved, rejected
+  **subject_status**: draft, published, archived
+  **booking_status**: draft, payment_due, confirmed, completed, cancelled, refunded, disputed
+  **booking_format**: online, in_person
+  **transaction_type**: topup, lesson_payment, earning, refund, payout
+  **transaction_direction**: credit, debit
+  **transaction_status**: pending, succeeded, failed, cancelled
+  **admin_review_type**: tutor_application, listing_change, document, review, message, refund_dispute
+  **admin_review_status**: pending, approved, rejected, resolved
+end note
+
+@enduml
