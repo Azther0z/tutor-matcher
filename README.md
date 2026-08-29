@@ -57,9 +57,10 @@ just restart   # npm run restart — restart all services
 just down      # npm run down    — stop and remove the local stack
 ```
 
-Both dev servers hot-reload on source changes. To run them attached to the
-current terminal instead (Ctrl+C stops both), use `just dev` (`npm run dev`);
-this assumes Postgres is already running.
+The detached Compose stack uses production-style images and does not hot-reload
+source changes; rerun `just up` after changing application code. To run both dev
+servers with hot reload attached to the current terminal instead (Ctrl+C stops
+both), use `just dev` (`npm run dev`); this assumes Postgres is already running.
 
 <details>
 <summary>Run each server in its own terminal</summary>
@@ -138,9 +139,9 @@ The initial Gherkin scenario verifies the backend root endpoint. See
 
 ## CI/CD
 
-Pull requests run formatting, linting, Jest tests, backend Gherkin tests, and application builds.
-A push to `main` builds and publishes the frontend and backend images with both immutable commit
-tags and the `latest` tag. Doco-CD polls this repository and deploys
+Pull requests run formatting, linting, Jest tests, backend Gherkin tests, application builds, and
+Docker image builds. A push to `main` builds and publishes the frontend and backend images with both
+immutable commit tags and the `latest` tag. Doco-CD polls this repository and deploys
 [`deploy/compose.yaml`](deploy/compose.yaml) after validation succeeds.
 
 ## Project Structure

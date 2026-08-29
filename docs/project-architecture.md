@@ -93,7 +93,8 @@ list.
 # First-run only: deps, env files, Postgres (wait for healthy), migrate, seed
 just setup               # or: npm run setup
 
-# Start Postgres + backend (8000) + frontend (3000) in the background (Compose)
+# Start Postgres + backend (8000) + frontend (3000) in the background (Compose;
+# rebuild after source changes)
 just up                 # or: npm run up   — containers survive closing the terminal
 just logs               # stream output
 just down               # stop them
@@ -125,7 +126,8 @@ Production deployment is pull-based and is separate from the root local testing
 Compose file:
 
 1. A pull request runs formatting, linting, frontend and backend Jest tests,
-   backend Cucumber.js behavior tests, and application builds in GitHub Actions.
+   backend Cucumber.js behavior tests, application builds, and Docker image
+   builds in GitHub Actions.
 2. A successful push to `main` builds and publishes frontend and backend images
    to Docker Hub with both the commit SHA and `latest` tags.
 3. Doco-CD polls the Tutor Matcher repository every five minutes. Its main
@@ -141,7 +143,7 @@ production deployment manifest.
 
 Deployment secrets are intended to be SOPS-encrypted with age. The repository
 contains the policy and templates under `deploy/secrets/`. Production Compose
-references encrypted backend and PostgreSQL dotenv files, which Doco-CD
+references encrypted backend and PostgreSQL secret files, which Doco-CD
 decrypts before starting the services. PostgreSQL is internal to the stack and
 uses a persistent named volume.
 
