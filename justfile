@@ -1,55 +1,60 @@
 # Tutor Matcher — local development workflow.
 #
 # Uses `just` (https://just.systems) as a cross-platform command runner so the
-# same recipes work on macOS, Linux, and Windows. Every recipe just delegates to
-# an `npm run` script in package.json, so there is no shell-specific logic — you
-# can also run the `npm run` form directly if you don't have `just`.
+# same recipes work on macOS, Linux, and Windows.
+#
+# Container orchestration lives here and calls `docker compose` directly. The
+# recipes that only wrap npm work (`setup`, `install`, `dev`) delegate to the
+# matching `npm run` script, so those stay runnable without `just`.
 #
 #   just            list recipes
-#   just setup      prepare a fresh checkout (deps, env, db, migrate, seed)
+#   just setup      prepare a fresh checkout (env, Postgres, deps, migrate, seed)
 #   just up         start the Postgres + backend + frontend Compose stack
 
 # Default recipe: show the list.
 default:
     @just --list
 
-# First-run setup: install deps, copy env files, migrate, seed. Run `just db-up`
-# first so Postgres is reachable for migrate/seed. Then start with `just up`.
-setup:
+# Copy missing .env files from their .env.example templates.
+env:
+    node scripts/setup-env.mjs
+
+# First-run setup: env files, Postgres, deps, migrate, seed. Then run `just up`.
+setup: db-up
     npm run setup
 
 # Install root + backend + frontend dependencies.
 install:
     npm run install:all
 
-# Start Postgres + backend (8000) + frontend (3000) detached through Compose.
-up:
-    npm run up
+# Build and start Postgres + backend (8000) + frontend (3000), detached.
+up: env
+    docker compose up -d --build --wait
 
 # Stop and remove the local Compose stack.
 down:
-    npm run down
+    docker compose down
 
-# Restart all local Compose services.
+# Restart the local Compose services.
 restart:
-    npm run restart
+    docker compose restart
 
-# Stream logs from the local Compose stack (Ctrl+C to stop watching).
-logs:
-    npm run logs
+# Stream Compose logs; pass a service to narrow, e.g. `just logs backend`.
+logs *SERVICE:
+    docker compose logs -f {{ SERVICE }}
 
 # Show status of the local Compose services.
 status:
-    npm run status
+    docker compose ps
 
 # Run backend + frontend in the foreground instead (Ctrl+C stops both).
 dev:
     npm run dev
 
 # Start the Postgres container and wait until it is healthy.
-db-up:
-    npm run db:up
+db-up: env
+    docker compose up -d --wait postgres
 
 # Stop the Postgres container.
 db-down:
-    npm run db:down
+    docker compose stop postgres

@@ -58,7 +58,7 @@ tutor-matcher/                  ← monorepo root
 ├── scripts/                    ← Repo tooling (setup-env.mjs: copy .env templates)
 ├── .prettierrc                 ← Shared Prettier config
 ├── justfile                    ← Cross-platform dev recipes (setup/up/down/install/…)
-└── package.json                ← Root: setup + format + up/down/dev/db:* scripts
+└── package.json                ← Root: setup, install, format, backlog:check, dev scripts
 ```
 
 ## Architecture Decisions
@@ -84,19 +84,19 @@ Next.js is **CSR-first**: the browser calls the Express API directly. No Next.js
 
 ## Development
 
-Common tasks are wrapped as [`just`](https://just.systems) recipes (repo root and
-`apps/backend`), each a thin alias over an `npm run` script so they also work
-without `just`. See the task reference in [`README.md`](../README.md) for the full
-list.
+Common tasks are [`just`](https://just.systems) recipes (repo root and
+`apps/backend`). Docker Compose orchestration is implemented directly in the root
+justfile; recipes that only wrap npm work delegate to an `npm run` script and so
+also work without `just`. See the task reference in [`README.md`](../README.md)
+for the full list.
 
 ```bash
-# First-run only: start Postgres, then deps, env files, migrate, seed
-just db-up               # or: npm run db:up
-just setup               # or: npm run setup
+# First-run only: env files, Postgres, deps, migrate, seed
+just setup
 
 # Start Postgres + backend (8000) + frontend (3000) in the background (Compose;
 # rebuild after source changes)
-just up                 # or: npm run up   — containers survive closing the terminal
+just up                 # containers survive closing the terminal
 just logs               # stream output
 just down               # stop them
 
