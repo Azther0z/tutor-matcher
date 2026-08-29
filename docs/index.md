@@ -34,11 +34,11 @@ The Git-managed backlog contract is [`backlog/README.md`](backlog/README.md).
 
 ## Architecture Decisions
 
-| ADR                                             | Decision                                                       | Status                                            |
-| ----------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------- |
-| [`0001`](adr/0001-separate-express-backend.md)  | Use a separate Express backend                                 | Accepted direction                                |
-| [`0002`](adr/0002-monorepo-layout.md)           | Use a frontend/backend monorepo                                | Accepted direction; path wording needs correction |
-| [`0003`](adr/0003-docker-compose-deployment.md) | Separate local and production Docker Compose deployment shapes | Current direction                                 |
+| ADR                                             | Decision                                                       | Status             |
+| ----------------------------------------------- | -------------------------------------------------------------- | ------------------ |
+| [`0001`](adr/0001-separate-express-backend.md)  | Use a separate Express backend                                 | Accepted direction |
+| [`0002`](adr/0002-monorepo-layout.md)           | Use a frontend/backend monorepo                                | Accepted direction |
+| [`0003`](adr/0003-docker-compose-deployment.md) | Separate local and production Docker Compose deployment shapes | Current direction  |
 
 ## Evidence Sources
 
@@ -56,7 +56,7 @@ The knowledge derived from it is represented by the canonical database pages:
 - Authentication and authorization behavior
 - End-to-end domain flows and state transitions
 - Environment-variable reference and troubleshooting
-- Coverage targets for domain and API flows beyond the current health checks
+- Coverage targets for domain and API flows beyond the current root-endpoint checks
 - Source-of-truth relationship between Prisma schema, migrations, and design schema
 
 The source-of-truth rules are defined above and in `AGENTS.md`; keep this page

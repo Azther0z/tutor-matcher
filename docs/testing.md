@@ -25,7 +25,7 @@ apps/backend/
         └── world.ts
 ```
 
-- `cucumber.cjs` discovers `.feature` files, loads `ts-node/register`, and loads support and step
+- `cucumber.cjs` discovers `.feature` files, loads `ts-node/esm`, and loads support and step
   definition files.
 - Feature files describe observable behavior in Gherkin.
 - Step definitions translate Gherkin steps into requests and assertions.
