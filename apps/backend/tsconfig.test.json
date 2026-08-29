@@ -5,6 +5,7 @@
     "noEmit": true,
     "isolatedModules": true,
     "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": false,
     "types": ["node", "jest"]
   },
   "include": ["src", "test"],

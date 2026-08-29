@@ -5,7 +5,7 @@ epic: "Admin, Trust & Safety"
 role: "Admin"
 lifecycle: backlog
 story_points: 3
-dependencies: ["US1-4"]
+dependencies: ["AUTH-4"]
 acceptance_criteria:
   - given: "a Tutor submits verification documents,"
     when: "an Admin reviews them,"

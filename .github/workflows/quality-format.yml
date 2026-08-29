@@ -4,18 +4,32 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'docker-compose.yml'
-      - '.github/workflows/**'
+      - "apps/**"
+      - "docs/**"
+      - "deploy/**"
+      - "scripts/**"
+      - "README.md"
+      - "package.json"
+      - "package-lock.json"
+      - "docker-compose.yml"
+      - ".doco-cd.yaml"
+      - ".prettier*"
+      - ".sops.yaml"
+      - ".github/workflows/**"
   pull_request:
     paths:
-      - 'apps/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'docker-compose.yml'
-      - '.github/workflows/**'
+      - "apps/**"
+      - "docs/**"
+      - "deploy/**"
+      - "scripts/**"
+      - "README.md"
+      - "package.json"
+      - "package-lock.json"
+      - "docker-compose.yml"
+      - ".doco-cd.yaml"
+      - ".prettier*"
+      - ".sops.yaml"
+      - ".github/workflows/**"
 
 jobs:
   format:

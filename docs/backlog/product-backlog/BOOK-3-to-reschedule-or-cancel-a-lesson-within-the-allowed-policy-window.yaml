@@ -5,7 +5,7 @@ epic: "Lesson Booking & Scheduling"
 role: "Student"
 lifecycle: backlog
 story_points: 3
-dependencies: ["US4-1"]
+dependencies: ["BOOK-1"]
 acceptance_criteria:
   - given: "a lesson is more than 24 hours away,"
     when: "a Student requests to reschedule/cancel,"

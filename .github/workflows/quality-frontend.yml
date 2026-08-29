@@ -4,18 +4,18 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/frontend/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'docker-compose.yml'
-      - '.github/workflows/**'
+      - "apps/frontend/**"
+      - "package.json"
+      - "package-lock.json"
+      - "docker-compose.yml"
+      - ".github/workflows/**"
   pull_request:
     paths:
-      - 'apps/frontend/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'docker-compose.yml'
-      - '.github/workflows/**'
+      - "apps/frontend/**"
+      - "package.json"
+      - "package-lock.json"
+      - "docker-compose.yml"
+      - ".github/workflows/**"
 
 concurrency:
   group: tutor-matcher-quality-frontend-${{ github.ref }}

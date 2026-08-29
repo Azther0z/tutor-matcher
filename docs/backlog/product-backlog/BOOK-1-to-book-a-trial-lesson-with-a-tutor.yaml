@@ -5,7 +5,7 @@ epic: "Lesson Booking & Scheduling"
 role: "Student"
 lifecycle: backlog
 story_points: 5
-dependencies: ["US1-2", "US2-2", "US2-3", "US3-3"]
+dependencies: ["AUTH-2", "PROF-2", "PROF-3", "DISC-3"]
 acceptance_criteria:
   - given: "a Student selects an open slot and confirms,"
     when: "payment (if required) succeeds,"

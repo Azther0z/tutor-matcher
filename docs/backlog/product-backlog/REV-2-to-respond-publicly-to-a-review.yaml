@@ -1,11 +1,11 @@
 id: REV-2
 title: "To respond publicly to a review"
-description: "As a Tutor, I want to respond publicly to a review so that I can address feedback professionally."
+description: "As a Tutor, I want to respond publicly to a review so that I can address the comment professionally."
 epic: "Reviews & Ratings"
 role: "Tutor"
 lifecycle: backlog
 story_points: 2
-dependencies: ["US8-1"]
+dependencies: ["REV-1"]
 acceptance_criteria:
   - given: "a review exists on a Tutor's profile,"
     when: "the Tutor submits a reply,"

@@ -1,3 +1,9 @@
-# Monorepo Layout with /frontend and /backend Packages
+# Monorepo Layout with Frontend and Backend Apps
 
-The repository holds both the Next.js frontend and the Express backend as packages within a single monorepo (`/frontend`, `/backend`). A single `docker-compose.yml` at the root orchestrates both services together with Postgres. This was chosen over two separate repos because the team is small, the services are tightly coupled, and a shared repo simplifies docker-compose wiring and type sharing.
+The repository holds the Next.js frontend and Express backend under `apps/frontend`
+and `apps/backend` in a single monorepo. The root `docker-compose.yml` orchestrates
+PostgreSQL and production-style local containers for both application services.
+Production uses the separate `deploy/compose.yaml` manifest for the frontend and
+backend images. This layout was chosen over two repositories because the team is
+small, the services are tightly coupled, and a shared repository simplifies
+development workflow and deployment configuration.

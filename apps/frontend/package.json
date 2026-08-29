@@ -1,6 +1,9 @@
 {
   "name": "frontend",
   "version": "0.1.0",
+  "engines": {
+    "node": ">=22"
+  },
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,11 +11,6 @@
     "start": "next start",
     "lint": "eslint",
     "test": "jest"
-  },
-  "lint-staged": {
-    "**/*.{ts,tsx,js,jsx,mjs,cjs,json,css}": "prettier --write",
-    "README.md": "prettier --write",
-    "**/*.{ts,tsx,js,jsx}": "eslint --fix"
   },
   "dependencies": {
     "next": "16.3.2",

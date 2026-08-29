@@ -1,8 +1,8 @@
 id: AUTH-1
 title: "Create a Student or Tutor account"
-description: "As a new user, I want to sign up as either a Student or a Tutor so that I get an account tailored to my role."
+description: "As a new member, I want to sign up as either a Student or a Tutor so that I get an account tailored to my role."
 epic: "Account Registration & Authentication"
-role: "new user"
+role: "new member"
 lifecycle: backlog
 story_points: 5
 dependencies: []

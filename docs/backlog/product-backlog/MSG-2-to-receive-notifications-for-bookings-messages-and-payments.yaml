@@ -1,16 +1,16 @@
 id: MSG-2
 title: "To receive notifications for bookings, messages, and payments"
-description: "As a user, I want to receive notifications for bookings, messages, and payments so that I stay informed of important account activity."
+description: "As a member, I want to receive notifications for bookings, messages, and payments so that I stay informed of important account activity."
 epic: "Messaging & Notifications"
-role: "user"
+role: "member"
 lifecycle: backlog
 story_points: 3
-dependencies: ["US1-2"]
+dependencies: ["AUTH-2"]
 acceptance_criteria:
   - given: "a triggering event occurs (new booking, new message, payment processed),"
     when: "the event fires,"
-    then: "an email notification is sent based on user preferences."
-  - given: "a user has disabled notifications for a specific event type,"
+    then: "an email notification is sent based on member preferences."
+  - given: "a member has disabled notifications for a specific event type,"
     when: "that event occurs,"
     then: "no notification is sent for that event type."
 sources:

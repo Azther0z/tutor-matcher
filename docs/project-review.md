@@ -20,13 +20,13 @@ Findings from reviewing the current repository state. Items are grouped by sever
 
 ```ts
 // src/lib/prisma.ts
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient } from "../generated/prisma";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 ```
 
 If raw SQL is needed for stored proc calls, use Prisma's `$queryRaw` / `$executeRaw` — no need for a separate `pg` pool.
@@ -95,11 +95,11 @@ Once Prisma is used exclusively (see item 1), the `pg` and `@types/pg` packages 
 **Fix:** Add before `export default app`:
 
 ```ts
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from "express";
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
-  res.status(500).json({ error: err.message || 'Internal server error' });
+  res.status(500).json({ error: err.message || "Internal server error" });
 });
 ```
 

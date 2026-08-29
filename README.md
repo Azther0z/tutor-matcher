@@ -4,7 +4,7 @@ A matchmaking platform that connects tutors and students by subject, schedule, a
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - Docker + Docker Compose
 - [`just`](https://just.systems) — cross-platform command runner used for the
   workflows below (`brew install just`, `winget install --id Casey.Just`, or see
@@ -18,16 +18,14 @@ A matchmaking platform that connects tutors and students by subject, schedule, a
 git clone https://github.com/Azther0z/tutor-matcher.git
 cd tutor-matcher
 
-just db-up      # npm run db:up   (docker compose up -d --wait)
+just db-up      # npm run db:up
 just setup      # npm run setup
 ```
 
 `just setup` installs all dependencies, copies missing `.env` files from their
-`.env.example` templates, applies migrations, and seeds mock data. It needs
-Postgres reachable, so run `just db-up` first (or `just up`, which also starts
-it). It is safe to re-run. Edit the generated `.env` files if your local setup
-differs from the defaults, then start the app with `just up` (see
-[Development](#development)).
+`.env.example` templates, applies migrations, and seeds mock data. It requires
+Postgres to be reachable, so run `just db-up` first. It is safe to re-run. Start
+the complete local Compose stack with `just up` (see [Development](#development)).
 
 `just` recipes work the same on macOS, Linux, and Windows; the equivalent
 `npm run` script is shown in a comment next to each command.
@@ -38,33 +36,35 @@ differs from the defaults, then start the app with `just up` (see
 ```bash
 just install                                   # npm run install:all
 cp apps/backend/.env.example apps/backend/.env
-just db-up                                      # npm run db:up  (docker compose up -d --wait)
-cd apps/backend && just migrate                 # npm run db:migrate:dev  (prisma migrate dev)
-cd apps/backend && just gen-mock-data           # npm run gen-mock-data  (prisma db seed)
+just db-up                                      # npm run db:up  (creates .env; starts Postgres)
+cd apps/backend
+just migrate                                      # npm run db:migrate:dev  (prisma migrate dev)
+just gen-mock-data                                # npm run gen-mock-data  (prisma db seed)
 ```
 
 </details>
 
 ## Development
 
-Start Postgres plus both dev servers. They run **in the background** via
-[PM2](https://pm2.keymetrics.io/), so you can close the terminal and they keep
+Start Postgres plus the backend and frontend containers. They run **in the
+background** via Docker Compose, so you can close the terminal and they keep
 running:
 
 ```bash
-just up        # npm run up      — Postgres, then backend + frontend (detached); prints the local URLs
-just logs      # npm run logs    — stream both servers' output
-just status    # npm run status  — show whether they're running
-just restart   # npm run restart — restart both
-just down      # npm run down    — stop both
+just up        # npm run up      — build and start Postgres + backend + frontend
+just logs      # npm run logs    — stream all container output
+just status    # npm run status  — show Compose service status
+just restart   # npm run restart — restart all services
+just down      # npm run down    — stop and remove the local stack
 ```
 
-`just up` prints the local URLs once the servers are registered — the frontend
-on <http://localhost:3000> and the backend on <http://localhost:8000>.
+The detached Compose stack uses production-style images and does not hot-reload
+source changes; rerun `just up` after changing application code. To run both dev
+servers with hot reload attached to the current terminal instead (Ctrl+C stops
+both), use `just dev` (`npm run dev`); this assumes Postgres is already running.
 
-Both dev servers hot-reload on source changes. To run them attached to the
-current terminal instead (Ctrl+C stops both), use `just dev` (`npm run dev`);
-this assumes Postgres is already running.
+The root `.env` file is created from `.env.example` automatically. Edit
+`FRONTEND_PORT` or `BACKEND_PORT` there to avoid port conflicts on your device.
 
 <details>
 <summary>Run each server in its own terminal</summary>
@@ -88,9 +88,9 @@ matching `npm run` script (for use without `just`) is in the last column.
 | ------------------------ | -------------- | ----------------------------------------------- | --------------------------- |
 | `just setup`             | repo root      | First-run: deps, env files, migrate, seed       | `npm run setup`             |
 | `just install`           | repo root      | Install root + backend + frontend dependencies  | `npm run install:all`       |
-| `just up` / `down`       | repo root      | Start / stop Postgres + both servers (detached) | `npm run up` / `down`       |
-| `just logs` / `status`   | repo root      | Stream logs / show background-server status     | `npm run logs` / `status`   |
-| `just restart`           | repo root      | Restart both background servers                 | `npm run restart`           |
+| `just up` / `down`       | repo root      | Start / stop the local Compose stack            | `npm run up` / `down`       |
+| `just logs` / `status`   | repo root      | Stream logs / show Compose service status       | `npm run logs` / `status`   |
+| `just restart`           | repo root      | Restart all local Compose services              | `npm run restart`           |
 | `just dev`               | repo root      | Run backend + frontend attached to the terminal | `npm run dev`               |
 | `just db-up` / `db-down` | repo root      | Start (wait for healthy) / stop Postgres        | `npm run db:up` / `db:down` |
 | `just gen`               | `apps/backend` | Regenerate the typed Prisma client              | `npm run gen`               |
@@ -126,7 +126,7 @@ re-staged automatically; no need to run them by hand before committing.
 
 The backend has two complementary test suites:
 
-- Jest and Supertest tests under `apps/backend/src/__tests__/` cover API behavior in the
+- Jest and Supertest tests under `apps/backend/test/` cover API behavior in the
   conventional test runner.
 - Cucumber.js runs Gherkin features under `apps/backend/features/`, with TypeScript step
   definitions that exercise the exported Express app through Supertest.
@@ -138,13 +138,13 @@ npm --prefix apps/backend test -- --runInBand
 npm --prefix apps/backend run test:bdd
 ```
 
-The initial Gherkin scenario verifies `GET /health`. See
+The initial Gherkin scenario verifies the backend root endpoint. See
 [`docs/testing.md`](docs/testing.md) for the test layout, conventions, and CI behavior.
 
 ## CI/CD
 
-Pull requests run formatting, linting, Jest tests, backend Gherkin tests, application builds,
-and Docker image builds. A push to `main` publishes the frontend and backend images with both
+Pull requests run formatting, linting, Jest tests, backend Gherkin tests, application builds, and
+Docker image builds. A push to `main` builds and publishes the frontend and backend images with both
 immutable commit tags and the `latest` tag. Doco-CD polls this repository and deploys
 [`deploy/compose.yaml`](deploy/compose.yaml) after validation succeeds.
 

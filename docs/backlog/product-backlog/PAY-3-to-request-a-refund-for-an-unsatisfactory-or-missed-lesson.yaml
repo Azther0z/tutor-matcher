@@ -5,7 +5,7 @@ epic: "Payments & Billing"
 role: "Student"
 lifecycle: backlog
 story_points: 5
-dependencies: ["US4-1", "US5-1", "US6-2"]
+dependencies: ["BOOK-1", "PAY-1", "CLASS-2"]
 acceptance_criteria:
   - given: "a lesson did not occur due to Tutor no-show,"
     when: "the Student files a refund request,"

@@ -5,7 +5,7 @@ epic: "Account Registration & Authentication"
 role: "Student"
 lifecycle: backlog
 story_points: 2
-dependencies: ["US1-1"]
+dependencies: ["AUTH-1"]
 acceptance_criteria:
   - given: "a Student visitor has checked the consent checkbox,"
     when: "they submit the sign-up form,"

@@ -7,7 +7,7 @@
 #
 #   just            list recipes
 #   just setup      prepare a fresh checkout (deps, env, db, migrate, seed)
-#   just up         start Postgres + backend + frontend (detached)
+#   just up         start the Postgres + backend + frontend Compose stack
 
 # Default recipe: show the list.
 default:
@@ -22,23 +22,23 @@ setup:
 install:
     npm run install:all
 
-# Start Postgres + backend (8000) + frontend (3000) detached (PM2) — terminal-free; stop with `just down`.
+# Start Postgres + backend (8000) + frontend (3000) detached through Compose.
 up:
     npm run up
 
-# Stop the backend + frontend background servers.
+# Stop and remove the local Compose stack.
 down:
     npm run down
 
-# Restart the background servers.
+# Restart all local Compose services.
 restart:
     npm run restart
 
-# Stream logs from the background servers (Ctrl+C to stop watching).
+# Stream logs from the local Compose stack (Ctrl+C to stop watching).
 logs:
     npm run logs
 
-# Show status of the background servers.
+# Show status of the local Compose services.
 status:
     npm run status
 

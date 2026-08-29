@@ -1,7 +1,8 @@
 .playwright-mcp
 node_modules/
 .env
-deploy/secrets/*.env
-deploy/secrets/*.env.dec
+deploy/secrets/*
+!deploy/secrets/*.example
+!deploy/secrets/*.enc
 dist/
 .next/

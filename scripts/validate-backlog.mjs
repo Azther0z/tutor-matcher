@@ -7,6 +7,7 @@ const storiesDir = join(backlog, "product-backlog");
 const errors = [];
 const storyFiles = (await readdir(storiesDir)).filter((file) => file.endsWith(".yaml")).sort();
 const storyIds = new Set();
+const dependencyEntries = [];
 
 for (const file of storyFiles) {
   const content = await readFile(join(storiesDir, file), "utf8");
@@ -21,6 +22,21 @@ for (const file of storyFiles) {
   if (!/^description:\s*.+$/m.test(content)) errors.push(`${file}: missing description`);
   if (!/^story_points:\s*\d+$/m.test(content))
     errors.push(`${file}: invalid or missing story_points`);
+  const dependencies = content.match(/^dependencies:\s*\[([^\]]*)\]$/m);
+  if (!dependencies) {
+    errors.push(`${file}: missing or invalid dependencies`);
+  } else {
+    for (const dependency of dependencies[1]
+      .split(",")
+      .map((value) => value.trim().replace(/^['"]|['"]$/g, ""))
+      .filter(Boolean)) {
+      if (!/^[A-Z]+-\d+$/.test(dependency)) {
+        errors.push(`${file}: invalid dependency ID ${dependency}`);
+      } else {
+        dependencyEntries.push({ file, dependency });
+      }
+    }
+  }
   if (!/^acceptance_criteria:\n/m.test(content))
     errors.push(`${file}: missing acceptance_criteria`);
   if (!/^\s+- given:\s*.+\n\s+when:\s*.+\n\s+then:\s*.+/m.test(content))
@@ -32,6 +48,10 @@ for (const file of storyFiles) {
     errors.push(`${file}: missing product or journey source reference`);
   if (!content.includes("route: ") || !content.includes("action: "))
     errors.push(`${file}: missing journey route/action reference`);
+}
+
+for (const { file, dependency } of dependencyEntries) {
+  if (!storyIds.has(dependency)) errors.push(`${file}: unknown dependency ID ${dependency}`);
 }
 
 const backlogContent = await readFile(join(backlog, "backlog.yaml"), "utf8");

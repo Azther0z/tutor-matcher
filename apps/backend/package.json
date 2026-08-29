@@ -1,6 +1,9 @@
 {
   "name": "backend",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=22"
+  },
   "description": "",
   "license": "ISC",
   "author": "",
@@ -8,7 +11,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start": "tsc && node dist/src/server.js",
+    "start": "node dist/src/server.js",
     "dev": "tsx watch src/server.ts",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:bdd": "cucumber-js",
@@ -23,10 +26,6 @@
     "prisma:validate": "prisma validate",
     "prisma:format": "prisma format",
     "postinstall": "prisma generate"
-  },
-  "lint-staged": {
-    "**/*.{ts,js,mjs,cjs,json}": "prettier --write",
-    "{src,features}/**/*.ts": "eslint --fix"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

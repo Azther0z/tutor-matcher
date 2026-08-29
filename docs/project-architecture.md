@@ -28,11 +28,8 @@ tutor-matcher/                  ← monorepo root
 │       │   ├── support/
 │       │   └── health.feature
 │       ├── src/
-│       │   ├── controllers/    ← Route handlers (one file per domain)
 │       │   ├── lib/
-│       │   │   └── db.ts       ← PostgreSQL connection pool
-│       │   ├── middleware/     ← Auth, error handler, etc.
-│       │   ├── routes/         ← Express routers
+│       │   │   └── db.ts       ← Prisma client with PostgreSQL adapter
 │       │   ├── apps.ts         ← Express app (no listen — importable by tests)
 │       │   └── server.ts       ← Server entry point (calls app.listen)
 │       ├── test/
@@ -42,7 +39,7 @@ tutor-matcher/                  ← monorepo root
 │       │   └── seed.ts        ← Mock-data seed (@faker-js/faker)
 │       ├── justfile           ← Backend Prisma/dev recipes
 │       ├── cucumber.cjs
-│       └── jest.config.js
+│       └── jest.config.ts
 ├── deploy/                    ← Doco-CD production deployment
 │   ├── compose.yaml           ← Frontend and backend production services
 │   ├── README.md              ← Deployment secret instructions
@@ -57,8 +54,7 @@ tutor-matcher/                  ← monorepo root
 ├── .claude/skills/             ← Symlinks → .agents/skills/
 ├── .doco-cd.yaml               ← Doco-CD deployment settings
 ├── .sops.yaml                  ← SOPS/age encryption policy
-├── docker-compose.yml          ← Postgres service for local development
-├── ecosystem.config.js         ← PM2 config: backend + frontend background dev servers
+├── docker-compose.yml          ← Full local Postgres + backend + frontend stack
 ├── scripts/                    ← Repo tooling (setup-env.mjs: copy .env templates)
 ├── .prettierrc                 ← Shared Prettier config
 ├── justfile                    ← Cross-platform dev recipes (setup/up/down/install/…)
@@ -94,11 +90,13 @@ without `just`. See the task reference in [`README.md`](../README.md) for the fu
 list.
 
 ```bash
-# First-run only: deps, env files, Postgres (wait for healthy), migrate, seed
+# First-run only: start Postgres, then deps, env files, migrate, seed
+just db-up               # or: npm run db:up
 just setup               # or: npm run setup
 
-# Start Postgres + backend (8000) + frontend (3000) in the background (PM2)
-just up                 # or: npm run up   — servers survive closing the terminal
+# Start Postgres + backend (8000) + frontend (3000) in the background (Compose;
+# rebuild after source changes)
+just up                 # or: npm run up   — containers survive closing the terminal
 just logs               # stream output
 just down               # stop them
 
@@ -125,14 +123,14 @@ See [Testing](testing.md) for the current coverage and extension conventions.
 
 ## Deployment Flow
 
-Production deployment is pull-based and is separate from the root development
+Production deployment is pull-based and is separate from the root local testing
 Compose file:
 
 1. A pull request runs formatting, linting, frontend and backend Jest tests,
    backend Cucumber.js behavior tests, application builds, and Docker image
    builds in GitHub Actions.
-2. A successful push to `main` publishes frontend and backend images to Docker
-   Hub with both the commit SHA and `latest` tags.
+2. A successful push to `main` builds and publishes frontend and backend images
+   to Docker Hub with both the commit SHA and `latest` tags.
 3. Doco-CD polls the Tutor Matcher repository every five minutes. Its main
    instance reads `.doco-cd.yaml`, then deploys `deploy/compose.yaml` as the
    `tutor-matcher` Swarm stack.
@@ -140,13 +138,15 @@ Compose file:
    when a repository change triggers deployment.
 
 The former `homelab-gitops/apps/tutor-matcher` deployment was removed so only
-the Tutor Matcher repository owns this stack. The root `docker-compose.yml`
-remains the local PostgreSQL development setup; it is not the production
-deployment manifest.
+the Tutor Matcher repository owns the production stack. The root
+`docker-compose.yml` is the complete local testing stack; it is not the
+production deployment manifest.
 
 Deployment secrets are intended to be SOPS-encrypted with age. The repository
-contains the policy and template under `deploy/secrets/`, but the encrypted
-backend environment file is not yet connected to the production Compose file.
+contains the policy and templates under `deploy/secrets/`. Production Compose
+references encrypted backend and PostgreSQL secret files, which Doco-CD
+decrypts before starting the services. PostgreSQL is internal to the stack and
+uses a persistent named volume.
 
 ## Deferred Decisions
 

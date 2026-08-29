@@ -1,5 +1,5 @@
 # Format + lint staged files (Prettier, then ESLint --fix per app), auto-restaged.
 npx lint-staged
 
-# Safety net: fail the commit if anything under apps/ is still unformatted.
+# Safety net: fail the commit if any covered repository file is still unformatted.
 npm run format:check

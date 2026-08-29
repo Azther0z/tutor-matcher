@@ -1,36 +1,36 @@
-import js from '@eslint/js';
-import tsParser from '@typescript-eslint/parser';
-import tsPlugin from '@typescript-eslint/eslint-plugin';
+import js from "@eslint/js";
+import tsParser from "@typescript-eslint/parser";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
 
 export default [
   js.configs.recommended,
   {
-    files: ['src/**/*.ts', 'features/**/*.ts'],
+    files: ["**/*.ts"],
     languageOptions: {
       parser: tsParser,
       globals: {
-        console: 'readonly',
-        process: 'readonly',
+        console: "readonly",
+        process: "readonly",
       },
     },
     plugins: {
-      '@typescript-eslint': tsPlugin,
+      "@typescript-eslint": tsPlugin,
     },
     rules: tsPlugin.configs.recommended.rules,
   },
   {
-    files: ['src/**/*.test.ts', 'src/**/__tests__/**/*.ts', 'test/**/*.test.ts'],
+    files: ["src/**/*.test.ts", "src/**/__tests__/**/*.ts", "test/**/*.test.ts"],
     languageOptions: {
       globals: {
-        describe: 'readonly',
-        expect: 'readonly',
-        it: 'readonly',
+        describe: "readonly",
+        expect: "readonly",
+        it: "readonly",
       },
     },
   },
   {
     rules: {
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
 ];
