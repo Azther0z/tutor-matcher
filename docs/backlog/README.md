@@ -9,11 +9,9 @@ immutable historical evidence.
 ```text
 backlog.yaml
 backlog.html
+sprint-1.yaml
 product-backlog/
   EPIC-N-story-slug.yaml
-sprint-1-backlog/
-  manifest.yaml
-  EPIC-N.yaml
 ```
 
 Each product story has one YAML file. The `EPIC-N` ID is stable; the slug is
@@ -43,12 +41,13 @@ retain existing stories and add only uncovered capabilities.
 
 ## Sprints
 
-Each sprint directory contains a `manifest.yaml` with sprint-level metadata and
-one YAML file per sprint story. Story files link the product story by stable ID
-and repository-relative path, and contain story execution fields and inline
-task breakdowns. Sprint and task statuses are `planned`, `in_progress`, `todo`,
-`blocked`, and `done` as applicable. Estimates in sprint files are original
-man-hours; story points remain on product stories.
+Each root `sprint-N.yaml` contains sprint-level metadata and a `story_ids` list
+selecting the product stories committed to that sprint.
+Product story files contain the complete story definition and, when selected for
+a sprint, its execution fields and inline task breakdown. Sprint and task
+statuses are `planned`, `in_progress`, `todo`, `blocked`, and `done` as
+applicable. Estimates are original man-hours; story points remain on product
+stories.
 
 Stories may appear in sequential sprints, but not overlapping active sprints.
 Completed and cancelled story files remain in place.

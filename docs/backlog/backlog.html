@@ -76,6 +76,84 @@
         margin-bottom: 22px;
         border-bottom: 1px solid var(--line);
       }
+      .graph-wrap {
+        display: none;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--card);
+        overflow: hidden;
+      }
+      .graph-wrap.visible {
+        display: block;
+      }
+      .graph-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .graph-pan {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .graph-pan button {
+        padding: 6px 10px;
+        font-size: 15px;
+        line-height: 1;
+      }
+      .graph-scroll {
+        overflow: auto;
+        padding: 18px;
+        -webkit-overflow-scrolling: touch;
+      }
+      #dependency-graph {
+        display: block;
+        min-width: 0;
+        max-width: none;
+      }
+      .graph-edge {
+        fill: none;
+        stroke: #b8c8c6;
+        stroke-width: 1.5;
+        marker-end: url(#arrow);
+      }
+      .graph-node {
+        cursor: pointer;
+      }
+      .graph-node rect {
+        fill: #f8fbfa;
+        stroke: #a9c5c1;
+        stroke-width: 1.5;
+      }
+      .graph-node:hover rect,
+      .graph-node:focus rect {
+        fill: #edf4f2;
+        stroke: var(--accent);
+        stroke-width: 2;
+      }
+      .graph-node text {
+        pointer-events: none;
+        fill: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      }
+      .graph-node .node-id {
+        fill: var(--accent);
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .graph-node .node-title {
+        font-size: 11px;
+      }
+      .graph-legend {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
       button {
         cursor: pointer;
         border: 0;
@@ -184,6 +262,27 @@
         margin: 0;
         padding-left: 20px;
       }
+      .criterion {
+        margin: 10px 0;
+      }
+      .criterion-line {
+        display: flex;
+        align-items: baseline;
+        gap: 7px;
+        margin: 4px 0;
+      }
+      .criterion-line span {
+        flex: 0 0 43px;
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .criterion-line p {
+        margin: 0 0 5px;
+        color: var(--ink);
+      }
       .task {
         margin: 7px 0;
       }
@@ -225,7 +324,8 @@
     <main>
       <nav class="tabs" aria-label="Backlog views">
         <button class="active" data-view="product">Product backlog</button
-        ><button data-view="sprint">Sprint 1</button>
+        ><button data-view="sprint">Sprint 1</button
+        ><button data-view="graph">Dependency graph</button>
       </nav>
       <section class="toolbar">
         <input id="search" type="search" placeholder="Search stories, roles, or tasks" /><select
@@ -241,6 +341,23 @@
       </section>
       <section class="metrics" id="metrics"></section>
       <section id="sprint-note"></section>
+      <section class="graph-wrap" id="graph-wrap">
+        <div class="graph-toolbar">
+          <span>Arrows show prerequisites. Scroll horizontally to explore.</span>
+          <span class="graph-legend"
+            ><span>Click a node to open its story</span><span id="graph-count"></span
+            ><span class="graph-pan"
+              ><button id="graph-left" type="button" aria-label="Scroll graph left">&larr;</button
+              ><button id="graph-right" type="button" aria-label="Scroll graph right">
+                &rarr;
+              </button></span
+            ></span
+          >
+        </div>
+        <div class="graph-scroll" id="graph-scroll">
+          <svg id="dependency-graph" role="img" aria-label="Product story dependency graph"></svg>
+        </div>
+      </section>
       <section class="grid" id="stories"></section>
     </main>
     <script id="backlog-data" type="application/json">
@@ -425,8 +542,16 @@
             "status": "backlog",
             "points": 3,
             "criteria": [
-              "both participants join and stay for the minimum required duration, the lesson ends, the lesson status changes to 'Completed'.",
-              "one participant does not attend for the minimum required duration, the lesson ends, the lesson is not marked as Completed."
+              {
+                "given": "both participants join and stay for the minimum required duration,",
+                "when": "the lesson ends,",
+                "then": "the lesson status changes to 'Completed'."
+              },
+              {
+                "given": "one participant does not attend for the minimum required duration,",
+                "when": "the lesson ends,",
+                "then": "the lesson is not marked as Completed."
+              }
             ]
           },
           {
@@ -1621,7 +1746,55 @@
     </script>
     <script>
       const data = JSON.parse(document.getElementById("backlog-data").textContent);
+      const sprintExecution = new Map(data.sprint.stories.map((story) => [story.id, story]));
+      data.product = data.product.map((story) => {
+        const execution = sprintExecution.get(story.id);
+        return execution
+          ? {
+              ...story,
+              status: execution.status,
+              order: execution.order,
+              estimate_hours: execution.hours,
+              assignees: execution.assignees,
+              tasks: execution.tasks,
+            }
+          : story;
+      });
       let view = "product";
+      const dependencies = {
+        "AUTH-2": ["AUTH-1"],
+        "AUTH-3": ["AUTH-1"],
+        "AUTH-4": ["AUTH-1"],
+        "AUTH-5": ["AUTH-1"],
+        "AUTH-6": ["AUTH-1"],
+        "PROF-1": ["AUTH-1"],
+        "PROF-2": ["AUTH-1"],
+        "PROF-3": ["AUTH-1", "PROF-2"],
+        "PROF-4": ["AUTH-1"],
+        "DISC-1": ["PROF-2", "PROF-3"],
+        "DISC-2": ["PROF-1", "DISC-1"],
+        "DISC-3": ["DISC-1"],
+        "MSG-1": ["DISC-3"],
+        "MSG-2": ["AUTH-2"],
+        "BOOK-1": ["AUTH-2", "PROF-2", "PROF-3", "DISC-3"],
+        "BOOK-2": ["BOOK-1", "PROF-3"],
+        "BOOK-3": ["BOOK-1"],
+        "BOOK-4": ["BOOK-1"],
+        "BOOK-5": [],
+        "BOOK-6": [],
+        "PAY-1": ["AUTH-2"],
+        "PAY-2": ["PAY-1", "CLASS-2"],
+        "PAY-3": ["BOOK-1", "PAY-1", "CLASS-2"],
+        "PAY-4": [],
+        "CLASS-1": ["BOOK-1"],
+        "CLASS-2": ["CLASS-1"],
+        "REV-1": ["CLASS-2"],
+        "REV-2": ["REV-1"],
+        "REV-3": ["REV-1"],
+        "REV-4": ["REV-3"],
+        "SAFE-1": ["AUTH-2"],
+        "SAFE-2": ["AUTH-4"],
+      };
       const $ = (id) => document.getElementById(id);
       const esc = (value) =>
         String(value ?? "").replace(
@@ -1629,7 +1802,7 @@
           (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]
         );
       const refresh = () => {
-        const stories = view === "product" ? data.product : data.sprint.stories;
+        const stories = view === "sprint" ? data.sprint.stories : data.product;
         const query = $("search").value.toLowerCase();
         const epic = $("epic").value;
         const status = $("status").value;
@@ -1637,7 +1810,7 @@
         const filtered = stories.filter((story) => {
           const text = JSON.stringify(story).toLowerCase();
           const assignees =
-            view === "product"
+            view === "product" || view === "graph"
               ? data.sprint.stories.find((item) => item.id === story.id)?.assignees || []
               : story.assignees || [];
           return (
@@ -1648,7 +1821,7 @@
           );
         });
         const totalHours =
-          view === "product"
+          view === "product" || view === "graph"
             ? stories.reduce((sum, story) => sum + Number(story.points || 0), 0)
             : stories.reduce((sum, story) => sum + Number(story.hours || 0), 0);
         $("metrics").innerHTML =
@@ -1659,14 +1832,100 @@
           view === "sprint"
             ? `<div class="sprint-note"><strong>${esc(data.sprint.goal)}</strong>${esc(data.sprint.start)} to ${esc(data.sprint.end)} · ${esc(data.sprint.status)}</div>`
             : "";
-        $("stories").innerHTML = filtered.length
-          ? filtered.map(card).join("")
-          : '<div class="empty">No stories match these filters.</div>';
+        $("graph-wrap").classList.toggle("visible", view === "graph");
+        $("stories").style.display = view === "graph" ? "none" : "grid";
+        if (view === "graph") renderGraph(filtered);
+        else
+          $("stories").innerHTML = filtered.length
+            ? filtered.map(card).join("")
+            : '<div class="empty">No stories match these filters.</div>';
+      };
+      const renderGraph = (stories) => {
+        const svg = $("dependency-graph");
+        const width = Math.max(760, Math.min(1200, stories.length * 34));
+        const nodeWidth = 142,
+          nodeHeight = 52,
+          gapX = 34,
+          gapY = 18,
+          margin = 22;
+        const ids = new Set(stories.map((story) => story.id));
+        const level = (id, seen = new Set()) => {
+          if (seen.has(id)) return 0;
+          seen.add(id);
+          const deps = (dependencies[id] || []).filter((dep) => ids.has(dep));
+          return deps.length ? Math.max(...deps.map((dep) => level(dep, new Set(seen)))) + 1 : 0;
+        };
+        const columns = {};
+        stories.forEach((story) => (columns[level(story.id)] ||= []).push(story));
+        const columnCount = Math.max(...Object.keys(columns).map(Number), 0) + 1;
+        const colWidth = Math.max(nodeWidth + gapX, (width - margin * 2) / columnCount);
+        const canvasWidth = margin * 2 + colWidth * columnCount;
+        const positions = {};
+        Object.entries(columns).forEach(([column, items]) => {
+          items.forEach((story, row) => {
+            positions[story.id] = {
+              x: margin + Number(column) * colWidth,
+              y: margin + row * (nodeHeight + gapY),
+            };
+          });
+        });
+        const height = Math.max(
+          150,
+          ...Object.values(positions).map(({ y }) => y + nodeHeight + margin)
+        );
+        const edgeMarkup = stories
+          .flatMap((story) =>
+            (dependencies[story.id] || [])
+              .filter((dep) => positions[dep])
+              .map((dep) => {
+                const from = positions[dep],
+                  to = positions[story.id];
+                return `<path class="graph-edge" d="M ${from.x + nodeWidth} ${from.y + nodeHeight / 2} C ${from.x + colWidth - 8} ${from.y + nodeHeight / 2}, ${to.x - 18} ${to.y + nodeHeight / 2}, ${to.x} ${to.y + nodeHeight / 2}"/>`;
+              })
+          )
+          .join("");
+        const nodeMarkup = stories
+          .map((story) => {
+            const { x, y } = positions[story.id];
+            const title = story.title.replace(/^To /, "").replace(/^Create /, "");
+            const shortTitle = title.length > 22 ? `${title.slice(0, 21)}...` : title;
+            return `<g class="graph-node" tabindex="0" role="button" aria-label="${esc(story.id)}: ${esc(story.title)}" data-story="${esc(story.id)}" transform="translate(${x},${y})"><rect width="${nodeWidth}" height="${nodeHeight}" rx="9"/><text class="node-id" x="11" y="18">${esc(story.id)}</text><text class="node-title" x="11" y="36">${esc(shortTitle)}</text></g>`;
+          })
+          .join("");
+        svg.setAttribute("viewBox", `0 0 ${canvasWidth} ${height}`);
+        svg.setAttribute("height", height);
+        svg.style.width = `${canvasWidth}px`;
+        svg.innerHTML = `<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z" fill="#b8c8c6"/></marker></defs>${edgeMarkup}${nodeMarkup}`;
+        $("graph-count").textContent =
+          `${stories.length} stories · ${edgeMarkup ? stories.reduce((count, story) => count + (dependencies[story.id] || []).filter((dep) => ids.has(dep)).length, 0) : 0} links`;
+        svg.querySelectorAll("[data-story]").forEach((node) =>
+          node.addEventListener("click", () => {
+            view = "product";
+            document
+              .querySelectorAll("[data-view]")
+              .forEach((item) => item.classList.toggle("active", item.dataset.view === view));
+            $("search").value = node.dataset.story;
+            setFilters();
+            refresh();
+          })
+        );
       };
       const card = (story) =>
-        `<details class="story"><summary><span class="story-id">${esc(story.id)}</span><h2>${esc(story.title)}</h2><p>${esc(story.description || "")}</p><div class="chips"><span class="chip">${esc(story.epic || "Sprint 1")}</span><span class="chip status">${esc(story.status)}</span>${story.points ? `<span class="chip">${story.points} pts</span>` : `<span class="chip">${story.hours} hrs</span>`}</div></summary>${view === "product" ? `<div class="detail"><h3>Role</h3><p>${esc(story.role)}</p><h3>Acceptance criteria</h3><ul>${(story.criteria || []).map((item) => `<li>${esc(item)}</li>`).join("")}</ul></div>` : `<div class="detail"><h3>Product story</h3><p>${esc(story.productPath)}</p><h3>Tasks</h3><ul>${(story.tasks || []).map((task) => `<li class="task">${esc(task.title)}<small>${esc(task.role)} · ${esc(task.hours)} hrs · ${esc(task.status)}</small></li>`).join("")}</ul></div>`}</details>`;
+        `<details class="story"><summary><span class="story-id">${esc(story.id)}</span><h2>${esc(story.title)}</h2><p>${esc(story.description || "")}</p><div class="chips"><span class="chip">${esc(story.epic || "Sprint 1")}</span><span class="chip status">${esc(story.status)}</span>${story.points ? `<span class="chip">${story.points} pts</span>` : `<span class="chip">${story.hours || story.estimate_hours} hrs</span>`}</div></summary>${view === "product" ? `<div class="detail"><h3>Role</h3><p>${esc(story.role)}</p><h3>Acceptance criteria</h3><ul>${(story.criteria || []).map(criterionMarkup).join("")}</ul>${story.tasks ? `<h3>Sprint tasks</h3><ul>${story.tasks.map((task) => `<li class="task">${esc(task.title)}<small>${esc(task.role)} · ${esc(task.hours)} hrs · ${esc(task.status)}</small></li>`).join("")}</ul>` : ""}</div>` : `<div class="detail"><h3>Product story</h3><p>${esc(story.productPath)}</p><h3>Tasks</h3><ul>${(story.tasks || []).map((task) => `<li class="task">${esc(task.title)}<small>${esc(task.role)} · ${esc(task.hours)} hrs · ${esc(task.status)}</small></li>`).join("")}</ul></div>`}</details>`;
+      const criterionMarkup = (criterion) => {
+        const parts = typeof criterion === "string" ? criterion.split(/,\s+/) : [];
+        const item =
+          typeof criterion === "string"
+            ? {
+                given: parts.shift() || "",
+                when: parts.join(", ").replace(/, ([^,]*)$/, ""),
+                then: parts.pop() || "",
+              }
+            : criterion;
+        return `<li class="criterion"><div class="criterion-line"><span>Given</span><p>${esc(item.given)}</p></div><div class="criterion-line"><span>When</span><p>${esc(item.when)}</p></div><div class="criterion-line"><span>Then</span><p>${esc(item.then)}</p></div></li>`;
+      };
       const setFilters = () => {
-        const stories = view === "product" ? data.product : data.sprint.stories;
+        const stories = view === "sprint" ? data.sprint.stories : data.product;
         $("epic").innerHTML = `<option value="">All epics</option>${[
           ...new Set(stories.map((s) => s.epic).filter(Boolean)),
         ]
@@ -1696,6 +1955,12 @@
           refresh();
         })
       );
+      $("graph-left").addEventListener("click", () => {
+        $("graph-scroll").scrollLeft -= 320;
+      });
+      $("graph-right").addEventListener("click", () => {
+        $("graph-scroll").scrollLeft += 320;
+      });
       ["search", "epic", "status", "assignee"].forEach((id) =>
         $(id).addEventListener("input", refresh)
       );

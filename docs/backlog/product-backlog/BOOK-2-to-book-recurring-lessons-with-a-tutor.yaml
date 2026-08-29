@@ -13,6 +13,37 @@ acceptance_criteria:
   - given: "a Student selects a recurrence pattern that conflicts with an existing lesson,"
     when: "they confirm the recurring booking,"
     then: "the booking is rejected and the conflicting slots are identified."
+sprint: sprint-1
+assignees: []
+status: todo
+order: 11
+estimate_hours: 20
+tasks:
+  - id: BOOK-2-T1
+    title: "Design the recurrence-pattern selection UI"
+    assignees: ["Poom", "Pee"]
+    role: "UXUI"
+    status: todo
+    estimate_hours: 4
+  - id: BOOK-2-T2
+    title: "Build the recurrence-pattern picker"
+    assignees: ["Poom", "Pee"]
+    role: "Frontend"
+    status: todo
+    estimate_hours: 5
+  - id: BOOK-2-T3
+    title: "Implement recurring-lesson creation and conflict detection"
+    assignees: ["Poom", "Pee"]
+    role: "Backend"
+    status: todo
+    estimate_hours: 8
+  - id: BOOK-2-T4
+    title: "Write acceptance tests for recurring booking (success, conflict)"
+    assignees: ["Santa", "Plai"]
+    role: "QA"
+    status: todo
+    estimate_hours: 3
+
 sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: "Lesson Booking & Scheduling / US4-2"

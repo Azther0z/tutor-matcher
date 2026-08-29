@@ -13,6 +13,37 @@ acceptance_criteria:
   - given: "a Tutor visitor reaches the final sign-up step,"
     when: "they have not checked the consent checkbox covering identity, credential, AND payout data processing,"
     then: "account creation is blocked and the requirement is highlighted."
+sprint: sprint-1
+assignees: []
+status: todo
+order: 5
+estimate_hours: 12
+tasks:
+  - id: AUTH-6-T1
+    title: "Design the extended consent copy covering ID/payout data"
+    assignees: ["Poom", "Pee"]
+    role: "UXUI"
+    status: todo
+    estimate_hours: 3
+  - id: AUTH-6-T2
+    title: "Implement the Tutor consent-checkbox gate on sign-up"
+    assignees: ["Nesta", "Washi"]
+    role: "Frontend"
+    status: todo
+    estimate_hours: 3
+  - id: AUTH-6-T3
+    title: "Record the extended consent (ID, credentials, payout) with timestamp"
+    assignees: ["Nesta", "Washi"]
+    role: "Backend"
+    status: todo
+    estimate_hours: 4
+  - id: AUTH-6-T4
+    title: "Write acceptance tests for the Tutor consent gate"
+    assignees: ["Poom", "Pee"]
+    role: "QA"
+    status: todo
+    estimate_hours: 2
+
 sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: "Account Registration & Authentication / US1-6"

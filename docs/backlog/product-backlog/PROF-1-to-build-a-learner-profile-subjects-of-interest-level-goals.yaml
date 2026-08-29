@@ -13,6 +13,37 @@ acceptance_criteria:
   - given: "a Student is on the profile setup page,"
     when: "they save without providing subjects, level, OR goals,"
     then: "the profile is not stored and the missing fields are highlighted."
+sprint: sprint-1
+assignees: []
+status: todo
+order: 16
+estimate_hours: 8
+tasks:
+  - id: PROF-1-T1
+    title: "Design the student profile setup page"
+    assignees: ["Poom", "Pee"]
+    role: UXUI
+    status: todo
+    estimate_hours: 2
+  - id: PROF-1-T2
+    title: "Build the subjects/level/goals form and validation"
+    assignees: ["Poom", "Pee"]
+    role: Frontend
+    status: todo
+    estimate_hours: 3
+  - id: PROF-1-T3
+    title: "Implement profile storage and expose data for search ranking"
+    assignees: ["Poom", "Pee"]
+    role: Backend
+    status: todo
+    estimate_hours: 2
+  - id: PROF-1-T4
+    title: "Write acceptance tests for the student profile (complete, missing fields)"
+    assignees: ["Santa", "Plai"]
+    role: QA
+    status: todo
+    estimate_hours: 1
+
 sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: "User Profile Management / US2-1"

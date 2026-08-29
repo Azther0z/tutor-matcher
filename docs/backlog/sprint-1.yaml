@@ -1,0 +1,31 @@
+id: sprint-1
+status: planned
+goal: "Deliver the first authentication, profile, discovery, booking, messaging, and notification slices."
+dates:
+  start: 2026-08-25
+  end: 2026-09-14
+capacity_hours: 272
+commitments:
+  - "Migrate the Sprint 1 source plan into linked YAML records."
+review: "Not yet recorded"
+retrospective: "Not yet recorded"
+story_ids:
+  - AUTH-2
+  - AUTH-1
+  - PROF-1
+  - DISC-1
+  - BOOK-1
+  - MSG-1
+  - AUTH-3
+  - AUTH-4
+  - AUTH-5
+  - AUTH-6
+  - PROF-2
+  - PROF-3
+  - PROF-4
+  - DISC-2
+  - DISC-3
+  - BOOK-2
+  - BOOK-3
+  - BOOK-4
+  - MSG-2
