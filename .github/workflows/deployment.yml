@@ -20,8 +20,8 @@ jobs:
       - name: Validate Compose and image references
         working-directory: deploy
         run: |
-          printf 'postgresql://postgres:ci@postgres:5432/tutor_matcher\n' > secrets/backend_database_url.enc.txt
-          printf 'ci\n' > secrets/postgres_password.enc.txt
+          printf 'postgresql://postgres:ci@postgres:5432/tutor_matcher\n' > secrets/backend_database_url.enc
+          printf 'ci\n' > secrets/postgres_password.enc
           docker compose -f compose.yaml config >/dev/null
           images=$(docker compose -f compose.yaml config --images)
           grep -Fx 'docker.io/azther0z/tutor-matcher-frontend:latest' <<< "$images"

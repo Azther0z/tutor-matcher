@@ -75,9 +75,9 @@ volumes:
 
 secrets:
   backend_database_url:
-    file: ./secrets/backend_database_url.enc.txt
+    file: ./secrets/backend_database_url.enc
   postgres_password:
-    file: ./secrets/postgres_password.enc.txt
+    file: ./secrets/postgres_password.enc
 
 networks:
   default: {}
