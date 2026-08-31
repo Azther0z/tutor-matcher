@@ -5,8 +5,6 @@
  * fixed emails and fixture values keep local checks stable and idempotent.
  *
  * Run with:  npm run gen-mock-data   (or)   just gen-mock-data   (or)   prisma db seed
- *
- * When the domain schema lands, expand this to seed those models too.
  */
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -24,9 +22,10 @@ const prisma = new PrismaClient({ adapter });
 faker.seed(20260828);
 
 const FIXED_USERS = [
-  { firstName: "Alice", lastName: "Johnson", email: "alice@example.com" },
-  { firstName: "Bob", lastName: "Smith", email: "bob@example.com" },
-  { firstName: "Carol", lastName: "Davis", email: "carol@example.com" },
+  { firstName: "Alice", lastName: "Johnson", email: "alice@example.com", isAdmin: false },
+  { firstName: "Bob", lastName: "Smith", email: "bob@example.com", isAdmin: false },
+  // Carol handles the report fixture below, so she has to be a real admin.
+  { firstName: "Carol", lastName: "Davis", email: "carol@example.com", isAdmin: true },
 ];
 
 const GENERATED_USERS = 20;
@@ -42,7 +41,7 @@ async function main() {
   for (const user of FIXED_USERS) {
     await prisma.user.upsert({
       where: { email: user.email },
-      update: {},
+      update: { isAdmin: user.isAdmin },
       create: { ...user, password: "development-only" },
     });
   }
