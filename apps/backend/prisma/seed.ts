@@ -74,12 +74,13 @@ async function main() {
   const tutor = existingTutor
     ? await prisma.tutor.update({
         where: { id: existingTutor.id },
-        data: { isPublished: true },
+        data: { status: "APPROVED", isPublished: true },
       })
     : await prisma.tutor.create({
         data: {
           governmentId: FIXTURE_TUTOR_GOVERNMENT_ID,
           bio: "Development tutor fixture",
+          status: "APPROVED",
           isPublished: true,
         },
       });
@@ -141,10 +142,18 @@ async function main() {
     : await prisma.booking.create({
         data: {
           description: FIXTURE_BOOKING_DESCRIPTION,
+          zoomMeetingUrl: "https://zoom.us/j/development-fixture",
           user: { connect: { id: bob.id } },
           subject: { connect: { id: subject.id } },
         },
       });
+
+  if (existingBooking) {
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { zoomMeetingUrl: "https://zoom.us/j/development-fixture" },
+    });
+  }
 
   await prisma.availability.update({
     where: { id: availability.id },

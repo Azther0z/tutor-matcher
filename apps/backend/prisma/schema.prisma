@@ -20,6 +20,12 @@ enum PaymentStatus {
   CANCELLED
 }
 
+enum TutorStatus {
+  PENDING
+  REJECTED
+  APPROVED
+}
+
 model User {
   id        Int      @id @default(autoincrement()) @map("user_id")
   firstName String   @map("first_name")
@@ -52,13 +58,14 @@ model User {
 }
 
 model Tutor {
-  id            Int      @id @default(autoincrement()) @map("tutor_id")
-  avatarUrl     String?  @map("avatar_url")
+  id            Int         @id @default(autoincrement()) @map("tutor_id")
+  avatarUrl     String?     @map("avatar_url")
   bio           String?
-  introVideoUrl String?  @map("intro_video_url")
-  governmentId  String?  @map("government_id")
-  enrolledAt    DateTime @default(now()) @map("enrolled_at")
-  isPublished   Boolean  @default(false) @map("is_published")
+  introVideoUrl String?     @map("intro_video_url")
+  governmentId  String      @map("government_id")
+  enrolledAt    DateTime    @default(now()) @map("enrolled_at")
+  status        TutorStatus @default(PENDING)
+  isPublished   Boolean     @default(false) @map("is_published")
 
   user           User?
   subjects       Subject[]
@@ -110,7 +117,7 @@ model AvailabilitySubject {
 model Booking {
   id             Int      @id @default(autoincrement()) @map("booking_id")
   description    String?
-  zoomMeetingUrl String?  @map("zoom_meeting_url")
+  zoomMeetingUrl String   @map("zoom_meeting_url")
   createdAt      DateTime @default(now()) @map("created_at")
 
   userId Int  @map("user_id")
@@ -120,7 +127,7 @@ model Booking {
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
   availability Availability?
-  payments     Payment[]
+  payment      Payment?
   reviews      Review[]
 
   @@index([userId])
@@ -142,12 +149,11 @@ model Payment {
   toUserId Int  @map("to_user_id")
   toUser   User @relation("PaymentsTo", fields: [toUserId], references: [id], onDelete: Restrict)
 
-  bookingId Int?     @map("booking_id")
+  bookingId Int?     @unique @map("booking_id")
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   @@index([fromUserId])
   @@index([toUserId])
-  @@index([bookingId])
   @@map("payments")
 }
 

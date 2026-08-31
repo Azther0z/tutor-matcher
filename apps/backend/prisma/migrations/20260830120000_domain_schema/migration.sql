@@ -1,8 +1,14 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateEnum
 CREATE TYPE "PaymentType" AS ENUM ('REFUND', 'PAYOUT', 'TRANSFER');
 
 -- CreateEnum
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'HOLDING', 'COMPLETED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "TutorStatus" AS ENUM ('PENDING', 'REJECTED', 'APPROVED');
 
 -- DropTable
 DROP TABLE "TestUser";
@@ -29,8 +35,9 @@ CREATE TABLE "tutors" (
     "avatar_url" TEXT,
     "bio" TEXT,
     "intro_video_url" TEXT,
-    "government_id" TEXT,
+    "government_id" TEXT NOT NULL,
     "enrolled_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "status" "TutorStatus" NOT NULL DEFAULT 'PENDING',
     "is_published" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "tutors_pkey" PRIMARY KEY ("tutor_id")
@@ -69,7 +76,7 @@ CREATE TABLE "availability_subjects" (
 CREATE TABLE "bookings" (
     "booking_id" SERIAL NOT NULL,
     "description" TEXT,
-    "zoom_meeting_url" TEXT,
+    "zoom_meeting_url" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "user_id" INTEGER NOT NULL,
     "subject_id" INTEGER NOT NULL,
@@ -157,13 +164,13 @@ CREATE INDEX "bookings_user_id_idx" ON "bookings"("user_id");
 CREATE INDEX "bookings_subject_id_idx" ON "bookings"("subject_id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "payments_booking_id_key" ON "payments"("booking_id");
+
+-- CreateIndex
 CREATE INDEX "payments_from_user_id_idx" ON "payments"("from_user_id");
 
 -- CreateIndex
 CREATE INDEX "payments_to_user_id_idx" ON "payments"("to_user_id");
-
--- CreateIndex
-CREATE INDEX "payments_booking_id_idx" ON "payments"("booking_id");
 
 -- CreateIndex
 CREATE INDEX "reviews_user_id_idx" ON "reviews"("user_id");
@@ -248,3 +255,7 @@ ALTER TABLE "reports" ADD CONSTRAINT "reports_reporter_user_id_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "reports" ADD CONSTRAINT "reports_reported_user_id_fkey" FOREIGN KEY ("reported_user_id") REFERENCES "users"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddConstraint
+ALTER TABLE "tutors" ADD CONSTRAINT "tutors_published_requires_approval"
+    CHECK (NOT "is_published" OR "status" = 'APPROVED');
