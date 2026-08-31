@@ -55,10 +55,10 @@ tutor-matcher/                  ← monorepo root
 ├── .doco-cd.yaml               ← Doco-CD deployment settings
 ├── .sops.yaml                  ← SOPS/age encryption policy
 ├── docker-compose.yml          ← Full local Postgres + backend + frontend stack
-├── scripts/                    ← Repo tooling (setup-env.mjs: copy .env templates)
+├── scripts/                    ← Repo tooling (environment setup, backlog validation/generation)
 ├── .prettierrc                 ← Shared Prettier config
 ├── justfile                    ← Cross-platform dev recipes (setup/up/down/install/…)
-└── package.json                ← Root: setup, install, format, backlog:check, dev scripts
+└── package.json                ← Root: setup, install, format, backlog build/check, dev scripts
 ```
 
 ## Architecture Decisions

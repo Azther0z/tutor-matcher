@@ -14,7 +14,7 @@ acceptance_criteria:
     when: "they confirm the recurring booking,"
     then: "the booking is rejected and the conflicting slots are identified."
 sprint: sprint-1
-assignees: []
+assignees: ["Poom", "Pee"]
 status: todo
 order: 11
 estimate_hours: 20
@@ -39,7 +39,7 @@ tasks:
     estimate_hours: 8
   - id: BOOK-2-T4
     title: "Write acceptance tests for recurring booking (success, conflict)"
-    assignees: ["Santa", "Plai"]
+    assignees: ["Poom", "Pee"]
     role: "QA"
     status: todo
     estimate_hours: 3

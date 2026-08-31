@@ -6,7 +6,7 @@ on:
     paths:
       - "docs/backlog/**"
       - "docs/sources/**"
-      - "scripts/validate-backlog.mjs"
+      - "scripts/**"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/deploy-backlog-pages.yml"
@@ -36,6 +36,7 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run backlog:check
+      - run: npm run backlog:build
       - uses: actions/configure-pages@v5
       - name: Prepare Pages artifact
         run: |

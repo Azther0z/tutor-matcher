@@ -14,7 +14,7 @@ acceptance_criteria:
     when: "they save without providing subjects, level, OR goals,"
     then: "the profile is not stored and the missing fields are highlighted."
 sprint: sprint-1
-assignees: []
+assignees: ["Poom", "Pee"]
 status: todo
 order: 16
 estimate_hours: 8
@@ -39,7 +39,7 @@ tasks:
     estimate_hours: 2
   - id: PROF-1-T4
     title: "Write acceptance tests for the student profile (complete, missing fields)"
-    assignees: ["Santa", "Plai"]
+    assignees: ["Poom", "Pee"]
     role: QA
     status: todo
     estimate_hours: 1

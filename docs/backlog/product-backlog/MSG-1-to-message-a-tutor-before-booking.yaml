@@ -14,7 +14,7 @@ acceptance_criteria:
     when: "they send an empty or invalid message,"
     then: "the message is rejected and the Tutor does not receive a notification."
 sprint: sprint-1
-assignees: []
+assignees: ["Ideal", "Pooh"]
 status: todo
 order: 19
 estimate_hours: 20
@@ -39,7 +39,7 @@ tasks:
     estimate_hours: 6
   - id: MSG-1-T4
     title: "Write acceptance tests for messaging (valid, empty message)"
-    assignees: ["Santa", "Plai"]
+    assignees: ["Ideal", "Pooh"]
     role: QA
     status: todo
     estimate_hours: 3

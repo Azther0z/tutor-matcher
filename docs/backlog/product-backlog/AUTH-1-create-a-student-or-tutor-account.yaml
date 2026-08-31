@@ -14,14 +14,14 @@ acceptance_criteria:
     when: "the visitor tries to sign up,"
     then: "the system shows an error and suggests logging in instead."
 sprint: sprint-1
-assignees: []
+assignees: ["Santa", "Plai"]
 status: todo
 order: 15
 estimate_hours: 20
 tasks:
   - id: AUTH-1-T1
     title: "Design the Student and Tutor sign-up page layouts"
-    assignees: ["Ideal", "Pooh"]
+    assignees: ["Santa", "Plai"]
     role: UXUI
     status: todo
     estimate_hours: 2
@@ -57,7 +57,7 @@ tasks:
     estimate_hours: 3
   - id: AUTH-1-T7
     title: "Write acceptance tests for sign-up (valid, duplicate email)"
-    assignees: ["Ideal", "Pooh"]
+    assignees: ["Santa", "Plai"]
     role: QA
     status: todo
     estimate_hours: 2

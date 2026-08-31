@@ -7,11 +7,13 @@ immutable historical evidence.
 ## Layout
 
 ```text
-backlog.yaml
-backlog.html
-sprint-1.yaml
-product-backlog/
-  EPIC-N-story-slug.yaml
+docs/backlog/
+  backlog.yaml
+  backlog.html  # generated; do not edit directly
+  sprint-1.yaml
+  product-backlog/
+    EPIC-N-story-slug.yaml
+scripts/templates/backlog.html
 ```
 
 Each product story has one YAML file. The `EPIC-N` ID is stable; the slug is
@@ -19,7 +21,10 @@ kept stable even when the title changes. `backlog.yaml` owns the epic acronym
 registry, format version, and source policy.
 
 Open `backlog.html` for a self-contained visual dashboard of the product
-backlog and Sprint 1.
+backlog and Sprint 1. Edit the YAML planning records or
+`../../scripts/templates/backlog.html`, then run `npm run backlog:build` to
+regenerate the dashboard. CI rejects a committed dashboard that does not match
+those sources.
 
 ## Product Stories
 
@@ -49,12 +54,24 @@ statuses are `planned`, `in_progress`, `todo`, `blocked`, and `done` as
 applicable. Estimates are original man-hours; story points remain on product
 stories.
 
+Each sprint-selected story has one accountable two-person delivery pair in its
+`assignees` field. That pair owns the complete story outcome, including design
+integration, frontend and backend implementation, automated tests, review, and
+CI verification. When inline tasks are present, their assignees match the story
+pair; task roles describe activities rather than handoffs to other pairs.
+`estimate_hours` values are shared pair-hours: count each estimate once for the
+pair, not once per assignee. Balance Sprint capacity by reassigning whole stories
+among the fixed pairs; do not split a story or change pair membership solely to
+make the totals equal.
+
 Stories may appear in sequential sprints, but not overlapping active sprints.
 Completed and cancelled story files remain in place.
 
 ## Checks
 
-Run `npm run format:check` and `npm run backlog:check`. CI checks formatting,
-YAML structure, required fields, stable IDs, dependency IDs, duplicate IDs,
-filename/path agreement, valid links, allowed values, and required immutable
-source files.
+Run `npm run backlog:build` after editing backlog YAML or the dashboard template.
+Run `npm run format:check` and `npm run backlog:check` before committing. CI
+checks formatting, parsed YAML structure, required fields, stable story and task
+IDs, dependency IDs, duplicate IDs, filename/path agreement, source links,
+allowed values, Sprint capacity, pair ownership, task estimate totals, required
+immutable source files, and generated-dashboard freshness.

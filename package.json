@@ -6,9 +6,11 @@
   },
   "description": "Matchmaking platform connecting tutors and students by subject, schedule, and price.",
   "scripts": {
-    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,md,yaml,yml,html}\" \"docs/**/*.{md,yaml,yml,html}\" \"deploy/**/*.{md,yaml,yml,json}\" \".github/**/*.{md,yaml,yml,json}\" \"scripts/**/*.{mjs,cjs,js}\" \"README.md\" \"package.json\" \".doco-cd.yaml\" \".prettierrc\" \".sops.yaml\"",
-    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,md,yaml,yml,html}\" \"docs/**/*.{md,yaml,yml,html}\" \"deploy/**/*.{md,yaml,yml,json}\" \".github/**/*.{md,yaml,yml,json}\" \"scripts/**/*.{mjs,cjs,js}\" \"README.md\" \"package.json\" \".doco-cd.yaml\" \".prettierrc\" \".sops.yaml\"",
-    "backlog:check": "node scripts/validate-backlog.mjs",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,md,yaml,yml,html}\" \"docs/**/*.{md,yaml,yml,html}\" \"deploy/**/*.{md,yaml,yml,json}\" \".github/**/*.{md,yaml,yml,json}\" \"scripts/**/*.{mjs,cjs,js,html}\" \"README.md\" \"package.json\" \".doco-cd.yaml\" \".prettierrc\" \".sops.yaml\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,md,yaml,yml,html}\" \"docs/**/*.{md,yaml,yml,html}\" \"deploy/**/*.{md,yaml,yml,json}\" \".github/**/*.{md,yaml,yml,json}\" \"scripts/**/*.{mjs,cjs,js,html}\" \"README.md\" \"package.json\" \".doco-cd.yaml\" \".prettierrc\" \".sops.yaml\"",
+    "backlog:build": "npm run backlog:validate && node scripts/generate-backlog.mjs",
+    "backlog:validate": "node scripts/validate-backlog.mjs",
+    "backlog:check": "npm run backlog:validate && node scripts/generate-backlog.mjs --check",
     "prepare": "husky",
     "install:all": "npm install && npm --prefix apps/backend install && npm --prefix apps/frontend install",
     "setup:env": "node scripts/setup-env.mjs",
@@ -28,7 +30,8 @@
     "concurrently": "^10.0.5",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
-    "prettier": "^3.9.6"
+    "prettier": "^3.9.6",
+    "yaml": "^2.9.0"
   },
   "lint-staged": {
     "apps/backend/**/*.ts": [
@@ -43,7 +46,7 @@
     "docs/**/*.{md,yaml,yml,html}": "prettier --write",
     "deploy/**/*.{md,yaml,yml,json}": "prettier --write",
     ".github/**/*.{md,yaml,yml,json}": "prettier --write",
-    "scripts/**/*.{mjs,cjs,js}": "prettier --write",
+    "scripts/**/*.{mjs,cjs,js,html}": "prettier --write",
     "*.{js,mjs,cjs,json,md,yaml,yml}": "prettier --write",
     ".doco-cd.yaml": "prettier --write",
     ".prettierrc": "prettier --write",

@@ -14,32 +14,32 @@ acceptance_criteria:
     when: "they have not checked the consent checkbox covering identity, credential, AND payout data processing,"
     then: "account creation is blocked and the requirement is highlighted."
 sprint: sprint-1
-assignees: []
+assignees: ["Ideal", "Pooh"]
 status: todo
 order: 5
 estimate_hours: 12
 tasks:
   - id: AUTH-6-T1
     title: "Design the extended consent copy covering ID/payout data"
-    assignees: ["Poom", "Pee"]
+    assignees: ["Ideal", "Pooh"]
     role: "UXUI"
     status: todo
     estimate_hours: 3
   - id: AUTH-6-T2
     title: "Implement the Tutor consent-checkbox gate on sign-up"
-    assignees: ["Nesta", "Washi"]
+    assignees: ["Ideal", "Pooh"]
     role: "Frontend"
     status: todo
     estimate_hours: 3
   - id: AUTH-6-T3
     title: "Record the extended consent (ID, credentials, payout) with timestamp"
-    assignees: ["Nesta", "Washi"]
+    assignees: ["Ideal", "Pooh"]
     role: "Backend"
     status: todo
     estimate_hours: 4
   - id: AUTH-6-T4
     title: "Write acceptance tests for the Tutor consent gate"
-    assignees: ["Poom", "Pee"]
+    assignees: ["Ideal", "Pooh"]
     role: "QA"
     status: todo
     estimate_hours: 2

@@ -14,7 +14,7 @@ acceptance_criteria:
     when: "the profile page loads,"
     then: "the profile details are not displayed and an unavailable message is shown."
 sprint: sprint-1
-assignees: []
+assignees: ["Poom", "Pee"]
 status: todo
 order: 10
 estimate_hours: 8
@@ -27,19 +27,19 @@ tasks:
     estimate_hours: 2
   - id: DISC-3-T2
     title: "Build the detail page (bio, reviews, rate, availability, video)"
-    assignees: ["Ideal", "Pooh"]
+    assignees: ["Poom", "Pee"]
     role: "Frontend"
     status: todo
     estimate_hours: 3
   - id: DISC-3-T3
     title: "Implement the tutor-detail fetch endpoint and unavailable-profile handling"
-    assignees: ["Ideal", "Pooh"]
+    assignees: ["Poom", "Pee"]
     role: "Backend"
     status: todo
     estimate_hours: 2
   - id: DISC-3-T4
     title: "Write acceptance tests for the Tutor detail page"
-    assignees: ["Saint", "Yongfu"]
+    assignees: ["Poom", "Pee"]
     role: "QA"
     status: todo
     estimate_hours: 1

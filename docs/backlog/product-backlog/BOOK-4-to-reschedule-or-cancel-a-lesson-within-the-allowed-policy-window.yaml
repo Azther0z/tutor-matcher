@@ -14,7 +14,7 @@ acceptance_criteria:
     when: "a Tutor cancels,"
     then: "the lesson credit is fully refunded to the Student's balance with no fee, and both parties are notified."
 sprint: sprint-1
-assignees: []
+assignees: ["Nesta", "Washi"]
 status: todo
 order: 13
 estimate_hours: 12
@@ -33,7 +33,7 @@ tasks:
     estimate_hours: 5
   - id: BOOK-4-T3
     title: "Write acceptance tests for Tutor cancellation (both time windows)"
-    assignees: ["Saint", "Yongfu"]
+    assignees: ["Nesta", "Washi"]
     role: "QA"
     status: todo
     estimate_hours: 3
