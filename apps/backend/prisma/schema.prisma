@@ -22,8 +22,9 @@ enum PaymentStatus {
 
 enum TutorStatus {
   PENDING
+  UNPUBLISHED
+  PUBLISHED
   REJECTED
-  APPROVED
 }
 
 model User {
@@ -65,7 +66,6 @@ model Tutor {
   governmentId  String      @map("government_id")
   enrolledAt    DateTime    @default(now()) @map("enrolled_at")
   status        TutorStatus @default(PENDING)
-  isPublished   Boolean     @default(false) @map("is_published")
 
   user           User?
   subjects       Subject[]

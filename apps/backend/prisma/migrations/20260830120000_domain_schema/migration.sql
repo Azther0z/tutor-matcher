@@ -8,7 +8,7 @@ CREATE TYPE "PaymentType" AS ENUM ('REFUND', 'PAYOUT', 'TRANSFER');
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'HOLDING', 'COMPLETED', 'CANCELLED');
 
 -- CreateEnum
-CREATE TYPE "TutorStatus" AS ENUM ('PENDING', 'REJECTED', 'APPROVED');
+CREATE TYPE "TutorStatus" AS ENUM ('PENDING', 'UNPUBLISHED', 'PUBLISHED', 'REJECTED');
 
 -- DropTable
 DROP TABLE "TestUser";
@@ -38,7 +38,6 @@ CREATE TABLE "tutors" (
     "government_id" TEXT NOT NULL,
     "enrolled_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "status" "TutorStatus" NOT NULL DEFAULT 'PENDING',
-    "is_published" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "tutors_pkey" PRIMARY KEY ("tutor_id")
 );
@@ -255,7 +254,3 @@ ALTER TABLE "reports" ADD CONSTRAINT "reports_reporter_user_id_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "reports" ADD CONSTRAINT "reports_reported_user_id_fkey" FOREIGN KEY ("reported_user_id") REFERENCES "users"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddConstraint
-ALTER TABLE "tutors" ADD CONSTRAINT "tutors_published_requires_approval"
-    CHECK (NOT "is_published" OR "status" = 'APPROVED');

@@ -74,14 +74,13 @@ async function main() {
   const tutor = existingTutor
     ? await prisma.tutor.update({
         where: { id: existingTutor.id },
-        data: { status: "APPROVED", isPublished: true },
+        data: { status: "PUBLISHED" },
       })
     : await prisma.tutor.create({
         data: {
           governmentId: FIXTURE_TUTOR_GOVERNMENT_ID,
           bio: "Development tutor fixture",
-          status: "APPROVED",
-          isPublished: true,
+          status: "PUBLISHED",
         },
       });
 
