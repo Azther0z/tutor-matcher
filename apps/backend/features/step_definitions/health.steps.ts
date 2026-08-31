@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { Then, When } from "@cucumber/cucumber";
 import request from "supertest";
-import { app } from "../../src/apps.ts";
+import { app } from "../../src/app.ts";
 import type { TutorMatcherWorld } from "../support/world";
 
 When("I request the backend root endpoint", async function (this: TutorMatcherWorld) {
