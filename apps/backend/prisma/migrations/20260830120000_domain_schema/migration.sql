@@ -1,11 +1,11 @@
--- CreateSchema
-CREATE SCHEMA IF NOT EXISTS "public";
-
 -- CreateEnum
 CREATE TYPE "PaymentType" AS ENUM ('REFUND', 'PAYOUT', 'TRANSFER');
 
 -- CreateEnum
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'HOLDING', 'COMPLETED', 'CANCELLED');
+
+-- DropTable
+DROP TABLE "TestUser";
 
 -- CreateTable
 CREATE TABLE "users" (
@@ -16,7 +16,7 @@ CREATE TABLE "users" (
     "password" TEXT NOT NULL,
     "bio" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "balance" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "balance" DECIMAL(12,2) NOT NULL DEFAULT 0,
     "is_admin" BOOLEAN NOT NULL DEFAULT false,
     "tutor_id" INTEGER,
 
@@ -42,7 +42,7 @@ CREATE TABLE "subjects" (
     "name" TEXT NOT NULL,
     "description" TEXT,
     "video_url" TEXT,
-    "hourly_rate" DECIMAL(65,30) NOT NULL,
+    "hourly_rate" DECIMAL(10,2) NOT NULL,
     "tutor_id" INTEGER NOT NULL,
 
     CONSTRAINT "subjects_pkey" PRIMARY KEY ("subject_id")
@@ -71,7 +71,6 @@ CREATE TABLE "bookings" (
     "description" TEXT,
     "zoom_meeting_url" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "payment_id" INTEGER,
     "user_id" INTEGER NOT NULL,
     "subject_id" INTEGER NOT NULL,
 
@@ -82,12 +81,13 @@ CREATE TABLE "bookings" (
 CREATE TABLE "payments" (
     "payment_id" SERIAL NOT NULL,
     "type" "PaymentType" NOT NULL,
-    "amount" DECIMAL(65,30) NOT NULL,
-    "status" "PaymentStatus" NOT NULL,
+    "amount" DECIMAL(12,2) NOT NULL,
+    "status" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "completed_at" TIMESTAMP(3),
     "from_user_id" INTEGER NOT NULL,
     "to_user_id" INTEGER NOT NULL,
+    "booking_id" INTEGER,
 
     CONSTRAINT "payments_pkey" PRIMARY KEY ("payment_id")
 );
@@ -145,10 +145,52 @@ CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 CREATE UNIQUE INDEX "users_tutor_id_key" ON "users"("tutor_id");
 
 -- CreateIndex
+CREATE INDEX "subjects_tutor_id_idx" ON "subjects"("tutor_id");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "availabilities_booking_id_key" ON "availabilities"("booking_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "bookings_payment_id_key" ON "bookings"("payment_id");
+CREATE INDEX "bookings_user_id_idx" ON "bookings"("user_id");
+
+-- CreateIndex
+CREATE INDEX "bookings_subject_id_idx" ON "bookings"("subject_id");
+
+-- CreateIndex
+CREATE INDEX "payments_from_user_id_idx" ON "payments"("from_user_id");
+
+-- CreateIndex
+CREATE INDEX "payments_to_user_id_idx" ON "payments"("to_user_id");
+
+-- CreateIndex
+CREATE INDEX "payments_booking_id_idx" ON "payments"("booking_id");
+
+-- CreateIndex
+CREATE INDEX "reviews_user_id_idx" ON "reviews"("user_id");
+
+-- CreateIndex
+CREATE INDEX "reviews_subject_id_idx" ON "reviews"("subject_id");
+
+-- CreateIndex
+CREATE INDEX "reviews_booking_id_idx" ON "reviews"("booking_id");
+
+-- CreateIndex
+CREATE INDEX "certifications_tutor_id_idx" ON "certifications"("tutor_id");
+
+-- CreateIndex
+CREATE INDEX "messages_from_user_id_idx" ON "messages"("from_user_id");
+
+-- CreateIndex
+CREATE INDEX "messages_to_user_id_idx" ON "messages"("to_user_id");
+
+-- CreateIndex
+CREATE INDEX "reports_admin_user_id_idx" ON "reports"("admin_user_id");
+
+-- CreateIndex
+CREATE INDEX "reports_reporter_user_id_idx" ON "reports"("reporter_user_id");
+
+-- CreateIndex
+CREATE INDEX "reports_reported_user_id_idx" ON "reports"("reported_user_id");
 
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_tutor_id_fkey" FOREIGN KEY ("tutor_id") REFERENCES "tutors"("tutor_id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -166,9 +208,6 @@ ALTER TABLE "availability_subjects" ADD CONSTRAINT "availability_subjects_availa
 ALTER TABLE "availability_subjects" ADD CONSTRAINT "availability_subjects_subject_id_fkey" FOREIGN KEY ("subject_id") REFERENCES "subjects"("subject_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "bookings" ADD CONSTRAINT "bookings_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "payments"("payment_id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -179,6 +218,9 @@ ALTER TABLE "payments" ADD CONSTRAINT "payments_from_user_id_fkey" FOREIGN KEY (
 
 -- AddForeignKey
 ALTER TABLE "payments" ADD CONSTRAINT "payments_to_user_id_fkey" FOREIGN KEY ("to_user_id") REFERENCES "users"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "payments" ADD CONSTRAINT "payments_booking_id_fkey" FOREIGN KEY ("booking_id") REFERENCES "bookings"("booking_id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "reviews" ADD CONSTRAINT "reviews_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;

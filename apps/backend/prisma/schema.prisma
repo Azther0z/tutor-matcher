@@ -28,15 +28,15 @@ model User {
   password  String
   bio       String?
   createdAt DateTime @default(now()) @map("created_at")
-  balance   Decimal  @default(0)
+  balance   Decimal  @default(0) @db.Decimal(12, 2)
   isAdmin   Boolean  @default(false) @map("is_admin")
 
   // A user account can optionally be linked to a tutor profile
   tutorId Int?   @unique @map("tutor_id")
-  tutor   Tutor? @relation(fields: [tutorId], references: [id])
+  tutor   Tutor? @relation(fields: [tutorId], references: [id], onDelete: SetNull)
 
-  bookings          Booking[]
-  reviews           Review[]
+  bookings Booking[]
+  reviews  Review[]
 
   sentMessages     Message[] @relation("MessagesSent")
   receivedMessages Message[] @relation("MessagesReceived")
@@ -68,19 +68,20 @@ model Tutor {
 }
 
 model Subject {
-  id          Int    @id @default(autoincrement()) @map("subject_id")
+  id          Int     @id @default(autoincrement()) @map("subject_id")
   name        String
   description String?
   videoUrl    String? @map("video_url")
-  hourlyRate  Decimal @map("hourly_rate")
+  hourlyRate  Decimal @map("hourly_rate") @db.Decimal(10, 2)
 
   tutorId Int   @map("tutor_id")
-  tutor   Tutor @relation(fields: [tutorId], references: [id])
+  tutor   Tutor @relation(fields: [tutorId], references: [id], onDelete: Restrict)
 
   availabilitySubjects AvailabilitySubject[]
   bookings             Booking[]
   reviews              Review[]
 
+  @@index([tutorId])
   @@map("subjects")
 }
 
@@ -89,7 +90,7 @@ model Availability {
   startedAt DateTime @map("started_at")
 
   bookingId Int?     @unique @map("booking_id")
-  booking   Booking? @relation(fields: [bookingId], references: [id])
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   availabilitySubjects AvailabilitySubject[]
 
@@ -99,8 +100,8 @@ model Availability {
 model AvailabilitySubject {
   availabilityId Int          @map("availability_id")
   subjectId      Int          @map("subject_id")
-  availability   Availability @relation(fields: [availabilityId], references: [id])
-  subject        Subject      @relation(fields: [subjectId], references: [id])
+  availability   Availability @relation(fields: [availabilityId], references: [id], onDelete: Restrict)
+  subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
   @@id([availabilityId, subjectId])
   @@map("availability_subjects")
@@ -112,37 +113,41 @@ model Booking {
   zoomMeetingUrl String?  @map("zoom_meeting_url")
   createdAt      DateTime @default(now()) @map("created_at")
 
-  paymentId Int?     @unique @map("payment_id")
-  payment   Payment? @relation(fields: [paymentId], references: [id])
-
   userId Int  @map("user_id")
-  user   User @relation(fields: [userId], references: [id])
+  user   User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   subjectId Int     @map("subject_id")
-  subject   Subject @relation(fields: [subjectId], references: [id])
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
   availability Availability?
+  payments     Payment[]
   reviews      Review[]
 
+  @@index([userId])
+  @@index([subjectId])
   @@map("bookings")
 }
 
 model Payment {
   id          Int           @id @default(autoincrement()) @map("payment_id")
   type        PaymentType
-  amount      Decimal
-  status      PaymentStatus
+  amount      Decimal       @db.Decimal(12, 2)
+  status      PaymentStatus @default(PENDING)
   createdAt   DateTime      @default(now()) @map("created_at")
   completedAt DateTime?     @map("completed_at")
 
   fromUserId Int  @map("from_user_id")
-  fromUser   User @relation("PaymentsFrom", fields: [fromUserId], references: [id])
+  fromUser   User @relation("PaymentsFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
 
   toUserId Int  @map("to_user_id")
-  toUser   User @relation("PaymentsTo", fields: [toUserId], references: [id])
+  toUser   User @relation("PaymentsTo", fields: [toUserId], references: [id], onDelete: Restrict)
 
-  booking Booking?
+  bookingId Int?     @map("booking_id")
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([bookingId])
   @@map("payments")
 }
 
@@ -153,14 +158,17 @@ model Review {
   createdAt   DateTime @default(now()) @map("created_at")
 
   userId Int  @map("user_id")
-  user   User @relation(fields: [userId], references: [id])
+  user   User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   subjectId Int     @map("subject_id")
-  subject   Subject @relation(fields: [subjectId], references: [id])
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
   bookingId Int     @map("booking_id")
-  booking   Booking @relation(fields: [bookingId], references: [id])
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
 
+  @@index([userId])
+  @@index([subjectId])
+  @@index([bookingId])
   @@map("reviews")
 }
 
@@ -169,8 +177,9 @@ model Certification {
   fileUrl String @map("file_url")
 
   tutorId Int   @map("tutor_id")
-  tutor   Tutor @relation(fields: [tutorId], references: [id])
+  tutor   Tutor @relation(fields: [tutorId], references: [id], onDelete: Restrict)
 
+  @@index([tutorId])
   @@map("certifications")
 }
 
@@ -180,28 +189,33 @@ model Message {
   message   String
 
   fromUserId Int  @map("from_user_id")
-  fromUser   User @relation("MessagesSent", fields: [fromUserId], references: [id])
+  fromUser   User @relation("MessagesSent", fields: [fromUserId], references: [id], onDelete: Restrict)
 
   toUserId Int  @map("to_user_id")
-  toUser   User @relation("MessagesReceived", fields: [toUserId], references: [id])
+  toUser   User @relation("MessagesReceived", fields: [toUserId], references: [id], onDelete: Restrict)
 
+  @@index([fromUserId])
+  @@index([toUserId])
   @@map("messages")
 }
 
 model Report {
-  id           Int    @id @default(autoincrement()) @map("report_id")
+  id           Int     @id @default(autoincrement()) @map("report_id")
   message      String
   attachment   String?
   replyMessage String? @map("reply_message")
 
   adminUserId Int  @map("admin_user_id")
-  adminUser   User @relation("ReportsHandledByAdmin", fields: [adminUserId], references: [id])
+  adminUser   User @relation("ReportsHandledByAdmin", fields: [adminUserId], references: [id], onDelete: Restrict)
 
   reporterUserId Int  @map("reporter_user_id")
-  reporterUser   User @relation("ReportsMadeByReporter", fields: [reporterUserId], references: [id])
+  reporterUser   User @relation("ReportsMadeByReporter", fields: [reporterUserId], references: [id], onDelete: Restrict)
 
   reportedUserId Int  @map("reported_user_id")
-  reportedUser   User @relation("ReportsAgainstUser", fields: [reportedUserId], references: [id])
+  reportedUser   User @relation("ReportsAgainstUser", fields: [reportedUserId], references: [id], onDelete: Restrict)
 
+  @@index([adminUserId])
+  @@index([reporterUserId])
+  @@index([reportedUserId])
   @@map("reports")
 }
