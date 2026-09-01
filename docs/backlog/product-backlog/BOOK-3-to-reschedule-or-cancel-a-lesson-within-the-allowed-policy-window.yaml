@@ -14,7 +14,7 @@ acceptance_criteria:
     when: "a Student cancels,"
     then: "the lesson credit is refunded to the Student's balance minus the cancellation fee per policy, and both parties are notified."
 sprint: sprint-1
-assignees: []
+assignees: ["Saint", "Yongfu"]
 status: todo
 order: 12
 estimate_hours: 12
@@ -33,7 +33,7 @@ tasks:
     estimate_hours: 6
   - id: BOOK-3-T3
     title: "Write acceptance tests for Student cancellation (both time windows)"
-    assignees: ["Poom", "Pee"]
+    assignees: ["Saint", "Yongfu"]
     role: "QA"
     status: todo
     estimate_hours: 2

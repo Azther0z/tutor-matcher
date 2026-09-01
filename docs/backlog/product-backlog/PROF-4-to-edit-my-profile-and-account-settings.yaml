@@ -14,32 +14,32 @@ acceptance_criteria:
     when: "they save the changes,"
     then: "the update is rejected and the invalid field is highlighted."
 sprint: sprint-1
-assignees: []
+assignees: ["Santa", "Plai"]
 status: todo
 order: 8
 estimate_hours: 8
 tasks:
   - id: PROF-4-T1
     title: "Build the profile/account-settings editor"
-    assignees: ["Saint", "Yongfu"]
+    assignees: ["Santa", "Plai"]
     role: "Frontend"
     status: todo
     estimate_hours: 3
   - id: PROF-4-T2
     title: "Implement inline validation and error display"
-    assignees: ["Saint", "Yongfu"]
+    assignees: ["Santa", "Plai"]
     role: "Frontend"
     status: todo
     estimate_hours: 2
   - id: PROF-4-T3
     title: "Implement the update/save endpoint with validation"
-    assignees: ["Saint", "Yongfu"]
+    assignees: ["Santa", "Plai"]
     role: "Backend"
     status: todo
     estimate_hours: 2
   - id: PROF-4-T4
     title: "Write acceptance tests for profile editing (valid, invalid input)"
-    assignees: ["Poom", "Pee"]
+    assignees: ["Santa", "Plai"]
     role: "QA"
     status: todo
     estimate_hours: 1

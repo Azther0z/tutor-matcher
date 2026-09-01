@@ -28,12 +28,19 @@
 - Design the software architecture in a later task.
 
 ### Preferences
-- None recorded.
+- For AI-assisted Sprint delivery, assign the entire story, including design integration and automated testing, to one fixed two-person pair.
+- Treat Sprint `estimate_hours` values as shared pair-hours rather than multiplying them by the number of assignees.
+- Retain inline story tasks for the class assignment, but treat them as a work-breakdown and evidence checklist owned by the story pair rather than separate handoffs.
+- Balance workload by reassigning whole stories among the fixed pairs without changing pair membership.
+- Treat `docs/backlog/backlog.html` as generated output from backlog YAML and `scripts/templates/backlog.html`; update it with `npm run backlog:build` rather than editing it directly.
 
 ### Open Threads
 - Question: What software architecture should be designed around the Tutor Matcher database?
   Status: open
   Next step: Define application layers, services, APIs, clients, deployment, authentication, and integration boundaries.
+- Question: Which backlog integrity fixes from action item 8 should be applied?
+  Status: open
+  Next step: Review the proposed dependency ordering, story-boundary correction, entity cleanup, and status semantics.
 
 Open threads use this format:
 

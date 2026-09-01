@@ -14,14 +14,14 @@ acceptance_criteria:
     when: "the search runs,"
     then: "a 'no results' state with suggestions to broaden filters is shown."
 sprint: sprint-1
-assignees: []
+assignees: ["Saint", "Yongfu"]
 status: todo
 order: 17
 estimate_hours: 20
 tasks:
   - id: DISC-1-T1
     title: "Design the search and filter interface"
-    assignees: ["Poom", "Pee"]
+    assignees: ["Saint", "Yongfu"]
     role: UXUI
     status: todo
     estimate_hours: 3
@@ -45,7 +45,7 @@ tasks:
     estimate_hours: 5
   - id: DISC-1-T5
     title: "Write acceptance tests for search (matching, no-results)"
-    assignees: ["Ideal", "Pooh"]
+    assignees: ["Saint", "Yongfu"]
     role: QA
     status: todo
     estimate_hours: 2

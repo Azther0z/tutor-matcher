@@ -14,7 +14,7 @@ acceptance_criteria:
     when: "they save the availability calendar,"
     then: "the overlapping slot is rejected and an error is shown."
 sprint: sprint-1
-assignees: []
+assignees: ["Ideal", "Pooh"]
 status: todo
 order: 7
 estimate_hours: 12
@@ -45,7 +45,7 @@ tasks:
     estimate_hours: 2
   - id: PROF-3-T5
     title: "Write acceptance tests for availability (valid, overlapping slots)"
-    assignees: ["Nesta", "Washi"]
+    assignees: ["Ideal", "Pooh"]
     role: "QA"
     status: todo
     estimate_hours: 2

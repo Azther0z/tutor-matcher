@@ -14,14 +14,14 @@ acceptance_criteria:
     when: "the Tutor tries to publish,"
     then: "the system blocks publishing and highlights missing fields."
 sprint: sprint-1
-assignees: []
+assignees: ["Saint", "Yongfu"]
 status: todo
 order: 6
 estimate_hours: 20
 tasks:
   - id: PROF-2-T1
     title: "Design the Tutor public profile page (bio, video, rate)"
-    assignees: ["Ideal", "Pooh"]
+    assignees: ["Saint", "Yongfu"]
     role: "UXUI"
     status: todo
     estimate_hours: 3
@@ -45,7 +45,7 @@ tasks:
     estimate_hours: 5
   - id: PROF-2-T5
     title: "Write acceptance tests for Tutor profile publishing"
-    assignees: ["Ideal", "Pooh"]
+    assignees: ["Saint", "Yongfu"]
     role: "QA"
     status: todo
     estimate_hours: 3

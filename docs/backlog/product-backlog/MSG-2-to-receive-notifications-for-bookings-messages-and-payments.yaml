@@ -14,26 +14,26 @@ acceptance_criteria:
     when: "that event occurs,"
     then: "no notification is sent for that event type."
 sprint: sprint-1
-assignees: []
+assignees: ["Ideal", "Pooh"]
 status: todo
 order: 14
 estimate_hours: 12
 tasks:
   - id: MSG-2-T1
     title: "Build the notification preferences settings UI"
-    assignees: ["Santa", "Plai"]
+    assignees: ["Ideal", "Pooh"]
     role: "Frontend"
     status: todo
     estimate_hours: 3
   - id: MSG-2-T2
     title: "Implement the event-based notification service (booking, message, payment)"
-    assignees: ["Santa", "Plai"]
+    assignees: ["Ideal", "Pooh"]
     role: "Backend"
     status: todo
     estimate_hours: 4
   - id: MSG-2-T3
     title: "Implement per-member preference filtering (respect disabled types)"
-    assignees: ["Santa", "Plai"]
+    assignees: ["Ideal", "Pooh"]
     role: "Backend"
     status: todo
     estimate_hours: 3

@@ -14,14 +14,14 @@ acceptance_criteria:
     when: "the Student tries to book,"
     then: "the system shows an error and refreshes available slots."
 sprint: sprint-1
-assignees: []
+assignees: ["Nesta", "Washi"]
 status: todo
 order: 18
 estimate_hours: 20
 tasks:
   - id: BOOK-1-T1
     title: "Design the slot-selection and booking-confirmation flow"
-    assignees: ["Poom", "Pee"]
+    assignees: ["Nesta", "Washi"]
     role: UXUI
     status: todo
     estimate_hours: 3
@@ -45,7 +45,7 @@ tasks:
     estimate_hours: 5
   - id: BOOK-1-T5
     title: "Write acceptance tests for trial booking (success, slot-taken)"
-    assignees: ["Saint", "Yongfu"]
+    assignees: ["Nesta", "Washi"]
     role: QA
     status: todo
     estimate_hours: 2
