@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireAuth } from "./middleware/auth.ts";
 import { authRouter } from "./modules/auth/auth.routes.ts";
 import { bookingRouter } from "./modules/booking/booking.routes.ts";
 import { classroomRouter } from "./modules/classroom/classroom.routes.ts";
@@ -12,13 +13,16 @@ import { walletRouter } from "./modules/wallet/wallet.routes.ts";
 
 export const apiRouter = Router();
 
+// Public routes
 apiRouter.use("/health", healthRouter);
 apiRouter.use("/auth", authRouter);
-apiRouter.use("/profiles", profileRouter);
-apiRouter.use("/discovery", discoveryRouter);
-apiRouter.use("/bookings", bookingRouter);
-apiRouter.use("/wallet", walletRouter);
-apiRouter.use("/messages", messagingRouter);
-apiRouter.use("/reviews", reviewRouter);
-apiRouter.use("/classroom", classroomRouter);
-apiRouter.use("/dashboard", dashboardRouter);
+
+// Protected routes — require a valid Bearer token
+apiRouter.use("/profiles", requireAuth, profileRouter);
+apiRouter.use("/discovery", requireAuth, discoveryRouter);
+apiRouter.use("/bookings", requireAuth, bookingRouter);
+apiRouter.use("/wallet", requireAuth, walletRouter);
+apiRouter.use("/messages", requireAuth, messagingRouter);
+apiRouter.use("/reviews", requireAuth, reviewRouter);
+apiRouter.use("/classroom", requireAuth, classroomRouter);
+apiRouter.use("/dashboard", requireAuth, dashboardRouter);

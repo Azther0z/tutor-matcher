@@ -23,10 +23,17 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
+      const data = (await res.json().catch(() => null)) as
+        | { token?: string; message?: string }
+        | null;
+
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { message?: string } | null;
         setError(data?.message ?? "Something went wrong. Please try again.");
         return;
+      }
+
+      if (data?.token) {
+        localStorage.setItem("authToken", data.token);
       }
 
       router.push("/dashboard");

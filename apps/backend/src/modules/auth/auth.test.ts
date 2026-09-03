@@ -71,7 +71,7 @@ describe("POST /api/auth/login", () => {
     findUnique.mockReset();
   });
 
-  it("returns the user when the credentials match", async () => {
+  it("returns a token and the user when the credentials match", async () => {
     findUnique.mockResolvedValue({
       id: 1,
       email: "ada@example.com",
@@ -84,8 +84,9 @@ describe("POST /api/auth/login", () => {
       .send({ email: "ada@example.com", password: "supersecret" })
       .expect(200);
 
-    expect(res.body).toEqual({ id: 1, email: "ada@example.com", isAdmin: false });
-    expect(res.body).not.toHaveProperty("password");
+    expect(res.body.user).toEqual({ id: 1, email: "ada@example.com", isAdmin: false });
+    expect(typeof res.body.token).toBe("string");
+    expect(res.body.user).not.toHaveProperty("password");
   });
 
   it("returns 400 for an invalid body", async () => {

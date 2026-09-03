@@ -6,6 +6,7 @@ import {
   InvalidCredentialsError,
 } from "./auth.service.ts";
 import type { LoginInput, SignupInput } from "./auth.schema.ts";
+import { signAuthToken } from "../../lib/jwt.ts";
 
 export async function signup(req: Request, res: Response) {
   const input = req.body as SignupInput;
@@ -28,7 +29,8 @@ export async function login(req: Request, res: Response) {
 
   try {
     const user = await loginService(input);
-    res.status(200).json(user);
+    const token = signAuthToken({ sub: user.id, email: user.email, isAdmin: user.isAdmin });
+    res.status(200).json({ token, user });
   } catch (error) {
     if (error instanceof InvalidCredentialsError) {
       res.status(401).json({ message: error.message });
