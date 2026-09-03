@@ -9,6 +9,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isTutor, setIsTutor] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,7 +33,7 @@ export default function SignupPage() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, isTutor }),
       });
 
       if (!res.ok) {
@@ -96,6 +97,17 @@ export default function SignupPage() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
           />
+        </label>
+
+        <label className="flex items-center gap-2.5 text-sm font-medium">
+          <input
+            type="checkbox"
+            name="isTutor"
+            checked={isTutor}
+            onChange={(e) => setIsTutor(e.target.checked)}
+            className="h-4 w-4 rounded border-black/[.25] dark:border-white/[.3]"
+          />
+          Are you a tutor?
         </label>
 
         {error && (
