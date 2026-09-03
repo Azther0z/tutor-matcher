@@ -53,9 +53,7 @@ export default function SignupPage() {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-8 px-6 py-16">
       <div className="flex flex-col gap-2 text-center">
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">
-          Tutor Matcher
-        </p>
+        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Tutor Matcher</p>
         <h1 className="text-3xl font-semibold tracking-tight">Create your account</h1>
       </div>
 
