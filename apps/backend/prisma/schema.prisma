@@ -37,6 +37,7 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   balance   Decimal  @default(0) @db.Decimal(12, 2)
   isAdmin   Boolean  @default(false) @map("is_admin")
+  isTutor   Boolean  @default(false) @map("is_tutor")
 
   // A user account can optionally be linked to a tutor profile
   tutorId Int?   @unique @map("tutor_id")
