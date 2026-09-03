@@ -1,6 +1,0 @@
-# Local, untracked override. This machine already runs a native PostgreSQL on
-# host port 5432, so expose the Compose Postgres on 5544 instead.
-services:
-  postgres:
-    ports:
-      - "5544:5432"
