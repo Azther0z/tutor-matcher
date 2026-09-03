@@ -14,26 +14,26 @@ acceptance_criteria:
     when: "a Tutor cancels,"
     then: "the lesson credit is fully refunded to the Student's balance with no fee, and both parties are notified."
 sprint: sprint-1
-assignees: ["Nesta", "Washi"]
+assignees: ["Santa", "Plai"]
 status: todo
 order: 13
 estimate_hours: 12
 tasks:
   - id: BOOK-4-T1
     title: "Build the Tutor cancel/reschedule action"
-    assignees: ["Nesta", "Washi"]
+    assignees: ["Santa", "Plai"]
     role: "Frontend"
     status: todo
     estimate_hours: 4
   - id: BOOK-4-T2
     title: "Implement the &gt;24h no-penalty and &lt;24h full-refund + reliability-log logic"
-    assignees: ["Nesta", "Washi"]
+    assignees: ["Santa", "Plai"]
     role: "Backend"
     status: todo
     estimate_hours: 5
   - id: BOOK-4-T3
     title: "Write acceptance tests for Tutor cancellation (both time windows)"
-    assignees: ["Nesta", "Washi"]
+    assignees: ["Santa", "Plai"]
     role: "QA"
     status: todo
     estimate_hours: 3
