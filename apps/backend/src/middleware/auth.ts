@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import "../types/express.ts";
 import { verifyAuthToken } from "../lib/jwt.ts";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
