@@ -1,8 +1,0 @@
-# Keep shell scripts LF so they run inside Linux containers even when checked
-# out on Windows with core.autocrlf=true.
-*.sh text eol=lf
-docker-entrypoint.sh text eol=lf
-
-# Backlog YAML is parsed by scripts and CI; keep it LF everywhere.
-*.yaml text eol=lf
-*.yml text eol=lf
