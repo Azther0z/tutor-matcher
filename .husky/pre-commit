@@ -1,3 +1,30 @@
+# Some Git GUIs (notably GitHub Desktop on Windows) run hooks with a stripped
+# PATH that omits Node/npm, which made this hook fail with "command not found"
+# (exit 127) and blocked the commit. Try to locate a Node install; if none is
+# found, skip the local checks -- CI (quality-format.yml) still enforces them.
+if ! command -v npx >/dev/null 2>&1; then
+  for dir in \
+    "/c/Program Files/nodejs" \
+    "/c/nvm4w/nodejs" \
+    "$LOCALAPPDATA/nvm" \
+    "$HOME/AppData/Local/nvm" \
+    "$APPDATA/npm" \
+    "$HOME/AppData/Roaming/npm" \
+    "/usr/local/bin" \
+    "/opt/homebrew/bin"; do
+    if [ -x "$dir/npx" ] || [ -x "$dir/npx.cmd" ]; then
+      PATH="$dir:$PATH"
+      break
+    fi
+  done
+fi
+
+if ! command -v npx >/dev/null 2>&1; then
+  echo "husky/pre-commit: Node/npm not on PATH (e.g. GitHub Desktop) -- skipping"
+  echo "  lint-staged and format:check. CI still enforces formatting and lint."
+  exit 0
+fi
+
 # Format + lint staged files (Prettier, then ESLint --fix per app), auto-restaged.
 npx lint-staged
 
