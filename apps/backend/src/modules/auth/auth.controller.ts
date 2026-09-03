@@ -1,6 +1,11 @@
 import type { Request, Response } from "express";
-import { signup as signupService, SignupConflictError } from "./auth.service.ts";
-import type { SignupInput } from "./auth.schema.ts";
+import {
+  signup as signupService,
+  login as loginService,
+  SignupConflictError,
+  InvalidCredentialsError,
+} from "./auth.service.ts";
+import type { LoginInput, SignupInput } from "./auth.schema.ts";
 
 export async function signup(req: Request, res: Response) {
   const input = req.body as SignupInput;
@@ -11,6 +16,22 @@ export async function signup(req: Request, res: Response) {
   } catch (error) {
     if (error instanceof SignupConflictError) {
       res.status(409).json({ message: error.message });
+      return;
+    }
+
+    throw error;
+  }
+}
+
+export async function login(req: Request, res: Response) {
+  const input = req.body as LoginInput;
+
+  try {
+    const user = await loginService(input);
+    res.status(200).json(user);
+  } catch (error) {
+    if (error instanceof InvalidCredentialsError) {
+      res.status(401).json({ message: error.message });
       return;
     }
 

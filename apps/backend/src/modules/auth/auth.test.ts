@@ -65,3 +65,58 @@ describe("POST /api/auth/signup", () => {
       .expect(409);
   });
 });
+
+describe("POST /api/auth/login", () => {
+  beforeEach(() => {
+    findUnique.mockReset();
+  });
+
+  it("returns the user when the credentials match", async () => {
+    findUnique.mockResolvedValue({
+      id: 1,
+      email: "ada@example.com",
+      password: "supersecret",
+      isAdmin: false,
+    });
+
+    const res = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "ada@example.com", password: "supersecret" })
+      .expect(200);
+
+    expect(res.body).toEqual({ id: 1, email: "ada@example.com", isAdmin: false });
+    expect(res.body).not.toHaveProperty("password");
+  });
+
+  it("returns 400 for an invalid body", async () => {
+    await request(app)
+      .post("/api/auth/login")
+      .send({ email: "not-an-email", password: "" })
+      .expect(400);
+
+    expect(findUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when the email is unknown", async () => {
+    findUnique.mockResolvedValue(null);
+
+    await request(app)
+      .post("/api/auth/login")
+      .send({ email: "nobody@example.com", password: "supersecret" })
+      .expect(401);
+  });
+
+  it("returns 401 when the password is wrong", async () => {
+    findUnique.mockResolvedValue({
+      id: 1,
+      email: "ada@example.com",
+      password: "supersecret",
+      isAdmin: false,
+    });
+
+    await request(app)
+      .post("/api/auth/login")
+      .send({ email: "ada@example.com", password: "wrongpass" })
+      .expect(401);
+  });
+});
