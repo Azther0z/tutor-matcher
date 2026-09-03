@@ -12,7 +12,7 @@
     "backlog:validate": "node scripts/validate-backlog.mjs",
     "backlog:check": "npm run backlog:validate && node scripts/generate-backlog.mjs --check",
     "prepare": "husky",
-    "install:all": "npm install && cd apps/backend && npm install && cd ../frontend && npm install",
+    "install:all": "npm install && npm --prefix apps/backend install && npm --prefix apps/frontend install",
     "setup:env": "node scripts/setup-env.mjs",
     "setup": "npm run install:all && npm run setup:env && npm --prefix apps/backend run db:migrate:dev && npm --prefix apps/backend run gen-mock-data",
     "dev": "concurrently --kill-others --names backend,frontend --prefix-colors blue,green \"npm --prefix apps/backend run dev\" \"npm --prefix apps/frontend run dev\""
