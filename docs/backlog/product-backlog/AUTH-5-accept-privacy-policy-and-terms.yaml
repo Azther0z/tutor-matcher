@@ -14,32 +14,32 @@ acceptance_criteria:
     when: "they have not checked the consent checkbox,"
     then: "account creation is blocked and the requirement is highlighted."
 sprint: sprint-1
-assignees: ["Poom", "Pee"]
+assignees: ["Nesta", "Washi"]
 status: todo
 order: 4
 estimate_hours: 8
 tasks:
   - id: AUTH-5-T1
     title: "Design the consent checkbox and Privacy Policy/ToS link placement"
-    assignees: ["Poom", "Pee"]
+    assignees: ["Nesta", "Washi"]
     role: "UXUI"
     status: todo
     estimate_hours: 3
   - id: AUTH-5-T2
     title: "Implement the consent-checkbox gate on the sign-up form"
-    assignees: ["Poom", "Pee"]
+    assignees: ["Nesta", "Washi"]
     role: "Frontend"
     status: todo
     estimate_hours: 2
   - id: AUTH-5-T3
     title: "Record the consent timestamp on account creation"
-    assignees: ["Poom", "Pee"]
+    assignees: ["Nesta", "Washi"]
     role: "Backend"
     status: todo
     estimate_hours: 2
   - id: AUTH-5-T4
     title: "Write acceptance tests for the Student consent gate"
-    assignees: ["Poom", "Pee"]
+    assignees: ["Nesta", "Washi"]
     role: "QA"
     status: todo
     estimate_hours: 1

@@ -14,38 +14,38 @@ acceptance_criteria:
     when: "they save the availability calendar,"
     then: "the overlapping slot is rejected and an error is shown."
 sprint: sprint-1
-assignees: ["Ideal", "Pooh"]
+assignees: ["Poom", "Pee"]
 status: todo
 order: 7
 estimate_hours: 12
 tasks:
   - id: PROF-3-T1
     title: "Design the weekly availability calendar UI"
-    assignees: ["Ideal", "Pooh"]
+    assignees: ["Poom", "Pee"]
     role: "UXUI"
     status: todo
     estimate_hours: 2
   - id: PROF-3-T2
     title: "Build the availability calendar with slot selection"
-    assignees: ["Ideal", "Pooh"]
+    assignees: ["Poom", "Pee"]
     role: "Frontend"
     status: todo
     estimate_hours: 3
   - id: PROF-3-T3
     title: "Implement overlap detection and slot storage"
-    assignees: ["Ideal", "Pooh"]
+    assignees: ["Poom", "Pee"]
     role: "Backend"
     status: todo
     estimate_hours: 3
   - id: PROF-3-T4
     title: "Expose open slots to search and booking"
-    assignees: ["Ideal", "Pooh"]
+    assignees: ["Poom", "Pee"]
     role: "Backend"
     status: todo
     estimate_hours: 2
   - id: PROF-3-T5
     title: "Write acceptance tests for availability (valid, overlapping slots)"
-    assignees: ["Ideal", "Pooh"]
+    assignees: ["Poom", "Pee"]
     role: "QA"
     status: todo
     estimate_hours: 2
