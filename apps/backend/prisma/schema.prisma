@@ -43,6 +43,8 @@ model User {
   tutorId Int?   @unique @map("tutor_id")
   tutor   Tutor? @relation(fields: [tutorId], references: [id], onDelete: SetNull)
 
+  studentProfile StudentProfile?
+
   bookings Booking[]
   reviews  Review[]
 
@@ -73,6 +75,36 @@ model Tutor {
   certifications Certification[]
 
   @@map("tutors")
+}
+
+model StudentProfile {
+  id                   Int      @id @default(autoincrement()) @map("student_profile_id")
+  userId               Int      @unique @map("user_id")
+  level                String
+  goals                String
+  preferredWeekdays    Int[]    @default([]) @map("preferred_weekdays")
+  preferredStartMinute Int?     @map("preferred_start_minute")
+  preferredEndMinute   Int?     @map("preferred_end_minute")
+  timezone             String   @default("UTC")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  user     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects StudentProfileSubject[]
+
+  @@map("student_profiles")
+}
+
+model StudentProfileSubject {
+  id        Int    @id @default(autoincrement()) @map("student_profile_subject_id")
+  profileId Int    @map("profile_id")
+  name      String
+
+  profile StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, name])
+  @@index([name])
+  @@map("student_profile_subjects")
 }
 
 model Subject {
