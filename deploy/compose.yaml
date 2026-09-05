@@ -5,9 +5,8 @@ services:
     environment:
       POSTGRES_DB: tutor_matcher
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-    secrets:
-      - postgres_password
+    env_file:
+      - ./secrets/postgres.enc.env
     volumes:
       - tutor_matcher_postgres_data:/var/lib/postgresql/data
     networks:
@@ -55,12 +54,11 @@ services:
     build:
       context: ../apps/backend
     hostname: tutor-matcher-backend
+    env_file:
+      - ./secrets/backend.enc.env
     environment:
-      DATABASE_URL_FILE: /run/secrets/backend_database_url
       PORT: "8000"
       FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3333}"
-    secrets:
-      - backend_database_url
     ports:
       - "8000:8000"
     networks:
@@ -75,12 +73,6 @@ services:
 
 volumes:
   tutor_matcher_postgres_data:
-
-secrets:
-  backend_database_url:
-    file: ./secrets/backend_database_url.enc
-  postgres_password:
-    file: ./secrets/postgres_password.enc
 
 networks:
   default: {}

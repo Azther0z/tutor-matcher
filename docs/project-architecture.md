@@ -180,11 +180,11 @@ production deployment manifest. `deploy/compose.yaml` is the single source of
 truth for the production build contexts, frontend-to-backend service URL, image
 names, ports, and runtime services.
 
-Deployment secrets are intended to be SOPS-encrypted with age. The repository
-contains the policy and templates under `deploy/secrets/`. Production Compose
-references encrypted backend and PostgreSQL secret files, which Doco-CD
-decrypts before starting the services. PostgreSQL is internal to the stack and
-uses a persistent named volume.
+Deployment environment files are SOPS-encrypted with age. The repository
+contains the policy under `.sops.yaml` and templates under `deploy/secrets/`.
+Production Compose references encrypted dotenv files, which Doco-CD decrypts
+before starting the services. PostgreSQL is internal to the stack and uses a
+persistent named volume.
 
 ## Deferred Decisions
 
