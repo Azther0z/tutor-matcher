@@ -153,4 +153,21 @@ describe("POST /api/auth/login", () => {
       .send({ email: "ada@example.com", password: "wrongpass" })
       .expect(401);
   });
+
+  it("returns 403 when the account has been deactivated", async () => {
+    findUnique.mockResolvedValue({
+      id: 1,
+      email: "ada@example.com",
+      password: "supersecret",
+      isAdmin: false,
+      deactivatedAt: new Date("2026-09-06T00:00:00.000Z"),
+    });
+
+    const res = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "ada@example.com", password: "supersecret" })
+      .expect(403);
+
+    expect(res.body).not.toHaveProperty("token");
+  });
 });

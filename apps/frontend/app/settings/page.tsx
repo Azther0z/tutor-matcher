@@ -1,11 +1,8 @@
-import { RoutePlaceholder } from "@/src/components/route-placeholder";
+import { redirect } from "next/navigation";
 
+// The product route model splits settings into /settings/account,
+// /settings/notifications, /settings/wallet, and /settings/tutor. Account
+// settings are the landing page for the section.
 export default function SettingsPage() {
-  return (
-    <RoutePlaceholder
-      title="Account settings"
-      description="Learner subjects, levels, goals, and account settings will be managed here."
-      backlogIds={["PROF-1", "PROF-4"]}
-    />
-  );
+  redirect("/settings/account");
 }
