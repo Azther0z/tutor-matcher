@@ -2,15 +2,15 @@
 
 ## Current Test Suites
 
-| Scope                      | Runner and libraries                        | Location                 | Current coverage                                                           |
-| -------------------------- | ------------------------------------------- | ------------------------ | -------------------------------------------------------------------------- |
-| Backend conventional tests | Jest, Supertest, `ts-jest`                  | `apps/backend/test/`     | `GET /` response                                                           |
-| Backend behavior tests     | Cucumber.js, Gherkin, TypeScript, Supertest | `apps/backend/features/` | Backend root-route scenario                                                |
-| Frontend tests             | Jest, React Testing Library, jsdom          | Frontend test files      | Test infrastructure is configured; feature coverage is not yet established |
+| Scope                      | Runner and libraries                        | Location                                              | Current coverage                                      |
+| -------------------------- | ------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
+| Backend conventional tests | Jest, Supertest, `ts-jest`                  | `apps/backend/test/` plus `*.test.ts` beside the code | Root route, auth middleware, auth and profile modules |
+| Backend behavior tests     | Cucumber.js, Gherkin, TypeScript, Supertest | `apps/backend/features/`                              | Backend root-route scenario                           |
+| Frontend tests             | Jest, React Testing Library, jsdom          | `*.test.tsx` beside the page                          | Sign-up page, tutor settings page                     |
 
-The Jest and Cucumber.js backend suites import `apps/backend/src/apps.ts`. Supertest creates an
+The Jest and Cucumber.js backend suites import `apps/backend/src/app.ts`. Supertest creates an
 ephemeral listener for each request, so contributors do not need to start the backend development
-server before running either suite. The current root-route test does not require PostgreSQL.
+server before running either suite. The root-route test does not require PostgreSQL; module tests that touch Prisma do.
 
 ## Backend Gherkin Layout
 
@@ -80,7 +80,20 @@ scenario therefore fails pull-request validation.
 
 ## Current Coverage Boundary
 
-The Gherkin setup currently proves the test wiring through the backend root endpoint. Domain
-flows for members, classes, availability slots, bookings, payments, reviews, reports, and posts do
-not yet have Gherkin scenarios. Add those scenarios as their API contracts and application behavior
-are implemented.
+The Gherkin setup currently proves the test wiring through the backend root endpoint. None of the
+product's domain flows have Gherkin scenarios yet. Add them as their API contracts and application
+behavior are implemented, following the journeys in [User Journeys](user-journeys.md):
+
+| Flow                      | What a first scenario should prove                                              |
+| ------------------------- | ------------------------------------------------------------------------------- |
+| Account and access        | Guards send a logged-out user to login and return them to the requested route   |
+| Tutor application         | Documents plus bio are required, and approval grants the tutor capability       |
+| Subjects and availability | A slot advertises only the subjects the tutor assigned to it                    |
+| Booking                   | Slots must be back-to-back, and price is slot count x hourly rate / 2           |
+| Payment                   | Paying from wallet balance confirms the booking and locks the slots to it       |
+| Wallet                    | Every movement writes a transaction, and balances follow the ledger             |
+| Payout                    | Any user with available balance can withdraw; over-balance requests are blocked |
+| Reviews                   | A review is accepted only from the reviewer's own completed booking             |
+
+The product invariants in [User Journeys](user-journeys.md#invariants) are the shortlist of
+behaviours worth a scenario each.

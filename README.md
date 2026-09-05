@@ -1,6 +1,10 @@
 # Tutor Matcher
 
 A matchmaking platform that connects tutors and students by subject, schedule, and price.
+A student opens one of a tutor's subjects, picks a continuous block of that tutor's
+published 30-minute slots, and pays from a single wallet balance — which confirms the
+lesson immediately. What the product does is documented in
+[`docs/user-journeys.md`](docs/user-journeys.md).
 
 ## Prerequisites
 
@@ -158,11 +162,14 @@ apps/
   backend/        Express API (TypeScript, Prisma, PostgreSQL)
     features/     Cucumber.js features, support code, and step definitions
   frontend/       Next.js app (TypeScript, Tailwind CSS)
-docs/             Architecture, testing, charter, schema, ADRs, review
+docs/             Journeys, schema, architecture, testing, charter, backlog, ADRs
 deploy/           Doco-CD deployment Compose manifest
 docker-compose.yml
 ```
 
-See [`docs/index.md`](docs/index.md) for the documentation index,
-[`docs/project-architecture.md`](docs/project-architecture.md) for the architecture overview,
+See [`docs/index.md`](docs/index.md) for the documentation index. Before working on a
+product change, read [`docs/user-journeys.md`](docs/user-journeys.md) for what the product
+does, [`docs/project-schema.md`](docs/project-schema.md) for what it stores, and
+[`CONTEXT.md`](CONTEXT.md) for what to call things. See
+[`docs/project-architecture.md`](docs/project-architecture.md) for the architecture overview
 and [`docs/testing.md`](docs/testing.md) for the testing guide.
