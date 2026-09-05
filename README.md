@@ -151,9 +151,10 @@ The initial Gherkin scenario verifies the backend root endpoint. See
 ## CI/CD
 
 Pull requests run formatting, linting, Jest tests, backend Gherkin tests, application builds, and
-Docker image builds. A push to `main` builds and publishes the frontend and backend images with both
-immutable commit tags and the `latest` tag. Doco-CD polls this repository and deploys
-[`deploy/compose.yaml`](deploy/compose.yaml) after validation succeeds.
+production image builds. A push to `main` runs the production Compose build from
+[`deploy/compose.yaml`](deploy/compose.yaml), then publishes both images with immutable commit
+tags and the `latest` tag. Doco-CD polls this repository and deploys the same manifest after
+validation succeeds.
 
 ## Project Structure
 
