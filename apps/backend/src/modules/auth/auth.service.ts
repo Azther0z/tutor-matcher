@@ -15,6 +15,13 @@ export class InvalidCredentialsError extends Error {
   }
 }
 
+export class AccountDeactivatedError extends Error {
+  constructor(message = "This account has been deactivated") {
+    super(message);
+    this.name = "AccountDeactivatedError";
+  }
+}
+
 export async function signup({ email, password }: SignupInput) {
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
@@ -57,6 +64,12 @@ export async function login({ email, password }: LoginInput) {
   // a constant-time hash comparison once hashing is added to both flows.
   if (!user || user.password !== password) {
     throw new InvalidCredentialsError();
+  }
+
+  // Only reached once the credentials are correct, so naming the reason here
+  // does not leak whether an unknown address is registered.
+  if (user.deactivatedAt) {
+    throw new AccountDeactivatedError();
   }
 
   return { id: user.id, email: user.email, isAdmin: user.isAdmin };
