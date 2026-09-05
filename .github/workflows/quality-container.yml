@@ -6,11 +6,13 @@ on:
     paths:
       - "apps/backend/**"
       - "apps/frontend/**"
+      - "docker-compose.yml"
       - ".github/workflows/quality-container.yml"
   pull_request:
     paths:
       - "apps/backend/**"
       - "apps/frontend/**"
+      - "docker-compose.yml"
       - ".github/workflows/quality-container.yml"
 
 jobs:
@@ -30,3 +32,29 @@ jobs:
           context: apps/${{ matrix.app }}
           push: false
           tags: tutor-matcher/${{ matrix.app }}:ci
+
+  compose-integration:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start the local Compose stack
+        run: docker compose up -d --build --wait
+      - name: Verify the frontend proxies /api requests to the backend
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/health | grep -q '"status":"ok"'; then
+              echo "Frontend proxied /api/health to the backend."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Frontend never returned a healthy proxied response from the backend." >&2
+          exit 1
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Tear down the stack
+        if: always()
+        run: docker compose down -v

@@ -36,6 +36,8 @@ jobs:
         with:
           context: apps/frontend
           push: true
+          build-args: |
+            BACKEND_URL=http://backend:3001
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:latest
