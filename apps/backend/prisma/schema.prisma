@@ -39,6 +39,10 @@ model User {
   isAdmin   Boolean  @default(false) @map("is_admin")
   isTutor   Boolean  @default(false) @map("is_tutor")
 
+  // Set when the member deactivates their own account from /settings/account.
+  // A deactivated account keeps its rows but can no longer log in.
+  deactivatedAt DateTime? @map("deactivated_at")
+
   // A user account can optionally be linked to a tutor profile
   tutorId Int?   @unique @map("tutor_id")
   tutor   Tutor? @relation(fields: [tutorId], references: [id], onDelete: SetNull)

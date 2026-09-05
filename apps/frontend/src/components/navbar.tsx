@@ -158,7 +158,7 @@ export function Navbar() {
             (isAuthed ? (
               <div className="absolute top-full right-0 mt-2 w-44 rounded-xl border border-zinc-200 bg-white py-2 shadow-lg">
                 <Link
-                  href="/settings"
+                  href="/settings/account"
                   onClick={() => setProfileOpen(false)}
                   className="block px-4 py-2 text-sm text-zinc-600 hover:bg-brand-surface hover:text-brand-navy-dark"
                 >
