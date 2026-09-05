@@ -41,8 +41,7 @@ const dateFormat = new Intl.DateTimeFormat("en", {
 function belongsToFilter(booking: Booking, filter: Filter) {
   const startsAt = new Date(booking.startedAt).getTime();
   if (filter === "PAYMENT_DUE") return booking.status === "PENDING_PAYMENT";
-  if (filter === "UPCOMING")
-    return startsAt > Date.now() && booking.status === "CONFIRMED";
+  if (filter === "UPCOMING") return startsAt > Date.now() && booking.status === "CONFIRMED";
   if (filter === "PAST")
     return startsAt <= Date.now() || ["COMPLETED", "CANCELLED"].includes(booking.status);
   return true;
@@ -149,7 +148,9 @@ export default function BookingsPage() {
               </div>
             </div>
             <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end">
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusStyle[booking.status]}`}>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-bold ${statusStyle[booking.status]}`}
+              >
                 {statusLabel[booking.status]}
               </span>
               <span className="font-semibold text-violet-600 group-hover:underline">
