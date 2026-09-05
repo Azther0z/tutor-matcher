@@ -26,4 +26,4 @@ corresponding services.
 
 Do not commit plaintext dotenv files.
 
-The production `compose.yaml` is the single source of truth for deployment and image builds. It explicitly builds the frontend with `BACKEND_URL=http://backend:8000`, publishes the frontend on host port `3333`, runs the backend on port `8000`, and stores PostgreSQL data at `/srv/platform/tutor-matcher`. GitHub Actions executes those Compose build definitions before publishing the image names declared in the same file.
+The production `compose.yaml` is the single source of truth for deployment and image builds. It explicitly builds the frontend with `BACKEND_URL=http://backend:8000`, publishes the frontend on host port `3333`, runs the backend on port `8000`, and stores PostgreSQL data at `/srv/platform/tutor-matcher/postgres`. GitHub Actions executes those Compose build definitions before publishing the image names declared in the same file.
