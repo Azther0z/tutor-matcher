@@ -82,18 +82,17 @@ See `docs/adr/` for full records. Summary:
 
 ```
 Browser
-  └── Next.js (port 3000)
-        └── /api/* rewrite → Express API  ── mounted at /api
-                               └── PostgreSQL (port 5432)
+  └── Cloudflare Tunnel / local gateway (port 3333)
+        ├── /       → Next.js (port 3000)
+        └── /api/*  → Express API (port 8000) ── mounted at /api
+                                             └── PostgreSQL (port 5432)
 ```
 
-Next.js is **CSR-first**: components fetch from `/api/*` on their own origin. `next.config.ts`
-rewrites `/api/:path*` to `${BACKEND_URL}/api/:path*`, so the browser never needs a
-cross-origin base URL and `BACKEND_URL` is the single knob pointing at the backend. It
-defaults to `http://localhost:8000`, which suits running both apps on the host; container
-image builds must be given the backend's service address instead (the local Compose build
-uses `http://backend:8000`, and the production image uses `http://backend:8000`). No
-Next.js server-side data fetching is used for authenticated flows (rendering mode is
+Next.js is **CSR-first**: components fetch from `/api/*` on their own origin. The runtime
+gateway preserves that origin and routes API requests to the Express service, so the browser
+never needs a cross-origin base URL and the frontend image has no environment-specific
+backend URL. In production, the Cloudflare Tunnel targets the gateway's public port `3333`.
+No Next.js server-side data fetching is used for authenticated flows (rendering mode is
 deferred).
 
 ## Route Model
@@ -177,8 +176,8 @@ The former `homelab-gitops/apps/tutor-matcher` deployment was removed so only
 the Tutor Matcher repository owns the production stack. The root
 `docker-compose.yml` is the complete local testing stack; it is not the
 production deployment manifest. `deploy/compose.yaml` is the single source of
-truth for the production build contexts, frontend-to-backend service URL, image
-names, ports, and runtime services.
+truth for the production build contexts, gateway routing contract, image names,
+ports, and runtime services.
 
 Deployment secrets are intended to be SOPS-encrypted with age. The repository
 contains the policy and templates under `deploy/secrets/`. Production Compose

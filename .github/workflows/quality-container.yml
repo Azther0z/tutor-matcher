@@ -7,12 +7,14 @@ on:
       - "apps/backend/**"
       - "apps/frontend/**"
       - "deploy/compose.yaml"
+      - "deploy/Caddyfile"
       - ".github/workflows/quality-container.yml"
   pull_request:
     paths:
       - "apps/backend/**"
       - "apps/frontend/**"
       - "deploy/compose.yaml"
+      - "deploy/Caddyfile"
       - ".github/workflows/quality-container.yml"
 
 jobs:
@@ -25,5 +27,10 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - name: Validate production Compose
         run: docker compose -f deploy/compose.yaml config --quiet
+      - name: Validate gateway configuration
+        run: |
+          docker run --rm --entrypoint caddy \
+            -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2-alpine validate --config /etc/caddy/Caddyfile
       - name: Build production images
         run: docker compose -f deploy/compose.yaml build frontend backend

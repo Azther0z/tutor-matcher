@@ -25,11 +25,14 @@ jobs:
           docker compose -f compose.yaml config >/dev/null
           config=$(docker compose -f compose.yaml config --format json)
           jq -e '
+            .services.gateway.image == "caddy:2-alpine" and
+            .services.gateway.ports[0].target == 80 and
+            .services.gateway.ports[0].published == "3333" and
             .services.frontend.image == "docker.io/azther0z/tutor-matcher-frontend:latest" and
-            .services.frontend.build.args.BACKEND_URL == "http://backend:8000" and
-            .services.frontend.ports[0].target == 3000 and
-            .services.frontend.ports[0].published == "3333" and
+            any(.services.frontend.expose[]; tostring == "3000") and
             .services.backend.image == "docker.io/azther0z/tutor-matcher-backend:latest" and
-            .services.backend.ports[0].target == 8000 and
-            .services.backend.ports[0].published == "8000"
+            any(.services.backend.expose[]; tostring == "8000")
           ' >/dev/null <<< "$config"
+          docker run --rm --entrypoint caddy \
+            -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2-alpine validate --config /etc/caddy/Caddyfile

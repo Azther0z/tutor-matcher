@@ -12,8 +12,9 @@ The root `docker-compose.yml` runs PostgreSQL, the Express backend, and the
 Next.js frontend for local testing. Production uses `deploy/compose.yaml`,
 which defines the Next.js frontend and Express backend services and is deployed
 by Doco-CD from the Tutor Matcher repository. The production manifest is also the
-source of truth for image build contexts, the frontend's compiled backend service
-URL (`http://backend:8000`), image names, and published ports.
+source of truth for image build contexts, the runtime gateway, image names, and
+published ports. The gateway routes `/` to the frontend on port `3000` and
+`/api/*` to the backend on port `8000`.
 
 Doco-CD polls the repository's `main` branch and deploys the `tutor-matcher`
 Swarm stack after repository changes. A single GitHub Actions workflow builds the

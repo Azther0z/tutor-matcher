@@ -32,15 +32,26 @@ services:
   frontend:
     build:
       context: ./apps/frontend
-      args:
-        BACKEND_URL: http://backend:8000
     restart: unless-stopped
     environment:
       PORT: "3000"
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+    expose:
+      - "3000"
     depends_on:
       backend:
+        condition: service_started
+
+  gateway:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      backend:
+        condition: service_started
+      frontend:
         condition: service_started
 
 volumes:

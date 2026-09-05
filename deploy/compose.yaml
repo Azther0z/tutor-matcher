@@ -30,16 +30,11 @@ services:
     image: docker.io/azther0z/tutor-matcher-frontend:latest
     build:
       context: ../apps/frontend
-      args:
-        # Next.js compiles this service address into the standalone image.
-        BACKEND_URL: http://backend:8000
     hostname: tutor-matcher-frontend
     environment:
       PORT: "3000"
-    ports:
-      - target: 3000
-        published: 3333
-        protocol: tcp
+    expose:
+      - "3000"
     networks:
       - default
     deploy:
@@ -61,8 +56,27 @@ services:
       FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3333}"
     secrets:
       - backend_database_url
+    expose:
+      - "8000"
+    networks:
+      - default
+    deploy:
+      replicas: 1
+      update_config:
+        order: stop-first
+        failure_action: rollback
+      restart_policy:
+        condition: any
+
+  gateway:
+    image: caddy:2-alpine
+    hostname: tutor-matcher-gateway
     ports:
-      - "8000:8000"
+      - target: 80
+        published: 3333
+        protocol: tcp
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
     networks:
       - default
     deploy:
