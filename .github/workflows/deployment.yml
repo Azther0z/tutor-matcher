@@ -20,8 +20,8 @@ jobs:
       - name: Validate Compose and image references
         working-directory: deploy
         run: |
-          printf 'postgresql://postgres:ci@postgres:5432/tutor_matcher\n' > secrets/backend_database_url.enc
-          printf 'ci\n' > secrets/postgres_password.enc
+          printf 'DATABASE_URL=postgresql://postgres:ci@postgres:5432/tutor_matcher\n' > secrets/backend.enc.env
+          printf 'POSTGRES_PASSWORD=ci\n' > secrets/postgres.enc.env
           docker compose -f compose.yaml config >/dev/null
           config=$(docker compose -f compose.yaml config --format json)
           jq -e '

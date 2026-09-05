@@ -22,6 +22,7 @@ production services from that manifest and publishes images with commit SHA and
 Git-triggered deployment occurs.
 
 The production manifest defines PostgreSQL as an internal persistent service. It
-declares SOPS-encrypted Docker secrets for the PostgreSQL password and backend
-database URL. Doco-CD decrypts those files before deploying the stack. The
-repository stores no plaintext production secret value.
+references SOPS-encrypted dotenv files through Compose `env_file` entries for the
+PostgreSQL password and backend database URL. Doco-CD decrypts those files before
+deploying the stack, and Compose passes the resulting variables directly to each
+service. The repository stores no plaintext production secret value.

@@ -1,21 +1,29 @@
-# Deployment Secrets
+# Deployment Environment
 
-Deployment secrets belong in this directory as SOPS-encrypted files. The shared homelab age recipient is configured in the repository root `.sops.yaml`. Doco-CD decrypts the referenced files before creating the Docker secrets.
+Deployment environment files belong in this directory as SOPS-encrypted dotenv files. The shared
+homelab age recipient is configured in the repository root `.sops.yaml`. Doco-CD decrypts referenced
+`env_file` entries before deploying the Compose project.
 
-Create the backend and PostgreSQL secrets locally:
+Create the backend and PostgreSQL dotenv files locally:
 
 ```bash
-cp deploy/secrets/backend_database_url.example deploy/secrets/backend_database_url
-${EDITOR:-vi} deploy/secrets/backend_database_url
-sops --encrypt --input-type binary --output-type binary --output deploy/secrets/backend_database_url.enc deploy/secrets/backend_database_url
-rm deploy/secrets/backend_database_url
+cp deploy/secrets/backend.env.example deploy/secrets/backend.env
+${EDITOR:-vi} deploy/secrets/backend.env
+sops --encrypt --input-type dotenv --output-type dotenv --output deploy/secrets/backend.enc.env deploy/secrets/backend.env
+rm deploy/secrets/backend.env
 
-cp deploy/secrets/postgres_password.example deploy/secrets/postgres_password
-${EDITOR:-vi} deploy/secrets/postgres_password
-sops --encrypt --input-type binary --output-type binary --output deploy/secrets/postgres_password.enc deploy/secrets/postgres_password
-rm deploy/secrets/postgres_password
+cp deploy/secrets/postgres.env.example deploy/secrets/postgres.env
+${EDITOR:-vi} deploy/secrets/postgres.env
+sops --encrypt --input-type dotenv --output-type dotenv --output deploy/secrets/postgres.enc.env deploy/secrets/postgres.env
+rm deploy/secrets/postgres.env
 ```
 
-Set the `DATABASE_URL` host to `postgres`, use the `postgres` username and `tutor_matcher` database, and use the same password in the URL and PostgreSQL password file. Do not commit plaintext secret files. Commit the encrypted `deploy/secrets/backend_database_url.enc` and `deploy/secrets/postgres_password.enc` files. The backend reads its Docker secret through `DATABASE_URL_FILE`; PostgreSQL reads its password through `POSTGRES_PASSWORD_FILE`.
+Replace both `POSTGRES_PASSWORD` placeholders with the same password. Set the `DATABASE_URL` host
+to `postgres`, use the `postgres` username and `tutor_matcher` database, and commit only the
+encrypted `deploy/secrets/backend.enc.env` and `deploy/secrets/postgres.enc.env` files. Doco-CD
+decrypts these files and Compose passes `DATABASE_URL` and `POSTGRES_PASSWORD` directly to the
+corresponding services.
+
+Do not commit plaintext dotenv files.
 
 The production `compose.yaml` is the single source of truth for deployment and image builds. It explicitly builds the frontend with `BACKEND_URL=http://backend:8000`, publishes the frontend on host port `3333`, and runs the backend on port `8000`. GitHub Actions executes those Compose build definitions before publishing the image names declared in the same file.
