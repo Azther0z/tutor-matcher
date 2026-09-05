@@ -142,6 +142,9 @@ async function main() {
         data: {
           description: FIXTURE_BOOKING_DESCRIPTION,
           zoomMeetingUrl: "https://zoom.us/j/development-fixture",
+          totalAmount: "75.00",
+          startedAt: FIXTURE_AVAILABILITY,
+          endedAt: new Date(FIXTURE_AVAILABILITY.getTime() + 60 * 60_000),
           user: { connect: { id: bob.id } },
           subject: { connect: { id: subject.id } },
         },
@@ -150,7 +153,12 @@ async function main() {
   if (existingBooking) {
     await prisma.booking.update({
       where: { id: booking.id },
-      data: { zoomMeetingUrl: "https://zoom.us/j/development-fixture" },
+      data: {
+        zoomMeetingUrl: "https://zoom.us/j/development-fixture",
+        totalAmount: "75.00",
+        startedAt: FIXTURE_AVAILABILITY,
+        endedAt: new Date(FIXTURE_AVAILABILITY.getTime() + 60 * 60_000),
+      },
     });
   }
 

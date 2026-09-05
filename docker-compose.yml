@@ -32,6 +32,8 @@ services:
   frontend:
     build:
       context: ./apps/frontend
+      args:
+        BACKEND_URL: http://backend:8000
     restart: unless-stopped
     environment:
       PORT: "3000"

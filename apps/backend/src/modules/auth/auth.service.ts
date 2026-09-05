@@ -28,6 +28,7 @@ export async function signup({ email, password, isTutor = false }: SignupInput) 
         email,
         password,
         isTutor,
+        balance: 10000,
         // firstName / lastName are required by the schema but not collected at
         // signup yet; they are filled in later on the profile screen.
         firstName: "",
