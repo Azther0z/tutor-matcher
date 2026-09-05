@@ -17,3 +17,5 @@ rm deploy/secrets/postgres_password
 ```
 
 Set the `DATABASE_URL` host to `postgres`, use the `postgres` username and `tutor_matcher` database, and use the same password in the URL and PostgreSQL password file. Do not commit plaintext secret files. Commit the encrypted `deploy/secrets/backend_database_url.enc` and `deploy/secrets/postgres_password.enc` files. The backend reads its Docker secret through `DATABASE_URL_FILE`; PostgreSQL reads its password through `POSTGRES_PASSWORD_FILE`.
+
+The production `compose.yaml` is the single source of truth for deployment and image builds. It explicitly builds the frontend with `BACKEND_URL=http://backend:8000`, publishes the frontend on host port `3333`, and runs the backend on port `8000`. GitHub Actions executes those Compose build definitions before publishing the image names declared in the same file.

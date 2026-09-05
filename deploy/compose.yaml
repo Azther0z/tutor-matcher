@@ -28,6 +28,11 @@ services:
 
   frontend:
     image: docker.io/azther0z/tutor-matcher-frontend:latest
+    build:
+      context: ../apps/frontend
+      args:
+        # Next.js compiles this service address into the standalone image.
+        BACKEND_URL: http://backend:8000
     hostname: tutor-matcher-frontend
     environment:
       PORT: "3000"
@@ -47,15 +52,17 @@ services:
 
   backend:
     image: docker.io/azther0z/tutor-matcher-backend:latest
+    build:
+      context: ../apps/backend
     hostname: tutor-matcher-backend
     environment:
       DATABASE_URL_FILE: /run/secrets/backend_database_url
-      PORT: "3001"
+      PORT: "8000"
       FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3333}"
     secrets:
       - backend_database_url
     ports:
-      - "3001:3001"
+      - "8000:8000"
     networks:
       - default
     deploy:

@@ -6,27 +6,24 @@ on:
     paths:
       - "apps/backend/**"
       - "apps/frontend/**"
+      - "deploy/compose.yaml"
       - ".github/workflows/quality-container.yml"
   pull_request:
     paths:
       - "apps/backend/**"
       - "apps/frontend/**"
+      - "deploy/compose.yaml"
       - ".github/workflows/quality-container.yml"
 
 jobs:
   container:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        app: [backend, frontend]
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Build ${{ matrix.app }} image
-        uses: docker/build-push-action@v6
-        with:
-          context: apps/${{ matrix.app }}
-          push: false
-          tags: tutor-matcher/${{ matrix.app }}:ci
+      - name: Validate production Compose
+        run: docker compose -f deploy/compose.yaml config --quiet
+      - name: Build production images
+        run: docker compose -f deploy/compose.yaml build frontend backend

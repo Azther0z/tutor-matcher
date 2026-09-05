@@ -12,7 +12,7 @@ FROM node:22-alpine AS production
 
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=8000
 
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/node_modules ./node_modules
@@ -21,7 +21,7 @@ COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
-EXPOSE 3001
+EXPOSE 8000
 
 ENTRYPOINT ["sh", "./docker-entrypoint.sh"]
 CMD ["sh", "-c", "npm run db:migrate && npm start"]

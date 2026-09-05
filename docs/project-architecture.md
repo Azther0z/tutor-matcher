@@ -90,10 +90,11 @@ Browser
 Next.js is **CSR-first**: components fetch from `/api/*` on their own origin. `next.config.ts`
 rewrites `/api/:path*` to `${BACKEND_URL}/api/:path*`, so the browser never needs a
 cross-origin base URL and `BACKEND_URL` is the single knob pointing at the backend. It
-defaults to `http://localhost:3001`, which suits running both apps on the host; a
-containerised frontend must be given the backend's service address instead (the local
-Compose backend listens on `8000`, the production one on `3001`). No Next.js server-side
-data fetching is used for authenticated flows (rendering mode is deferred).
+defaults to `http://localhost:8000`, which suits running both apps on the host; container
+image builds must be given the backend's service address instead (the local Compose build
+uses `http://backend:8000`, and the production image uses `http://backend:8000`). No
+Next.js server-side data fetching is used for authenticated flows (rendering mode is
+deferred).
 
 ## Route Model
 
@@ -161,10 +162,11 @@ Production deployment is pull-based and is separate from the root local testing
 Compose file:
 
 1. A pull request runs formatting, linting, frontend and backend Jest tests,
-   backend Cucumber.js behavior tests, application builds, and Docker image
+   backend Cucumber.js behavior tests, application builds, and production image
    builds in GitHub Actions.
-2. A successful push to `main` builds and publishes frontend and backend images
-   to Docker Hub with both the commit SHA and `latest` tags.
+2. A successful push to `main` builds the frontend and backend using the build
+   definitions in `deploy/compose.yaml`, then publishes both images to Docker Hub
+   with the commit SHA and `latest` tags.
 3. Doco-CD polls the Tutor Matcher repository every five minutes. Its main
    instance reads `.doco-cd.yaml`, then deploys `deploy/compose.yaml` as the
    `tutor-matcher` Swarm stack.
@@ -174,7 +176,9 @@ Compose file:
 The former `homelab-gitops/apps/tutor-matcher` deployment was removed so only
 the Tutor Matcher repository owns the production stack. The root
 `docker-compose.yml` is the complete local testing stack; it is not the
-production deployment manifest.
+production deployment manifest. `deploy/compose.yaml` is the single source of
+truth for the production build contexts, frontend-to-backend service URL, image
+names, ports, and runtime services.
 
 Deployment secrets are intended to be SOPS-encrypted with age. The repository
 contains the policy and templates under `deploy/secrets/`. Production Compose
