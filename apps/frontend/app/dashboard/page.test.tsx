@@ -5,7 +5,8 @@ const mockPush = jest.fn();
 const fetchMock = jest.fn();
 
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
+  usePathname: () => "/dashboard",
+  useRouter: () => ({ push: mockPush, replace: mockPush }),
 }));
 
 beforeEach(() => {

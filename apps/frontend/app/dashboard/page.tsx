@@ -1,6 +1,6 @@
+"use client";
+
 import { RequireAuth } from "@/src/components/require-auth";
-import { RoutePlaceholder } from "@/src/components/route-placeholder";
-("use client");
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
