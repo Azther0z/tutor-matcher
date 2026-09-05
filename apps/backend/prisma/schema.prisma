@@ -27,6 +27,13 @@ enum TutorStatus {
   REJECTED
 }
 
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
 model User {
   id        Int      @id @default(autoincrement()) @map("user_id")
   firstName String   @map("first_name")
@@ -35,7 +42,7 @@ model User {
   password  String
   bio       String?
   createdAt DateTime @default(now()) @map("created_at")
-  balance   Decimal  @default(0) @db.Decimal(12, 2)
+  balance   Decimal  @default(10000) @db.Decimal(12, 2)
   isAdmin   Boolean  @default(false) @map("is_admin")
   isTutor   Boolean  @default(false) @map("is_tutor")
 
@@ -97,11 +104,12 @@ model Availability {
   id        Int      @id @default(autoincrement()) @map("availability_id")
   startedAt DateTime @map("started_at")
 
-  bookingId Int?     @unique @map("booking_id")
+  bookingId Int?     @map("booking_id")
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   availabilitySubjects AvailabilitySubject[]
 
+  @@index([bookingId])
   @@map("availabilities")
 }
 
@@ -118,8 +126,15 @@ model AvailabilitySubject {
 model Booking {
   id             Int      @id @default(autoincrement()) @map("booking_id")
   description    String?
-  zoomMeetingUrl String   @map("zoom_meeting_url")
+  zoomMeetingUrl String?  @map("zoom_meeting_url")
   createdAt      DateTime @default(now()) @map("created_at")
+  status         BookingStatus @default(PENDING_PAYMENT)
+  isTrial        Boolean       @default(true) @map("is_trial")
+  totalAmount    Decimal       @default(0) @map("total_amount") @db.Decimal(12, 2)
+  startedAt      DateTime      @default(now()) @map("started_at")
+  endedAt        DateTime      @default(now()) @map("ended_at")
+  cancelledAt    DateTime?     @map("cancelled_at")
+  cancellationReason String?   @map("cancellation_reason")
 
   userId Int  @map("user_id")
   user   User @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -127,8 +142,8 @@ model Booking {
   subjectId Int     @map("subject_id")
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
-  availability Availability?
-  payment      Payment?
+  availabilities Availability[]
+  payments      Payment[]
   reviews      Review[]
 
   @@index([userId])
@@ -150,11 +165,12 @@ model Payment {
   toUserId Int  @map("to_user_id")
   toUser   User @relation("PaymentsTo", fields: [toUserId], references: [id], onDelete: Restrict)
 
-  bookingId Int?     @unique @map("booking_id")
+  bookingId Int?     @map("booking_id")
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   @@index([fromUserId])
   @@index([toUserId])
+  @@index([bookingId])
   @@map("payments")
 }
 

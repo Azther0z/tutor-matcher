@@ -37,6 +37,7 @@ describe("POST /api/auth/signup", () => {
         email: "ada@example.com",
         password: "supersecret",
         isTutor: false,
+        balance: 10000,
       }),
     });
   });
