@@ -183,8 +183,8 @@ names, ports, and runtime services.
 Deployment environment files are SOPS-encrypted with age. The repository
 contains the policy under `.sops.yaml` and templates under `deploy/secrets/`.
 Production Compose references encrypted dotenv files, which Doco-CD decrypts
-before starting the services. PostgreSQL is internal to the stack and uses a
-persistent named volume.
+before starting the services. PostgreSQL is internal to the stack and persists
+its data at `/srv/platform/tutor-matcher/postgres` on the deployment host.
 
 ## Deferred Decisions
 
