@@ -3,6 +3,12 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Brand palette — adapted from besttutorthailand.com (navy + gold, tutoring/trust tone) */
+  --color-brand-navy: #2c3792;
+  --color-brand-navy-dark: #1b2a63;
+  --color-brand-gold: #f0b429;
+  --color-brand-surface: #eef1f7;
 }
 
 @theme inline {
@@ -10,6 +16,10 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-brand-navy: var(--color-brand-navy);
+  --color-brand-navy-dark: var(--color-brand-navy-dark);
+  --color-brand-gold: var(--color-brand-gold);
+  --color-brand-surface: var(--color-brand-surface);
 }
 
 @media (prefers-color-scheme: dark) {

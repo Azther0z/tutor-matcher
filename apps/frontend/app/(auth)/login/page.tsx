@@ -1,11 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import { setAuthToken } from "@/src/lib/auth";
+
+function safeNextPath(next: string | null) {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/dashboard";
+  return next;
+}
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -34,10 +49,10 @@ export default function LoginPage() {
       }
 
       if (data?.token) {
-        localStorage.setItem("authToken", data.token);
+        setAuthToken(data.token);
       }
 
-      router.push("/dashboard");
+      router.push(safeNextPath(searchParams.get("next")));
     } catch {
       setError("Could not reach the server. Please try again.");
     } finally {
