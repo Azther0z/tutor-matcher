@@ -22,10 +22,12 @@
 ## Wiki Memory
 
 ### Project Description
-- Tutor Matcher is currently documented through its database design; the supplied Final Report covers the database part.
+- Tutor Matcher is a 1-1 tutoring marketplace: subject-scoped booking of a tutor's published 30-minute slots, confirmed instantly by paying from one wallet balance.
+- The clickable prototype (`tutormatcher-prototype`) is the source of truth for product behaviour, not for code. Its material is preserved in `docs/sources/tutormatcher-prototype-*`.
+- The database-course Final Report describes an earlier, different design. It is historical evidence, not the product schema.
 
 ### Goals
-- Design the software architecture in a later task.
+- Keep `docs/user-journeys.md`, `docs/project-schema.md`, and `CONTEXT.md` in sync with the prototype whenever product behaviour changes.
 
 ### Preferences
 - For AI-assisted Sprint delivery, assign the entire story, including design integration and automated testing, to one fixed two-person pair.
@@ -33,11 +35,18 @@
 - Retain inline story tasks for the class assignment, but treat them as a work-breakdown and evidence checklist owned by the story pair rather than separate handoffs.
 - Balance workload by reassigning whole stories among the fixed pairs without changing pair membership.
 - Treat `docs/backlog/backlog.html` as generated output from backlog YAML and `scripts/templates/backlog.html`; update it with `npm run backlog:build` rather than editing it directly.
+- Treat the prototype as behavioural authority and `apps/backend/prisma/schema.prisma` as the authority for what the database currently contains.
 
 ### Open Threads
-- Question: What software architecture should be designed around the Tutor Matcher database?
+- Question: Which backlog stories that contradict the product get cancelled, and which get reworded?
   Status: open
-  Next step: Define application layers, services, APIs, clients, deployment, authentication, and integration boundaries.
+  Next step: Work through `docs/backlog/reconciliation.md` with the product owner; Sprint 1 commits AUTH-1, BOOK-2, BOOK-3, BOOK-4, and PROF-1, which all appear there.
+- Question: Is rescheduling a booking in scope?
+  Status: open
+  Next step: The prototype implements cancel only, while BOOK-3, BOOK-4, and US4-8 mention reschedule. Decide before building the booking slice.
+- Question: When do the schema gaps that block documented journeys get closed?
+  Status: open
+  Next step: `bookings` has no status column and a booking can hold only one 30-minute slot; see gaps G1-G7 in `docs/project-schema.md`.
 - Question: Which backlog integrity fixes from action item 8 should be applied?
   Status: open
   Next step: Review the proposed dependency ordering, story-boundary correction, entity cleanup, and status semantics.

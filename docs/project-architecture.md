@@ -28,9 +28,12 @@ tutor-matcher/                  ← monorepo root
 │       │   ├── support/
 │       │   └── health.feature
 │       ├── src/
-│       │   ├── lib/
-│       │   │   └── db.ts       ← Prisma client with PostgreSQL adapter
-│       │   ├── apps.ts         ← Express app (no listen — importable by tests)
+│       │   ├── lib/            ← db.ts (Prisma + pg adapter), env.ts, jwt.ts
+│       │   ├── middleware/     ← auth, validate, error-handler
+│       │   ├── modules/        ← one folder per domain area (see below)
+│       │   ├── types/
+│       │   ├── routes.ts       ← aggregates module routers
+│       │   ├── app.ts          ← Express app (no listen — importable by tests)
 │       │   └── server.ts       ← Server entry point (calls app.listen)
 │       ├── test/
 │       │   └── app.test.ts
@@ -46,9 +49,13 @@ tutor-matcher/                  ← monorepo root
 │   └── secrets/               ← SOPS-encrypted deployment secrets
 ├── docs/                      ← Project documentation
 │   ├── adr/                    ← Architecture Decision Records
+│   ├── backlog/                ← Git-managed product and sprint backlog
+│   ├── sources/                ← Immutable evidence (prototype, exports, Final Report)
+│   ├── index.md                ← Documentation entry point
+│   ├── user-journeys.md        ← Route model, flows, and product invariants
+│   ├── project-schema.md       ← Product data model and schema gap list
 │   ├── project-architecture.md
 │   ├── project-charter.md
-│   ├── project-schema.md
 │   └── testing.md
 ├── .agents/skills/             ← Shared AI agent skills (my-* + prisma-*)
 ├── .claude/skills/             ← Symlinks → .agents/skills/
@@ -76,11 +83,38 @@ See `docs/adr/` for full records. Summary:
 ```
 Browser
   └── Next.js (port 3000)
-        └── fetch / axios → Express API (port 8000)
-                              └── PostgreSQL (port 5432)
+        └── /api/* rewrite → Express API  ── mounted at /api
+                               └── PostgreSQL (port 5432)
 ```
 
-Next.js is **CSR-first**: the browser calls the Express API directly. No Next.js server-side data fetching is used for authenticated flows (rendering mode is deferred).
+Next.js is **CSR-first**: components fetch from `/api/*` on their own origin. `next.config.ts`
+rewrites `/api/:path*` to `${BACKEND_URL}/api/:path*`, so the browser never needs a
+cross-origin base URL and `BACKEND_URL` is the single knob pointing at the backend. It
+defaults to `http://localhost:3001`, which suits running both apps on the host; a
+containerised frontend must be given the backend's service address instead (the local
+Compose backend listens on `8000`, the production one on `3001`). No Next.js server-side
+data fetching is used for authenticated flows (rendering mode is deferred).
+
+## Route Model
+
+The product's routes and their access levels are defined in
+[`user-journeys.md`](user-journeys.md#route-model). Guards run before render: a
+logged-out user on a protected route goes to `/(auth)/login?next=…`, and a non-tutor on
+a tutor route goes to `/(auth)/enroll-tutor`.
+
+`apps/frontend/app/` currently holds placeholder pages scaffolded from the older backlog
+route names, so six paths do not yet match the product route model — `/booking`,
+`/payments`, `/payments/:id`, `/topup`, `/settings`, and `/settings/notification`. The
+mapping is in [`backlog/reconciliation.md`](backlog/reconciliation.md#3--route-drift);
+rename each folder as its slice is built.
+
+## Backend Modules
+
+Each module under `apps/backend/src/modules/` owns its HTTP routes, controllers,
+business services, and Zod schemas. `src/routes.ts` aggregates the routers and `src/app.ts`
+mounts them at `/api`. Current modules: `auth`, `booking`, `classroom`, `dashboard`,
+`discovery`, `health`, `messaging`, `profile`, `review`, `wallet` — they map onto the
+journeys in [`user-journeys.md`](user-journeys.md).
 
 ## Development
 
@@ -117,7 +151,7 @@ npm run format          # from repo root
 
 Jest and Supertest provide the conventional backend test suite. Cucumber.js provides the
 backend behavior suite from Gherkin features and TypeScript step definitions. Both suites
-exercise the exported Express app from `src/apps.ts` without requiring the development server
+exercise the exported Express app from `src/app.ts` without requiring the development server
 to be started.
 See [Testing](testing.md) for the current coverage and extension conventions.
 
@@ -151,5 +185,15 @@ uses a persistent named volume.
 ## Deferred Decisions
 
 - **Auth mechanism** — JWT (recommended) vs session vs third-party; not yet settled.
-- **Rendering mode** — CSR vs SSR vs hybrid for public tutor-search pages.
-- **File storage for transfer proof** — local Docker volume vs MinIO vs URL field.
+  The product also offers Continue with Google, so the choice has to accommodate a
+  federated identity alongside email and password.
+- **Rendering mode** — CSR vs SSR vs hybrid for the public `/search`, `/tutors/:id`, and
+  `/tutors/:id/:subjectId` pages, which are the only routes a logged-out visitor reaches.
+- **File storage for tutor verification documents** — local Docker volume vs MinIO vs
+  URL field. Applies to the government ID and teaching certification uploaded at
+  `/(auth)/enroll-tutor`, and to listing photos and intro videos. (This decision was
+  previously recorded as "file storage for transfer proof"; the product has no
+  transfer-proof upload — money moves through the wallet.)
+- **Slot locking strategy** — the booking flow must block a second student before
+  payment capture, not compensate afterwards. See gaps G1 and G2 in
+  [`project-schema.md`](project-schema.md#reconciliation-requirement-vs-implementation).
