@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import TutorSettingsPage from "./page";
+import { TutorSettingsForm } from "./page";
 
 const fetchMock = jest.fn();
 
@@ -21,9 +21,9 @@ function completeRequiredFields() {
   fireEvent.change(screen.getByLabelText(/Government ID/), { target: { value: "ID-123" } });
 }
 
-describe("TutorSettingsPage", () => {
+describe("TutorSettingsForm", () => {
   it("blocks saving and highlights required fields when they are empty", () => {
-    render(<TutorSettingsPage />);
+    render(<TutorSettingsForm />);
 
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
 
@@ -36,7 +36,7 @@ describe("TutorSettingsPage", () => {
   });
 
   it("requires login before sending the profile", () => {
-    render(<TutorSettingsPage />);
+    render(<TutorSettingsForm />);
     completeRequiredFields();
 
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
@@ -48,7 +48,7 @@ describe("TutorSettingsPage", () => {
   it("sends the supported profile fields with the Bearer token", async () => {
     localStorage.setItem("authToken", "test-token");
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
-    render(<TutorSettingsPage />);
+    render(<TutorSettingsForm />);
     completeRequiredFields();
 
     fireEvent.change(screen.getByLabelText(/Personal bio/), {

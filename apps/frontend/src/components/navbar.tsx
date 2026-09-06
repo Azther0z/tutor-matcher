@@ -137,7 +137,7 @@ export function Navbar() {
           )}
 
           <Link
-            href="/enroll-tutor"
+            href="/settings/tutor"
             className="rounded-full bg-brand-navy px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-navy-dark"
           >
             Become a tutor

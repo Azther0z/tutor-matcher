@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { RequireAuth } from "@/src/components/require-auth";
 
 type FieldName =
   "firstName" | "lastName" | "avatarUrl" | "tutorBio" | "introVideoUrl" | "governmentId";
@@ -10,7 +11,7 @@ type FieldErrors = Partial<Record<FieldName, string>>;
 const inputClassName =
   "h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18]";
 
-export default function TutorSettingsPage() {
+export function TutorSettingsForm() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [userBio, setUserBio] = useState("");
@@ -255,5 +256,13 @@ export default function TutorSettingsPage() {
         </div>
       </form>
     </main>
+  );
+}
+
+export default function TutorSettingsPage() {
+  return (
+    <RequireAuth>
+      <TutorSettingsForm />
+    </RequireAuth>
   );
 }
