@@ -31,16 +31,16 @@ what the product does, what it stores, and what it calls things.
 
 The Git-managed backlog contract is [`backlog/README.md`](backlog/README.md).
 
-| Document                                                             | Purpose                                                                                     | Status                                       |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| [`project-charter.md`](project-charter.md)                           | Product purpose, goals, roles, and scope                                                    | Current baseline                             |
-| [`user-journeys.md`](user-journeys.md)                               | Route model, access rules, end-to-end flows, and product invariants                         | Current baseline                             |
-| [`project-schema.md`](project-schema.md)                             | Product data model, implemented tables, integrity rules, and the requirement gap list       | Current baseline                             |
-| [`backlog/reconciliation.md`](backlog/reconciliation.md)             | Delta between the product backlog and the current product definition                        | Open actions for the team                    |
-| [`project-architecture.md`](project-architecture.md)                 | Technology stack, repository layout, data flow, deployment flow, and deferred decisions     | Current baseline                             |
-| [`microservice-design.md`](microservice-design.md)                   | Service ownership, journey collaborations, transaction recovery, and incremental extraction | Proposed architecture                        |
-| [`testing.md`](testing.md)                                           | Test suites, Gherkin layout, commands, conventions, and CI enforcement                      | Current baseline                             |
-| [`final-report-database-design.md`](final-report-database-design.md) | Final Report operations, triggers, indexes, and document model                              | Historical course evidence — not the product |
+| Document                                                             | Purpose                                                                                    | Status                                       |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------- |
+| [`project-charter.md`](project-charter.md)                           | Product purpose, goals, roles, and scope                                                   | Current baseline                             |
+| [`user-journeys.md`](user-journeys.md)                               | Route model, access rules, end-to-end flows, and product invariants                        | Current baseline                             |
+| [`project-schema.md`](project-schema.md)                             | Product data model, implemented tables, integrity rules, and the requirement gap list      | Current baseline                             |
+| [`backlog/reconciliation.md`](backlog/reconciliation.md)             | Delta between the product backlog and the current product definition                       | Open actions for the team                    |
+| [`project-architecture.md`](project-architecture.md)                 | Technology stack, repository layout, data flow, deployment flow, and deferred decisions    | Current baseline                             |
+| [`microservice-design.md`](microservice-design.md)                   | DDD context mapping, service collaborations, transaction recovery, and extraction criteria | Proposed architecture                        |
+| [`testing.md`](testing.md)                                           | Test suites, Gherkin layout, commands, conventions, and CI enforcement                     | Current baseline                             |
+| [`final-report-database-design.md`](final-report-database-design.md) | Final Report operations, triggers, indexes, and document model                             | Historical course evidence — not the product |
 
 ## Architecture Decisions
 

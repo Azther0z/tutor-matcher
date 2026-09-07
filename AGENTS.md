@@ -37,6 +37,8 @@
 - Treat `docs/backlog/backlog.html` as generated output from backlog YAML and `scripts/templates/backlog.html`; update it with `npm run backlog:build` rather than editing it directly.
 - Treat the prototype as behavioural authority and `apps/backend/prisma/schema.prisma` as the authority for what the database currently contains.
 - For microservice design, use the project docs as requirements and exclude `backlog.yaml`; the user confirmed that some backlog entries are deprecated.
+- Align microservice design with the DDD context model, distinguish logical ownership from deployment, and retain explicit Booking–Wallet recovery and Booking-owned completion acceptance.
+- Describe documentation sources by their title and purpose in prose rather than by PR numbers or commit hashes.
 
 ### Open Threads
 - Question: Which backlog stories that contradict the product get cancelled, and which get reworded?

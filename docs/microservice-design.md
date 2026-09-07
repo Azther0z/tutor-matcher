@@ -3,145 +3,132 @@
 **Status:** Proposed architecture, not an accepted ADR or a description of deployed services.
 **Updated:** 2026-09-07.
 
-## Basis and scope
+Merging this document approves its presence as a proposal, not service extraction or a new
+production topology. Accepted [architecture decisions](index.md#architecture-decisions) remain in force.
 
-This design derives service boundaries from the current product documentation. It excludes
-`backlog.yaml` and does not use other backlog artifacts to establish requirements. Historical
-database-course designs are also excluded.
+## Authority and scope
 
-| Source                                                                                                                                                                                   | What this design takes from it                                                       |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [User journeys](user-journeys.md)                                                                                                                                                        | Access, discovery, booking, wallet, delivery, messaging, reviews, and admin behavior |
-| [Project charter](project-charter.md)                                                                                                                                                    | Product purpose, capabilities, and scope                                             |
-| [Domain vocabulary](../CONTEXT.md)                                                                                                                                                       | User, tutor, subject, availability slot, booking, lesson, and wallet terminology     |
-| [Project schema](project-schema.md)                                                                                                                                                      | Documented storage constraints and gaps G1–G18; not a ready-made service split       |
-| [Project architecture](project-architecture.md) and [ADR 0001](adr/0001-separate-express-backend.md), [0002](adr/0002-monorepo-layout.md), [0003](adr/0003-docker-compose-deployment.md) | Separate Express API, Next.js frontend, monorepo, PostgreSQL, and Compose deployment |
-| [Preserved prototype README](sources/tutormatcher-prototype-readme.md) and [user stories](sources/tutormatcher-prototype-user-stories.md)                                                | Behavioral evidence underlying the canonical journeys                                |
+This is the deployment and collaboration companion to the
+[Domain-Driven Design — Tutor Matcher](https://github.com/Azther0z/tutor-matcher/blob/4f5e34d4da453700d468b14e144a40ac9b670807/docs/domain-driven-design.md).
+The domain model defines business ownership and rules; this document explains how those contexts
+collaborate and how they may be grouped into deployments.
 
-The documented journeys provide enough behavior to propose the boundaries below; no new prototype
-walkthrough was performed. Unsettled policy remains explicitly open. All service names, internal
-contracts, event names, and recovery mechanisms below are design proposals, not existing APIs.
+| Reference                                                                                                                                      | Authority                                                                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| [User journeys](user-journeys.md), [charter](project-charter.md), and preserved [prototype evidence](sources/tutormatcher-prototype-readme.md) | Product behavior and scope; provisional policy numbers still require product approval                             |
+| [CONTEXT.md](../CONTEXT.md)                                                                                                                    | Canonical terminology                                                                                             |
+| DDD model linked above                                                                                                                         | Proposed logical ownership, aggregates, value objects, and invariants derived from the product                    |
+| This document                                                                                                                                  | Proposed deployment grouping, collaborations, transaction boundaries, and failure recovery                        |
+| [Project architecture](project-architecture.md) and accepted ADRs                                                                              | Approved technical architecture                                                                                   |
+| [Project schema](project-schema.md)                                                                                                            | Requirement constraints and documented implementation gaps; Prisma and migrations remain implementation authority |
 
-## Architectural position
+Follow product requirements → domain model → service design → accepted technical decisions →
+implementation. This page links to domain rules rather than maintaining another aggregate catalog.
+It excludes `backlog.yaml` and other backlog artifacts as requirement evidence, including the DDD
+model's planning discussion. Historical database-course designs do not establish requirements here.
+No new prototype walkthrough was needed. Contract names and recovery mechanisms below are proposals.
 
-Keep the accepted Next.js → Express API boundary and monorepo. Introduce explicit domain ownership
-inside the existing backend first, then extract independently deployed services where there is a
-concrete operational benefit. The existing backend modules are not already microservices.
+## Domain contexts, modules, and deployment
 
-The target is eight business services, an API composition layer, and a Discovery projection. This is
-a logical target, not a requirement to deploy every component separately for the initial release.
-Booking and Wallet should remain in one deployment and transaction boundary initially: separating
-them introduces a recovery protocol into the product's most important operation.
+Start with the existing Express backend, Next.js frontend, monorepo, PostgreSQL, and Compose
+architecture. A bounded context defines logical ownership; a deployment defines what runs and is
+released together. There is no target service count. Keep context boundaries inside the backend
+before extracting any process.
 
-The proposed boundaries follow these product rules from [User Journeys → Invariants](user-journeys.md#invariants):
+The module names below are proposed responsibilities, not a claim that the folders already exist.
+All contexts initially share the backend deployment; workers may run alongside it. Booking and
+Wallet additionally share a deliberate payment transaction boundary.
 
-- One user account has layered student, tutor, and admin capabilities and one wallet.
-- One booking buys one subject and one continuous block of a tutor's 30-minute slots.
-- A slot can advertise several subjects, but only one booking can occupy it at a time.
-- Payment confirms the booking immediately, without tutor acceptance.
-- The wallet ledger explains every movement of money; available and pending funds differ.
-- Listing changes require approval, and reviews require the author's own completed booking.
+| DDD context              | Owning module responsibility                                                              | Initial deployment                          | Possible extraction, subject to evidence                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------- |
+| Identity And Access      | `auth` and account settings; capabilities and account restrictions                        | Express backend                             | Identity service if access/security operations require independent ownership    |
+| Tutor Qualification      | `qualification`; applications, verification documents, approval outcomes                  | Express backend                             | Can share a tutor service with Catalog while retaining a separate model         |
+| Tutor Catalog            | `catalog`; approved Listing, revisions, Subjects and accepted commercial terms            | Express backend                             | Tutor service; Qualification remains the authority on eligibility and documents |
+| Discovery                | `discovery`; search language, filters, ranking and rebuildable search projections         | Express backend                             | Search worker/service if indexing load or ranking release cadence warrants it   |
+| Availability And Booking | `booking`; tutor-owned slots, subject assignments, holds, Booking lifecycle and snapshots | Express backend, shared payment transaction | Booking service only after remote payment recovery is proven                    |
+| Wallet And Settlement    | `wallet`; ledger, pending/available funds, provider attempts and settlement               | Express backend, shared payment transaction | Wallet service only after ledger migration and reconciliation are proven        |
+| Lesson Fulfillment       | `classroom`; meeting adapter, attendance evidence and completion assessment               | Express backend and durable worker          | Provider worker/service if failures or processing load need isolation           |
+| Conversations            | `messaging`; participant threads, messages, unread state and visibility                   | Express backend                             | Conversation service if connection/load needs justify it                        |
+| Reputation And Safety    | `reputation`; separate review and moderation/dispute modules under one context            | Express backend                             | Reputation service; retain explicit review and case responsibilities            |
+| Notifications            | `notifications`; preferences, reminders and delivery attempts                             | Express backend and durable worker          | Notification worker/service if delivery retries or throughput need isolation    |
+| Experience Projections   | `dashboard` and API composition; no authoritative domain writes                           | Express backend                             | Query layer only if composition load warrants it                                |
 
-## Service boundaries and data ownership
+Each context owns its writes; other contexts use its commands, queries, IDs, or committed facts.
+Shared deployment does not allow arbitrary repository access. Extracted services use owner-specific
+credentials and migrations, with no cross-database joins or shared Prisma persistence models.
+The initial Booking–Wallet operation invokes both owners within one application transaction.
 
-Each service exclusively writes its own data. Other services use commands, queries, or events;
-they do not share Prisma models or query another service's tables. Cross-service IDs are references,
-not cross-database foreign keys. Names below describe proposed aggregates rather than SQL table names.
+Discovery owns search behavior, including the meaning of ranking, even though its data is rebuilt
+from Catalog, Booking, and Reputation facts. It cannot authorize bookings or supply authoritative
+inventory/prices. Experience Projections composes dashboards and admin queues without gaining write
+ownership. Next.js continues to call the same-origin `/api/*` interface through Express.
 
-| Service                   | Owns                                                                                                                               | Main responsibilities and boundary rationale                                                                                                                                                                                                                         |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Identity & Access**     | User, credentials/federated identity links, sessions or tokens, capabilities, account restrictions                                 | Sign-up defaults to student; login, Google login, reset, account settings, tutor capability grants, suspension and bans. One authority for who may act. Authentication technology remains deferred.                                                                  |
-| **Tutor Catalog**         | Tutor Application, Verification Document metadata, live Listing and proposed revisions, Subject                                    | Application review, listing/document approval, publication, subject content, format and rate. Keep drafts and approved public content separate. Own private document access even if bytes live in external storage.                                                  |
-| **Booking & Scheduling**  | Availability Slot, subject assignments to slots, Booking, occupied slot collection, price snapshot, hold and payment-attempt state | Per-date availability, continuous-slot validation, payment-due holds, booking lifecycle, cancellation policy evaluation, completion eligibility acceptance. Keep slots and bookings together to prevent double-selling in one local transaction.                     |
-| **Wallet**                | Wallet, Wallet Transaction, pending Earning, Payout Account, top-up/payout attempts, financial allocation per booking              | All balance changes, lesson debits, refunds, clearing, payout processing, provider reconciliation. Keep money in one service so spending on a lesson and withdrawing compete against the same available balance.                                                     |
-| **Lesson Delivery**       | Meeting reference, provisioning attempts, attendance evidence, completion assessment                                               | Provision online rooms, authorize join, collect delivery evidence, propose completion. Booking remains the owner of the booking status.                                                                                                                              |
-| **Messaging**             | Conversation, Message, unread state, message visibility                                                                            | Student–tutor conversations before and after booking; participant authorization and context switching. The same user ID works in both contexts.                                                                                                                      |
-| **Reviews**               | Review, tutor reply, review visibility, rating aggregates                                                                          | Verify completed-booking eligibility, enforce one review per booking and one tutor reply, scope reviews to tutor and subject, apply moderation.                                                                                                                      |
-| **Trust & Notifications** | Report/dispute cases, admin decision audit, Notification Preference, dispatch and reminder records                                 | Coordinate admin queues and dispatch notifications. Keep case handling and notification delivery as separate internal modules/workers; split them into services later if their access or load requirements justify it. Domain owners still execute approved changes. |
-
-**Discovery** is a rebuildable read projection of approved public listings, published subjects,
-visible review aggregates, and availability summaries. It supports the documented filters and sorts;
-the Recommended ranking formula is still unspecified. It owns no bookable inventory or prices.
-
-**API composition** routes `/api/*` and combines data for dashboards, tutor pages, and booking detail.
-It can initially be the existing Express route layer. It owns no domain tables. Next.js remains the
-UI and same-origin API proxy; it does not connect to service databases.
-
-Dashboards and admin pages are composed views, not services per screen. A dashboard combines Booking,
-Wallet, Catalog, and Reviews; an admin queue combines Catalog-owned applications with Trust-owned
-reports. Only the relevant owner changes the underlying state.
+For readability below, Booking means Availability And Booking, Wallet means Wallet And Settlement,
+Fulfillment means Lesson Fulfillment, and Reputation means Reputation And Safety. Reviews and
+moderation are modules within Reputation; Notifications is always a separate context.
 
 ## Collaboration map
 
+This diagram shows selected context interactions, not a container per box. The API routes commands
+to each owner; authorization is enforced both at entry and by the owner. Dashed arrows carry committed
+facts; solid arrows are commands or authoritative queries. Durable event transport is needed when
+these interactions cross processes, not merely because contexts have different names.
+
 ```mermaid
 flowchart TD
-    UI[Next.js frontend] --> API[Express API composition]
-    API --> IAM[Identity & Access]
-    API --> CAT[Tutor Catalog]
-    API --> DISC[Discovery projection]
-    API --> BOOK[Booking & Scheduling]
-    API --> WAL[Wallet]
-    API --> MSG[Messaging]
-    API --> REV[Reviews]
-    API --> TRUST[Trust & Notifications]
-    API --> LES[Lesson Delivery]
-    BOOK -->|Validate subject and rate| CAT
-    BOOK -->|Debit or refund command| WAL
-    REV -->|Check completed booking| BOOK
-    LES -->|Completion assessment| BOOK
-    TRUST -->|Audited domain commands| IAM
-    TRUST -->|Moderation commands| MSG
-    TRUST -->|Moderation commands| REV
-    TRUST -->|Dispute resolution| BOOK
-    CAT --> EVENTS[Durable domain events]
-    BOOK --> EVENTS
-    WAL --> EVENTS
-    MSG --> EVENTS
-    REV --> EVENTS
-    IAM --> EVENTS
-    EVENTS --> DISC
-    EVENTS --> LES
-    EVENTS --> TRUST
-    EVENTS --> IAM
-    WAL --> MONEY[PromptPay and payout provider adapters]
-    LES --> ZOOM[Online meeting provider adapter]
+    Q[Tutor Qualification] -.->|Application approved| I[Identity And Access]
+    Q -.->|Verification decision| C[Tutor Catalog]
+    B[Availability And Booking] -->|Validate subject terms| C
+    B -->|Capture or financial adjustment| W[Wallet And Settlement]
+    B -.->|BookingConfirmed| L[Lesson Fulfillment]
+    L -->|Completion assessment| B
+    B -.->|BookingCompleted| W
+    B -.->|BookingCompleted| R[Reputation And Safety]
+    R -->|Check review eligibility| B
+    R -->|Dispute adjustment request| B
+    R -->|Apply account sanction| I
+    R -->|Apply message moderation| M[Conversations]
+    C -.->|Approved public content| D[Discovery]
+    B -.->|Availability summary| D
+    R -.->|Visible rating summary| D
+    Q -.->|Application outcome| N[Notifications]
+    B -.->|Booking updates| N
+    W -.->|Wallet updates| N
+    M -.->|New message| N
+    R -.->|Case outcome| N
 ```
 
-Arrows distinguish direct commands/queries from event delivery. This is not a complete authorization
-graph: every protected entry point must enforce Identity's account restrictions and its own resource
-ownership rules. A gateway check alone is insufficient.
+## Collaboration 1: qualification, publication, and discovery
 
-## Collaboration 1: apply, approve, publish, discover
+Qualification owns application/document submissions and versioned admin decisions. Approval publishes
+`TutorApplicationApproved`; Identity grants the capability once and acknowledges activation. Until
+then, protected tutor actions remain blocked. Cancellation and approval compete on the submission
+version so a superseded application cannot be approved accidentally.
 
-1. Identity creates one student account. Catalog accepts a Tutor Application containing the required
-   government ID document, teaching certification document, and bio.
-2. An authorized admin reviews the exact application version through Catalog. Catalog atomically
-   records the approval/rejection and its audit reference, then publishes the outcome.
-3. Identity consumes `TutorApplicationApproved` idempotently and grants the tutor capability to that
-   same user. The application response may track capability activation until this finishes; tutor
-   actions remain blocked until Identity confirms the grant. Rejection does not grant a capability.
-4. A pending cancellation and an admin decision compete on the application version, so an approval
-   cannot apply to a cancelled or superseded submission.
-5. Catalog keeps listing/document edits in a proposed revision. Approval publishes that revision;
-   rejection preserves the live listing and records the reason.
-6. Discovery updates from `ListingPublished`, `SubjectChanged`, and rating/availability events.
-   Public queries expose approved content only. Discovery can lag, so Booking validates eligibility
-   and obtains the authoritative rate from Catalog before creating a booking.
+Catalog owns proposed and live listing revisions. Qualification owns replacement verification
+versions and their review outcomes. When a listing revision depends on replacement documents,
+Catalog references the exact approved document version before publishing; it does not independently
+approve private documents. Rejection leaves approved public content intact. This coordination is a
+proposed implementation of the [documented review flow](user-journeys.md#7--tutor-operations).
 
-Listing/document approval does not imply every subject edit needs approval; that extra rule is not
-established by the journeys. Catalog defines a versioned subject quote for Booking. Booking records
-the accepted subject version and price; later rate changes cannot rewrite an existing booking.
+Discovery consumes approved Catalog content, availability summaries, and visible ratings. Booking
+revalidates bookability with Catalog and records the accepted subject quote/version so later price
+changes do not rewrite history. Public search lag must never authorize an unavailable slot.
 
 ## Collaboration 2: select slots, top up, and confirm
+
+The sequence shows the proposed workflow after Booking and Wallet are extracted. Initially, the
+payment portion runs as one shared database transaction, as described below. Browser requests go
+through the API layer even where the diagram abbreviates the response path.
 
 ```mermaid
 sequenceDiagram
     actor Student
     participant API as Express API
-    participant B as Booking & Scheduling
+    participant B as Availability And Booking
     participant C as Tutor Catalog
     participant W as Wallet
-    participant L as Lesson Delivery
+    participant L as Lesson Fulfillment
     Student->>API: Continue with subject and continuous slot block
     API->>B: CreateBooking with idempotency key
     B->>C: Validate bookability and obtain subject quote
@@ -149,7 +136,8 @@ sequenceDiagram
     B->>B: Atomically claim all slots and save payment-due booking
     B-->>Student: Booking number, fixed price, payment page
     opt Insufficient available balance
-        Student->>W: Request top-up QR
+        Student->>API: Request top-up QR
+        API->>W: Create top-up attempt
         W->>W: Verify provider confirmation and credit once
         W-->>Student: Updated wallet; return to booking
     end
@@ -207,24 +195,26 @@ that needs agreement; the normal documented confirmed screen includes the meetin
 
 ## Collaboration 3: delivery, completion, earnings, and reviews
 
-1. Lesson Delivery consumes `BookingConfirmed`, provisions the online room, and authorizes the
+1. Lesson Fulfillment consumes `BookingConfirmed`, provisions the online room, and authorizes the
    booking's student/tutor before exposing a join link. A cancellation prevents subsequent joins.
-2. After the scheduled lesson, Delivery submits attendance evidence and a completion assessment.
+2. After the scheduled lesson, Fulfillment submits attendance evidence and a completion assessment.
    Booking checks its current state and the applicable completion rule before moving `confirmed`
    to `completed`. Missing or inadequate evidence is flagged rather than silently counted as delivery.
 3. Booking publishes `BookingCompleted`. Wallet creates the tutor's pending earning once, using the
    booking's financial allocation and policy snapshot. Pending money cannot fund bookings or payouts.
 4. A durable Wallet worker clears eligible earnings once the clearing time and any dispute hold permit
    it. Clearing transfers pending money into available money; it must not credit the earning twice.
-5. Reviews accepts a submission only after checking the caller against Booking's authoritative
-   completed booking. It derives tutor and subject IDs from that booking and enforces uniqueness on
+5. Reputation's review module checks the caller against Booking's authoritative completed booking
+   before accepting a submission. It derives tutor and subject IDs and enforces uniqueness on
    booking ID. It does not trust a browser-supplied tutor/subject pair or a stale completion projection.
-6. Reviews publishes changes to visible ratings for Discovery. Tutor replies require ownership of
+6. Reputation publishes changes to visible ratings for Discovery. Tutor replies require ownership of
    the reviewed tutor's account. Notifications dispatch eligible completion and earning updates.
 
-The journeys mention online and in-person subject formats, but the delivery flow specifies an online
-meeting. In-person attendance and completion evidence need a policy before that format can use the
-same automated completion workflow.
+**Completion authority:** `BookingCompleted` is the accepted commercial outcome that starts pending
+earnings and establishes review eligibility. A Fulfillment assessment alone cannot trigger either.
+Booking serializes acceptance against cancellation on its current version; a delayed assessment for
+a cancelled booking is rejected. This refines the domain model's direct Fulfillment → Wallet/Reputation arrows
+and should be reconciled in its context map and EventStorming board before implementation.
 
 ## Collaboration 4: cancellation, disputes, and refunds
 
@@ -232,12 +222,13 @@ same automated completion workflow.
    the applicable policy, and shows the consequence before confirmation. Quote/version validation
    prevents a stale quote from silently applying a different financial outcome.
 2. An unpaid cancellation releases its hold only if no payment attempt can still capture. A paid
-   cancellation records `cancelled`, releases future inventory, and persists a refund instruction
-   together. Cancellation and completion serialize on the booking version so only one transition wins.
+   cancellation records `cancelled`, removes booking occupancy, and persists a refund instruction
+   together. Reopening the released slots for sale requires the agreed cancellation policy.
+   Cancellation and completion serialize on the booking version so only one transition wins.
 3. Wallet applies the authorized financial adjustment idempotently. If Wallet is unavailable, the
    booking stays cancelled and the refund is visibly pending; a durable retry completes it later.
-4. A dispute is owned by Trust. The admin decision is audited, then routed through Booking's financial
-   adjustment contract. Trust never edits balances or reviews a bank transfer screenshot as payment.
+4. Reputation's moderation module owns the dispute and audits the admin decision. It requests an
+   adjustment through Booking; Wallet executes the authorized financial change.
 5. Wallet serializes refunds, earnings clearing, and dispute holds against the same booking allocation.
    It caps cumulative refunds at the eligible paid amount and prevents both a full refund and an
    unadjusted tutor earning from being allocated from the same money.
@@ -267,32 +258,29 @@ that journal; any cached balance is updated atomically with its entries and can 
 
 ## Collaboration 6: conversations, moderation, and notifications
 
-- Messaging verifies both conversation participants; a booking is not required to send the first
-  message. Student/tutor context selects a view of the same account's conversations, not another login.
-- A message or review flag creates a Trust case with a source reference. A uniqueness rule rejects
-  duplicate flags by the same user for the same content. Trust records the admin outcome and commands
-  the owning service to keep, hide, or remove content. Case resolution remains pending until that
-  service acknowledges the outcome; retries cannot apply it twice.
-- Suspension/ban decisions are applied by Identity. Protected commands check current restrictions,
-  using an authoritative check or a revocable authorization mechanism. A stale search entry or token
-  cannot grant permission to perform a newly blocked action.
-- Notifications consume booking, wallet, application, and message events. Each dispatch checks the
-  user's current event/channel preference. Disabled preferences suppress that channel, including on
-  retries. Reminder jobs recheck booking status and time before sending, so cancelled lessons do not
-  produce reminders. Authentication reset delivery is handled separately from optional product news.
+Conversations authorizes the participants and owns message visibility. Reputation owns content flags,
+cases, review visibility, and decisions. A review moderation decision applies within Reputation;
+a message decision calls Conversations and remains pending until acknowledged. Duplicate flags and
+repeated moderation commands are deduplicated. Account sanctions go through Identity, whose current
+restrictions must be enforced despite stale UI or token state.
+
+Notifications independently consumes committed outcomes. It checks current event/channel preferences
+on every dispatch and retry, and checks booking status/time before reminders. Delivery failure cannot
+reverse a booking, payment, or moderation decision. Password reset delivery remains separate from
+optional product notifications. These responsibilities need no shared domain model with moderation.
 
 ## Contracts, reliability, and security
 
-| Contract                              | Caller → owner                   | Result or event                                   | Consistency                                                          |
-| ------------------------------------- | -------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------- |
-| `CreateBooking`                       | API → Booking                    | Fixed-price payment-due booking and slot claim    | Atomic across every selected slot                                    |
-| `PayBooking` / `CaptureLessonPayment` | API → Booking → Wallet           | Payment reference, then `BookingConfirmed`        | Shared transaction initially; durable orchestration after extraction |
-| `CancelBooking`                       | API → Booking                    | `BookingCancelled`, authorized refund instruction | Booking/inventory atomic; refund completion may lag                  |
-| `AssessCompletion`                    | Delivery → Booking               | `BookingCompleted` if eligible                    | Version-checked lifecycle transition                                 |
-| `ApproveApplication`                  | Admin API → Catalog              | `TutorApplicationApproved` → Identity             | Approval durable; capability activation acknowledged separately      |
-| `SubmitReview`                        | API → Reviews → Booking query    | `ReviewPublished`                                 | Authoritative eligibility and local uniqueness                       |
-| `RequestPayout`                       | API → Wallet                     | Durable payout attempt                            | Available balance and payout debit atomic                            |
-| `ResolveReport`                       | Admin API → Trust → domain owner | Audited, acknowledged outcome                     | Idempotent commands with retry                                       |
+| Contract                              | Caller → owner                        | Result or event                                   | Consistency                                                          |
+| ------------------------------------- | ------------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------- |
+| `CreateBooking`                       | API → Booking                         | Fixed-price payment-due booking and slot claim    | Atomic across every selected slot                                    |
+| `PayBooking` / `CaptureLessonPayment` | API → Booking → Wallet                | Payment reference, then `BookingConfirmed`        | Shared transaction initially; durable orchestration after extraction |
+| `CancelBooking`                       | API → Booking                         | `BookingCancelled`, authorized refund instruction | Booking/inventory atomic; refund completion may lag                  |
+| `AssessCompletion`                    | Fulfillment → Booking                 | `BookingCompleted` if eligible                    | Version-checked lifecycle transition                                 |
+| `ApproveApplication`                  | Admin API → Qualification             | `TutorApplicationApproved` → Identity             | Approval durable; capability activation acknowledged separately      |
+| `SubmitReview`                        | API → Reputation → Booking query      | `ReviewPublished`                                 | Authoritative eligibility and local uniqueness                       |
+| `RequestPayout`                       | API → Wallet                          | Durable payout attempt                            | Available balance and payout debit atomic                            |
+| `ResolveReport`                       | Admin API → Reputation → domain owner | Audited, acknowledged outcome                     | Idempotent commands with retry                                       |
 
 Commands carry actor identity, an idempotency key, and an expected version where state can race.
 Events carry `eventId`, `eventType`, `schemaVersion`, `aggregateId`, `aggregateVersion`, `occurredAt`,
@@ -317,30 +305,22 @@ pending refunds/payouts, meeting provisioning failures, and ledger reconciliatio
 Correlation IDs must connect the browser request, booking, wallet operation, provider reference, and
 admin resolution without logging sensitive payloads.
 
-## Adoption within the accepted project architecture
+## Adoption and extraction gates
 
-1. **Establish modules and close schema gaps.** Keep the Express application and PostgreSQL deployment.
-   Map `auth` to Identity; split `profile` responsibilities into account settings and Catalog;
-   keep availability with `booking`; map `classroom`, `wallet`, `messaging`, and `review` to their
-   owners. Keep `dashboard` as composition and `discovery` as a query module. Add Trust/notification
-   modules. Health endpoints remain operational infrastructure.
-2. **Implement reliable local transactions and worker contracts.** Address G1–G7 before paid booking
-   delivery, including the multi-slot relation, lifecycle, historical pricing, tutor-owned slots,
-   nullable meeting reference before provisioning, and wallet structure. Add the missing records
-   G8–G18 as their journeys are implemented. See the [schema gap list](project-schema.md#reconciliation-requirement-vs-implementation)
-   for exact requirements; this document does not claim those gaps have been fixed.
-3. **Extract peripheral workers/services first.** Notifications, meeting provisioning, and Discovery
-   have useful asynchronous boundaries. Introduce owner-specific schemas/databases and migrations,
-   service identities, event delivery, health checks, and deployment entries when actually extracting.
-   Keep shared types limited to versioned contracts, not repositories or domain persistence models.
-4. **Extract Booking and Wallet only after recovery is proven.** Backfill and reconcile ledger data,
-   cut over to one writer per domain, and exercise the uncertain-payment protocol before enabling
-   remote capture. Do not use indefinite dual writes as the migration strategy.
+1. Establish the context/module mapping inside Express through working product slices. Use the
+   [schema gap list](project-schema.md#reconciliation-requirement-vs-implementation) for implementation
+   planning; this proposal does not close G1–G18 or require empty domain layers.
+2. Implement the local Booking–Wallet transaction, owner contracts, outbox, and durable workers.
+   Prove the failure scenarios below while the deployment remains simple.
+3. Consider Notifications, Fulfillment workers, or Discovery first when measured load, provider
+   failure isolation, or release ownership supports extraction. Document the concrete benefit,
+   operating owner, latency/failure budget, data migration, monitoring, and rollback plan in an ADR.
+4. Separate Booking and Wallet only after the uncertain-payment protocol is tested end to end.
+   Reconcile financial backfills, switch to one writer per domain, and avoid indefinite dual writes.
 
-Continue using the monorepo and Compose deployment shapes from the accepted ADRs. Extraction would
-require new service build/deploy entries in the local and production manifests and a new ADR for the
-changed topology. A service mesh, Kubernetes migration, database technology change, or repository
-split is not a prerequisite in this proposal.
+Every extraction needs versioned contracts, owner-specific persistence, replay/recovery procedures,
+health checks, and local/production Compose entries. Accept the topology ADR before deployment.
+Remain with the modular backend if the operational benefit does not justify the added failure modes.
 
 ## Verification criteria
 
@@ -361,23 +341,38 @@ contract tests for extracted services, and browser journeys for the user-visible
 | Meeting provider or notification delivery is unavailable                    | Booking remains correct; work retries; disabled channels stay suppressed            |
 | Account is suspended after login                                            | Subsequent protected commands are denied despite old UI state                       |
 
+## Established requirements and reconciliation points
+
+| Topic                  | Basis and treatment in this proposal                                                                                                                                                                                                                                                                                                                      |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Payment-due holds      | [Booking step 2](user-journeys.md#step-2--payment-due-bookingsid) explicitly holds slots while payment is outstanding. Holding is established; lifetime, expiry, and top-up return after expiry remain open. DDD's optional `held?` notation should be aligned.                                                                                           |
+| One review per booking | [Schema integrity rule 9](project-schema.md#integrity-rules-the-product-requires) documents this requirement; review submission remains optional. This proposal enforces at most one submitted review. DDD flags weaker explicit prototype evidence, so any change to that documented limit needs a product decision rather than a service-specific rule. |
+| Completion gate        | Booking accepts Fulfillment evidence before Wallet settlement and review eligibility. This is a proposed coordination decision; reconcile DDD's direct completion reactions before implementation.                                                                                                                                                        |
+| Dispute remedies       | Reputation decides the remedy; Booking validates the booking adjustment and Wallet owns its financial execution. This refines DDD's direct Reputation → Wallet path to serialize booking-related outcomes.                                                                                                                                                |
+
+These are explicit alignment points between proposals; neither document silently overrides the other
+or changes product requirements by being merged.
+
 ## Decisions still needed
 
-These are limits of the available requirements, not values to infer from deprecated backlog items.
+Keep the full domain questions in the DDD model. The following decisions directly affect collaboration
+contracts or extraction and remain open here:
 
-| Decision                                                                          | Needed before                                                                                            |
-| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Payment-due hold lifetime, expiry behavior, and top-up return after expiry        | Shipping slot holds; the journeys require release but specify no timeout                                 |
-| Cancellation/refund matrix, fee rounding, and version application                 | Shipping cancellation and settlement; prototype values of 12 hours, 15%, and 24 hours remain provisional |
-| Dispute timing, earning holds, and funding refunds after cleared earnings/payouts | Shipping disputes and settlement                                                                         |
-| Attendance thresholds, evidence source, exceptions, and in-person completion      | Enabling automatic completion                                                                            |
-| Authentication, capability revocation, and service authentication mechanism       | Enforcing extracted-service authorization                                                                |
-| Payment/payout provider contracts and document storage                            | Integrating real external money and private verification files                                           |
-| Meeting-link provisioning failure UX and maximum acceptable delay                 | Enabling asynchronous meeting creation                                                                   |
-| Whether rescheduling belongs in the product                                       | Adding any rescheduling contract                                                                         |
-| Event transport and service extraction criteria                                   | Moving from the modular backend to independently deployed services                                       |
+| Decision                                                                        | Impact                                                                                                                    |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Hold lifetime and top-up return after expiry                                    | Slot release, payment attempts, and recovery UI                                                                           |
+| Timezone and scheduling interpretation                                          | Slot boundaries, reminder times, cancellation windows, and completion deadlines                                           |
+| Whether cancelled slots reopen or remain closed                                 | Separate removal of booking occupancy from permission to sell the slot again                                              |
+| Cancellation/refund matrix, fee rounding, policy versioning and clearing period | Financial snapshots and adjustments; prototype numbers remain provisional as stated in [Money](user-journeys.md#4--money) |
+| Dispute holds and refunds after cleared earnings or payouts                     | Financial recovery and responsibility for funding refunds                                                                 |
+| Attendance rules, evidence source and in-person fulfillment                     | Completion acceptance; online meeting evidence does not cover in-person delivery                                          |
+| Reapplication after rejection and Subject-change approval requirements          | Qualification/Catalog lifecycle and publication contracts                                                                 |
+| Account restoration, appeals and admin capability assignment                    | Identity/Reputation commands and who can authorize them                                                                   |
+| Authentication, revocation, private document storage and provider contracts     | Trust boundaries and external integration                                                                                 |
+| Payment-processing and meeting-provisioning failure UX                          | User-visible recovery while confirmation or meeting access is delayed                                                     |
+| Rescheduling scope                                                              | No rescheduling command until product scope is decided                                                                    |
+| Event transport and concrete extraction benefit                                 | Deployment ADR and operational readiness                                                                                  |
 
-Product behavior remains owned by [user-journeys.md](user-journeys.md), vocabulary by
-[CONTEXT.md](../CONTEXT.md), and current database structure by Prisma as described in
-[project-schema.md](project-schema.md). Accepting this proposal should create an ADR rather than
-silently changing those authorities.
+After these decisions, update the canonical domain/product document first and this collaboration
+proposal where affected. Approval of a technical topology belongs in an ADR; a documentation merge
+alone does not authorize microservice extraction.

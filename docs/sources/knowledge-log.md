@@ -54,3 +54,14 @@ Current source-backed documentation is maintained directly under `docs/`.
   evidence; no new prototype walkthrough or external research
 - Scope: excluded backlog.yaml as requested; no backlog artifacts used to establish requirements
 - Memory: recorded the user's instruction to exclude backlog.yaml from microservice requirement evidence
+
+## [2026-09-07] revise | Align microservice proposal with DDD
+
+- Basis: Domain-Driven Design — Tutor Matcher for context ownership and collaboration;
+  docs/user-journeys.md and docs/project-schema.md for holds and review cardinality
+- Updated: docs/microservice-design.md, docs/project-architecture.md, and docs/index.md
+- Changes: mapped contexts to modules and deployment options; separated Qualification and
+  Notifications; grouped reviews and moderation under Reputation; retained payment recovery;
+  made completion authority and proposal reconciliation points explicit
+- Status: proposal only; no extraction or new deployment topology approved
+- Memory: recorded the user's requested DDD alignment and retained consistency safeguards
