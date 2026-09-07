@@ -5,9 +5,9 @@ a user walks and the rules those journeys enforce. It is the requirement-level
 companion to [`project-schema.md`](project-schema.md) (what is stored) and
 [`CONTEXT.md`](../CONTEXT.md) (what things are called).
 
-**Evidence.** The behaviour below was taken from the clickable product prototype and
-verified by walking it end to end. The prototype material is preserved under
-`sources/`:
+**Evidence.** The behaviour below was taken from the clickable product prototype
+(<https://idealkritarat.github.io/tutormatcher-prototype>) and verified by walking it
+end to end. The prototype material is preserved under `sources/`:
 
 - [`tutormatcher-prototype-readme.md`](sources/tutormatcher-prototype-readme.md) — page map, flows, and what is real versus faked
 - [`tutormatcher-prototype-user-stories.md`](sources/tutormatcher-prototype-user-stories.md) — the product's own epics and acceptance criteria (US1-1 … US11-3)
