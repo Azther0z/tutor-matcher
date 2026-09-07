@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "address-review": {
+      "source": "kaiitunnz/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/address-review/SKILL.md",
+      "computedHash": "ca351cb7f77a24ca2e783cd8dbd79f12322f043ba15225093431fe9e35a19e09"
+    },
+    "babysit-prs": {
+      "source": "kaiitunnz/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/babysit-prs/SKILL.md",
+      "computedHash": "e3a8fb11aa43015bc0cd80cd036916c671cc75836c81566f4239ffeb0ce83ac3"
+    },
     "my-agentic-repo": {
       "source": "azther0z/my-agent-skills",
       "sourceType": "github",
@@ -60,6 +72,18 @@
       "sourceType": "github",
       "skillPath": "skills/my-verify-change/SKILL.md",
       "computedHash": "c788105e4bd466f90aa4b57dc951f3505409bb22a3ae32f4d282f74cbbff8dbf"
+    },
+    "review-diff": {
+      "source": "kaiitunnz/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-diff/SKILL.md",
+      "computedHash": "6c538cac785a029ccbee1c820b3ef50e588c3ec96b9dc7c50341d62dafbee8a7"
+    },
+    "review-pr": {
+      "source": "kaiitunnz/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-pr/SKILL.md",
+      "computedHash": "e1e646a3d77aadfd1c315b97c93ddfb70fab12745e7350c06cf23b14d6972ae0"
     }
   }
 }
