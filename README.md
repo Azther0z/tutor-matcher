@@ -37,6 +37,11 @@ with `just up` (see [Development](#development)).
 npm work show the equivalent `npm run` script in a comment; Compose orchestration
 lives in the justfile and has no `npm run` form.
 
+On Windows, `just` runs recipes through the built-in Windows PowerShell and selects
+`npm.cmd` automatically, so the commands work from either PowerShell or Command
+Prompt without requiring Git Bash or WSL. Docker Desktop is still required for the
+Compose recipes.
+
 <details>
 <summary>Manual setup, step by step</summary>
 
