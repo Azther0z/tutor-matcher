@@ -36,7 +36,7 @@
 - Balance workload by reassigning whole stories among the fixed pairs without changing pair membership.
 - Treat `docs/backlog/backlog.html` as generated output from backlog YAML and `scripts/templates/backlog.html`; update it with `npm run backlog:build` rather than editing it directly.
 - Treat the prototype as behavioural authority and `apps/backend/prisma/schema.prisma` as the authority for what the database currently contains.
-- For project DDD, follow the documentation authority order recorded in `docs/domain-driven-design.md` and exclude the current codebase as domain evidence.
+- For project DDD, follow the documentation authority order recorded in `docs/domain-driven-design.md`, exclude the current codebase as domain evidence, and keep that page limited to its approved EventStorming-oriented outline.
 
 ### Open Threads
 - Question: Which backlog stories that contradict the product get cancelled, and which get reworded?
