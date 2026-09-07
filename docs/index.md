@@ -35,6 +35,7 @@ The Git-managed backlog contract is [`backlog/README.md`](backlog/README.md).
 | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------- |
 | [`project-charter.md`](project-charter.md)                           | Product purpose, goals, roles, and scope                                                | Current baseline                             |
 | [`user-journeys.md`](user-journeys.md)                               | Route model, access rules, end-to-end flows, and product invariants                     | Current baseline                             |
+| [`domain-driven-design.md`](domain-driven-design.md)                 | Subdomains, bounded contexts, aggregates, context map, policies, and open decisions     | Proposed domain model                        |
 | [`project-schema.md`](project-schema.md)                             | Product data model, implemented tables, integrity rules, and the requirement gap list   | Current baseline                             |
 | [`backlog/reconciliation.md`](backlog/reconciliation.md)             | Delta between the product backlog and the current product definition                    | Open actions for the team                    |
 | [`project-architecture.md`](project-architecture.md)                 | Technology stack, repository layout, data flow, deployment flow, and deferred decisions | Current baseline                             |
