@@ -111,6 +111,10 @@ rename each folder as its slice is built.
 
 ## Backend Modules
 
+The proposed [Microservice Design with Collaborations](microservice-design.md) maps these modules
+to domain ownership and describes journey-level interactions, payment recovery, and incremental
+service extraction. It is a proposal; the accepted deployment remains the architecture on this page.
+
 Each module under `apps/backend/src/modules/` owns its HTTP routes, controllers,
 business services, and Zod schemas. `src/routes.ts` aggregates the routers and `src/app.ts`
 mounts them at `/api`. Current modules: `auth`, `booking`, `classroom`, `dashboard`,

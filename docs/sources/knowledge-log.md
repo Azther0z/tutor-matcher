@@ -43,3 +43,14 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Updated: Tutor Matcher Database Operations And Integrity
 - Updated: Tutor Matcher Query Performance And Reporting
 - Updated: Tutor Matcher Document Database Model
+
+## [2026-09-07] author | Microservice Design with Collaborations
+
+- Basis: docs/user-journeys.md, docs/project-charter.md, docs/project-schema.md,
+  docs/project-architecture.md, docs/adr/, and CONTEXT.md
+- Created: docs/microservice-design.md (proposed architecture, separate from accepted decisions)
+- Updated: docs/index.md and docs/project-architecture.md (discovery links)
+- Method: derived ownership and collaborations from current documentation and preserved prototype
+  evidence; no new prototype walkthrough or external research
+- Scope: excluded backlog.yaml as requested; no backlog artifacts used to establish requirements
+- Memory: recorded the user's instruction to exclude backlog.yaml from microservice requirement evidence
