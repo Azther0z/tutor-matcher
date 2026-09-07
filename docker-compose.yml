@@ -23,6 +23,10 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tutor_matcher
       PORT: "8000"
+      EMAIL_DELIVERY_MODE: ${EMAIL_DELIVERY_MODE:-resend}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+      FRONTEND_URL: http://localhost:${FRONTEND_PORT:-3000}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:

@@ -1,5 +1,17 @@
+import { createHash, randomBytes } from "node:crypto";
+import bcrypt from "bcryptjs";
 import { prisma } from "../../lib/db.ts";
-import type { LoginInput, SignupInput } from "./auth.schema.ts";
+import { buildPasswordResetUrl, sendPasswordResetEmail } from "../../lib/email.ts";
+import type {
+  LoginInput,
+  PasswordResetConfirmInput,
+  PasswordResetRequestInput,
+  SignupInput,
+} from "./auth.schema.ts";
+
+export const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
+export const GENERIC_PASSWORD_RESET_MESSAGE =
+  "If an account exists for that email, we sent a password reset link.";
 
 export class SignupConflictError extends Error {
   constructor(message: string) {
@@ -22,6 +34,13 @@ export class CurrentUserNotFoundError extends Error {
   }
 }
 
+export class InvalidPasswordResetTokenError extends Error {
+  constructor(message = "This password reset link is invalid or has expired") {
+    super(message);
+    this.name = "InvalidPasswordResetTokenError";
+  }
+}
+
 export async function signup({ firstName, lastName, email, password, bio }: SignupInput) {
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
@@ -30,12 +49,13 @@ export async function signup({ firstName, lastName, email, password, bio }: Sign
   }
 
   try {
+    const passwordHash = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
       data: {
         firstName,
         lastName,
         email,
-        password,
+        password: passwordHash,
         bio: bio ?? null,
       },
     });
@@ -59,9 +79,14 @@ export async function signup({ firstName, lastName, email, password, bio }: Sign
 export async function login({ email, password }: LoginInput) {
   const user = await prisma.user.findUnique({ where: { email } });
 
-  // NOTE: passwords are still stored in plaintext (see signup). Swap this for
-  // a constant-time hash comparison once hashing is added to both flows.
-  if (!user || user.password !== password) {
+  const isBcryptPassword = /^\$2[aby]\$\d{2}\$/.test(user?.password ?? "");
+  const passwordMatches = user
+    ? isBcryptPassword
+      ? await bcrypt.compare(password, user.password)
+      : user.password === password
+    : false;
+
+  if (!user || !passwordMatches) {
     throw new InvalidCredentialsError();
   }
 
@@ -88,4 +113,98 @@ export async function getCurrentUser(userId: string) {
 
   if (!user) throw new CurrentUserNotFoundError();
   return user;
+}
+
+function hashResetToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function isUsableResetToken(token: { usedAt: Date | null; expiresAt: Date }, now: Date) {
+  return token.usedAt === null && token.expiresAt > now;
+}
+
+export async function requestPasswordReset({ email }: PasswordResetRequestInput) {
+  const normalizedEmail = normalizeEmail(email);
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    select: { id: true, email: true },
+  });
+
+  if (!user) {
+    return { message: GENERIC_PASSWORD_RESET_MESSAGE };
+  }
+
+  const rawToken = randomBytes(32).toString("hex");
+  const tokenHash = hashResetToken(rawToken);
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+
+  const resetToken = await prisma.$transaction(async (transaction) => {
+    await transaction.passwordResetToken.deleteMany({ where: { userId: user.id } });
+    return transaction.passwordResetToken.create({
+      data: { tokenHash, userId: user.id, expiresAt },
+      select: { id: true, tokenHash: true },
+    });
+  });
+
+  try {
+    await sendPasswordResetEmail({
+      to: user.email,
+      resetUrl: buildPasswordResetUrl(rawToken),
+    });
+  } catch (error) {
+    await prisma.passwordResetToken.deleteMany({ where: { id: resetToken.id } });
+    throw error;
+  }
+
+  return { message: GENERIC_PASSWORD_RESET_MESSAGE };
+}
+
+export async function validatePasswordResetToken(token: string) {
+  const resetToken = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash: hashResetToken(token) },
+    select: { usedAt: true, expiresAt: true },
+  });
+
+  if (!resetToken || !isUsableResetToken(resetToken, new Date())) {
+    throw new InvalidPasswordResetTokenError();
+  }
+
+  return { valid: true };
+}
+
+export async function confirmPasswordReset({ token, password }: PasswordResetConfirmInput) {
+  const tokenHash = hashResetToken(token);
+  const now = new Date();
+
+  await prisma.$transaction(async (transaction) => {
+    const resetToken = await transaction.passwordResetToken.findUnique({
+      where: { tokenHash },
+      select: { id: true, userId: true, usedAt: true, expiresAt: true },
+    });
+
+    if (!resetToken || !isUsableResetToken(resetToken, now)) {
+      throw new InvalidPasswordResetTokenError();
+    }
+
+    const consumed = await transaction.passwordResetToken.updateMany({
+      where: { id: resetToken.id, usedAt: null, expiresAt: { gt: now } },
+      data: { usedAt: now },
+    });
+
+    if (consumed.count !== 1) {
+      throw new InvalidPasswordResetTokenError();
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await transaction.user.update({
+      where: { id: resetToken.userId },
+      data: { password: passwordHash },
+    });
+  });
+
+  return { message: "Your password has been reset successfully." };
 }

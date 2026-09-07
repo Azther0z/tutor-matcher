@@ -6,7 +6,7 @@ plainly which is authoritative for what:
 | Input                                                                            | Authoritative for                                    |
 | -------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | [`user-journeys.md`](user-journeys.md) and the prototype under `sources/`        | What the product must store — the requirement model  |
-| `apps/backend/prisma/schema.prisma` + `prisma/migrations/`                       | What the database actually contains today            |
+| `apps/backend/prisma/schema.prisma`                                              | What the database actually contains today            |
 | [`sources/tutor-matcher-final-report.md`](sources/tutor-matcher-final-report.md) | The earlier database-course design — historical only |
 
 The Final Report's schema (`Person`, `Class`, `AvailableTime`, `Payment` with transfer
@@ -33,6 +33,7 @@ User (every account; student by default)
  │      └──  Payment (lesson payment)
  ├──< Message (to another User)
  └──< Report (as reporter · as reported · as handling admin)
+ └──< PasswordResetToken (hashed, expiring, single-use)
 ```
 
 Reading the shape:
@@ -44,6 +45,8 @@ Reading the shape:
   tutor's subjects through **AvailabilitySubject**.
 - A **Booking** is one student, one subject, and one continuous run of slots.
 - Money lives on the user's wallet balance and moves through **Payment** rows.
+- A **PasswordResetToken** belongs to one user and stores only a SHA-256 hash of the
+  emailed token; it expires after 30 minutes and is marked used after a successful reset.
 
 ---
 
@@ -66,6 +69,19 @@ are the database names; the Prisma field name is given where it differs.
 | balance    | NUMERIC(12,2) | NOT NULL, DEFAULT 0                                    | The user's single wallet balance   |
 | is_admin   | BOOLEAN       | NOT NULL, DEFAULT false                                |                                    |
 | tutor_id   | INT           | UNIQUE, NULL, FK → tutors.tutor_id, ON DELETE SET NULL | Optional link to the tutor profile |
+
+### password_reset_tokens
+
+| Column                  | Type      | Constraints                                     | Notes                                          |
+| ----------------------- | --------- | ----------------------------------------------- | ---------------------------------------------- |
+| password_reset_token_id | UUID      | PK, DEFAULT UUID                                | Prisma `id`                                    |
+| token_hash              | TEXT      | UNIQUE, NOT NULL                                | SHA-256 hash; the raw token is never persisted |
+| expires_at              | TIMESTAMP | NOT NULL                                        | 30 minutes after issuance                      |
+| used_at                 | TIMESTAMP | NULL                                            | Set atomically when the password is changed    |
+| created_at              | TIMESTAMP | NOT NULL, DEFAULT now()                         | Issuance time                                  |
+| user_id                 | UUID      | NOT NULL, FK → users.user_id, ON DELETE CASCADE | Token owner                                    |
+
+Indexes: unique `token_hash`, `user_id`, and `expires_at`.
 
 ### tutors
 
@@ -262,7 +278,6 @@ that the current schema is wrong to have shipped.
 | G12 | **Review reply** from the tutor, and a moderation status on reviews and messages                                                                                                           | §9 Reviews, §10 Admin          |
 | G13 | **Account suspension / ban** state on `users`                                                                                                                                              | §10 Admin                      |
 | G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                                                                              | §2 Search filters, §7 Subjects |
-| G15 | **Password reset tokens** and session storage                                                                                                                                              | §1 Password reset              |
 | G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up                                                       | §10 Admin queues               |
 | G17 | **Document type** on `certifications` (government ID vs teaching certification); the government ID is a bare string on `tutors` rather than an uploaded document                           | §6 Application, §10 Admin      |
 | G18 | **Audit log** for admin decisions on content and money                                                                                                                                     | §10 Admin                      |
@@ -276,7 +291,8 @@ Present today: `subjects(tutor_id)`, `bookings(user_id)`, `bookings(subject_id)`
 `reviews(subject_id)`, `reviews(booking_id)`, `certifications(tutor_id)`,
 `messages(from_user_id)`, `messages(to_user_id)`, `reports(admin_user_id)`,
 `reports(reporter_user_id)`, `reports(reported_user_id)`, plus the unique indexes on
-`users(email)`, `users(tutor_id)`, `availabilities(booking_id)`, and
+`users(email)`, `users(tutor_id)`, `password_reset_tokens(token_hash)`,
+`availabilities(booking_id)`, and
 `payments(booking_id)`.
 
 Access patterns from the journeys that are not covered yet:
@@ -293,10 +309,10 @@ Access patterns from the journeys that are not covered yet:
 
 ## Changing This Schema
 
-1. Change `apps/backend/prisma/schema.prisma`, generate a migration, and update the
-   seed in `apps/backend/prisma/seed.ts`.
+1. Change `apps/backend/prisma/schema.prisma`, synchronize disposable databases with
+   `prisma db push`, and update the seed in `apps/backend/prisma/seed.ts`.
 2. Update the tables above and close the matching gap row in the same change.
 3. If the change alters product behaviour rather than only storage, update
    [`user-journeys.md`](user-journeys.md) and [`CONTEXT.md`](../CONTEXT.md) too.
-4. Constraints Prisma cannot express go in the migration SQL with a comment, as the
-   review rating check does.
+4. Record constraints Prisma cannot express as an explicit schema gap until the team
+   adopts a persistent-database migration workflow.

@@ -64,6 +64,8 @@ model User {
   bookings Booking[]
   reviews  Review[]
 
+  passwordResetTokens PasswordResetToken[]
+
   sentMessages     Message[] @relation("MessagesSent")
   receivedMessages Message[] @relation("MessagesReceived")
 
@@ -124,6 +126,21 @@ model Tutor {
   certifications Certification[]
 
   @@map("tutors")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @map("password_reset_token_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model Subject {

@@ -121,6 +121,12 @@ function LoginForm() {
           />
         </label>
 
+        <div className="-mt-2 text-right text-sm">
+          <Link href="/forgot-password" className="font-medium text-foreground underline">
+            Forgot password?
+          </Link>
+        </div>
+
         {error && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {error}

@@ -31,6 +31,8 @@ Guards run before render, not after.
 | `/tutors/:id`              | Tutor profile — bio, experience, subject list, recent reviews         | Public         |
 | `/tutors/:id/:subjectId`   | One subject — description, rate, format, availability, its reviews    | Public         |
 | `/(auth)/login`            | Log in and sign up                                                    | Public         |
+| `/forgot-password`         | Request a password reset link                                         | Public         |
+| `/reset-password?token=…`  | Validate a reset link and choose a new password                       | Public         |
 | `/(auth)/enroll-tutor`     | Tutor application: documents, bio, submit, pending state              | Requires login |
 | `/dashboard`               | Student dashboard                                                     | Requires login |
 | `/dashboard/tutor`         | Tutor dashboard — classes, earnings, bookings, subjects, availability | Role: tutor    |
@@ -74,7 +76,10 @@ a student. A duplicate email or invalid input fails with a field-level error.
 protected routes to the guard in rule 1 above.
 
 **Password reset.** Requesting a reset for a registered email sends a time-limited
-link. An expired or already-used link is rejected and the user can request a new one.
+link. The link is valid for 30 minutes and only once; requesting another link
+invalidates earlier links. The request response is the same whether the email belongs
+to an account or not. An expired, invalid, cancelled, or already-used link is rejected
+with a shared message and the user can request a new one.
 
 Related stories: US1-1 … US1-5.
 
