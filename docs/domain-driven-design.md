@@ -373,6 +373,190 @@ Avoid publishing events for every field update. An event is useful when another 
 a legitimate business reaction, an audit requirement exists, or a durable process continues
 after the initiating transaction.
 
+## Event Storming
+
+The board below presents the main product flow in EventStorming style. Read each solid path
+from an actor or policy through a command and aggregate to a past-tense domain event. Dotted
+paths update read models or trigger cross-cutting reactions after an event. The diagram is a
+behavior map, not a statement that every reaction must be asynchronous.
+
+| Shape color | EventStorming role                   |
+| ----------- | ------------------------------------ |
+| Pale yellow | Actor                                |
+| Blue        | Command                              |
+| Yellow      | Aggregate                            |
+| Orange      | Domain event                         |
+| Purple      | Policy or process manager            |
+| Green       | Read model                           |
+| Pink        | External system                      |
+| Red         | Hotspot requiring a product decision |
+
+```mermaid
+flowchart TB
+  classDef actor fill:#fef3c7,stroke:#a16207,color:#1f2937
+  classDef command fill:#93c5fd,stroke:#1d4ed8,color:#172554
+  classDef aggregate fill:#fde68a,stroke:#b45309,color:#422006
+  classDef event fill:#fdba74,stroke:#c2410c,color:#431407
+  classDef policy fill:#d8b4fe,stroke:#7e22ce,color:#3b0764
+  classDef readModel fill:#86efac,stroke:#15803d,color:#052e16
+  classDef external fill:#f9a8d4,stroke:#be185d,color:#500724
+  classDef hotspot fill:#fca5a5,stroke:#b91c1c,color:#450a0a
+
+  subgraph Supply["Tutor qualification and catalog"]
+    direction LR
+    ActorUser["Actor<br/>User"]:::actor
+    RegisterUser["Command<br/>Register user"]:::command
+    Account["Aggregate<br/>Account"]:::aggregate
+    UserRegistered["Event<br/>User registered"]:::event
+    SubmitApplication["Command<br/>Submit tutor application"]:::command
+    TutorApplication["Aggregate<br/>Tutor Application"]:::aggregate
+    ApplicationSubmitted["Event<br/>Tutor application submitted"]:::event
+    ActorAdmin["Actor<br/>Admin"]:::actor
+    ApproveApplication["Command<br/>Approve tutor application"]:::command
+    ApplicationApproved["Event<br/>Tutor application approved"]:::event
+    GrantCapability["Policy<br/>Grant Tutor capability"]:::policy
+    GrantTutorCapability["Command<br/>Grant Tutor capability"]:::command
+    TutorCapabilityGranted["Event<br/>Tutor capability granted"]:::event
+    ActorTutor["Actor<br/>Tutor"]:::actor
+    PublishSubject["Command<br/>Publish Subject"]:::command
+    Subject["Aggregate<br/>Subject"]:::aggregate
+    SubjectPublished["Event<br/>Subject published"]:::event
+    SubmitListing["Command<br/>Submit Listing revision"]:::command
+    Listing["Aggregate<br/>Tutor Listing"]:::aggregate
+    ListingSubmitted["Event<br/>Listing revision submitted"]:::event
+    ApproveListing["Command<br/>Approve Listing revision"]:::command
+    ListingPublished["Event<br/>Listing published"]:::event
+
+    ActorUser --> RegisterUser --> Account --> UserRegistered
+    ActorUser --> SubmitApplication --> TutorApplication --> ApplicationSubmitted
+    ActorAdmin --> ApproveApplication --> TutorApplication --> ApplicationApproved
+    ApplicationApproved --> GrantCapability --> GrantTutorCapability --> Account --> TutorCapabilityGranted
+    TutorCapabilityGranted --> ActorTutor
+    ActorTutor --> PublishSubject --> Subject --> SubjectPublished
+    ActorTutor --> SubmitListing --> Listing --> ListingSubmitted
+    ActorAdmin --> ApproveListing --> Listing --> ListingPublished
+  end
+
+  subgraph BookingFlow["Discovery, availability, booking, and payment"]
+    direction LR
+    OpenAvailability["Command<br/>Open availability"]:::command
+    AvailabilitySlot["Aggregate<br/>Availability Slot"]:::aggregate
+    AvailabilityPublished["Event<br/>Availability published"]:::event
+    RefreshDiscovery["Policy<br/>Refresh Discovery"]:::policy
+    DiscoveryIndex["Read model<br/>Tutor and Subject search"]:::readModel
+    ActorStudent["Actor<br/>Student"]:::actor
+    ChooseBlock["Command<br/>Choose Booking Block"]:::command
+    Booking["Aggregate<br/>Booking"]:::aggregate
+    BookingAwaitingPayment["Event<br/>Booking awaiting payment"]:::event
+    RequestPayment["Policy<br/>Request Lesson Payment"]:::policy
+    PayForBooking["Command<br/>Pay for Booking"]:::command
+    Wallet["Aggregate<br/>Wallet"]:::aggregate
+    PaymentSucceeded["Event<br/>Lesson Payment succeeded"]:::event
+    PaymentFailed["Event<br/>Lesson Payment failed"]:::event
+    ConfirmBooking["Policy<br/>Confirm paid Booking"]:::policy
+    MarkBookingConfirmed["Command<br/>Mark Booking confirmed"]:::command
+    BookingConfirmed["Event<br/>Booking confirmed"]:::event
+    SlotHoldHotspot["Hotspot<br/>Slot hold and expiry"]:::hotspot
+
+    ActorTutor --> OpenAvailability --> AvailabilitySlot --> AvailabilityPublished
+    SubjectPublished -.-> RefreshDiscovery
+    ListingPublished -.-> RefreshDiscovery
+    AvailabilityPublished -.-> RefreshDiscovery --> DiscoveryIndex
+    ActorStudent -->|reads| DiscoveryIndex
+    ActorStudent --> ChooseBlock --> Booking --> BookingAwaitingPayment
+    BookingAwaitingPayment --> RequestPayment --> PayForBooking --> Wallet
+    Wallet --> PaymentSucceeded
+    Wallet --> PaymentFailed
+    PaymentSucceeded --> ConfirmBooking --> MarkBookingConfirmed --> Booking --> BookingConfirmed
+    BookingAwaitingPayment -.-> SlotHoldHotspot
+    PaymentFailed -.-> SlotHoldHotspot
+  end
+
+  subgraph Fulfillment["Fulfillment, cancellation, and settlement"]
+    direction LR
+    ProvisionMeetingPolicy["Policy<br/>Provision meeting"]:::policy
+    ProvisionMeeting["Command<br/>Provision meeting"]:::command
+    MeetingProvider["External system<br/>Meeting provider"]:::external
+    MeetingProvisioned["Event<br/>Meeting provisioned"]:::event
+    LessonSession["Aggregate<br/>Lesson Session"]:::aggregate
+    ActorSystem["Actor<br/>System clock"]:::actor
+    EvaluateCompletion["Command<br/>Evaluate Lesson completion"]:::command
+    LessonCompleted["Event<br/>Lesson completed"]:::event
+    CompletionFlagged["Event<br/>Lesson completion flagged"]:::event
+    SettleEarning["Policy<br/>Settle Tutor Earning"]:::policy
+    ClearEarning["Command<br/>Clear Earning"]:::command
+    EarningCleared["Event<br/>Earning cleared"]:::event
+    CancelBooking["Command<br/>Cancel Booking"]:::command
+    BookingCancelled["Event<br/>Booking cancelled"]:::event
+    ApplyRefund["Policy<br/>Apply Refund policy"]:::policy
+    CreditRefund["Command<br/>Credit Refund"]:::command
+    RefundCredited["Event<br/>Refund credited"]:::event
+    CancellationHotspot["Hotspot<br/>Cancellation, rescheduling, and Refund"]:::hotspot
+    CompletionHotspot["Hotspot<br/>Attendance, fee, and clearing"]:::hotspot
+
+    BookingConfirmed --> ProvisionMeetingPolicy --> ProvisionMeeting --> MeetingProvider --> MeetingProvisioned
+    MeetingProvisioned --> LessonSession
+    ActorSystem --> EvaluateCompletion --> LessonSession
+    LessonSession --> LessonCompleted
+    LessonSession --> CompletionFlagged
+    LessonCompleted --> SettleEarning --> ClearEarning --> Wallet --> EarningCleared
+    ActorStudent --> CancelBooking --> Booking --> BookingCancelled
+    ActorTutor --> CancelBooking
+    BookingCancelled --> ApplyRefund --> CreditRefund --> Wallet --> RefundCredited
+    CancelBooking -.-> CancellationHotspot
+    ApplyRefund -.-> CancellationHotspot
+    EvaluateCompletion -.-> CompletionHotspot
+    SettleEarning -.-> CompletionHotspot
+  end
+
+  subgraph TrustAndReactions["Reputation, safety, and reactions"]
+    direction LR
+    ReviewEligibility["Read model<br/>Review eligibility"]:::readModel
+    SubmitReview["Command<br/>Submit Review"]:::command
+    Review["Aggregate<br/>Review"]:::aggregate
+    ReviewPublished["Event<br/>Review published"]:::event
+    RefreshReputation["Policy<br/>Refresh reputation"]:::policy
+    TutorReputation["Read model<br/>Tutor reputation"]:::readModel
+    ActorReporter["Actor<br/>User"]:::actor
+    FlagContent["Command<br/>Flag content"]:::command
+    ModerationCase["Aggregate<br/>Moderation Case"]:::aggregate
+    ContentFlagged["Event<br/>Content flagged"]:::event
+    ResolveCase["Command<br/>Resolve Moderation Case"]:::command
+    CaseResolved["Event<br/>Moderation Case resolved"]:::event
+    ApplyRemedy["Policy<br/>Apply case remedy"]:::policy
+    SuspendAccount["Command<br/>Suspend Account"]:::command
+    AccountSuspended["Event<br/>Account suspended"]:::event
+    NotifyPolicy["Policy<br/>Notify when enabled"]:::policy
+    DispatchNotification["Command<br/>Dispatch notification"]:::command
+    DeliveryProvider["External system<br/>Email or push provider"]:::external
+    NotificationDelivered["Event<br/>Notification delivered"]:::event
+    NotificationFailed["Event<br/>Notification failed"]:::event
+
+    LessonCompleted -.-> ReviewEligibility
+    ActorStudent -->|reads| ReviewEligibility
+    ActorStudent --> SubmitReview --> Review --> ReviewPublished
+    ReviewPublished --> RefreshReputation --> TutorReputation
+    ActorReporter --> FlagContent --> ModerationCase --> ContentFlagged
+    ActorAdmin --> ResolveCase --> ModerationCase --> CaseResolved
+    CaseResolved --> ApplyRemedy
+    ApplyRemedy --> CreditRefund
+    ApplyRemedy --> SuspendAccount --> Account --> AccountSuspended
+    ApplicationSubmitted -.-> NotifyPolicy
+    BookingConfirmed -.-> NotifyPolicy
+    LessonCompleted -.-> NotifyPolicy
+    CaseResolved -.-> NotifyPolicy
+    NotifyPolicy --> DispatchNotification --> DeliveryProvider
+    DeliveryProvider --> NotificationDelivered
+    DeliveryProvider --> NotificationFailed
+  end
+```
+
+The board intentionally leaves alternative failure events visible. `Lesson Payment failed`,
+`Lesson completion flagged`, and `Notification failed` are business-observable outcomes, not
+exceptions to erase. The red hotspots correspond to unresolved decisions in
+[Open Domain Decisions](#open-domain-decisions); those paths must be refined with the product
+owner before they become implementation workflows.
+
 ## Domain Policies
 
 ### Instant Booking
