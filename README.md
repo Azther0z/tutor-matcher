@@ -6,6 +6,9 @@ published 30-minute slots, and pays from a single wallet balance — which confi
 lesson immediately. What the product does is documented in
 [`docs/user-journeys.md`](docs/user-journeys.md).
 
+An interactive HTML prototype of the intended UI is published at
+<https://idealkritarat.github.io/tutormatcher-prototype>.
+
 ## Prerequisites
 
 - Node.js 22+
