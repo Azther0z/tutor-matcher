@@ -271,7 +271,7 @@ function MessagesView() {
                         className={`flex flex-col gap-1 ${isMine ? "items-end" : "items-start"}`}
                       >
                         <div
-                          className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${
+                          className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap ${
                             isMine
                               ? "bg-foreground text-background"
                               : "border border-black/[.12] dark:border-white/[.18]"
@@ -296,9 +296,15 @@ function MessagesView() {
                 <textarea
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      handleSend();
+                    }
+                  }}
                   placeholder="Write a message…"
                   rows={1}
-                  className="h-11 flex-1 resize-none rounded-lg border border-black/[.12] bg-transparent px-3 py-2.5 text-sm outline-none focus:border-foreground dark:border-white/[.18]"
+                  className="h-11 flex-1 resize-none overflow-y-auto rounded-lg border border-black/[.12] bg-transparent px-3 py-2.5 text-sm outline-none focus:border-foreground dark:border-white/[.18]"
                 />
                 <button
                   type="submit"

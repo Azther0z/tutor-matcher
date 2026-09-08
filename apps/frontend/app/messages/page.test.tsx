@@ -117,4 +117,48 @@ describe("MessagesPage", () => {
     );
     await waitFor(() => expect(input).toHaveValue(""));
   });
+
+  it("sends the message on Enter without a newline", async () => {
+    localStorage.setItem("authToken", "token");
+    searchParams = new URLSearchParams({ with: "5", name: "Daniel K." });
+
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "POST" && url.includes("/api/messages")) {
+        return Promise.resolve({ ok: true, json: async () => ({ id: 1 }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(<MessagesPage />);
+
+    const input = await screen.findByPlaceholderText("Write a message…");
+    fireEvent.change(input, { target: { value: "Hi Daniel!" } });
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: false });
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/messages",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ toUserId: 5, message: "Hi Daniel!" }),
+        })
+      )
+    );
+  });
+
+  it("does not send on Shift+Enter, leaving room for a newline", async () => {
+    localStorage.setItem("authToken", "token");
+    searchParams = new URLSearchParams({ with: "5", name: "Daniel K." });
+    mockFetchRoutes({ "/api/messages/inbox": [], "/api/messages/thread/5": [] });
+
+    render(<MessagesPage />);
+
+    const input = await screen.findByPlaceholderText("Write a message…");
+    fireEvent.change(input, { target: { value: "Hi Daniel!" } });
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+
+    expect(
+      fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === "POST")
+    ).toBe(false);
+  });
 });

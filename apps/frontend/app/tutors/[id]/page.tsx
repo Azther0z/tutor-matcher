@@ -109,9 +109,15 @@ function TutorDetailView() {
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              handleSend();
+            }
+          }}
           placeholder={`Ask ${tutor.firstName} a question before booking…`}
           rows={4}
-          className="resize-none rounded-lg border border-black/[.12] bg-transparent px-3 py-2.5 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+          className="h-28 resize-none overflow-y-auto rounded-lg border border-black/[.12] bg-transparent px-3 py-2.5 text-base outline-none focus:border-foreground dark:border-white/[.18]"
         />
         {sendError && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
