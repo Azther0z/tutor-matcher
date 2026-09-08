@@ -19,7 +19,7 @@ describe("POST /api/auth/signup", () => {
 
   it("creates a non-tutor user by default", async () => {
     create.mockResolvedValue({
-      id: 1,
+      id: "00000000-0000-0000-0000-000000000001",
       email: "ada@example.com",
       isTutor: false,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -30,7 +30,11 @@ describe("POST /api/auth/signup", () => {
       .send({ email: "ada@example.com", password: "supersecret" })
       .expect(201);
 
-    expect(res.body).toMatchObject({ id: 1, email: "ada@example.com", isTutor: false });
+    expect(res.body).toMatchObject({
+      id: "00000000-0000-0000-0000-000000000001",
+      email: "ada@example.com",
+      isTutor: false,
+    });
     expect(res.body).not.toHaveProperty("password");
     expect(create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -43,7 +47,7 @@ describe("POST /api/auth/signup", () => {
 
   it("creates a tutor user when isTutor is true", async () => {
     create.mockResolvedValue({
-      id: 2,
+      id: "00000000-0000-0000-0000-000000000002",
       email: "grace@example.com",
       isTutor: true,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -54,7 +58,11 @@ describe("POST /api/auth/signup", () => {
       .send({ email: "grace@example.com", password: "supersecret", isTutor: true })
       .expect(201);
 
-    expect(res.body).toMatchObject({ id: 2, email: "grace@example.com", isTutor: true });
+    expect(res.body).toMatchObject({
+      id: "00000000-0000-0000-0000-000000000002",
+      email: "grace@example.com",
+      isTutor: true,
+    });
     expect(create).toHaveBeenCalledWith({
       data: expect.objectContaining({ isTutor: true }),
     });
@@ -79,7 +87,7 @@ describe("POST /api/auth/signup", () => {
   });
 
   it("returns 409 when the email is already taken", async () => {
-    findUnique.mockResolvedValue({ id: 7 });
+    findUnique.mockResolvedValue({ id: "00000000-0000-0000-0000-000000000007" });
 
     await request(app)
       .post("/api/auth/signup")
@@ -106,7 +114,7 @@ describe("POST /api/auth/login", () => {
 
   it("returns a token and the user when the credentials match", async () => {
     findUnique.mockResolvedValue({
-      id: 1,
+      id: "00000000-0000-0000-0000-000000000001",
       email: "ada@example.com",
       password: "supersecret",
       isAdmin: false,
@@ -117,7 +125,11 @@ describe("POST /api/auth/login", () => {
       .send({ email: "ada@example.com", password: "supersecret" })
       .expect(200);
 
-    expect(res.body.user).toEqual({ id: 1, email: "ada@example.com", isAdmin: false });
+    expect(res.body.user).toEqual({
+      id: "00000000-0000-0000-0000-000000000001",
+      email: "ada@example.com",
+      isAdmin: false,
+    });
     expect(typeof res.body.token).toBe("string");
     expect(res.body.user).not.toHaveProperty("password");
   });
@@ -142,7 +154,7 @@ describe("POST /api/auth/login", () => {
 
   it("returns 401 when the password is wrong", async () => {
     findUnique.mockResolvedValue({
-      id: 1,
+      id: "00000000-0000-0000-0000-000000000001",
       email: "ada@example.com",
       password: "supersecret",
       isAdmin: false,
