@@ -50,6 +50,25 @@ export function Navbar() {
   // approved without needing a separate effect to reset it.
   const [tutorStatus, setTutorStatus] = useState<string | null>(null);
   const isApprovedTutor = status === "authenticated" && tutorStatus === "APPROVED";
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+
+  useEffect(() => {
+    if (status !== "authenticated") {
+      setHasUnreadMessages(false);
+      return;
+    }
+
+    const token = getAuthToken();
+    if (!token) {
+      setHasUnreadMessages(false);
+      return;
+    }
+
+    fetch("/api/messages/inbox", { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((inbox: unknown[]) => setHasUnreadMessages(inbox.length > 0))
+      .catch(() => setHasUnreadMessages(false));
+  }, [status, pathname]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -109,8 +128,15 @@ export function Navbar() {
       <nav className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-6 px-6">
         <div className="flex min-w-0 flex-1 items-center gap-1">
           {NAV_LINKS.map((link) => (
-            <Link key={link.href} href={link.href} className={navItemClass(isActive(link.href))}>
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`flex items-center gap-1.5 ${navItemClass(isActive(link.href))}`}
+            >
               {link.label}
+              {link.href === "/messages" && status === "authenticated" && hasUnreadMessages && (
+                <span aria-label="New messages" className="h-1.5 w-1.5 rounded-full bg-white" />
+              )}
             </Link>
           ))}
 

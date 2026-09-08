@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { getInbox, RecipientNotFoundError, sendMessage } from "./messaging.service.ts";
+import { getInbox, getThread, RecipientNotFoundError, sendMessage } from "./messaging.service.ts";
 import type { SendMessageRequest } from "./messaging.schema.ts";
 
 export async function postMessage(req: Request, res: Response) {
@@ -19,4 +19,16 @@ export async function postMessage(req: Request, res: Response) {
 export async function getMessagingInbox(req: Request, res: Response) {
   const inbox = await getInbox(req.user!.sub);
   res.status(200).json(inbox);
+}
+
+export async function getMessagingThread(req: Request, res: Response) {
+  const otherUserId = Number(req.params.userId);
+
+  if (!Number.isInteger(otherUserId)) {
+    res.status(400).json({ message: "Invalid user id" });
+    return;
+  }
+
+  const thread = await getThread(req.user!.sub, otherUserId);
+  res.status(200).json(thread);
 }
