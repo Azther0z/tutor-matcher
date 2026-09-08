@@ -72,4 +72,33 @@ describe("TutorDetailPage", () => {
     );
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/messages?with=20&name=Anong%20P."));
   });
+
+  it("sends on Enter but not on Shift+Enter", async () => {
+    localStorage.setItem("authToken", "token");
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        return Promise.resolve({ ok: true, json: async () => ({ id: 1 }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => tutor });
+    });
+
+    render(<TutorDetailPage />);
+
+    const textarea = await screen.findByPlaceholderText("Ask Anong a question before booking…");
+    fireEvent.change(textarea, { target: { value: "Hi!" } });
+    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: true });
+
+    expect(
+      fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === "POST")
+    ).toBe(false);
+
+    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/messages",
+        expect.objectContaining({ method: "POST" })
+      )
+    );
+  });
 });
