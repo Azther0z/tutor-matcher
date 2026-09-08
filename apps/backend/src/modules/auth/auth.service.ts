@@ -15,7 +15,14 @@ export class InvalidCredentialsError extends Error {
   }
 }
 
-export async function signup({ email, password, isTutor = false }: SignupInput) {
+export async function signup({
+  email,
+  password,
+  firstName,
+  lastName,
+  bio,
+  isTutor = false,
+}: SignupInput) {
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
   if (existing) {
@@ -27,15 +34,21 @@ export async function signup({ email, password, isTutor = false }: SignupInput) 
       data: {
         email,
         password,
+        firstName,
+        lastName,
+        bio: bio ?? null,
         isTutor,
-        // firstName / lastName are required by the schema but not collected at
-        // signup yet; they are filled in later on the profile screen.
-        firstName: "",
-        lastName: "",
       },
     });
 
-    return { id: user.id, email: user.email, isTutor: user.isTutor, createdAt: user.createdAt };
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      isTutor: user.isTutor,
+      createdAt: user.createdAt,
+    };
   } catch (error) {
     // Safety net for the race where two signups pass the check above
     // concurrently; the DB unique constraint on `email` still rejects one.

@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { ProfileForbiddenError, updateTutorProfile } from "./profile.service.ts";
+import { getCurrentUser, updateTutorProfile } from "./profile.service.ts";
 import type { ProfileRequest } from "./profile.schema.ts";
 import { learningAreaSearchSchema } from "./profile.schema.ts";
 import {
@@ -10,18 +10,14 @@ import {
   StudentProfileNotFoundError,
 } from "./profile.service.ts";
 
-export async function updateProfile(req: Request, res: Response) {
-  try {
-    const profile = await updateTutorProfile(req.user!.sub, req.body as ProfileRequest);
-    res.status(200).json(profile);
-  } catch (error) {
-    if (error instanceof ProfileForbiddenError) {
-      res.status(403).json({ message: error.message });
-      return;
-    }
+export async function getCurrentUserProfile(req: Request, res: Response) {
+  const user = await getCurrentUser(req.user!.sub);
+  res.status(200).json(user);
+}
 
-    throw error;
-  }
+export async function updateProfile(req: Request, res: Response) {
+  const profile = await updateTutorProfile(req.user!.sub, req.body as ProfileRequest);
+  res.status(200).json(profile);
 }
 
 export async function getStudentProfileForCurrentUser(req: Request, res: Response) {

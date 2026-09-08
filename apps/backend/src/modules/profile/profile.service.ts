@@ -1,23 +1,31 @@
 import { prisma } from "../../lib/db.ts";
 import type { ProfileRequest, StudentProfileRequest } from "./profile.schema.ts";
 
-export class ProfileForbiddenError extends Error {
-  constructor(message = "Only Tutors can update a Tutor profile") {
-    super(message);
-    this.name = "ProfileForbiddenError";
-  }
+const userSelect = {
+  id: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  bio: true,
+  isTutor: true,
+  createdAt: true,
+} as const;
+
+export function getCurrentUser(userId: number) {
+  return prisma.user.findUniqueOrThrow({ where: { id: userId }, select: userSelect });
 }
 
+/**
+ * Saves the Tutor listing for the current user. Anyone can call this: submitting
+ * the form is what makes the account a Tutor, so a first-time save creates the
+ * Tutor record, links it, and flips `isTutor` on.
+ */
 export async function updateTutorProfile(userId: number, input: ProfileRequest) {
   return prisma.$transaction(async (tx) => {
-    const existingUser = await tx.user.findUnique({
+    const existingUser = await tx.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { isTutor: true, tutorId: true },
+      select: { tutorId: true },
     });
-
-    if (!existingUser?.isTutor) {
-      throw new ProfileForbiddenError();
-    }
 
     const tutorData = {
       avatarUrl: input.tutor.avatarUrl,
@@ -33,20 +41,10 @@ export async function updateTutorProfile(userId: number, input: ProfileRequest) 
     const user = await tx.user.update({
       where: { id: userId },
       data: {
-        firstName: input.user.firstName,
-        lastName: input.user.lastName,
-        bio: input.user.bio,
+        isTutor: true,
         tutor: existingUser.tutorId ? undefined : { connect: { id: tutor.id } },
       },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        bio: true,
-        isTutor: true,
-        createdAt: true,
-      },
+      select: userSelect,
     });
 
     return { user, tutor };

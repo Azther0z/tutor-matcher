@@ -21,22 +21,68 @@ describe("POST /api/auth/signup", () => {
     create.mockResolvedValue({
       id: 1,
       email: "ada@example.com",
+      firstName: "Ada",
+      lastName: "Lovelace",
       isTutor: false,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
 
     const res = await request(app)
       .post("/api/auth/signup")
-      .send({ email: "ada@example.com", password: "supersecret" })
+      .send({
+        email: "ada@example.com",
+        password: "supersecret",
+        firstName: "Ada",
+        lastName: "Lovelace",
+      })
       .expect(201);
 
-    expect(res.body).toMatchObject({ id: 1, email: "ada@example.com", isTutor: false });
+    expect(res.body).toMatchObject({
+      id: 1,
+      email: "ada@example.com",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      isTutor: false,
+    });
     expect(res.body).not.toHaveProperty("password");
     expect(create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         email: "ada@example.com",
         password: "supersecret",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        bio: null,
         isTutor: false,
+      }),
+    });
+  });
+
+  it("persists a trimmed first name, last name, and optional bio", async () => {
+    create.mockResolvedValue({
+      id: 3,
+      email: "grace@example.com",
+      firstName: "Grace",
+      lastName: "Hopper",
+      isTutor: false,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+
+    await request(app)
+      .post("/api/auth/signup")
+      .send({
+        email: "grace@example.com",
+        password: "supersecret",
+        firstName: "  Grace  ",
+        lastName: "  Hopper  ",
+        bio: "  Compiler pioneer.  ",
+      })
+      .expect(201);
+
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        firstName: "Grace",
+        lastName: "Hopper",
+        bio: "Compiler pioneer.",
       }),
     });
   });
@@ -45,13 +91,21 @@ describe("POST /api/auth/signup", () => {
     create.mockResolvedValue({
       id: 2,
       email: "grace@example.com",
+      firstName: "Grace",
+      lastName: "Hopper",
       isTutor: true,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
 
     const res = await request(app)
       .post("/api/auth/signup")
-      .send({ email: "grace@example.com", password: "supersecret", isTutor: true })
+      .send({
+        email: "grace@example.com",
+        password: "supersecret",
+        firstName: "Grace",
+        lastName: "Hopper",
+        isTutor: true,
+      })
       .expect(201);
 
     expect(res.body).toMatchObject({ id: 2, email: "grace@example.com", isTutor: true });
@@ -69,10 +123,30 @@ describe("POST /api/auth/signup", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  it("rejects a missing first or last name with 400", async () => {
+    await request(app)
+      .post("/api/auth/signup")
+      .send({ email: "ada@example.com", password: "supersecret", firstName: "Ada" })
+      .expect(400);
+
+    await request(app)
+      .post("/api/auth/signup")
+      .send({ email: "ada@example.com", password: "supersecret", firstName: "  ", lastName: "  " })
+      .expect(400);
+
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("rejects a non-boolean isTutor with 400", async () => {
     await request(app)
       .post("/api/auth/signup")
-      .send({ email: "ada@example.com", password: "supersecret", isTutor: "yes" })
+      .send({
+        email: "ada@example.com",
+        password: "supersecret",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        isTutor: "yes",
+      })
       .expect(400);
 
     expect(create).not.toHaveBeenCalled();
@@ -83,7 +157,12 @@ describe("POST /api/auth/signup", () => {
 
     await request(app)
       .post("/api/auth/signup")
-      .send({ email: "ada@example.com", password: "supersecret" })
+      .send({
+        email: "ada@example.com",
+        password: "supersecret",
+        firstName: "Ada",
+        lastName: "Lovelace",
+      })
       .expect(409);
 
     expect(create).not.toHaveBeenCalled();
@@ -94,7 +173,12 @@ describe("POST /api/auth/signup", () => {
 
     await request(app)
       .post("/api/auth/signup")
-      .send({ email: "ada@example.com", password: "supersecret" })
+      .send({
+        email: "ada@example.com",
+        password: "supersecret",
+        firstName: "Ada",
+        lastName: "Lovelace",
+      })
       .expect(409);
   });
 });

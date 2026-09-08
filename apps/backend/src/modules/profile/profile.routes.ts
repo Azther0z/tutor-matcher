@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { validate } from "../../middleware/validate.ts";
 import {
+  getCurrentUserProfile,
   getLearningAreaSuggestions,
   getStudentProfileForCurrentUser,
   saveStudentProfileForCurrentUser,
@@ -14,6 +15,7 @@ import {
 
 export const profileRouter = Router();
 
+profileRouter.get("/me", getCurrentUserProfile);
 profileRouter.put("/me", validate(profileRequestSchema), updateProfile);
 profileRouter.get(
   "/learning-areas",

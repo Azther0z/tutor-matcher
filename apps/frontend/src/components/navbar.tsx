@@ -8,6 +8,7 @@ import {
   clearAuthToken,
   getAuthServerSnapshot,
   getAuthSnapshot,
+  getAuthToken,
   subscribeToAuth,
 } from "@/src/lib/auth";
 
@@ -39,8 +40,33 @@ export function Navbar() {
   const [subjectsOpen, setSubjectsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const isAuthed = useSyncExternalStore(subscribeToAuth, getAuthSnapshot, getAuthServerSnapshot);
+  const [isTutor, setIsTutor] = useState(false);
   const subjectsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isAuthed) {
+      setIsTutor(false);
+      return;
+    }
+
+    const token = getAuthToken();
+    if (!token) return;
+
+    let cancelled = false;
+    fetch("/api/profiles/me", { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { isTutor?: boolean } | null) => {
+        if (!cancelled) setIsTutor(!!data?.isTutor);
+      })
+      .catch(() => {
+        if (!cancelled) setIsTutor(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthed, pathname]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -136,12 +162,14 @@ export function Navbar() {
             )
           )}
 
-          <Link
-            href="/settings/tutor"
-            className="rounded-full bg-brand-navy px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-navy-dark"
-          >
-            Become a tutor
-          </Link>
+          {!isTutor && (
+            <Link
+              href="/enroll-tutor"
+              className="rounded-full bg-brand-navy px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-navy-dark"
+            >
+              Become a tutor
+            </Link>
+          )}
         </div>
 
         <div ref={profileRef} className="relative">

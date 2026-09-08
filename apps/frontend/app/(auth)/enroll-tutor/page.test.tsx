@@ -1,17 +1,21 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { TutorSettingsForm } from "./page";
+import { EnrollTutorForm } from "./page";
 
 const fetchMock = jest.fn();
+const mockPush = jest.fn();
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
 
 beforeEach(() => {
   fetchMock.mockReset();
+  mockPush.mockReset();
   global.fetch = fetchMock;
   localStorage.clear();
 });
 
 function completeRequiredFields() {
-  fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Ada" } });
-  fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "Lovelace" } });
   fireEvent.change(screen.getByLabelText("Tutor bio"), {
     target: { value: "I teach mathematics." },
   });
@@ -21,22 +25,28 @@ function completeRequiredFields() {
   fireEvent.change(screen.getByLabelText(/Government ID/), { target: { value: "ID-123" } });
 }
 
-describe("TutorSettingsForm", () => {
+describe("EnrollTutorForm", () => {
   it("blocks saving and highlights required fields when they are empty", () => {
-    render(<TutorSettingsForm />);
+    render(<EnrollTutorForm />);
 
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByText("First name is required.")).toBeInTheDocument();
-    expect(screen.getByText("Last name is required.")).toBeInTheDocument();
     expect(screen.getByText("Tutor bio is required.")).toBeInTheDocument();
     expect(screen.getByText("Intro video URL is required.")).toBeInTheDocument();
     expect(screen.getByText("Government ID is required.")).toBeInTheDocument();
   });
 
+  it("does not collect personal details", () => {
+    render(<EnrollTutorForm />);
+
+    expect(screen.queryByLabelText("First name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Last name")).not.toBeInTheDocument();
+    expect(screen.queryByText("Personal details")).not.toBeInTheDocument();
+  });
+
   it("requires login before sending the profile", () => {
-    render(<TutorSettingsForm />);
+    render(<EnrollTutorForm />);
     completeRequiredFields();
 
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
@@ -45,15 +55,12 @@ describe("TutorSettingsForm", () => {
     expect(screen.getByText("Please log in before saving your Tutor profile.")).toBeInTheDocument();
   });
 
-  it("sends the supported profile fields with the Bearer token", async () => {
+  it("sends only the tutor fields with the Bearer token", async () => {
     localStorage.setItem("authToken", "test-token");
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
-    render(<TutorSettingsForm />);
+    render(<EnrollTutorForm />);
     completeRequiredFields();
 
-    fireEvent.change(screen.getByLabelText(/Personal bio/), {
-      target: { value: "Account biography" },
-    });
     fireEvent.change(screen.getByLabelText(/Avatar URL/), {
       target: { value: "https://example.com/avatar.jpg" },
     });
@@ -68,7 +75,6 @@ describe("TutorSettingsForm", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        user: { firstName: "Ada", lastName: "Lovelace", bio: "Account biography" },
         tutor: {
           avatarUrl: "https://example.com/avatar.jpg",
           bio: "I teach mathematics.",
@@ -77,6 +83,6 @@ describe("TutorSettingsForm", () => {
         },
       }),
     });
-    expect(await screen.findByText("Tutor profile saved successfully.")).toBeInTheDocument();
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/dashboard/tutor"));
   });
 });
