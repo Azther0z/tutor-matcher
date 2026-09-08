@@ -57,7 +57,7 @@ describe("POST /api/auth/signup", () => {
     });
   });
 
-  it("persists a trimmed first name, last name, and optional bio", async () => {
+  it("persists the optional bio when provided", async () => {
     create.mockResolvedValue({
       id: 3,
       email: "grace@example.com",
@@ -72,9 +72,9 @@ describe("POST /api/auth/signup", () => {
       .send({
         email: "grace@example.com",
         password: "supersecret",
-        firstName: "  Grace  ",
-        lastName: "  Hopper  ",
-        bio: "  Compiler pioneer.  ",
+        firstName: "Grace",
+        lastName: "Hopper",
+        bio: "Compiler pioneer.",
       })
       .expect(201);
 
@@ -85,6 +85,20 @@ describe("POST /api/auth/signup", () => {
         bio: "Compiler pioneer.",
       }),
     });
+  });
+
+  it("rejects a whitespace-only name with 400", async () => {
+    await request(app)
+      .post("/api/auth/signup")
+      .send({
+        email: "grace@example.com",
+        password: "supersecret",
+        firstName: "   ",
+        lastName: "Hopper",
+      })
+      .expect(400);
+
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("creates a tutor user when isTutor is true", async () => {
