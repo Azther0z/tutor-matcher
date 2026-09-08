@@ -3,18 +3,23 @@ import type { SendMessageRequest } from "./messaging.schema.ts";
 
 export class RecipientNotFoundError extends Error {
   constructor() {
-    super("Recipient tutor not found");
+    super("Recipient not found");
     this.name = "RecipientNotFoundError";
   }
 }
 
 export async function sendMessage(fromUserId: number, input: SendMessageRequest) {
+  // Any existing user may be messaged here — a Tutor replying to a Student is
+  // just as valid as the Student who started the conversation. Restricting a
+  // *new* conversation to Students messaging Tutors is enforced by the
+  // frontend, which only ever offers a Tutor's userId to message in the first
+  // place (via the discovery lookup on the tutor profile page).
   const recipient = await prisma.user.findUnique({
     where: { id: input.toUserId },
-    select: { id: true, isTutor: true },
+    select: { id: true },
   });
 
-  if (!recipient?.isTutor) {
+  if (!recipient) {
     throw new RecipientNotFoundError();
   }
 
@@ -34,5 +39,17 @@ export async function getInbox(userId: number) {
     include: {
       fromUser: { select: { id: true, firstName: true, lastName: true } },
     },
+  });
+}
+
+export async function getThread(userId: number, otherUserId: number) {
+  return prisma.message.findMany({
+    where: {
+      OR: [
+        { fromUserId: userId, toUserId: otherUserId },
+        { fromUserId: otherUserId, toUserId: userId },
+      ],
+    },
+    orderBy: { createdAt: "asc" },
   });
 }

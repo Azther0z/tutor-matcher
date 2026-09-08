@@ -43,8 +43,8 @@ describe("Messaging API", () => {
     expect(messageCreate).not.toHaveBeenCalled();
   });
 
-  it("rejects a message to a recipient who is not a Tutor", async () => {
-    userFindUnique.mockResolvedValue({ id: 2, isTutor: false });
+  it("rejects a message to a recipient that does not exist", async () => {
+    userFindUnique.mockResolvedValue(null);
 
     await request(app)
       .post("/api/messages")
@@ -55,8 +55,29 @@ describe("Messaging API", () => {
     expect(messageCreate).not.toHaveBeenCalled();
   });
 
+  it("allows a Tutor to reply to a Student who is not a Tutor", async () => {
+    userFindUnique.mockResolvedValue({ id: 2 });
+    messageCreate.mockResolvedValue({
+      id: 11,
+      fromUserId: 1,
+      toUserId: 2,
+      message: "Sure, Saturday works!",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+
+    await request(app)
+      .post("/api/messages")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .send({ toUserId: 2, message: "Sure, Saturday works!" })
+      .expect(201);
+
+    expect(messageCreate).toHaveBeenCalledWith({
+      data: { fromUserId: 1, toUserId: 2, message: "Sure, Saturday works!" },
+    });
+  });
+
   it("delivers a valid message to the Tutor's inbox", async () => {
-    userFindUnique.mockResolvedValue({ id: 2, isTutor: true });
+    userFindUnique.mockResolvedValue({ id: 2, tutorId: 5 });
     messageCreate.mockResolvedValue({
       id: 10,
       fromUserId: 1,
@@ -99,5 +120,44 @@ describe("Messaging API", () => {
       })
     );
     expect(response.body).toHaveLength(1);
+  });
+
+  it("requires authentication to read a thread", async () => {
+    await request(app).get("/api/messages/thread/2").expect(401);
+    expect(messageFindMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-numeric thread user id", async () => {
+    await request(app)
+      .get("/api/messages/thread/not-a-number")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .expect(400);
+
+    expect(messageFindMany).not.toHaveBeenCalled();
+  });
+
+  it("returns the two-way thread with another user, oldest first", async () => {
+    messageFindMany.mockResolvedValue([
+      { id: 1, fromUserId: 1, toUserId: 2, message: "Hi!", createdAt: new Date() },
+      { id: 2, fromUserId: 2, toUserId: 1, message: "Hey there", createdAt: new Date() },
+    ]);
+
+    const response = await request(app)
+      .get("/api/messages/thread/2")
+      .set("Authorization", `Bearer ${tokenFor(1)}`)
+      .expect(200);
+
+    expect(messageFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: [
+            { fromUserId: 1, toUserId: 2 },
+            { fromUserId: 2, toUserId: 1 },
+          ],
+        },
+        orderBy: { createdAt: "asc" },
+      })
+    );
+    expect(response.body).toHaveLength(2);
   });
 });
