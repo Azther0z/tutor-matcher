@@ -40,15 +40,12 @@ export function Navbar() {
   const [subjectsOpen, setSubjectsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const isAuthed = useSyncExternalStore(subscribeToAuth, getAuthSnapshot, getAuthServerSnapshot);
-  const [isTutor, setIsTutor] = useState(false);
+  const [me, setMe] = useState<{ isTutor: boolean } | null>(null);
   const subjectsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isAuthed) {
-      setIsTutor(false);
-      return;
-    }
+    if (!isAuthed) return;
 
     const token = getAuthToken();
     if (!token) return;
@@ -57,16 +54,19 @@ export function Navbar() {
     fetch("/api/profiles/me", { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { isTutor?: boolean } | null) => {
-        if (!cancelled) setIsTutor(!!data?.isTutor);
+        if (!cancelled) setMe(data ? { isTutor: !!data.isTutor } : null);
       })
       .catch(() => {
-        if (!cancelled) setIsTutor(false);
+        if (!cancelled) setMe(null);
       });
 
     return () => {
       cancelled = true;
     };
   }, [isAuthed, pathname]);
+
+  // Logging out flips `isAuthed` first, so a stale `me` never keeps the button hidden.
+  const isTutor = isAuthed && !!me?.isTutor;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
