@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
 import { getAuthToken } from "@/src/lib/auth";
 
@@ -125,6 +125,14 @@ function MessagesView() {
       .catch(() => setThreadError("Could not load this conversation. Please try again."));
   }, [selected, threadVersion]);
 
+  const threadScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = threadScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [thread]);
+
   async function handleSend() {
     if (!selected || !draft.trim()) return;
     const token = getAuthToken();
@@ -190,8 +198,8 @@ function MessagesView() {
         </p>
       )}
 
-      <div className="flex min-h-[28rem] flex-1 overflow-hidden rounded-2xl border border-black/[.12] dark:border-white/[.18]">
-        <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-r border-black/[.12] dark:border-white/[.18]">
+      <div className="flex h-[36rem] overflow-hidden rounded-2xl border border-black/[.12] dark:border-white/[.18]">
+        <aside className="flex w-72 min-h-0 shrink-0 flex-col overflow-y-auto border-r border-black/[.12] dark:border-white/[.18]">
           {inbox === null ? (
             <p className="p-4 text-sm text-zinc-500">Loading…</p>
           ) : conversations.length === 0 && !selected ? (
@@ -241,7 +249,7 @@ function MessagesView() {
           )}
         </aside>
 
-        <section className="flex flex-1 flex-col">
+        <section className="flex min-h-0 flex-1 flex-col">
           {!selected ? (
             <div className="flex flex-1 items-center justify-center p-6 text-sm text-zinc-500">
               Select a conversation to see messages.
@@ -252,7 +260,10 @@ function MessagesView() {
                 {selected.name}
               </header>
 
-              <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
+              <div
+                ref={threadScrollRef}
+                className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4"
+              >
                 {threadError && (
                   <p role="alert" className="text-sm text-red-600 dark:text-red-400">
                     {threadError}
