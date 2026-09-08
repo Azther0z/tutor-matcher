@@ -12,10 +12,10 @@ export async function updateTutorProfile(userId: number, input: ProfileRequest) 
   return prisma.$transaction(async (tx) => {
     const existingUser = await tx.user.findUnique({
       where: { id: userId },
-      select: { isTutor: true, tutorId: true },
+      select: { tutorId: true },
     });
 
-    if (!existingUser?.isTutor) {
+    if (!existingUser) {
       throw new ProfileForbiddenError();
     }
 
@@ -44,7 +44,6 @@ export async function updateTutorProfile(userId: number, input: ProfileRequest) 
         firstName: true,
         lastName: true,
         bio: true,
-        isTutor: true,
         createdAt: true,
       },
     });
