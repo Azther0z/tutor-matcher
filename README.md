@@ -6,6 +6,9 @@ published 30-minute slots, and pays from a single wallet balance — which confi
 lesson immediately. What the product does is documented in
 [`docs/user-journeys.md`](docs/user-journeys.md).
 
+An interactive HTML prototype of the intended UI is published at
+<https://idealkritarat.github.io/tutormatcher-prototype>.
+
 ## Prerequisites
 
 - Node.js 22+
@@ -33,6 +36,11 @@ with `just up` (see [Development](#development)).
 `just` recipes work the same on macOS, Linux, and Windows. Recipes that only wrap
 npm work show the equivalent `npm run` script in a comment; Compose orchestration
 lives in the justfile and has no `npm run` form.
+
+On Windows, `just` runs recipes through the built-in Windows PowerShell and selects
+`npm.cmd` automatically, so the commands work from either PowerShell or Command
+Prompt without requiring Git Bash or WSL. Docker Desktop is still required for the
+Compose recipes.
 
 <details>
 <summary>Manual setup, step by step</summary>

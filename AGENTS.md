@@ -58,3 +58,14 @@ Open threads use this format:
   Status: open
   Next step: <next action>
 ```
+
+## Current Work Log
+
+### 2026-09-08 — Issue #73 Windows justfile workflows
+
+- Files changed: `justfile`, `apps/backend/justfile`, and `README.md`.
+- `justfile` and `apps/backend/justfile` now select Windows PowerShell and use `npm.cmd` on Windows while retaining `npm` on Unix-like systems.
+- `README.md` documents PowerShell/Command Prompt usage without Git Bash or WSL.
+- The temporary Ubuntu/Windows justfile smoke workflow was removed at the user's request.
+- Progress: implementation and local Windows verification complete; root and backend justfiles pass formatting checks, `just env`/`status` work, and backend `just validate` passes.
+- Remaining: full Docker lifecycle testing remains dependent on a local Docker Desktop environment; no dedicated justfile CI workflow is currently configured.

@@ -36,8 +36,42 @@ const FIXTURE_BOOKING_DESCRIPTION = "Development booking fixture";
 const FIXTURE_CERTIFICATION_URL = "https://example.com/development-certificate.pdf";
 const FIXTURE_MESSAGE = "Development message fixture";
 const FIXTURE_REPORT = "Development report fixture";
+const LEARNING_AREAS = [
+  "Mathematics",
+  "Thai Language",
+  "English",
+  "Science",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Computer Programming",
+  "Business",
+  "Accounting",
+  "Economics",
+  "Art and Design",
+  "Music",
+  "Social Studies",
+  "History",
+  "Geography",
+  "Computer Science",
+  "Data Science",
+  "Chinese",
+  "Japanese",
+  "Korean",
+  "French",
+  "Public Speaking",
+  "Academic Writing",
+];
 
 async function main() {
+  for (const name of LEARNING_AREAS) {
+    await prisma.learningArea.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+
   for (const user of FIXED_USERS) {
     await prisma.user.upsert({
       where: { email: user.email },

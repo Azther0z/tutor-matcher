@@ -27,6 +27,23 @@ enum TutorStatus {
   REJECTED
 }
 
+enum StudentEducationLevel {
+  PRIMARY_SCHOOL
+  LOWER_SECONDARY_SCHOOL
+  UPPER_SECONDARY_SCHOOL
+  VOCATIONAL_CERTIFICATE
+  HIGHER_VOCATIONAL_CERTIFICATE
+  UNIVERSITY
+  WORKING_ADULT
+}
+
+enum PreferredLearningPeriod {
+  MORNING
+  AFTERNOON
+  EVENING
+  FLEXIBLE
+}
+
 model User {
   id        Int      @id @default(autoincrement()) @map("user_id")
   firstName String   @map("first_name")
@@ -43,6 +60,8 @@ model User {
   tutorId Int?   @unique @map("tutor_id")
   tutor   Tutor? @relation(fields: [tutorId], references: [id], onDelete: SetNull)
 
+  student Student?
+
   bookings Booking[]
   reviews  Review[]
 
@@ -57,6 +76,39 @@ model User {
   reportsReceived     Report[] @relation("ReportsAgainstUser")
 
   @@map("users")
+}
+
+model Student {
+  id                       Int                     @id @default(autoincrement()) @map("student_id")
+  userId                   Int                     @unique @map("user_id")
+  educationLevel           StudentEducationLevel   @map("education_level")
+  goals                    String[]
+  preferredLearningPeriod  PreferredLearningPeriod @map("preferred_learning_period")
+  preferredDurationMinutes Int                     @map("preferred_duration_minutes")
+  updatedAt                DateTime                @updatedAt @map("updated_at")
+
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  learningAreas StudentLearningArea[]
+
+  @@map("students")
+}
+
+model LearningArea {
+  id       Int                   @id @default(autoincrement()) @map("learning_area_id")
+  name     String                @unique
+  students StudentLearningArea[]
+
+  @@map("learning_areas")
+}
+
+model StudentLearningArea {
+  studentId      Int          @map("student_id")
+  learningAreaId Int          @map("learning_area_id")
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  learningArea   LearningArea @relation(fields: [learningAreaId], references: [id], onDelete: Restrict)
+
+  @@id([studentId, learningAreaId])
+  @@map("student_learning_areas")
 }
 
 model Tutor {
