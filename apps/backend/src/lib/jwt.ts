@@ -3,7 +3,7 @@ import type { SignOptions } from "jsonwebtoken";
 import { env } from "./env.ts";
 
 export type AuthTokenPayload = {
-  sub: number;
+  sub: string;
   email: string;
   isAdmin: boolean;
 };
@@ -20,7 +20,7 @@ export function verifyAuthToken(token: string): AuthTokenPayload {
   if (
     typeof decoded !== "object" ||
     decoded === null ||
-    typeof decoded.sub !== "number" ||
+    typeof decoded.sub !== "string" ||
     typeof decoded.email !== "string" ||
     typeof decoded.isAdmin !== "boolean"
   ) {

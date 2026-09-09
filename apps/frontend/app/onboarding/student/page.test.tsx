@@ -3,6 +3,7 @@ import StudentOnboardingPage from "./page";
 
 const mockPush = jest.fn();
 const fetchMock = jest.fn();
+const learningAreaId = "11111111-1111-4111-8111-111111111111";
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
@@ -20,7 +21,7 @@ describe("StudentOnboardingPage", () => {
     localStorage.setItem("authToken", "student-token");
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => [{ id: 1, name: "Mathematics" }],
+      json: async () => [{ id: learningAreaId, name: "Mathematics" }],
     });
 
     render(<StudentOnboardingPage />);
@@ -37,7 +38,7 @@ describe("StudentOnboardingPage", () => {
     localStorage.setItem("authToken", "student-token");
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => [{ id: 1, name: "Mathematics" }],
+      json: async () => [{ id: learningAreaId, name: "Mathematics" }],
     });
 
     render(<StudentOnboardingPage />);
@@ -66,7 +67,7 @@ describe("StudentOnboardingPage", () => {
     fetchMock
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => [{ id: 1, name: "Mathematics" }],
+        json: async () => [{ id: learningAreaId, name: "Mathematics" }],
       })
       .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
 
@@ -99,7 +100,7 @@ describe("StudentOnboardingPage", () => {
       },
       body: JSON.stringify({
         educationLevel: "UPPER_SECONDARY_SCHOOL",
-        learningAreaIds: [1],
+        learningAreaIds: [learningAreaId],
         goals: ["EXAM_PREPARATION"],
         preferredLearningPeriod: "EVENING",
         preferredDurationMinutes: 60,

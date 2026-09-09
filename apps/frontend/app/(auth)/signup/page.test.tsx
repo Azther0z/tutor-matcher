@@ -30,7 +30,10 @@ function completeSignup() {
 
 describe("SignupPage", () => {
   it("creates an account and sends the user to login", async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ id: 1 }) });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "11111111-1111-4111-8111-111111111111" }),
+    });
     render(<SignupPage />);
     completeSignup();
 
@@ -45,7 +48,10 @@ describe("SignupPage", () => {
   });
 
   it("keeps signup on the login flow", async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ id: 2 }) });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "22222222-2222-4222-8222-222222222222" }),
+    });
     render(<SignupPage />);
     completeSignup();
 
