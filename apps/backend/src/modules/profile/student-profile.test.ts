@@ -103,7 +103,7 @@ describe("Student profile API", () => {
   });
 
   it("saves a complete Student profile", async () => {
-    learningAreaCount.mockResolvedValue(profile.learningAreaIds.length);
+    learningAreaCount.mockResolvedValue(2);
     learningAreaFindMany.mockResolvedValue(profile.learningAreaIds.map((id) => ({ id })));
     studentUpsert.mockResolvedValue(savedStudent);
     transaction.mockImplementation(async (callback) => callback(tx));
