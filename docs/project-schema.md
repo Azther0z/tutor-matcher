@@ -23,7 +23,7 @@ Terms below follow [`CONTEXT.md`](../CONTEXT.md).
 
 ```
 User (every account; student by default)
- ├─ isTutor  ──> Tutor ──< Subject ──< AvailabilitySubject >── Availability (30-min slot)
+ ├─ tutorId  ──> Tutor ──< Subject ──< AvailabilitySubject >── Availability (30-min slot)
  │                 └──< Certification                              │
  ├─ isAdmin                                                        │
  ├─ Wallet balance ──< Payment / wallet transaction                │
@@ -37,7 +37,7 @@ User (every account; student by default)
 
 Reading the shape:
 
-- A **User** is one account. `isTutor` and `isAdmin` layer capabilities onto it; there
+- A **User** is one account. `isAdmin` layers an administrative capability onto it;
   is no separate student or tutor account record.
 - A **Subject** is owned by a tutor and is what a student books.
 - An **Availability** slot belongs to the tutor and is offered for one or more of that
@@ -65,7 +65,6 @@ are the database names; the Prisma field name is given where it differs.
 | created_at | TIMESTAMP     | NOT NULL, DEFAULT now()                                |                                    |
 | balance    | NUMERIC(12,2) | NOT NULL, DEFAULT 0                                    | The user's single wallet balance   |
 | is_admin   | BOOLEAN       | NOT NULL, DEFAULT false                                |                                    |
-| is_tutor   | BOOLEAN       | NOT NULL, DEFAULT false                                |                                    |
 | tutor_id   | INT           | UNIQUE, NULL, FK → tutors.tutor_id, ON DELETE SET NULL | Optional link to the tutor profile |
 
 ### tutors

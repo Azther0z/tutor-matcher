@@ -59,7 +59,7 @@ describe("PUT /api/profiles/me", () => {
   });
 
   it("rejects a Student", async () => {
-    findUnique.mockResolvedValue({ isTutor: false, tutorId: null });
+    findUnique.mockResolvedValue(null);
 
     await request(app)
       .put("/api/profiles/me")
@@ -72,15 +72,14 @@ describe("PUT /api/profiles/me", () => {
   });
 
   it("creates and links a Tutor profile for a Tutor", async () => {
-    findUnique.mockResolvedValue({ isTutor: true, tutorId: null });
-    tutorCreate.mockResolvedValue({ id: "00000000-0000-0000-0000-000000000008", ...profile.tutor });
+    findUnique.mockResolvedValue({ tutorId: null });
+    tutorCreate.mockResolvedValue({ id: 8, ...profile.tutor });
     userUpdate.mockResolvedValue({
-      id: "00000000-0000-0000-0000-000000000001",
+      id: 1,
       email: "tutor@example.com",
       firstName: "Ada",
       lastName: "Lovelace",
       bio: "Mathematics tutor",
-      isTutor: true,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
 
@@ -92,10 +91,8 @@ describe("PUT /api/profiles/me", () => {
 
     expect(tutorCreate).toHaveBeenCalledWith({ data: expect.objectContaining(profile.tutor) });
     expect(userUpdate).toHaveBeenCalledWith({
-      where: { id: "00000000-0000-0000-0000-000000000001" },
-      data: expect.objectContaining({
-        tutor: { connect: { id: "00000000-0000-0000-0000-000000000008" } },
-      }),
+      where: { id: 1 },
+      data: expect.objectContaining({ tutor: { connect: { id: 8 } } }),
       select: expect.any(Object),
     });
     expect(res.body.user).not.toHaveProperty("password");
@@ -103,18 +100,14 @@ describe("PUT /api/profiles/me", () => {
   });
 
   it("updates an existing linked Tutor profile", async () => {
-    findUnique.mockResolvedValue({
-      isTutor: true,
-      tutorId: "00000000-0000-0000-0000-000000000008",
-    });
-    tutorUpdate.mockResolvedValue({ id: "00000000-0000-0000-0000-000000000008", ...profile.tutor });
+    findUnique.mockResolvedValue({ tutorId: 8 });
+    tutorUpdate.mockResolvedValue({ id: 8, ...profile.tutor });
     userUpdate.mockResolvedValue({
-      id: "00000000-0000-0000-0000-000000000001",
+      id: 1,
       email: "tutor@example.com",
       firstName: "Ada",
       lastName: "Lovelace",
       bio: "Mathematics tutor",
-      isTutor: true,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
 
@@ -124,10 +117,7 @@ describe("PUT /api/profiles/me", () => {
       .send(profile)
       .expect(200);
 
-    expect(tutorUpdate).toHaveBeenCalledWith({
-      where: { id: "00000000-0000-0000-0000-000000000008" },
-      data: profile.tutor,
-    });
+    expect(tutorUpdate).toHaveBeenCalledWith({ where: { id: 8 }, data: profile.tutor });
     expect(tutorCreate).not.toHaveBeenCalled();
   });
 });
