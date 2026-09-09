@@ -29,13 +29,15 @@ const profile = {
   },
 };
 
-const userResponse = {
+// Shape prisma returns from `userSelect`. `isTutor` is derived from `tutorId` by
+// the service, so a non-null `tutorId` here yields `isTutor: true` in responses.
+const userRow = {
   id: 1,
   email: "tutor@example.com",
   firstName: "Ada",
   lastName: "Lovelace",
   bio: "Mathematics tutor",
-  isTutor: true,
+  tutorId: 8,
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
 };
 
@@ -53,8 +55,8 @@ describe("GET /api/profiles/me", () => {
     expect(userGet).not.toHaveBeenCalled();
   });
 
-  it("returns the current user with the isTutor flag", async () => {
-    userGet.mockResolvedValue(userResponse);
+  it("returns the current user with a derived isTutor flag", async () => {
+    userGet.mockResolvedValue(userRow);
 
     const res = await request(app)
       .get("/api/profiles/me")
@@ -64,6 +66,18 @@ describe("GET /api/profiles/me", () => {
     expect(userGet).toHaveBeenCalledWith({ where: { id: 1 }, select: expect.any(Object) });
     expect(res.body).toMatchObject({ id: 1, email: "tutor@example.com", isTutor: true });
     expect(res.body).not.toHaveProperty("password");
+    expect(res.body).not.toHaveProperty("tutorId");
+  });
+
+  it("reports isTutor false when the account has no linked Tutor", async () => {
+    userGet.mockResolvedValue({ ...userRow, tutorId: null });
+
+    const res = await request(app)
+      .get("/api/profiles/me")
+      .set("Authorization", `Bearer ${tokenFor(1)}`)
+      .expect(200);
+
+    expect(res.body.isTutor).toBe(false);
   });
 });
 
@@ -92,30 +106,10 @@ describe("PUT /api/profiles/me", () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
-  it("rejects a Student", async () => {
-    findUnique.mockResolvedValue(null);
-
-    await request(app)
-      .put("/api/profiles/me")
-      .set("Authorization", `Bearer ${tokenFor(1)}`)
-      .send(profile)
-      .expect(403);
-
-    expect(tutorCreate).not.toHaveBeenCalled();
-    expect(userUpdate).not.toHaveBeenCalled();
-  });
-
-  it("creates and links a Tutor profile for a Tutor", async () => {
-    findUnique.mockResolvedValue({ tutorId: null });
+  it("makes the account a Tutor by creating and linking a Tutor profile on first save", async () => {
+    userFindUniqueOrThrow.mockResolvedValueOnce({ tutorId: null });
     tutorCreate.mockResolvedValue({ id: 8, ...profile.tutor });
-    userUpdate.mockResolvedValue({
-      id: 1,
-      email: "tutor@example.com",
-      firstName: "Ada",
-      lastName: "Lovelace",
-      bio: "Mathematics tutor",
-      createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    });
+    userUpdate.mockResolvedValue(userRow);
 
     const res = await request(app)
       .put("/api/profiles/me")
@@ -126,25 +120,18 @@ describe("PUT /api/profiles/me", () => {
     expect(tutorCreate).toHaveBeenCalledWith({ data: expect.objectContaining(profile.tutor) });
     expect(userUpdate).toHaveBeenCalledWith({
       where: { id: 1 },
-      data: expect.objectContaining({ isTutor: true, tutor: { connect: { id: 8 } } }),
+      data: { tutor: { connect: { id: 8 } } },
       select: expect.any(Object),
     });
     expect(res.body.user.isTutor).toBe(true);
     expect(res.body.user).not.toHaveProperty("password");
+    expect(res.body.user).not.toHaveProperty("tutorId");
     expect(res.body.tutor).toMatchObject(profile.tutor);
   });
 
-  it("updates an existing linked Tutor profile", async () => {
-    findUnique.mockResolvedValue({ tutorId: 8 });
+  it("updates an existing linked Tutor profile without touching the user record", async () => {
+    userFindUniqueOrThrow.mockResolvedValue(userRow);
     tutorUpdate.mockResolvedValue({ id: 8, ...profile.tutor });
-    userUpdate.mockResolvedValue({
-      id: 1,
-      email: "tutor@example.com",
-      firstName: "Ada",
-      lastName: "Lovelace",
-      bio: "Mathematics tutor",
-      createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    });
 
     await request(app)
       .put("/api/profiles/me")
@@ -154,17 +141,13 @@ describe("PUT /api/profiles/me", () => {
 
     expect(tutorUpdate).toHaveBeenCalledWith({ where: { id: 8 }, data: profile.tutor });
     expect(tutorCreate).not.toHaveBeenCalled();
-    expect(userUpdate).toHaveBeenCalledWith({
-      where: { id: 1 },
-      data: expect.objectContaining({ isTutor: true }),
-      select: expect.any(Object),
-    });
+    expect(userUpdate).not.toHaveBeenCalled();
   });
 
   it("ignores personal fields sent in the body", async () => {
-    userFindUniqueOrThrow.mockResolvedValue({ tutorId: 8 });
-    tutorUpdate.mockResolvedValue({ id: 8, ...profile.tutor });
-    userUpdate.mockResolvedValue(userResponse);
+    userFindUniqueOrThrow.mockResolvedValueOnce({ tutorId: null });
+    tutorCreate.mockResolvedValue({ id: 8, ...profile.tutor });
+    userUpdate.mockResolvedValue(userRow);
 
     await request(app)
       .put("/api/profiles/me")
@@ -172,7 +155,7 @@ describe("PUT /api/profiles/me", () => {
       .send({ ...profile, user: { firstName: "Hacker", lastName: "McHack", bio: "nope" } })
       .expect(200);
 
-    expect(tutorUpdate).toHaveBeenCalledWith({ where: { id: 8 }, data: profile.tutor });
+    expect(tutorCreate).toHaveBeenCalledWith({ data: expect.objectContaining(profile.tutor) });
     const userUpdateData = (userUpdate.mock.calls[0]![0] as { data: Record<string, unknown> }).data;
     expect(userUpdateData).not.toHaveProperty("firstName");
     expect(userUpdateData).not.toHaveProperty("lastName");

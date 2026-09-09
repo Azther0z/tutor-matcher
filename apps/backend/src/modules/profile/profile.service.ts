@@ -7,18 +7,26 @@ const userSelect = {
   firstName: true,
   lastName: true,
   bio: true,
-  isTutor: true,
+  tutorId: true,
   createdAt: true,
 } as const;
 
-export function getCurrentUser(userId: number) {
-  return prisma.user.findUniqueOrThrow({ where: { id: userId }, select: userSelect });
+// There is no `isTutor` column; an account is a Tutor when it is linked to a
+// Tutor record. Expose that as a derived `isTutor` flag and hide the raw id.
+function toUserResponse<T extends { tutorId: number | null }>(user: T) {
+  const { tutorId, ...rest } = user;
+  return { ...rest, isTutor: tutorId !== null };
+}
+
+export async function getCurrentUser(userId: number) {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: userSelect });
+  return toUserResponse(user);
 }
 
 /**
  * Saves the Tutor listing for the current user. Anyone can call this: submitting
- * the form is what makes the account a Tutor, so a first-time save creates the
- * Tutor record, links it, and flips `isTutor` on.
+ * the form is what makes the account a Tutor, because it creates the Tutor
+ * record and links it to the account.
  */
 export async function updateTutorProfile(userId: number, input: ProfileRequest) {
   return prisma.$transaction(async (tx) => {
@@ -38,26 +46,15 @@ export async function updateTutorProfile(userId: number, input: ProfileRequest) 
       ? await tx.tutor.update({ where: { id: existingUser.tutorId }, data: tutorData })
       : await tx.tutor.create({ data: tutorData });
 
-    const user = await tx.user.update({
-      where: { id: userId },
-      data: {
-        firstName: input.user.firstName,
-        lastName: input.user.lastName,
-        bio: input.user.bio,
-        tutor: existingUser.tutorId ? undefined : { connect: { id: tutor.id } },
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        bio: true,
-        createdAt: true,
-      },
-      select: userSelect,
-    });
+    const user = existingUser.tutorId
+      ? await tx.user.findUniqueOrThrow({ where: { id: userId }, select: userSelect })
+      : await tx.user.update({
+          where: { id: userId },
+          data: { tutor: { connect: { id: tutor.id } } },
+          select: userSelect,
+        });
 
-    return { user, tutor };
+    return { user: toUserResponse(user), tutor };
   });
 }
 
