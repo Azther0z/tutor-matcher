@@ -59,7 +59,7 @@ describe("PUT /api/profiles/me", () => {
   });
 
   it("rejects a Student", async () => {
-    findUnique.mockResolvedValue({ isTutor: false, tutorId: null });
+    findUnique.mockResolvedValue(null);
 
     await request(app)
       .put("/api/profiles/me")
@@ -72,7 +72,7 @@ describe("PUT /api/profiles/me", () => {
   });
 
   it("creates and links a Tutor profile for a Tutor", async () => {
-    findUnique.mockResolvedValue({ isTutor: true, tutorId: null });
+    findUnique.mockResolvedValue({ tutorId: null });
     tutorCreate.mockResolvedValue({ id: 8, ...profile.tutor });
     userUpdate.mockResolvedValue({
       id: 1,
@@ -80,7 +80,6 @@ describe("PUT /api/profiles/me", () => {
       firstName: "Ada",
       lastName: "Lovelace",
       bio: "Mathematics tutor",
-      isTutor: true,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
 
@@ -101,7 +100,7 @@ describe("PUT /api/profiles/me", () => {
   });
 
   it("updates an existing linked Tutor profile", async () => {
-    findUnique.mockResolvedValue({ isTutor: true, tutorId: 8 });
+    findUnique.mockResolvedValue({ tutorId: 8 });
     tutorUpdate.mockResolvedValue({ id: 8, ...profile.tutor });
     userUpdate.mockResolvedValue({
       id: 1,
@@ -109,7 +108,6 @@ describe("PUT /api/profiles/me", () => {
       firstName: "Ada",
       lastName: "Lovelace",
       bio: "Mathematics tutor",
-      isTutor: true,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
 
