@@ -36,6 +36,7 @@
 - Balance workload by reassigning whole stories among the fixed pairs without changing pair membership.
 - Treat `docs/backlog/backlog.html` as generated output from backlog YAML and `scripts/templates/backlog.html`; update it with `npm run backlog:build` rather than editing it directly.
 - Treat the prototype as behavioural authority and `apps/backend/prisma/schema.prisma` as the authority for what the database currently contains.
+- While Tutor Matcher has no real production database, do not maintain Prisma migration history; synchronize disposable databases from `schema.prisma` with `prisma db push`.
 
 ### Open Threads
 - Question: Which backlog stories that contradict the product get cancelled, and which get reworded?
