@@ -8,7 +8,7 @@ export class ProfileForbiddenError extends Error {
   }
 }
 
-export async function updateTutorProfile(userId: number, input: ProfileRequest) {
+export async function updateTutorProfile(userId: string, input: ProfileRequest) {
   return prisma.$transaction(async (tx) => {
     const existingUser = await tx.user.findUnique({
       where: { id: userId },
@@ -83,14 +83,14 @@ function studentProfileResponse(student: Awaited<ReturnType<typeof findStudentPr
   };
 }
 
-export async function findStudentProfile(userId: number) {
+export async function findStudentProfile(userId: string) {
   return prisma.student.findUnique({
     where: { userId },
     include: { learningAreas: { include: { learningArea: true } } },
   });
 }
 
-export async function getStudentProfile(userId: number) {
+export async function getStudentProfile(userId: string) {
   const student = await findStudentProfile(userId);
 
   if (!student) {
@@ -100,7 +100,7 @@ export async function getStudentProfile(userId: number) {
   return studentProfileResponse(student);
 }
 
-export async function saveStudentProfile(userId: number, input: StudentProfileRequest) {
+export async function saveStudentProfile(userId: string, input: StudentProfileRequest) {
   const learningAreaCount = await prisma.learningArea.count({
     where: { id: { in: input.learningAreaIds } },
   });

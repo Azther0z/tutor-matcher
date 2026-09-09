@@ -23,13 +23,21 @@ describe("requireAuth", () => {
   });
 
   it("passes a valid Bearer token through and populates req.user", async () => {
-    const token = signAuthToken({ sub: 42, email: "ada@example.com", isAdmin: true });
+    const token = signAuthToken({
+      sub: "00000000-0000-0000-0000-000000000042",
+      email: "ada@example.com",
+      isAdmin: true,
+    });
 
     const res = await request(app)
       .get("/protected")
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
 
-    expect(res.body.user).toMatchObject({ sub: 42, email: "ada@example.com", isAdmin: true });
+    expect(res.body.user).toMatchObject({
+      sub: "00000000-0000-0000-0000-000000000042",
+      email: "ada@example.com",
+      isAdmin: true,
+    });
   });
 });
