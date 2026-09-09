@@ -57,10 +57,6 @@ describe("Student profile API", () => {
     transaction.mockReset();
     transaction.mockImplementation(async (callback) => callback(tx));
     learningAreaCount.mockResolvedValue(2);
-    learningAreaFindMany.mockResolvedValue([
-      { id: "00000000-0000-0000-0000-000000000001" },
-      { id: "00000000-0000-0000-0000-000000000002" },
-    ]);
   });
 
   it("requires authentication", async () => {
@@ -108,6 +104,10 @@ describe("Student profile API", () => {
 
   it("saves a complete Student profile", async () => {
     learningAreaCount.mockResolvedValue(2);
+    learningAreaFindMany.mockResolvedValue([
+      { id: "00000000-0000-0000-0000-000000000001" },
+      { id: "00000000-0000-0000-0000-000000000002" },
+    ]);
     learningAreaFindMany.mockResolvedValue([
       { id: "00000000-0000-0000-0000-000000000001" },
       { id: "00000000-0000-0000-0000-000000000002" },
