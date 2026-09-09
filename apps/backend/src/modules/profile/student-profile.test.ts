@@ -57,6 +57,7 @@ describe("Student profile API", () => {
     transaction.mockReset();
     transaction.mockImplementation(async (callback) => callback(tx));
     learningAreaCount.mockResolvedValue(2);
+    learningAreaFindMany.mockResolvedValue([]);
   });
 
   it("requires authentication", async () => {
