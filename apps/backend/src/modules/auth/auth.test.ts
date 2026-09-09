@@ -17,13 +17,12 @@ describe("POST /api/auth/signup", () => {
     findUnique.mockResolvedValue(null);
   });
 
-  it("creates a non-tutor user by default", async () => {
+  it("creates a user", async () => {
     create.mockResolvedValue({
       id: 1,
       email: "ada@example.com",
       firstName: "Ada",
       lastName: "Lovelace",
-      isTutor: false,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
 
@@ -42,18 +41,17 @@ describe("POST /api/auth/signup", () => {
       email: "ada@example.com",
       firstName: "Ada",
       lastName: "Lovelace",
-      isTutor: false,
     });
     expect(res.body).not.toHaveProperty("password");
+    expect(res.body).not.toHaveProperty("isTutor");
     expect(create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+      data: {
         email: "ada@example.com",
         password: "supersecret",
         firstName: "Ada",
         lastName: "Lovelace",
         bio: null,
-        isTutor: false,
-      }),
+      },
     });
   });
 
@@ -63,7 +61,6 @@ describe("POST /api/auth/signup", () => {
       email: "grace@example.com",
       firstName: "Grace",
       lastName: "Hopper",
-      isTutor: false,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
 
@@ -101,17 +98,16 @@ describe("POST /api/auth/signup", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it("creates a tutor user when isTutor is true", async () => {
+  it("ignores an isTutor field in the body", async () => {
     create.mockResolvedValue({
       id: 2,
       email: "grace@example.com",
       firstName: "Grace",
       lastName: "Hopper",
-      isTutor: true,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
 
-    const res = await request(app)
+    await request(app)
       .post("/api/auth/signup")
       .send({
         email: "grace@example.com",
@@ -122,9 +118,8 @@ describe("POST /api/auth/signup", () => {
       })
       .expect(201);
 
-    expect(res.body).toMatchObject({ id: 2, email: "grace@example.com", isTutor: true });
     expect(create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ isTutor: true }),
+      data: expect.not.objectContaining({ isTutor: expect.anything() }),
     });
   });
 
@@ -146,21 +141,6 @@ describe("POST /api/auth/signup", () => {
     await request(app)
       .post("/api/auth/signup")
       .send({ email: "ada@example.com", password: "supersecret", firstName: "  ", lastName: "  " })
-      .expect(400);
-
-    expect(create).not.toHaveBeenCalled();
-  });
-
-  it("rejects a non-boolean isTutor with 400", async () => {
-    await request(app)
-      .post("/api/auth/signup")
-      .send({
-        email: "ada@example.com",
-        password: "supersecret",
-        firstName: "Ada",
-        lastName: "Lovelace",
-        isTutor: "yes",
-      })
       .expect(400);
 
     expect(create).not.toHaveBeenCalled();

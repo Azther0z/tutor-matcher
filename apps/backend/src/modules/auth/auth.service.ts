@@ -15,14 +15,7 @@ export class InvalidCredentialsError extends Error {
   }
 }
 
-export async function signup({
-  email,
-  password,
-  firstName,
-  lastName,
-  bio,
-  isTutor = false,
-}: SignupInput) {
+export async function signup({ email, password, firstName, lastName, bio }: SignupInput) {
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
   if (existing) {
@@ -37,7 +30,6 @@ export async function signup({
         firstName,
         lastName,
         bio: bio ?? null,
-        isTutor,
       },
     });
 
@@ -46,7 +38,6 @@ export async function signup({
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      isTutor: user.isTutor,
       createdAt: user.createdAt,
     };
   } catch (error) {
