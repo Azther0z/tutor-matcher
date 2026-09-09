@@ -29,7 +29,7 @@ const profile = {
   },
 };
 
-function tokenFor(userId: number) {
+function tokenFor(userId: string) {
   return signAuthToken({ sub: userId, email: "tutor@example.com", isAdmin: false });
 }
 
@@ -51,7 +51,7 @@ describe("PUT /api/profiles/me", () => {
   it("rejects invalid profile data", async () => {
     await request(app)
       .put("/api/profiles/me")
-      .set("Authorization", `Bearer ${tokenFor(1)}`)
+      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
       .send({ ...profile, tutor: { ...profile.tutor, governmentId: "" } })
       .expect(400);
 
@@ -59,11 +59,11 @@ describe("PUT /api/profiles/me", () => {
   });
 
   it("rejects a Student", async () => {
-    findUnique.mockResolvedValue(null);
+    findUnique.mockResolvedValue({ isTutor: false, tutorId: null });
 
     await request(app)
       .put("/api/profiles/me")
-      .set("Authorization", `Bearer ${tokenFor(1)}`)
+      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
       .send(profile)
       .expect(403);
 
@@ -72,10 +72,10 @@ describe("PUT /api/profiles/me", () => {
   });
 
   it("creates and links a Tutor profile for a Tutor", async () => {
-    findUnique.mockResolvedValue({ tutorId: null });
-    tutorCreate.mockResolvedValue({ id: 8, ...profile.tutor });
+    findUnique.mockResolvedValue({ isTutor: true, tutorId: null });
+    tutorCreate.mockResolvedValue({ id: "88888888-8888-4888-8888-888888888888", ...profile.tutor });
     userUpdate.mockResolvedValue({
-      id: 1,
+      id: "11111111-1111-4111-8111-111111111111",
       email: "tutor@example.com",
       firstName: "Ada",
       lastName: "Lovelace",
@@ -85,14 +85,16 @@ describe("PUT /api/profiles/me", () => {
 
     const res = await request(app)
       .put("/api/profiles/me")
-      .set("Authorization", `Bearer ${tokenFor(1)}`)
+      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
       .send(profile)
       .expect(200);
 
     expect(tutorCreate).toHaveBeenCalledWith({ data: expect.objectContaining(profile.tutor) });
     expect(userUpdate).toHaveBeenCalledWith({
-      where: { id: 1 },
-      data: expect.objectContaining({ tutor: { connect: { id: 8 } } }),
+      where: { id: "11111111-1111-4111-8111-111111111111" },
+      data: expect.objectContaining({
+        tutor: { connect: { id: "88888888-8888-4888-8888-888888888888" } },
+      }),
       select: expect.any(Object),
     });
     expect(res.body.user).not.toHaveProperty("password");
@@ -100,10 +102,13 @@ describe("PUT /api/profiles/me", () => {
   });
 
   it("updates an existing linked Tutor profile", async () => {
-    findUnique.mockResolvedValue({ tutorId: 8 });
-    tutorUpdate.mockResolvedValue({ id: 8, ...profile.tutor });
+    findUnique.mockResolvedValue({
+      isTutor: true,
+      tutorId: "88888888-8888-4888-8888-888888888888",
+    });
+    tutorUpdate.mockResolvedValue({ id: "88888888-8888-4888-8888-888888888888", ...profile.tutor });
     userUpdate.mockResolvedValue({
-      id: 1,
+      id: "11111111-1111-4111-8111-111111111111",
       email: "tutor@example.com",
       firstName: "Ada",
       lastName: "Lovelace",
@@ -113,11 +118,14 @@ describe("PUT /api/profiles/me", () => {
 
     await request(app)
       .put("/api/profiles/me")
-      .set("Authorization", `Bearer ${tokenFor(1)}`)
+      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
       .send(profile)
       .expect(200);
 
-    expect(tutorUpdate).toHaveBeenCalledWith({ where: { id: 8 }, data: profile.tutor });
+    expect(tutorUpdate).toHaveBeenCalledWith({
+      where: { id: "88888888-8888-4888-8888-888888888888" },
+      data: profile.tutor,
+    });
     expect(tutorCreate).not.toHaveBeenCalled();
   });
 });

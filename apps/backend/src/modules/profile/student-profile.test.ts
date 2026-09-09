@@ -11,6 +11,8 @@ const tx = {
   student: { upsert: studentUpsert },
 };
 
+learningAreaCount.mockResolvedValue(2);
+
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
     learningArea: { count: learningAreaCount, findMany: learningAreaFindMany },
@@ -24,27 +26,27 @@ const { signAuthToken } = await import("../../lib/jwt.ts");
 
 const profile = {
   educationLevel: "UPPER_SECONDARY_SCHOOL",
-  learningAreaIds: [1, 2],
+  learningAreaIds: ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"],
   goals: ["EXAM_PREPARATION", "IMPROVE_PERFORMANCE"],
   preferredLearningPeriod: "EVENING",
   preferredDurationMinutes: 60,
 };
 
 const savedStudent = {
-  id: 4,
-  userId: 1,
+  id: "44444444-4444-4444-8444-444444444444",
+  userId: "11111111-1111-4111-8111-111111111111",
   educationLevel: profile.educationLevel,
   goals: profile.goals,
   preferredLearningPeriod: profile.preferredLearningPeriod,
   preferredDurationMinutes: profile.preferredDurationMinutes,
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),
   learningAreas: [
-    { learningArea: { id: 1, name: "Mathematics" } },
-    { learningArea: { id: 2, name: "English" } },
+    { learningArea: { id: "11111111-1111-4111-8111-111111111111", name: "Mathematics" } },
+    { learningArea: { id: "22222222-2222-4222-8222-222222222222", name: "English" } },
   ],
 };
 
-function tokenFor(userId = 1) {
+function tokenFor(userId = "11111111-1111-4111-8111-111111111111") {
   return signAuthToken({ sub: userId, email: "student@example.com", isAdmin: false });
 }
 
@@ -78,7 +80,13 @@ describe("Student profile API", () => {
     await request(app)
       .put("/api/profiles/me/student")
       .set("Authorization", `Bearer ${tokenFor()}`)
-      .send({ ...profile, learningAreaIds: [1, 1] })
+      .send({
+        ...profile,
+        learningAreaIds: [
+          "11111111-1111-4111-8111-111111111111",
+          "11111111-1111-4111-8111-111111111111",
+        ],
+      })
       .expect(400);
 
     expect(learningAreaCount).not.toHaveBeenCalled();
@@ -97,7 +105,10 @@ describe("Student profile API", () => {
   });
 
   it("saves a complete Student profile", async () => {
+    learningAreaCount.mockResolvedValue(2);
+    learningAreaFindMany.mockResolvedValue(profile.learningAreaIds.map((id) => ({ id })));
     studentUpsert.mockResolvedValue(savedStudent);
+    transaction.mockImplementation(async (callback) => callback(tx));
 
     const response = await request(app)
       .put("/api/profiles/me/student")
@@ -107,9 +118,9 @@ describe("Student profile API", () => {
 
     expect(studentUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { userId: 1 },
+        where: { userId: "11111111-1111-4111-8111-111111111111" },
         create: expect.objectContaining({
-          userId: 1,
+          userId: "11111111-1111-4111-8111-111111111111",
           educationLevel: profile.educationLevel,
           goals: profile.goals,
           preferredLearningPeriod: profile.preferredLearningPeriod,
@@ -118,17 +129,19 @@ describe("Student profile API", () => {
       })
     );
     expect(response.body).toMatchObject({
-      id: 4,
-      userId: 1,
+      id: "44444444-4444-4444-8444-444444444444",
+      userId: "11111111-1111-4111-8111-111111111111",
       learningAreas: [
-        { id: 1, name: "Mathematics" },
-        { id: 2, name: "English" },
+        { id: "11111111-1111-4111-8111-111111111111", name: "Mathematics" },
+        { id: "22222222-2222-4222-8222-222222222222", name: "English" },
       ],
     });
   });
 
   it("returns learning-area suggestions", async () => {
-    learningAreaFindMany.mockResolvedValue([{ id: 1, name: "Mathematics" }]);
+    learningAreaFindMany.mockResolvedValue([
+      { id: "11111111-1111-4111-8111-111111111111", name: "Mathematics" },
+    ]);
 
     const response = await request(app)
       .get("/api/profiles/learning-areas")
@@ -136,7 +149,9 @@ describe("Student profile API", () => {
       .query({ search: "math" })
       .expect(200);
 
-    expect(response.body).toEqual([{ id: 1, name: "Mathematics" }]);
+    expect(response.body).toEqual([
+      { id: "11111111-1111-4111-8111-111111111111", name: "Mathematics" },
+    ]);
     expect(learningAreaFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { name: { contains: "math", mode: "insensitive" } },
