@@ -41,8 +41,18 @@ export async function updateTutorProfile(userId: number, input: ProfileRequest) 
     const user = await tx.user.update({
       where: { id: userId },
       data: {
-        isTutor: true,
+        firstName: input.user.firstName,
+        lastName: input.user.lastName,
+        bio: input.user.bio,
         tutor: existingUser.tutorId ? undefined : { connect: { id: tutor.id } },
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        bio: true,
+        createdAt: true,
       },
       select: userSelect,
     });

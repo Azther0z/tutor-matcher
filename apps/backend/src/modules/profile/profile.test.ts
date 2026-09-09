@@ -92,10 +92,30 @@ describe("PUT /api/profiles/me", () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
-  it("promotes the user to Tutor and links a new Tutor profile on first save", async () => {
-    userFindUniqueOrThrow.mockResolvedValue({ tutorId: null });
+  it("rejects a Student", async () => {
+    findUnique.mockResolvedValue(null);
+
+    await request(app)
+      .put("/api/profiles/me")
+      .set("Authorization", `Bearer ${tokenFor(1)}`)
+      .send(profile)
+      .expect(403);
+
+    expect(tutorCreate).not.toHaveBeenCalled();
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("creates and links a Tutor profile for a Tutor", async () => {
+    findUnique.mockResolvedValue({ tutorId: null });
     tutorCreate.mockResolvedValue({ id: 8, ...profile.tutor });
-    userUpdate.mockResolvedValue(userResponse);
+    userUpdate.mockResolvedValue({
+      id: 1,
+      email: "tutor@example.com",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      bio: "Mathematics tutor",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
 
     const res = await request(app)
       .put("/api/profiles/me")
@@ -115,9 +135,16 @@ describe("PUT /api/profiles/me", () => {
   });
 
   it("updates an existing linked Tutor profile", async () => {
-    userFindUniqueOrThrow.mockResolvedValue({ tutorId: 8 });
+    findUnique.mockResolvedValue({ tutorId: 8 });
     tutorUpdate.mockResolvedValue({ id: 8, ...profile.tutor });
-    userUpdate.mockResolvedValue(userResponse);
+    userUpdate.mockResolvedValue({
+      id: 1,
+      email: "tutor@example.com",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      bio: "Mathematics tutor",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
 
     await request(app)
       .put("/api/profiles/me")
