@@ -8,13 +8,13 @@ import {
   clearAuthToken,
   getAuthServerSnapshot,
   getAuthSnapshot,
+  getAuthToken,
   subscribeToAuth,
 } from "@/src/lib/auth";
 
 type NavLink = {
   label: string;
   href: string;
-  soon?: boolean;
 };
 
 const SUBJECT_CATEGORIES = ["Maths", "English", "Science", "Coding", "Music"];
@@ -22,7 +22,7 @@ const SUBJECT_CATEGORIES = ["Maths", "English", "Science", "Coding", "Music"];
 const NAV_LINKS: NavLink[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Bookings", href: "/bookings" },
-  { label: "Messages", href: "/messages", soon: true },
+  { label: "Messages", href: "/messages" },
 ];
 
 function navItemClass(active: boolean) {
@@ -41,6 +41,19 @@ export function Navbar() {
   const isAuthed = useSyncExternalStore(subscribeToAuth, getAuthSnapshot, getAuthServerSnapshot);
   const subjectsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthed) return;
+
+    const token = getAuthToken();
+    if (!token) return;
+
+    fetch("/api/messages/inbox", { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((inbox: unknown[]) => setHasUnreadMessages(inbox.length > 0))
+      .catch(() => setHasUnreadMessages(false));
+  }, [isAuthed, pathname]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -117,24 +130,21 @@ export function Navbar() {
             )}
           </div>
 
-          {NAV_LINKS.map((link) =>
-            link.soon ? (
-              <span
-                key={link.href}
-                aria-disabled="true"
-                className="flex cursor-default items-center gap-1.5 rounded-lg border-b-2 border-transparent px-3 py-2 text-sm font-medium text-zinc-400"
-              >
-                {link.label}
-                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-400">
-                  Soon
-                </span>
-              </span>
-            ) : (
-              <Link key={link.href} href={link.href} className={navItemClass(isActive(link.href))}>
-                {link.label}
-              </Link>
-            )
-          )}
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`flex items-center gap-1.5 ${navItemClass(isActive(link.href))}`}
+            >
+              {link.label}
+              {link.href === "/messages" && isAuthed && hasUnreadMessages && (
+                <span
+                  aria-label="New messages"
+                  className="h-1.5 w-1.5 rounded-full bg-brand-navy"
+                />
+              )}
+            </Link>
+          ))}
 
           <Link
             href="/enroll-tutor"
