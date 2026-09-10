@@ -3,12 +3,15 @@ import request from "supertest";
 
 const create = jest.fn<(args: unknown) => Promise<unknown>>();
 const findUnique = jest.fn<(args: unknown) => Promise<unknown>>();
+const userId = "11111111-1111-4111-8111-111111111111";
+const otherUserId = "77777777-7777-4777-8777-777777777777";
 
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: { user: { create, findUnique } },
 }));
 
 const { app } = await import("../../app.ts");
+const { verifyAuthToken } = await import("../../lib/jwt.ts");
 
 describe("POST /api/auth/signup", () => {
   beforeEach(() => {
@@ -19,7 +22,7 @@ describe("POST /api/auth/signup", () => {
 
   it("creates a user", async () => {
     create.mockResolvedValue({
-      id: 1,
+      id: userId,
       email: "ada@example.com",
       firstName: "Ada",
       lastName: "Lovelace",
@@ -147,7 +150,7 @@ describe("POST /api/auth/signup", () => {
   });
 
   it("returns 409 when the email is already taken", async () => {
-    findUnique.mockResolvedValue({ id: 7 });
+    findUnique.mockResolvedValue({ id: otherUserId });
 
     await request(app)
       .post("/api/auth/signup")
@@ -184,7 +187,7 @@ describe("POST /api/auth/login", () => {
 
   it("returns a token and the user when the credentials match", async () => {
     findUnique.mockResolvedValue({
-      id: 1,
+      id: userId,
       email: "ada@example.com",
       password: "supersecret",
       isAdmin: false,
@@ -195,8 +198,13 @@ describe("POST /api/auth/login", () => {
       .send({ email: "ada@example.com", password: "supersecret" })
       .expect(200);
 
-    expect(res.body.user).toEqual({ id: 1, email: "ada@example.com", isAdmin: false });
+    expect(res.body.user).toEqual({ id: userId, email: "ada@example.com", isAdmin: false });
     expect(typeof res.body.token).toBe("string");
+    expect(verifyAuthToken(res.body.token)).toEqual({
+      sub: userId,
+      email: "ada@example.com",
+      isAdmin: false,
+    });
     expect(res.body.user).not.toHaveProperty("password");
   });
 
@@ -220,7 +228,7 @@ describe("POST /api/auth/login", () => {
 
   it("returns 401 when the password is wrong", async () => {
     findUnique.mockResolvedValue({
-      id: 1,
+      id: userId,
       email: "ada@example.com",
       password: "supersecret",
       isAdmin: false,

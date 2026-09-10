@@ -29,7 +29,7 @@ export type ProfileRequest = z.infer<typeof profileRequestSchema>;
 export const studentProfileRequestSchema = z.object({
   educationLevel: z.enum(studentEducationLevels),
   learningAreaIds: z
-    .array(z.number().int().positive())
+    .array(z.string().uuid())
     .min(1)
     .max(20)
     .refine((ids) => new Set(ids).size === ids.length, "Learning areas must be unique"),

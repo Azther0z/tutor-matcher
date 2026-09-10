@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-type LearningArea = { id: number; name: string };
+type LearningArea = { id: string; name: string };
 
 const educationLevels = [
   ["PRIMARY_SCHOOL", "Primary School"],
@@ -111,7 +111,7 @@ export default function StudentOnboardingPage() {
     setAreaInputFocused(false);
   }
 
-  function removeArea(areaId: number) {
+  function removeArea(areaId: string) {
     setSelectedAreas((current) => current.filter((area) => area.id !== areaId));
   }
 

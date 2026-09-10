@@ -38,8 +38,11 @@ function completeSignup({ bio }: { bio?: string } = {}) {
 }
 
 describe("SignupPage", () => {
-  it("creates the account and sends the user to the login flow", async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ id: 2 }) });
+  it("creates an account and sends the user to login", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "11111111-1111-4111-8111-111111111111" }),
+    });
     render(<SignupPage />);
     completeSignup({ bio: "  I teach maths.  " });
 
@@ -60,8 +63,11 @@ describe("SignupPage", () => {
     });
   });
 
-  it("sends bio as null when left blank", async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ id: 3 }) });
+  it("keeps signup on the login flow", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "22222222-2222-4222-8222-222222222222" }),
+    });
     render(<SignupPage />);
     completeSignup();
 

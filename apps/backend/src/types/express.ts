@@ -9,7 +9,7 @@ declare global {
   namespace Express {
     interface Request {
       user?: {
-        sub: number;
+        sub: string;
         email: string;
         isAdmin: boolean;
       };
