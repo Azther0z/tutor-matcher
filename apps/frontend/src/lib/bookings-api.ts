@@ -1,5 +1,10 @@
 import { getAuthToken } from "@/src/lib/auth";
-import type { AvailabilityResponse, Booking, CancellationQuote } from "@/src/types/booking";
+import type {
+  AvailabilityResponse,
+  Booking,
+  CancellationQuote,
+  CancellationResult,
+} from "@/src/types/booking";
 
 export type BookingErrorCode =
   | "SLOT_TAKEN"
@@ -119,9 +124,9 @@ export async function getCancellationQuote(id: string): Promise<CancellationQuot
 export async function cancelBooking(
   id: string,
   input: { reason?: string; quoteToken?: string }
-): Promise<Booking> {
-  // Apply BOOK-3 cancellation policy and return the updated booking.
-  const data = await request<Booking & { booking?: Booking }>(
+): Promise<CancellationResult> {
+  // Apply BOOK-3 policy and preserve the final server-calculated refund details.
+  const data = await request<CancellationResult>(
     `/api/bookings/${encodeURIComponent(id)}/cancel`,
     {
       method: "POST",
@@ -129,7 +134,7 @@ export async function cancelBooking(
       body: JSON.stringify(input),
     }
   );
-  return data.booking ?? data;
+  return data;
 }
 
 export async function rescheduleBooking(id: string, availabilityIds: string[]): Promise<Booking> {

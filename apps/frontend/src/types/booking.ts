@@ -52,6 +52,17 @@ export type CancellationQuote = {
   cancellationFee: string;
 };
 
+// The cancellation endpoint returns the final server-calculated refund as well as the booking.
+export type CancellationResult = {
+  booking: Booking;
+  refund: {
+    amount: string;
+    lateCancellation: boolean;
+    rate: number;
+    cancellationFee: string;
+  };
+};
+
 // Booking is the stable, intentionally limited DTO shared by all booking endpoints.
 export type Booking = {
   id: string;

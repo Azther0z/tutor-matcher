@@ -132,16 +132,15 @@ function BookingDetailContent() {
     setBusy(true);
     setMessage(null);
     try {
-      setBooking(
-        await cancelBooking(booking.id, {
-          reason: reason.trim() || undefined,
-          quoteToken: quote.token || undefined,
-        })
-      );
+      const result = await cancelBooking(booking.id, {
+        reason: reason.trim() || undefined,
+        quoteToken: quote.token || undefined,
+      });
+      setBooking(result.booking);
       setMode(null);
       setQuote(null);
       setMessage(
-        `Booking cancelled. ${money.format(Number(quote.refundAmount))} was returned to your balance.`
+        `Booking cancelled. ${money.format(Number(result.refund.amount))} was returned to your balance.`
       );
     } catch (error) {
       if (error instanceof BookingApiError && error.code === "CANCELLATION_QUOTE_CHANGED") {
