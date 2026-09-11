@@ -126,14 +126,11 @@ export async function cancelBooking(
   input: { reason?: string; quoteToken?: string }
 ): Promise<CancellationResult> {
   // Apply BOOK-3 policy and preserve the final server-calculated refund details.
-  const data = await request<CancellationResult>(
-    `/api/bookings/${encodeURIComponent(id)}/cancel`,
-    {
-      method: "POST",
-      headers: authHeaders(true),
-      body: JSON.stringify(input),
-    }
-  );
+  const data = await request<CancellationResult>(`/api/bookings/${encodeURIComponent(id)}/cancel`, {
+    method: "POST",
+    headers: authHeaders(true),
+    body: JSON.stringify(input),
+  });
   return data;
 }
 
