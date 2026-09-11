@@ -3,19 +3,20 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ContinuousSlotPicker } from "@/src/components/continuous-slot-picker";
+import { RequireAuth } from "@/src/components/require-auth";
 import { BookingApiError, createBooking, getAvailability } from "@/src/lib/bookings-api";
 import type { AvailabilityResponse } from "@/src/types/booking";
 
+const TIME_ZONE = "Asia/Bangkok";
 const money = new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" });
-const date = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "short", day: "numeric" });
-const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
 
-export default function SubjectBookingPage() {
+function SubjectBookingContent() {
   // Read the reusable subject id from /bookings/s/[subjectId].
   const { subjectId } = useParams<{ subjectId: string }>();
   const router = useRouter();
   const [data, setData] = useState<AvailabilityResponse | null>(null);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -38,26 +39,15 @@ export default function SubjectBookingPage() {
   }, [subjectId]);
 
   useEffect(() => {
-    // Guests must log in before this protected booking flow can load.
-    if (!localStorage.getItem("authToken")) {
-      router.replace(`/login?next=${encodeURIComponent(`/bookings/s/${subjectId}`)}`);
-      return;
-    }
     // Fetching route-specific server data is the synchronization performed by this effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
-  }, [load, router, subjectId]);
+  }, [load]);
 
-  const grouped = useMemo(() => {
-    // Group slots by date so students can compare times quickly.
-    const groups = new Map<string, NonNullable<typeof data>["slots"]>();
-    for (const slot of data?.slots ?? []) {
-      if (slot.available === false) continue;
-      const label = date.format(new Date(slot.startedAt));
-      groups.set(label, [...(groups.get(label) ?? []), slot]);
-    }
-    return [...groups.entries()];
-  }, [data]);
+  const openSlots = useMemo(
+    () => (data?.slots ?? []).filter((slot) => slot.available !== false),
+    [data]
+  );
 
   // A 30-minute slot costs half of the tutor's hourly rate.
   const total = (Number(data?.subject?.hourlyRate ?? 0) * selectedIds.length) / 2;
@@ -80,10 +70,12 @@ export default function SubjectBookingPage() {
       });
       router.push(`/bookings/${booking.id}`);
     } catch (error) {
-      if (error instanceof BookingApiError && error.status === 409) {
+      if (error instanceof BookingApiError && error.code === "SLOT_TAKEN") {
         // Another student took the slot, so show the conflict and reload times.
         setMessage("That time was just booked by someone else. We refreshed the available times.");
         await load();
+      } else if (error instanceof BookingApiError && error.code === "INVALID_SLOT_BLOCK") {
+        setMessage("Choose consecutive 30-minute times on the same day.");
       } else {
         setMessage(error instanceof Error ? error.message : "Could not create this booking.");
       }
@@ -114,7 +106,7 @@ export default function SubjectBookingPage() {
 
           {loading ? (
             <p className="mt-10 text-zinc-500">Loading available times…</p>
-          ) : grouped.length === 0 ? (
+          ) : openSlots.length === 0 ? (
             <div className="mt-8 rounded-2xl border border-dashed border-zinc-300 p-8 text-center">
               <p className="font-medium">No open times right now</p>
               <button
@@ -128,32 +120,14 @@ export default function SubjectBookingPage() {
               </button>
             </div>
           ) : (
-            <div className="mt-6 space-y-6">
-              {grouped.map(([label, slots]) => (
-                <fieldset key={label}>
-                  <legend className="mb-3 font-semibold">{label}</legend>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    {slots.map((slot) => {
-                      const active = selectedIds.includes(slot.id);
-                      return (
-                        <button
-                          type="button"
-                          key={slot.id}
-                          aria-pressed={active}
-                          onClick={() =>
-                            setSelectedIds((ids) =>
-                              active ? ids.filter((id) => id !== slot.id) : [...ids, slot.id]
-                            )
-                          }
-                          className={`rounded-xl border px-4 py-3 text-sm font-semibold transition ${active ? "border-violet-600 bg-violet-600 text-white" : "border-zinc-200 hover:border-violet-400"}`}
-                        >
-                          {time.format(new Date(slot.startedAt))}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </fieldset>
-              ))}
+            <div className="mt-6">
+              <ContinuousSlotPicker
+                slots={openSlots}
+                selectedIds={selectedIds}
+                onChange={setSelectedIds}
+                onSelectionMessage={setMessage}
+                timeZone={TIME_ZONE}
+              />
             </div>
           )}
         </section>
@@ -204,5 +178,13 @@ export default function SubjectBookingPage() {
         </aside>
       </div>
     </main>
+  );
+}
+
+export default function SubjectBookingPage() {
+  return (
+    <RequireAuth>
+      <SubjectBookingContent />
+    </RequireAuth>
   );
 }

@@ -11,7 +11,6 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [isTutor, setIsTutor] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [openDocument, setOpenDocument] = useState<PolicyDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,35 +41,12 @@ export default function SignupPage() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, isTutor }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { message?: string } | null;
         setError(data?.message ?? "Something went wrong. Please try again.");
-        return;
-      }
-
-      if (isTutor) {
-        const loginResponse = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-        const loginData = (await loginResponse.json().catch(() => null)) as {
-          token?: string;
-          message?: string;
-        } | null;
-
-        if (!loginResponse.ok || !loginData?.token) {
-          setError(
-            loginData?.message ?? "Account created. Please log in to complete your profile."
-          );
-          return;
-        }
-
-        localStorage.setItem("authToken", loginData.token);
-        router.push("/settings/tutor");
         return;
       }
 
@@ -127,17 +103,6 @@ export default function SignupPage() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
           />
-        </label>
-
-        <label className="flex items-center gap-2.5 text-sm font-medium">
-          <input
-            type="checkbox"
-            name="isTutor"
-            checked={isTutor}
-            onChange={(e) => setIsTutor(e.target.checked)}
-            className="h-4 w-4 rounded border-black/[.25] dark:border-white/[.3]"
-          />
-          Are you a tutor?
         </label>
 
         <label className="flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300">

@@ -8,8 +8,15 @@
 # matching `npm run` script, so those stay runnable without `just`.
 #
 #   just            list recipes
-#   just setup      prepare a fresh checkout (env, Postgres, deps, migrate, seed)
+#   just setup      prepare a fresh checkout (env, Postgres, deps, schema, seed)
 #   just up         start the Postgres + backend + frontend Compose stack
+# Use the Windows PowerShell that ships with Windows. The npm command below
+# selects npm.cmd on Windows so recipes are not blocked by npm.ps1 execution
+# policy settings.
+
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
+
+npm := if os() == "windows" { "npm.cmd" } else { "npm" }
 
 # Default recipe: show the list.
 default:
@@ -19,13 +26,13 @@ default:
 env:
     node scripts/setup-env.mjs
 
-# First-run setup: env files, Postgres, deps, migrate, seed. Then run `just up`.
+# First-run setup: env files, Postgres, deps, schema sync, seed. Then run `just up`.
 setup: db-up
-    npm run setup
+    {{ npm }} run setup
 
 # Install root + backend + frontend dependencies.
 install:
-    npm run install:all
+    {{ npm }} run install:all
 
 # Build and start Postgres + backend (8000) + frontend (3000), detached.
 up: env
@@ -49,7 +56,7 @@ status:
 
 # Run backend + frontend in the foreground instead (Ctrl+C stops both).
 dev:
-    npm run dev
+    {{ npm }} run dev
 
 # Start the Postgres container and wait until it is healthy.
 db-up: env

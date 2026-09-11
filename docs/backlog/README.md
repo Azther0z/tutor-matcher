@@ -4,6 +4,13 @@ This directory is the editable planning authority for the Tutor Matcher product
 and sprint backlogs. The HTML exports and SVG journey under `../sources/` are
 immutable historical evidence.
 
+The backlog describes committed work; [`../user-journeys.md`](../user-journeys.md)
+describes the product. Where a story contradicts the product — role choice at sign-up,
+recurring bookings, classmate invitations, lesson credits, a saved payment method, a
+learner profile — the difference and the suggested change are listed in
+[`reconciliation.md`](reconciliation.md). Read that page before
+reworking a story, and update it when a row is closed.
+
 ## Layout
 
 ```text

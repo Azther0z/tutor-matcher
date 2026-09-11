@@ -4,5 +4,6 @@ node_modules/
 deploy/secrets/*
 !deploy/secrets/*.example
 !deploy/secrets/*.enc
+!deploy/secrets/*.enc.env
 dist/
 .next/

@@ -1,13 +1,11 @@
 import type { Request, Response } from "express";
 import {
+  BookingDomainError,
   cancelBooking,
-  BookingConflictError,
-  BookingForbiddenError,
-  BookingNotFoundError,
-  BookingPaymentError,
   confirmBookingPayment,
   createBooking,
   getBooking,
+  getCancellationQuote,
   getSubjectAvailability,
   listBookings,
   rescheduleBooking,
@@ -19,96 +17,96 @@ import type {
 } from "./booking.schema.ts";
 
 async function sendError(error: unknown, res: Response) {
-  // Convert booking-domain errors into stable HTTP responses for the frontend.
-  if (error instanceof BookingNotFoundError)
-    return res.status(404).json({ code: error.code, message: error.message });
-  if (error instanceof BookingForbiddenError)
-    return res.status(403).json({ code: error.code, message: error.message });
-  if (error instanceof BookingPaymentError)
-    return res.status(402).json({ code: error.code, message: error.message });
-  if (error instanceof BookingConflictError) {
-    let availability;
-    // Include fresh availability so a 409 response can immediately refresh the UI.
-    if (error.subjectId > 0)
-      try {
-        availability = await getSubjectAvailability(error.subjectId);
-      } catch {
-        /* unavailable subject */
-      }
-    return res.status(409).json({ code: error.code, message: error.message, availability });
+  if (!(error instanceof BookingDomainError)) throw error;
+  let details = error.details;
+  // BOOK-1 refreshes availability only for a real slot race, not every 409 response.
+  if (error.code === "SLOT_TAKEN" && typeof details?.subjectId === "string") {
+    try {
+      details = {
+        ...details,
+        availability: await getSubjectAvailability(details.subjectId),
+      };
+    } catch {
+      // Preserve the original domain error if the subject can no longer be loaded.
+    }
   }
-  throw error;
+  return res.status(error.status).json({
+    code: error.code,
+    message: error.message,
+    ...(details ? { details } : {}),
+  });
 }
+
 export async function subjectAvailability(req: Request, res: Response) {
   try {
-    res.json(await getSubjectAvailability(Number(req.params.subjectId)));
-  } catch (e) {
-    await sendError(e, res);
+    res.json(await getSubjectAvailability(req.params.subjectId as string));
+  } catch (error) {
+    await sendError(error, res);
   }
 }
+
 export async function create(req: Request, res: Response) {
   try {
-    // The authentication middleware supplies the current student's user id.
     res.status(201).json({
       booking: await createBooking(req.user!.sub, req.body as CreateBookingInput),
-      notificationsQueued: true,
     });
-  } catch (e) {
-    await sendError(e, res);
+  } catch (error) {
+    await sendError(error, res);
   }
 }
+
 export async function detail(req: Request, res: Response) {
   try {
-    res.json({ booking: await getBooking(req.user!.sub, Number(req.params.id)) });
-  } catch (e) {
-    await sendError(e, res);
+    res.json({ booking: await getBooking(req.user!.sub, req.params.id as string) });
+  } catch (error) {
+    await sendError(error, res);
   }
 }
+
 export async function list(req: Request, res: Response) {
   try {
     res.json({ bookings: await listBookings(req.user!.sub) });
-  } catch (e) {
-    await sendError(e, res);
+  } catch (error) {
+    await sendError(error, res);
   }
 }
+
 export async function confirmPayment(req: Request, res: Response) {
   try {
-    // Confirm payment and return the latest booking state to the detail page.
-    res.json({
-      booking: await confirmBookingPayment(req.user!.sub, Number(req.params.id)),
-      notificationsQueued: true,
-    });
-  } catch (e) {
-    await sendError(e, res);
+    res.json({ booking: await confirmBookingPayment(req.user!.sub, req.params.id as string) });
+  } catch (error) {
+    await sendError(error, res);
   }
 }
+
 export async function reschedule(req: Request, res: Response) {
   try {
-    // The service validates the 24-hour policy and performs the atomic slot swap.
     res.json({
       booking: await rescheduleBooking(
         req.user!.sub,
-        Number(req.params.id),
+        req.params.id as string,
         req.body as RescheduleBookingInput
       ),
-      notificationsQueued: true,
     });
-  } catch (e) {
-    await sendError(e, res);
+  } catch (error) {
+    await sendError(error, res);
   }
 }
+
+export async function cancellationQuote(req: Request, res: Response) {
+  try {
+    res.json({ quote: await getCancellationQuote(req.user!.sub, req.params.id as string) });
+  } catch (error) {
+    await sendError(error, res);
+  }
+}
+
 export async function cancel(req: Request, res: Response) {
   try {
-    // Return both the cancelled booking and its calculated refund summary.
-    res.json({
-      ...(await cancelBooking(
-        req.user!.sub,
-        Number(req.params.id),
-        req.body as CancelBookingInput
-      )),
-      notificationsQueued: true,
-    });
-  } catch (e) {
-    await sendError(e, res);
+    res.json(
+      await cancelBooking(req.user!.sub, req.params.id as string, req.body as CancelBookingInput)
+    );
+  } catch (error) {
+    await sendError(error, res);
   }
 }

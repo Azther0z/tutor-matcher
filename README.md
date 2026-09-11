@@ -1,6 +1,13 @@
 # Tutor Matcher
 
 A matchmaking platform that connects tutors and students by subject, schedule, and price.
+A student opens one of a tutor's subjects, picks a continuous block of that tutor's
+published 30-minute slots, and pays from a single wallet balance — which confirms the
+lesson immediately. What the product does is documented in
+[`docs/user-journeys.md`](docs/user-journeys.md).
+
+An interactive HTML prototype of the intended UI is published at
+<https://idealkritarat.github.io/tutormatcher-prototype>.
 
 ## Prerequisites
 
@@ -30,6 +37,11 @@ with `just up` (see [Development](#development)).
 npm work show the equivalent `npm run` script in a comment; Compose orchestration
 lives in the justfile and has no `npm run` form.
 
+On Windows, `just` runs recipes through the built-in Windows PowerShell and selects
+`npm.cmd` automatically, so the commands work from either PowerShell or Command
+Prompt without requiring Git Bash or WSL. Docker Desktop is still required for the
+Compose recipes.
+
 <details>
 <summary>Manual setup, step by step</summary>
 
@@ -38,7 +50,7 @@ just env                              # node scripts/setup-env.mjs  (copy .env t
 just db-up                            # start Postgres and wait for it
 just install                          # npm run install:all
 cd apps/backend
-just migrate                          # npm run db:migrate:dev  (prisma migrate dev)
+just db-push                          # npm run db:push  (prisma db push)
 just gen-mock-data                    # npm run gen-mock-data   (prisma db seed)
 ```
 
@@ -86,34 +98,35 @@ Run `just` in the repo root or in `apps/backend` to list every recipe. Docker
 Compose orchestration is implemented in the justfile and has no `npm run`
 equivalent; the remaining recipes wrap an npm script shown in the last column.
 
-| `just`                   | Location       | Description                                         | `npm run` equivalent      |
-| ------------------------ | -------------- | --------------------------------------------------- | ------------------------- |
-| `just setup`             | repo root      | First-run: env files, Postgres, deps, migrate, seed | `npm run setup` (partial) |
-| `just install`           | repo root      | Install root + backend + frontend dependencies      | `npm run install:all`     |
-| `just env`               | repo root      | Copy missing `.env` files from templates            | `npm run setup:env`       |
-| `just up` / `down`       | repo root      | Start / stop the local Compose stack                | —                         |
-| `just logs` / `status`   | repo root      | Stream logs / show Compose service status           | —                         |
-| `just restart`           | repo root      | Restart the local Compose services                  | —                         |
-| `just db-up` / `db-down` | repo root      | Start (wait for healthy) / stop Postgres            | —                         |
-| `just dev`               | repo root      | Run backend + frontend attached to the terminal     | `npm run dev`             |
-| `just gen`               | `apps/backend` | Regenerate the typed Prisma client                  | `npm run gen`             |
-| `just gen-mock-data`     | `apps/backend` | Seed fake data (`@faker-js/faker`)                  | `npm run gen-mock-data`   |
-| `just migrate`           | `apps/backend` | Create and apply a new migration                    | `npm run db:migrate:dev`  |
-| `just reset`             | `apps/backend` | Drop, re-migrate, and re-seed the database          | `npm run db:reset`        |
-| `just studio`            | `apps/backend` | Open Prisma Studio                                  | `npm run db:studio`       |
+| `just`                   | Location       | Description                                       | `npm run` equivalent      |
+| ------------------------ | -------------- | ------------------------------------------------- | ------------------------- |
+| `just setup`             | repo root      | First-run: env, Postgres, deps, schema sync, seed | `npm run setup` (partial) |
+| `just install`           | repo root      | Install root + backend + frontend dependencies    | `npm run install:all`     |
+| `just env`               | repo root      | Copy missing `.env` files from templates          | `npm run setup:env`       |
+| `just up` / `down`       | repo root      | Start / stop the local Compose stack              | —                         |
+| `just logs` / `status`   | repo root      | Stream logs / show Compose service status         | —                         |
+| `just restart`           | repo root      | Restart the local Compose services                | —                         |
+| `just db-up` / `db-down` | repo root      | Start (wait for healthy) / stop Postgres          | —                         |
+| `just dev`               | repo root      | Run backend + frontend attached to the terminal   | `npm run dev`             |
+| `just gen`               | `apps/backend` | Regenerate the typed Prisma client                | `npm run gen`             |
+| `just gen-mock-data`     | `apps/backend` | Seed fake data (`@faker-js/faker`)                | `npm run gen-mock-data`   |
+| `just migrate`           | `apps/backend` | Create and apply a new migration                  | `npm run db:migrate:dev`  |
+| `just reset`             | `apps/backend` | Drop, re-migrate, and re-seed the database        | `npm run db:reset`        |
+| `just studio`            | `apps/backend` | Open Prisma Studio                                | `npm run db:studio`       |
 
 ### More recipes
 
 Beyond the table above, `apps/backend` also exposes:
 
-| `just`                | Description                         | `npm run` equivalent      |
-| --------------------- | ----------------------------------- | ------------------------- |
-| `just test`           | Backend tests (Jest + Supertest)    | `npm test`                |
-| `just test-bdd`       | Backend Gherkin tests (Cucumber.js) | `npm run test:bdd`        |
-| `just lint`           | ESLint on backend source            | `npm run lint`            |
-| `just validate`       | Validate `schema.prisma`            | `npm run prisma:validate` |
-| `just format`         | Format `schema.prisma`              | `npm run prisma:format`   |
-| `just migrate-deploy` | Apply committed migrations (deploy) | `npm run db:migrate`      |
+| `just`                | Description                          | `npm run` equivalent      |
+| --------------------- | ------------------------------------ | ------------------------- |
+| `just test`           | Backend tests (Jest + Supertest)     | `npm test`                |
+| `just test-bdd`       | Backend Gherkin tests (Cucumber.js)  | `npm run test:bdd`        |
+| `just lint`           | ESLint on backend source             | `npm run lint`            |
+| `just validate`       | Validate `schema.prisma`             | `npm run prisma:validate` |
+| `just format`         | Format `schema.prisma`               | `npm run prisma:format`   |
+| `just db-push`        | Sync the database without migrations | `npm run db:push`         |
+| `just migrate-deploy` | Apply committed migrations (deploy)  | `npm run db:migrate`      |
 
 From the repo root, `npm run format` / `npm run format:check` run Prettier over
 all files. The frontend test suite is `npm test` in `apps/frontend`.
@@ -147,9 +160,10 @@ The initial Gherkin scenario verifies the backend root endpoint. See
 ## CI/CD
 
 Pull requests run formatting, linting, Jest tests, backend Gherkin tests, application builds, and
-Docker image builds. A push to `main` builds and publishes the frontend and backend images with both
-immutable commit tags and the `latest` tag. Doco-CD polls this repository and deploys
-[`deploy/compose.yaml`](deploy/compose.yaml) after validation succeeds.
+production image builds. A push to `main` runs the production Compose build from
+[`deploy/compose.yaml`](deploy/compose.yaml), then publishes both images with immutable commit
+tags and the `latest` tag. Doco-CD polls this repository and deploys the same manifest after
+validation succeeds.
 
 ## Project Structure
 
@@ -158,11 +172,14 @@ apps/
   backend/        Express API (TypeScript, Prisma, PostgreSQL)
     features/     Cucumber.js features, support code, and step definitions
   frontend/       Next.js app (TypeScript, Tailwind CSS)
-docs/             Architecture, testing, charter, schema, ADRs, review
+docs/             Journeys, schema, architecture, testing, charter, backlog, ADRs
 deploy/           Doco-CD deployment Compose manifest
 docker-compose.yml
 ```
 
-See [`docs/index.md`](docs/index.md) for the documentation index,
-[`docs/project-architecture.md`](docs/project-architecture.md) for the architecture overview,
+See [`docs/index.md`](docs/index.md) for the documentation index. Before working on a
+product change, read [`docs/user-journeys.md`](docs/user-journeys.md) for what the product
+does, [`docs/project-schema.md`](docs/project-schema.md) for what it stores, and
+[`CONTEXT.md`](CONTEXT.md) for what to call things. See
+[`docs/project-architecture.md`](docs/project-architecture.md) for the architecture overview
 and [`docs/testing.md`](docs/testing.md) for the testing guide.

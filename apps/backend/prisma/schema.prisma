@@ -34,21 +34,39 @@ enum BookingStatus {
   COMPLETED
 }
 
+enum StudentEducationLevel {
+  PRIMARY_SCHOOL
+  LOWER_SECONDARY_SCHOOL
+  UPPER_SECONDARY_SCHOOL
+  VOCATIONAL_CERTIFICATE
+  HIGHER_VOCATIONAL_CERTIFICATE
+  UNIVERSITY
+  WORKING_ADULT
+}
+
+enum PreferredLearningPeriod {
+  MORNING
+  AFTERNOON
+  EVENING
+  FLEXIBLE
+}
+
 model User {
-  id        Int      @id @default(autoincrement()) @map("user_id")
+  id        String   @id @default(uuid()) @map("user_id") @db.Uuid
   firstName String   @map("first_name")
   lastName  String   @map("last_name")
   email     String   @unique
   password  String
   bio       String?
   createdAt DateTime @default(now()) @map("created_at")
-  balance   Decimal  @default(10000) @db.Decimal(12, 2)
+  balance   Decimal  @default(0) @db.Decimal(12, 2)
   isAdmin   Boolean  @default(false) @map("is_admin")
-  isTutor   Boolean  @default(false) @map("is_tutor")
 
   // A user account can optionally be linked to a tutor profile
-  tutorId Int?   @unique @map("tutor_id")
-  tutor   Tutor? @relation(fields: [tutorId], references: [id], onDelete: SetNull)
+  tutorId String? @unique @map("tutor_id") @db.Uuid
+  tutor   Tutor?  @relation(fields: [tutorId], references: [id], onDelete: SetNull)
+
+  student Student?
 
   bookings Booking[]
   reviews  Review[]
@@ -66,8 +84,41 @@ model User {
   @@map("users")
 }
 
+model Student {
+  id                       String                  @id @default(uuid()) @map("student_id") @db.Uuid
+  userId                   String                  @unique @map("user_id") @db.Uuid
+  educationLevel           StudentEducationLevel   @map("education_level")
+  goals                    String[]
+  preferredLearningPeriod  PreferredLearningPeriod @map("preferred_learning_period")
+  preferredDurationMinutes Int                     @map("preferred_duration_minutes")
+  updatedAt                DateTime                @updatedAt @map("updated_at")
+
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  learningAreas StudentLearningArea[]
+
+  @@map("students")
+}
+
+model LearningArea {
+  id       String                @id @default(uuid()) @map("learning_area_id") @db.Uuid
+  name     String                @unique
+  students StudentLearningArea[]
+
+  @@map("learning_areas")
+}
+
+model StudentLearningArea {
+  studentId      String       @map("student_id") @db.Uuid
+  learningAreaId String       @map("learning_area_id") @db.Uuid
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  learningArea   LearningArea @relation(fields: [learningAreaId], references: [id], onDelete: Restrict)
+
+  @@id([studentId, learningAreaId])
+  @@map("student_learning_areas")
+}
+
 model Tutor {
-  id            Int         @id @default(autoincrement()) @map("tutor_id")
+  id            String      @id @default(uuid()) @map("tutor_id") @db.Uuid
   avatarUrl     String?     @map("avatar_url")
   bio           String?
   introVideoUrl String?     @map("intro_video_url")
@@ -83,14 +134,14 @@ model Tutor {
 }
 
 model Subject {
-  id          Int     @id @default(autoincrement()) @map("subject_id")
+  id          String  @id @default(uuid()) @map("subject_id") @db.Uuid
   name        String
   description String?
   videoUrl    String? @map("video_url")
   hourlyRate  Decimal @map("hourly_rate") @db.Decimal(10, 2)
 
-  tutorId Int   @map("tutor_id")
-  tutor   Tutor @relation(fields: [tutorId], references: [id], onDelete: Restrict)
+  tutorId String @map("tutor_id") @db.Uuid
+  tutor   Tutor  @relation(fields: [tutorId], references: [id], onDelete: Restrict)
 
   availabilitySubjects AvailabilitySubject[]
   bookings             Booking[]
@@ -101,10 +152,10 @@ model Subject {
 }
 
 model Availability {
-  id        Int      @id @default(autoincrement()) @map("availability_id")
+  id        String   @id @default(uuid()) @map("availability_id") @db.Uuid
   startedAt DateTime @map("started_at")
 
-  bookingId Int?     @map("booking_id")
+  bookingId String?  @map("booking_id") @db.Uuid
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   availabilitySubjects AvailabilitySubject[]
@@ -114,8 +165,8 @@ model Availability {
 }
 
 model AvailabilitySubject {
-  availabilityId Int          @map("availability_id")
-  subjectId      Int          @map("subject_id")
+  availabilityId String       @map("availability_id") @db.Uuid
+  subjectId      String       @map("subject_id") @db.Uuid
   availability   Availability @relation(fields: [availabilityId], references: [id], onDelete: Restrict)
   subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
@@ -124,48 +175,51 @@ model AvailabilitySubject {
 }
 
 model Booking {
-  id             Int      @id @default(autoincrement()) @map("booking_id")
-  description    String?
-  zoomMeetingUrl String?  @map("zoom_meeting_url")
-  createdAt      DateTime @default(now()) @map("created_at")
-  status         BookingStatus @default(PENDING_PAYMENT)
-  isTrial        Boolean       @default(true) @map("is_trial")
-  totalAmount    Decimal       @default(0) @map("total_amount") @db.Decimal(12, 2)
-  startedAt      DateTime      @default(now()) @map("started_at")
-  endedAt        DateTime      @default(now()) @map("ended_at")
-  cancelledAt    DateTime?     @map("cancelled_at")
-  cancellationReason String?   @map("cancellation_reason")
+  id                 String        @id @default(uuid()) @map("booking_id") @db.Uuid
+  description        String?
+  zoomMeetingUrl     String?       @map("zoom_meeting_url")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  status             BookingStatus @default(PENDING_PAYMENT)
+  isTrial            Boolean       @default(true) @map("is_trial")
+  totalAmount        Decimal       @map("total_amount") @db.Decimal(12, 2)
+  startedAt          DateTime      @map("started_at")
+  endedAt            DateTime      @map("ended_at")
+  paymentExpiresAt   DateTime?     @map("payment_expires_at")
+  cancelledAt        DateTime?     @map("cancelled_at")
+  cancellationReason String?       @map("cancellation_reason")
 
-  userId Int  @map("user_id")
-  user   User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
 
-  subjectId Int     @map("subject_id")
+  subjectId String  @map("subject_id") @db.Uuid
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
   availabilities Availability[]
-  payments      Payment[]
-  reviews      Review[]
+  payments       Payment[]
+  reviews        Review[]
 
   @@index([userId])
   @@index([subjectId])
+  @@index([userId, status])
+  @@index([status, paymentExpiresAt])
   @@map("bookings")
 }
 
 model Payment {
-  id          Int           @id @default(autoincrement()) @map("payment_id")
+  id          String        @id @default(uuid()) @map("payment_id") @db.Uuid
   type        PaymentType
   amount      Decimal       @db.Decimal(12, 2)
   status      PaymentStatus @default(PENDING)
   createdAt   DateTime      @default(now()) @map("created_at")
   completedAt DateTime?     @map("completed_at")
 
-  fromUserId Int  @map("from_user_id")
-  fromUser   User @relation("PaymentsFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
+  fromUserId String @map("from_user_id") @db.Uuid
+  fromUser   User   @relation("PaymentsFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
 
-  toUserId Int  @map("to_user_id")
-  toUser   User @relation("PaymentsTo", fields: [toUserId], references: [id], onDelete: Restrict)
+  toUserId String @map("to_user_id") @db.Uuid
+  toUser   User   @relation("PaymentsTo", fields: [toUserId], references: [id], onDelete: Restrict)
 
-  bookingId Int?     @map("booking_id")
+  bookingId String?  @map("booking_id") @db.Uuid
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   @@index([fromUserId])
@@ -175,18 +229,18 @@ model Payment {
 }
 
 model Review {
-  id          Int      @id @default(autoincrement()) @map("review_id")
+  id          String   @id @default(uuid()) @map("review_id") @db.Uuid
   ratingStars Int      @map("rating_stars")
   text        String?
   createdAt   DateTime @default(now()) @map("created_at")
 
-  userId Int  @map("user_id")
-  user   User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
 
-  subjectId Int     @map("subject_id")
+  subjectId String  @map("subject_id") @db.Uuid
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
-  bookingId Int     @map("booking_id")
+  bookingId String  @map("booking_id") @db.Uuid
   booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
 
   @@index([userId])
@@ -196,26 +250,26 @@ model Review {
 }
 
 model Certification {
-  id      Int    @id @default(autoincrement()) @map("certification_id")
+  id      String @id @default(uuid()) @map("certification_id") @db.Uuid
   fileUrl String @map("file_url")
 
-  tutorId Int   @map("tutor_id")
-  tutor   Tutor @relation(fields: [tutorId], references: [id], onDelete: Restrict)
+  tutorId String @map("tutor_id") @db.Uuid
+  tutor   Tutor  @relation(fields: [tutorId], references: [id], onDelete: Restrict)
 
   @@index([tutorId])
   @@map("certifications")
 }
 
 model Message {
-  id        Int      @id @default(autoincrement()) @map("message_id")
+  id        String   @id @default(uuid()) @map("message_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
   message   String
 
-  fromUserId Int  @map("from_user_id")
-  fromUser   User @relation("MessagesSent", fields: [fromUserId], references: [id], onDelete: Restrict)
+  fromUserId String @map("from_user_id") @db.Uuid
+  fromUser   User   @relation("MessagesSent", fields: [fromUserId], references: [id], onDelete: Restrict)
 
-  toUserId Int  @map("to_user_id")
-  toUser   User @relation("MessagesReceived", fields: [toUserId], references: [id], onDelete: Restrict)
+  toUserId String @map("to_user_id") @db.Uuid
+  toUser   User   @relation("MessagesReceived", fields: [toUserId], references: [id], onDelete: Restrict)
 
   @@index([fromUserId])
   @@index([toUserId])
@@ -223,19 +277,19 @@ model Message {
 }
 
 model Report {
-  id           Int     @id @default(autoincrement()) @map("report_id")
+  id           String  @id @default(uuid()) @map("report_id") @db.Uuid
   message      String
   attachment   String?
   replyMessage String? @map("reply_message")
 
-  adminUserId Int  @map("admin_user_id")
-  adminUser   User @relation("ReportsHandledByAdmin", fields: [adminUserId], references: [id], onDelete: Restrict)
+  adminUserId String @map("admin_user_id") @db.Uuid
+  adminUser   User   @relation("ReportsHandledByAdmin", fields: [adminUserId], references: [id], onDelete: Restrict)
 
-  reporterUserId Int  @map("reporter_user_id")
-  reporterUser   User @relation("ReportsMadeByReporter", fields: [reporterUserId], references: [id], onDelete: Restrict)
+  reporterUserId String @map("reporter_user_id") @db.Uuid
+  reporterUser   User   @relation("ReportsMadeByReporter", fields: [reporterUserId], references: [id], onDelete: Restrict)
 
-  reportedUserId Int  @map("reported_user_id")
-  reportedUser   User @relation("ReportsAgainstUser", fields: [reportedUserId], references: [id], onDelete: Restrict)
+  reportedUserId String @map("reported_user_id") @db.Uuid
+  reportedUser   User   @relation("ReportsAgainstUser", fields: [reportedUserId], references: [id], onDelete: Restrict)
 
   @@index([adminUserId])
   @@index([reporterUserId])

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { RequireAuth } from "@/src/components/require-auth";
 import { getBookings } from "@/src/lib/bookings-api";
 import type { Booking, BookingStatus } from "@/src/types/booking";
 
 type Filter = "ALL" | "UPCOMING" | "PAYMENT_DUE" | "PAST";
+const TIME_ZONE = "Asia/Bangkok";
 
 const filters: Array<{ value: Filter; label: string }> = [
   { value: "ALL", label: "All" },
@@ -36,6 +37,7 @@ const dateFormat = new Intl.DateTimeFormat("en", {
   year: "numeric",
   hour: "numeric",
   minute: "2-digit",
+  timeZone: TIME_ZONE,
 });
 
 function belongsToFilter(booking: Booking, filter: Filter) {
@@ -47,25 +49,20 @@ function belongsToFilter(booking: Booking, filter: Filter) {
   return true;
 }
 
-export default function BookingsPage() {
-  const router = useRouter();
+function BookingsContent() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filter, setFilter] = useState<Filter>("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!localStorage.getItem("authToken")) {
-      router.replace(`/login?next=${encodeURIComponent("/bookings")}`);
-      return;
-    }
     getBookings()
       .then(setBookings)
       .catch((reason: unknown) =>
         setError(reason instanceof Error ? reason.message : "Could not load your bookings.")
       )
       .finally(() => setLoading(false));
-  }, [router]);
+  }, []);
 
   const visibleBookings = useMemo(
     () => bookings.filter((booking) => belongsToFilter(booking, filter)),
@@ -151,7 +148,9 @@ export default function BookingsPage() {
               <span
                 className={`rounded-full px-3 py-1 text-xs font-bold ${statusStyle[booking.status]}`}
               >
-                {statusLabel[booking.status]}
+                {booking.status === "CANCELLED" && booking.cancellationReason === "PAYMENT_EXPIRED"
+                  ? "Expired"
+                  : statusLabel[booking.status]}
               </span>
               <span className="font-semibold text-violet-600 group-hover:underline">
                 View details →
@@ -161,5 +160,13 @@ export default function BookingsPage() {
         ))}
       </section>
     </main>
+  );
+}
+
+export default function BookingsPage() {
+  return (
+    <RequireAuth>
+      <BookingsContent />
+    </RequireAuth>
   );
 }

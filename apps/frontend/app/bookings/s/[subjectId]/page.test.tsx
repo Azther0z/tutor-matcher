@@ -1,17 +1,27 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import SubjectBookingPage from "./page";
 
+const subjectId = "8f2dc6e2-27f8-4e7f-bd7f-f553e42bd05b";
+const bookingId = "f0f21183-1af0-49a9-b35f-63d9431b2748";
+const slotId = "073ea12c-9fb1-4c70-9910-554432c8dc21";
 const push = jest.fn();
 const replace = jest.fn();
 const router = { push, replace };
+
 jest.mock("next/navigation", () => ({
-  useParams: () => ({ subjectId: "12" }),
+  useParams: () => ({ subjectId }),
+  usePathname: () => `/bookings/s/${subjectId}`,
   useRouter: () => router,
 }));
 
 const availability = {
-  subject: { id: 12, name: "English", hourlyRate: 20, tutor: { id: 3, name: "Alice" } },
-  slots: [{ id: 101, startedAt: "2030-01-10T09:00:00.000Z", available: true }],
+  subject: {
+    id: subjectId,
+    name: "English",
+    hourlyRate: "20",
+    tutor: { id: "aa86f069-b044-478f-b9cb-39eea6265800", name: "Alice" },
+  },
+  slots: [{ id: slotId, startedAt: "2030-01-10T09:00:00.000Z", available: true }],
 };
 
 beforeEach(() => {
@@ -19,29 +29,38 @@ beforeEach(() => {
   localStorage.setItem("authToken", "student-token");
 });
 
-it("creates a trial booking from the selected slot", async () => {
+afterEach(() => localStorage.clear());
+
+it("creates a trial booking with UUID identifiers", async () => {
   global.fetch = jest
     .fn()
     .mockResolvedValueOnce({ ok: true, json: async () => availability })
-    .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 44 }) });
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: { id: bookingId } }) });
   render(<SubjectBookingPage />);
   fireEvent.click(await screen.findByRole("button", { name: /(?:AM|PM)/ }));
   fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
-  await waitFor(() => expect(push).toHaveBeenCalledWith("/bookings/44"));
+  await waitFor(() => expect(push).toHaveBeenCalledWith(`/bookings/${bookingId}`));
   expect(global.fetch).toHaveBeenLastCalledWith(
     "/api/bookings",
-    expect.objectContaining({ method: "POST" })
+    expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({
+        subjectId,
+        availabilityIds: [slotId],
+        isTrial: true,
+      }),
+    })
   );
 });
 
-it("refreshes availability when another student takes the slot", async () => {
+it("refreshes availability only for a structured slot-taken error", async () => {
   global.fetch = jest
     .fn()
     .mockResolvedValueOnce({ ok: true, json: async () => availability })
     .mockResolvedValueOnce({
       ok: false,
       status: 409,
-      json: async () => ({ message: "Slot taken" }),
+      json: async () => ({ code: "SLOT_TAKEN", message: "Slot taken" }),
     })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ ...availability, slots: [] }) });
   render(<SubjectBookingPage />);

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { validate } from "../../middleware/validate.ts";
 import {
   cancel,
+  cancellationQuote,
   confirmPayment,
   create,
   detail,
@@ -27,6 +28,11 @@ bookingRouter.get(
 bookingRouter.get("/", list);
 bookingRouter.post("/", validate(createBookingSchema), create);
 bookingRouter.get("/:id", validate(bookingIdParamsSchema, "params"), detail);
+bookingRouter.get(
+  "/:id/cancellation-quote",
+  validate(bookingIdParamsSchema, "params"),
+  cancellationQuote
+);
 bookingRouter.post(
   "/:id/confirm-payment",
   validate(bookingIdParamsSchema, "params"),

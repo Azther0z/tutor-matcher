@@ -1,18 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ContinuousSlotPicker } from "@/src/components/continuous-slot-picker";
+import { RequireAuth } from "@/src/components/require-auth";
 import {
   BookingApiError,
   cancelBooking,
   confirmPayment,
   getAvailability,
   getBooking,
+  getCancellationQuote,
   rescheduleBooking,
 } from "@/src/lib/bookings-api";
-import type { AvailabilitySlot, Booking } from "@/src/types/booking";
+import type { AvailabilitySlot, Booking, CancellationQuote } from "@/src/types/booking";
 
+const TIME_ZONE = "Asia/Bangkok";
 const money = new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" });
 const dateTime = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
@@ -21,6 +25,7 @@ const dateTime = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
   hour: "numeric",
   minute: "2-digit",
+  timeZone: TIME_ZONE,
 });
 const statusStyle: Record<Booking["status"], string> = {
   PENDING_PAYMENT: "bg-amber-100 text-amber-800",
@@ -29,22 +34,26 @@ const statusStyle: Record<Booking["status"], string> = {
   CANCELLED: "bg-zinc-200 text-zinc-700",
 };
 
-export default function BookingDetailPage() {
-  // Read the booking id from /bookings/[id].
+function isCancellationQuote(value: unknown): value is CancellationQuote {
+  if (!value || typeof value !== "object") return false;
+  const quote = value as Partial<CancellationQuote>;
+  return typeof quote.token === "string" && typeof quote.refundAmount === "string";
+}
+
+function BookingDetailContent() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [booking, setBooking] = useState<Booking | null>(null);
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [mode, setMode] = useState<"cancel" | "reschedule" | null>(null);
+  const [quote, setQuote] = useState<CancellationQuote | null>(null);
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(true);
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [renderedAt] = useState(() => Date.now());
 
   const loadBooking = useCallback(async () => {
-    // Load the latest booking, payment, tutor, subject, and time data.
     try {
       setBooking(await getBooking(id));
     } catch (error) {
@@ -55,32 +64,38 @@ export default function BookingDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    // Protect booking details and preserve this URL through the login flow.
-    if (!localStorage.getItem("authToken")) {
-      router.replace(`/login?next=${encodeURIComponent(`/bookings/${id}`)}`);
-      return;
-    }
-    // Fetching route-specific server data is the synchronization performed by this effect.
+    // Fetching the route-specific booking is the synchronization performed by this effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadBooking();
-  }, [id, loadBooking, router]);
+  }, [loadBooking]);
 
-  // Prefer the snapshot because cancelled bookings release their availability rows.
-  const startsAt = booking?.startedAt ?? booking?.availabilities?.[0]?.startedAt;
-  const hoursUntilLesson = startsAt
-    ? (new Date(startsAt).getTime() - renderedAt) / 3_600_000
-    : null;
-  // Choose the correct BOOK-3 policy message for the confirmation panel.
-  const lateCancellation = hoursUntilLesson !== null && hoursUntilLesson <= 24;
+  const requiredSlotCount = booking?.availabilities.length ?? 0;
+  const startsAt = booking?.startedAt ?? booking?.availabilities[0]?.startedAt;
+  const isExpired =
+    booking?.status === "CANCELLED" && booking.cancellationReason === "PAYMENT_EXPIRED";
+
+  async function openCancellation() {
+    if (!booking) return;
+    setMode("cancel");
+    setQuote(null);
+    setMessage(null);
+    setQuoteLoading(true);
+    try {
+      setQuote(await getCancellationQuote(booking.id));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not load cancellation terms.");
+    } finally {
+      setQuoteLoading(false);
+    }
+  }
 
   async function openReschedule() {
-    // Open rescheduling and fetch currently available replacement slots.
     if (!booking) return;
     setMode("reschedule");
     setMessage(null);
     setSelectedIds([]);
     try {
-      const result = await getAvailability(String(booking.subject.id));
+      const result = await getAvailability(booking.subject.id);
       setSlots(result.slots.filter((slot) => slot.available !== false));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load available times.");
@@ -88,39 +103,62 @@ export default function BookingDetailPage() {
   }
 
   async function pay() {
-    // Confirm payment and replace local state with the confirmed booking.
-    if (!booking) return;
+    if (!booking || !booking.actions.canPay || !booking.payment.canPay) return;
     setBusy(true);
     setMessage(null);
     try {
       setBooking(await confirmPayment(booking.id));
       setMessage("Payment confirmed. Your trial lesson is booked.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Payment could not be confirmed.");
+      if (error instanceof BookingApiError && error.code === "BOOKING_EXPIRED") {
+        setMessage("This payment hold expired, so the selected times were released.");
+        await loadBooking();
+      } else if (error instanceof BookingApiError && error.code === "BOOKING_ALREADY_PAID") {
+        setMessage("This booking has already been paid.");
+        await loadBooking();
+      } else if (error instanceof BookingApiError && error.code === "INSUFFICIENT_BALANCE") {
+        setMessage("Your wallet balance is not enough to pay for this booking.");
+        await loadBooking();
+      } else {
+        setMessage(error instanceof Error ? error.message : "Payment could not be confirmed.");
+      }
     } finally {
       setBusy(false);
     }
   }
 
   async function cancel() {
-    // The backend cancels, releases slots, and calculates the refund atomically.
-    if (!booking) return;
+    if (!booking || !quote) return;
     setBusy(true);
     setMessage(null);
     try {
-      setBooking(await cancelBooking(booking.id, reason.trim()));
+      setBooking(
+        await cancelBooking(booking.id, {
+          reason: reason.trim() || undefined,
+          quoteToken: quote.token || undefined,
+        })
+      );
       setMode(null);
-      setMessage("Booking cancelled. The refund, if applicable, was returned to your balance.");
+      setQuote(null);
+      setMessage(
+        `Booking cancelled. ${money.format(Number(quote.refundAmount))} was returned to your balance.`
+      );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not cancel this booking.");
+      if (error instanceof BookingApiError && error.code === "CANCELLATION_QUOTE_CHANGED") {
+        const currentQuote = error.details?.currentQuote;
+        if (isCancellationQuote(currentQuote)) setQuote(currentQuote);
+        else setQuote(await getCancellationQuote(booking.id));
+        setMessage("The cancellation terms changed. Review the updated refund before confirming.");
+      } else {
+        setMessage(error instanceof Error ? error.message : "Could not cancel this booking.");
+      }
     } finally {
       setBusy(false);
     }
   }
 
   async function reschedule() {
-    // Submit the replacement slots while preserving the lesson duration.
-    if (!booking || selectedIds.length === 0) return;
+    if (!booking || selectedIds.length !== requiredSlotCount) return;
     setBusy(true);
     setMessage(null);
     try {
@@ -128,25 +166,29 @@ export default function BookingDetailPage() {
       setMode(null);
       setMessage("Your lesson was rescheduled successfully.");
     } catch (error) {
-      if (error instanceof BookingApiError && error.status === 409) {
-        // Another booking claimed the selected time, so refresh alternatives.
+      if (error instanceof BookingApiError && error.code === "SLOT_TAKEN") {
         setMessage("That time is no longer available. The open times have been refreshed.");
-        const result = await getAvailability(String(booking.subject.id));
+        const result = await getAvailability(booking.subject.id);
         setSlots(result.slots.filter((slot) => slot.available !== false));
         setSelectedIds([]);
-      } else
+      } else if (error instanceof BookingApiError && error.code === "INVALID_SLOT_BLOCK") {
+        setMessage("Choose the required number of consecutive times on the same day.");
+      } else {
         setMessage(error instanceof Error ? error.message : "Could not reschedule this booking.");
+      }
     } finally {
       setBusy(false);
     }
   }
 
-  // Always display alternative slots in chronological order.
   const sortedSlots = useMemo(
     () =>
-      [...slots].sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()),
+      [...slots].sort(
+        (left, right) => new Date(left.startedAt).getTime() - new Date(right.startedAt).getTime()
+      ),
     [slots]
   );
+
   if (loading)
     return (
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-16 text-zinc-500">
@@ -164,8 +206,13 @@ export default function BookingDetailPage() {
         )}
       </main>
     );
-  // Completed and cancelled bookings no longer expose change actions.
-  const canChange = booking.status === "CONFIRMED" || booking.status === "PENDING_PAYMENT";
+
+  const shortfall = Number(booking.payment.shortfall ?? 0);
+  const topUpHref = `/wallet/topup?${new URLSearchParams({
+    amount: String(shortfall),
+    returnTo: `/bookings/${booking.id}`,
+  }).toString()}`;
+  const displayStatus = isExpired ? "EXPIRED" : booking.status.replaceAll("_", " ");
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-5 py-10 sm:px-8">
@@ -178,14 +225,19 @@ export default function BookingDetailPage() {
       <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">
-            Trial lesson
+            {booking.isTrial ? "Trial lesson" : "Lesson"}
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight">Booking #{booking.id}</h1>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusStyle[booking.status]}`}>
-          {booking.status.replaceAll("_", " ")}
+          {displayStatus}
         </span>
       </div>
+      {isExpired && (
+        <p role="status" className="mt-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+          The payment hold expired and the selected times were released.
+        </p>
+      )}
       {message && (
         <p role="status" className="mt-6 rounded-xl bg-violet-50 p-4 text-sm text-violet-900">
           {message}
@@ -230,44 +282,84 @@ export default function BookingDetailPage() {
         <aside className="rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
           <p className="text-sm text-zinc-500">Total</p>
           <p className="mt-1 text-2xl font-bold">{money.format(Number(booking.totalAmount))}</p>
-          {booking.status === "PENDING_PAYMENT" && (
+          {booking.status === "PENDING_PAYMENT" && booking.payment.expiresAt && (
+            <p className="mt-2 text-xs text-zinc-500">
+              Payment hold expires {dateTime.format(new Date(booking.payment.expiresAt))}
+            </p>
+          )}
+          {booking.status === "PENDING_PAYMENT" && booking.payment.walletBalance !== null && (
             <button
-              disabled={busy}
+              disabled={busy || !booking.actions.canPay || !booking.payment.canPay}
               onClick={() => void pay()}
-              className="mt-5 h-11 w-full rounded-full bg-violet-600 font-semibold text-white disabled:opacity-50"
+              className="mt-5 h-11 w-full rounded-full bg-violet-600 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? "Processing…" : "Confirm payment"}
             </button>
           )}
-          {canChange && (
+          {booking.status === "PENDING_PAYMENT" && shortfall > 0 && (
+            <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+              <p>You need {money.format(shortfall)} more to pay.</p>
+              <Link href={topUpHref} className="mt-2 inline-block font-semibold underline">
+                Top up {money.format(shortfall)}
+              </Link>
+            </div>
+          )}
+          {(booking.actions.canCancel || booking.actions.canReschedule) && (
             <div className="mt-4 grid gap-2">
-              <button
-                onClick={() => void openReschedule()}
-                className="h-10 rounded-full border border-zinc-300 font-medium"
-              >
-                Reschedule
-              </button>
-              <button
-                onClick={() => {
-                  setMode("cancel");
-                  setMessage(null);
-                }}
-                className="h-10 rounded-full border border-red-200 font-medium text-red-700"
-              >
-                Cancel lesson
-              </button>
+              {booking.actions.canReschedule && (
+                <button
+                  onClick={() => void openReschedule()}
+                  className="h-10 rounded-full border border-zinc-300 font-medium"
+                >
+                  Reschedule
+                </button>
+              )}
+              {booking.actions.canCancel && (
+                <button
+                  onClick={() => void openCancellation()}
+                  className="h-10 rounded-full border border-red-200 font-medium text-red-700"
+                >
+                  Cancel lesson
+                </button>
+              )}
             </div>
           )}
         </aside>
       </div>
+
       {mode === "cancel" && (
         <section className="mt-6 rounded-2xl border border-red-200 bg-red-50/50 p-6">
           <h2 className="text-lg font-semibold">Cancel this lesson?</h2>
-          <p className="mt-2 text-sm text-zinc-700">
-            {lateCancellation
-              ? "This lesson starts within 24 hours. Your refund will be reduced by the cancellation fee shown by the policy."
-              : "This lesson is more than 24 hours away, so it can be cancelled without penalty."}
-          </p>
+          {quoteLoading && (
+            <p className="mt-2 text-sm text-zinc-600">Loading cancellation terms…</p>
+          )}
+          {quote && (
+            <>
+              <p className="mt-2 text-sm text-zinc-700">
+                {quote.lateCancellation
+                  ? `This lesson is within the ${quote.policyWindowHours}-hour policy window.`
+                  : `This lesson is outside the ${quote.policyWindowHours}-hour policy window.`}
+              </p>
+              <dl className="mt-4 grid gap-3 rounded-xl bg-white p-4 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-zinc-500">Original payment</dt>
+                  <dd className="font-semibold">{money.format(Number(quote.originalAmount))}</dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500">Refund rate</dt>
+                  <dd className="font-semibold">{Math.round(quote.refundRate * 100)}%</dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500">Cancellation fee</dt>
+                  <dd className="font-semibold">{money.format(Number(quote.cancellationFee))}</dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500">Refund to your wallet</dt>
+                  <dd className="font-semibold">{money.format(Number(quote.refundAmount))}</dd>
+                </div>
+              </dl>
+            </>
+          )}
           <label className="mt-4 block text-sm font-medium">
             Reason <span className="font-normal text-zinc-500">(optional)</span>
             <textarea
@@ -285,7 +377,7 @@ export default function BookingDetailPage() {
               Keep lesson
             </button>
             <button
-              disabled={busy}
+              disabled={busy || !quote}
               onClick={() => void cancel()}
               className="h-10 rounded-full bg-red-600 px-5 font-semibold text-white disabled:opacity-50"
             >
@@ -294,30 +386,23 @@ export default function BookingDetailPage() {
           </div>
         </section>
       )}
+
       {mode === "reschedule" && (
         <section className="mt-6 rounded-2xl border border-violet-200 bg-violet-50/40 p-6">
           <h2 className="text-lg font-semibold">Choose a new time</h2>
           <p className="mt-1 text-sm text-zinc-600">
-            Select one or more consecutive 30-minute slots.
+            Choose exactly {requiredSlotCount} consecutive 30-minute
+            {requiredSlotCount === 1 ? " slot" : " slots"} on the same day.
           </p>
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {sortedSlots.map((slot) => {
-              const active = selectedIds.includes(slot.id);
-              return (
-                <button
-                  key={slot.id}
-                  aria-pressed={active}
-                  onClick={() =>
-                    setSelectedIds((ids) =>
-                      active ? ids.filter((value) => value !== slot.id) : [...ids, slot.id]
-                    )
-                  }
-                  className={`rounded-xl border p-3 text-sm font-semibold ${active ? "border-violet-600 bg-violet-600 text-white" : "border-zinc-300 bg-white"}`}
-                >
-                  {dateTime.format(new Date(slot.startedAt))}
-                </button>
-              );
-            })}
+          <div className="mt-5">
+            <ContinuousSlotPicker
+              slots={sortedSlots}
+              selectedIds={selectedIds}
+              onChange={setSelectedIds}
+              onSelectionMessage={setMessage}
+              requiredCount={requiredSlotCount}
+              timeZone={TIME_ZONE}
+            />
           </div>
           {sortedSlots.length === 0 && (
             <p className="mt-5 text-sm text-zinc-500">No alternative times are available.</p>
@@ -330,7 +415,7 @@ export default function BookingDetailPage() {
               Close
             </button>
             <button
-              disabled={busy || selectedIds.length === 0}
+              disabled={busy || selectedIds.length !== requiredSlotCount}
               onClick={() => void reschedule()}
               className="h-10 rounded-full bg-violet-600 px-5 font-semibold text-white disabled:opacity-50"
             >
@@ -340,5 +425,13 @@ export default function BookingDetailPage() {
         </section>
       )}
     </main>
+  );
+}
+
+export default function BookingDetailPage() {
+  return (
+    <RequireAuth>
+      <BookingDetailContent />
+    </RequireAuth>
   );
 }

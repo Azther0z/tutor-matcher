@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
 import type {
@@ -7,63 +8,356 @@ import type {
 } from "./booking.schema.ts";
 
 const SLOT_MS = 30 * 60_000;
-export const LATE_CANCELLATION_REFUND_RATE = 0.7;
+const BANGKOK_TIME_ZONE = "Asia/Bangkok";
+const ZERO = new Prisma.Decimal(0);
 
-// BOOK-3: Calculate whether the late-cancellation rule applies and how much to return.
-export function cancellationRefund(amount: Prisma.Decimal, startsAt: Date, now = new Date()) {
-  const late = startsAt.getTime() - now.getTime() <= 24 * 60 * 60_000;
-  return { late, amount: late ? amount.mul(LATE_CANCELLATION_REFUND_RATE) : amount };
+function positiveSetting(name: string, fallback: number) {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
-export class BookingNotFoundError extends Error {
-  code = "BOOKING_NOT_FOUND";
+
+function rateSetting(name: string, fallback: number) {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : fallback;
 }
-export class BookingForbiddenError extends Error {
-  code = "BOOKING_FORBIDDEN";
-}
-export class BookingConflictError extends Error {
-  code = "BOOKING_CONFLICT";
+
+// These BOOK-3 defaults stay configurable until product signs off the final policy numbers.
+export const CANCELLATION_POLICY_WINDOW_HOURS = positiveSetting(
+  "BOOKING_CANCELLATION_WINDOW_HOURS",
+  24
+);
+export const LATE_CANCELLATION_REFUND_RATE = rateSetting("BOOKING_LATE_REFUND_RATE", 0.7);
+export const PAYMENT_HOLD_MINUTES = positiveSetting("BOOKING_PAYMENT_HOLD_MINUTES", 15);
+
+export type BookingErrorCode =
+  | "BOOKING_NOT_FOUND"
+  | "SUBJECT_NOT_FOUND"
+  | "BOOKING_FORBIDDEN"
+  | "SLOT_TAKEN"
+  | "INVALID_SLOT_BLOCK"
+  | "BOOKING_EXPIRED"
+  | "BOOKING_ALREADY_PAID"
+  | "BOOKING_NOT_CANCELLABLE"
+  | "BOOKING_NOT_RESCHEDULABLE"
+  | "PAYMENT_NOT_FOUND"
+  | "INSUFFICIENT_BALANCE"
+  | "CANCELLATION_QUOTE_CHANGED";
+
+export class BookingDomainError extends Error {
   constructor(
+    public readonly code: BookingErrorCode,
+    public readonly status: number,
     message: string,
-    public subjectId: number
+    public readonly details?: Record<string, unknown>
   ) {
     super(message);
+    this.name = "BookingDomainError";
   }
 }
-export class BookingPaymentError extends Error {
-  code = "PAYMENT_FAILED";
+
+export class BookingNotFoundError extends BookingDomainError {
+  constructor(
+    message = "Booking not found",
+    code: "BOOKING_NOT_FOUND" | "SUBJECT_NOT_FOUND" = "BOOKING_NOT_FOUND"
+  ) {
+    super(code, 404, message);
+  }
+}
+
+export class BookingForbiddenError extends BookingDomainError {
+  constructor(message: string) {
+    super("BOOKING_FORBIDDEN", 403, message);
+  }
+}
+
+type ConflictCode = Exclude<
+  BookingErrorCode,
+  | "BOOKING_NOT_FOUND"
+  | "SUBJECT_NOT_FOUND"
+  | "BOOKING_FORBIDDEN"
+  | "PAYMENT_NOT_FOUND"
+  | "INSUFFICIENT_BALANCE"
+>;
+
+export class BookingConflictError extends BookingDomainError {
+  constructor(code: ConflictCode, message: string, details?: Record<string, unknown>) {
+    super(code, 409, message, details);
+  }
+}
+
+export class BookingPaymentError extends BookingDomainError {
+  constructor(
+    code: "PAYMENT_NOT_FOUND" | "INSUFFICIENT_BALANCE",
+    message: string,
+    details?: Record<string, unknown>
+  ) {
+    super(code, code === "INSUFFICIENT_BALANCE" ? 402 : 409, message, details);
+  }
 }
 
 const detailInclude = {
-  user: { select: { id: true, firstName: true, lastName: true, email: true } },
+  user: { select: { id: true, firstName: true, lastName: true, balance: true } },
   subject: {
     include: {
-      tutor: { include: { user: { select: { id: true, firstName: true, lastName: true } } } },
+      tutor: {
+        include: { user: { select: { id: true, firstName: true, lastName: true } } },
+      },
     },
   },
   availabilities: { orderBy: { startedAt: "asc" as const } },
   payments: { orderBy: { createdAt: "asc" as const } },
-};
+} satisfies Prisma.BookingInclude;
 
-// BOOK-1: Return only future, unclaimed slots for a published tutor subject.
-export async function getSubjectAvailability(subjectId: number) {
+type BookingDetailRecord = Prisma.BookingGetPayload<{ include: typeof detailInclude }>;
+type QuoteSource = Pick<
+  BookingDetailRecord,
+  "id" | "status" | "totalAmount" | "startedAt" | "payments"
+>;
+
+function decimalString(value: Prisma.Decimal) {
+  return value.toDecimalPlaces(2).toFixed(2);
+}
+
+function bangkokCalendarDay(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: BANGKOK_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+  const read = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${read("year")}-${read("month")}-${read("day")}`;
+}
+
+// BOOK-1 only accepts one continuous block that stays on one Bangkok calendar day.
+export function assertSlotBlock(slots: Array<{ startedAt: Date }>, subjectId: string) {
+  if (slots.length === 0)
+    throw new BookingConflictError("INVALID_SLOT_BLOCK", "Select at least one slot", {
+      subjectId,
+    });
+  const day = bangkokCalendarDay(slots[0]!.startedAt);
+  for (let index = 0; index < slots.length; index++) {
+    if (bangkokCalendarDay(slots[index]!.startedAt) !== day)
+      throw new BookingConflictError(
+        "INVALID_SLOT_BLOCK",
+        "Selected slots must be on the same day",
+        { subjectId }
+      );
+    if (
+      index > 0 &&
+      slots[index]!.startedAt.getTime() - slots[index - 1]!.startedAt.getTime() !== SLOT_MS
+    )
+      throw new BookingConflictError("INVALID_SLOT_BLOCK", "Selected slots must be consecutive", {
+        subjectId,
+      });
+  }
+}
+
+// BOOK-3 calculates refunds from server time; the client never supplies money values.
+export function cancellationRefund(amount: Prisma.Decimal, startsAt: Date, now = new Date()) {
+  const policyMs = CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
+  const late = startsAt.getTime() - now.getTime() <= policyMs;
+  const rate = late ? LATE_CANCELLATION_REFUND_RATE : 1;
+  return { late, rate, amount: amount.mul(rate).toDecimalPlaces(2) };
+}
+
+function quoteFor(booking: QuoteSource, now: Date) {
+  const transfer = booking.payments.find(
+    (payment) => payment.type === "TRANSFER" && payment.status === "HOLDING"
+  );
+  const originalAmount = transfer?.amount ?? ZERO;
+  const late =
+    booking.startedAt.getTime() - now.getTime() <= CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
+  const policy = transfer
+    ? cancellationRefund(transfer.amount, booking.startedAt, now)
+    : { late, rate: 0, amount: ZERO };
+  const fee = originalAmount.minus(policy.amount).toDecimalPlaces(2);
+  const token = createHash("sha256")
+    .update(
+      [
+        booking.id,
+        booking.status,
+        booking.startedAt.toISOString(),
+        transfer?.id ?? "unpaid",
+        transfer?.status ?? "none",
+        decimalString(originalAmount),
+        decimalString(policy.amount),
+        String(policy.rate),
+        String(policy.late),
+      ].join("|")
+    )
+    .digest("hex");
+  return {
+    token,
+    generatedAt: now.toISOString(),
+    bookingId: booking.id,
+    lateCancellation: policy.late,
+    policyWindowHours: CANCELLATION_POLICY_WINDOW_HOURS,
+    refundRate: policy.rate,
+    originalAmount: decimalString(originalAmount),
+    refundAmount: decimalString(policy.amount),
+    cancellationFee: decimalString(fee),
+  };
+}
+
+export function mapBookingResponse(
+  booking: BookingDetailRecord,
+  viewerUserId: string,
+  now = new Date()
+) {
+  const isStudent = booking.userId === viewerUserId;
+  const transfer = booking.payments.find((payment) => payment.type === "TRANSFER");
+  const amountDue =
+    booking.status === "PENDING_PAYMENT" ? (transfer?.amount ?? booking.totalAmount) : ZERO;
+  const walletBalance = booking.user.balance;
+  const shortfall = amountDue.greaterThan(walletBalance) ? amountDue.minus(walletBalance) : ZERO;
+  const beforeDeadline =
+    !booking.paymentExpiresAt || booking.paymentExpiresAt.getTime() > now.getTime();
+  const beforeLesson = booking.startedAt.getTime() > now.getTime();
+  const payEligible =
+    isStudent &&
+    booking.status === "PENDING_PAYMENT" &&
+    transfer?.status === "PENDING" &&
+    beforeDeadline &&
+    beforeLesson;
+  const canPay = payEligible && shortfall.isZero();
+  const canCancel =
+    isStudent && ["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) && beforeLesson;
+  const canReschedule =
+    isStudent &&
+    booking.status === "CONFIRMED" &&
+    booking.startedAt.getTime() - now.getTime() > CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
+
+  return {
+    id: booking.id,
+    status: booking.status,
+    description: booking.description,
+    zoomMeetingUrl: booking.zoomMeetingUrl,
+    createdAt: booking.createdAt.toISOString(),
+    isTrial: booking.isTrial,
+    totalAmount: decimalString(booking.totalAmount),
+    startedAt: booking.startedAt.toISOString(),
+    endedAt: booking.endedAt.toISOString(),
+    paymentExpiresAt: booking.paymentExpiresAt?.toISOString() ?? null,
+    cancelledAt: booking.cancelledAt?.toISOString() ?? null,
+    cancellationReason: booking.cancellationReason,
+    student: {
+      id: booking.user.id,
+      name: `${booking.user.firstName} ${booking.user.lastName}`,
+    },
+    subject: {
+      id: booking.subject.id,
+      name: booking.subject.name,
+      description: booking.subject.description,
+      hourlyRate: decimalString(booking.subject.hourlyRate),
+      tutor: {
+        id: booking.subject.tutor.id,
+        name: booking.subject.tutor.user
+          ? `${booking.subject.tutor.user.firstName} ${booking.subject.tutor.user.lastName}`
+          : "Tutor",
+        avatarUrl: booking.subject.tutor.avatarUrl,
+      },
+    },
+    availabilities: booking.availabilities.map((slot) => ({
+      id: slot.id,
+      startedAt: slot.startedAt.toISOString(),
+    })),
+    payment: {
+      status: transfer?.status ?? null,
+      amountDue: decimalString(amountDue),
+      walletBalance: isStudent ? decimalString(walletBalance) : null,
+      shortfall: isStudent ? decimalString(shortfall) : null,
+      canPay,
+      expiresAt: booking.paymentExpiresAt?.toISOString() ?? null,
+    },
+    actions: { canPay: payEligible, canCancel, canReschedule },
+  };
+}
+
+function isSerializationError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
+}
+
+async function loadDetail(id: string) {
+  return prisma.booking.findUnique({ where: { id }, include: detailInclude });
+}
+
+// Lazily expires abandoned payment-due bookings before relevant reads and writes.
+export async function releaseExpiredBookings(
+  now = new Date(),
+  filter: { id?: string; userId?: string; subjectId?: string } = {}
+) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          const expired = await tx.booking.findMany({
+            where: {
+              ...filter,
+              status: "PENDING_PAYMENT",
+              paymentExpiresAt: { lte: now },
+            },
+            select: { id: true },
+          });
+          let released = 0;
+          for (const candidate of expired) {
+            const claimed = await tx.booking.updateMany({
+              where: {
+                id: candidate.id,
+                status: "PENDING_PAYMENT",
+                paymentExpiresAt: { lte: now },
+              },
+              data: {
+                status: "CANCELLED",
+                cancelledAt: now,
+                cancellationReason: "PAYMENT_EXPIRED",
+              },
+            });
+            if (claimed.count !== 1) continue;
+            await tx.payment.updateMany({
+              where: { bookingId: candidate.id, type: "TRANSFER", status: "PENDING" },
+              data: { status: "CANCELLED" },
+            });
+            await tx.availability.updateMany({
+              where: { bookingId: candidate.id },
+              data: { bookingId: null },
+            });
+            released += 1;
+          }
+          return released;
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      );
+    } catch (error) {
+      if (!isSerializationError(error) || attempt === 1) throw error;
+    }
+  }
+  return 0;
+}
+
+// BOOK-1 returns future, unclaimed slots for a published tutor subject.
+export async function getSubjectAvailability(subjectId: string) {
+  const now = new Date();
+  await releaseExpiredBookings(now, { subjectId });
   const subject = await prisma.subject.findUnique({
     where: { id: subjectId },
     include: {
       tutor: { include: { user: { select: { firstName: true, lastName: true } } } },
       availabilitySubjects: {
-        where: { availability: { bookingId: null, startedAt: { gt: new Date() } } },
+        where: { availability: { bookingId: null, startedAt: { gt: now } } },
         include: { availability: true },
       },
     },
   });
   if (!subject || subject.tutor.status !== "PUBLISHED")
-    throw new BookingNotFoundError("Subject not found");
+    throw new BookingNotFoundError("Subject not found", "SUBJECT_NOT_FOUND");
   return {
     subject: {
       id: subject.id,
       name: subject.name,
       description: subject.description,
-      hourlyRate: subject.hourlyRate.toString(),
+      hourlyRate: decimalString(subject.hourlyRate),
       tutor: {
         id: subject.tutor.id,
         name: subject.tutor.user
@@ -75,57 +369,59 @@ export async function getSubjectAvailability(subjectId: number) {
     slots: subject.availabilitySubjects
       .map(({ availability }) => ({
         id: availability.id,
-        startedAt: availability.startedAt,
-        available: true,
+        startedAt: availability.startedAt.toISOString(),
+        available: true as const,
       }))
-      .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime()),
+      .sort((first, second) => first.startedAt.localeCompare(second.startedAt)),
   };
 }
 
-async function eligibleSlots(tx: Prisma.TransactionClient, subjectId: number, ids: number[]) {
-  // Recheck every chosen slot inside the transaction to prevent stale bookings.
+async function eligibleSlots(
+  tx: Prisma.TransactionClient,
+  subjectId: string,
+  ids: string[],
+  now: Date
+) {
   return tx.availability.findMany({
     where: {
       id: { in: ids },
       bookingId: null,
-      startedAt: { gt: new Date() },
+      startedAt: { gt: now },
       availabilitySubjects: { some: { subjectId } },
     },
     orderBy: { startedAt: "asc" },
   });
 }
-function assertContiguous(slots: Array<{ startedAt: Date }>, subjectId: number) {
-  // Multi-slot lessons must consist of consecutive 30-minute blocks.
-  for (let i = 1; i < slots.length; i++)
-    if (slots[i]!.startedAt.getTime() - slots[i - 1]!.startedAt.getTime() !== SLOT_MS)
-      throw new BookingConflictError("Selected slots must be consecutive", subjectId);
-}
 
-export async function createBooking(userId: number, input: CreateBookingInput) {
+export async function createBooking(userId: string, input: CreateBookingInput) {
+  const now = new Date();
+  await releaseExpiredBookings(now, { subjectId: input.subjectId });
   try {
-    // Create the booking, reserve its slots, and create payment as one atomic operation.
     return await prisma.$transaction(
       async (tx) => {
-        // Confirm the selected subject is published and owned by another user.
         const subject = await tx.subject.findUnique({
           where: { id: input.subjectId },
           include: { tutor: { include: { user: { select: { id: true } } } } },
         });
         if (!subject || subject.tutor.status !== "PUBLISHED" || !subject.tutor.user)
-          throw new BookingNotFoundError("Subject not found");
+          throw new BookingNotFoundError("Subject not found", "SUBJECT_NOT_FOUND");
         if (subject.tutor.user.id === userId)
           throw new BookingForbiddenError("Tutors cannot book their own subject");
-        const slots = await eligibleSlots(tx, input.subjectId, input.availabilityIds);
-        // A missing slot means it was invalid or another booking claimed it first.
+
+        const slots = await eligibleSlots(tx, input.subjectId, input.availabilityIds, now);
         if (slots.length !== input.availabilityIds.length)
-          throw new BookingConflictError(
-            "One or more slots are no longer available",
-            input.subjectId
-          );
-        assertContiguous(slots, input.subjectId);
-        // Each availability record is 30 minutes, so two slots equal the hourly rate.
+          throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable", {
+            subjectId: input.subjectId,
+          });
+        assertSlotBlock(slots, input.subjectId);
+
         const amount = new Prisma.Decimal(subject.hourlyRate).mul(slots.length).div(2);
-        // Snapshot time and price so booking history remains stable after slots are released.
+        const requiresPayment = !amount.isZero();
+        const expiresAt = requiresPayment
+          ? new Date(
+              Math.min(now.getTime() + PAYMENT_HOLD_MINUTES * 60_000, slots[0]!.startedAt.getTime())
+            )
+          : null;
         const booking = await tx.booking.create({
           data: {
             userId,
@@ -135,220 +431,349 @@ export async function createBooking(userId: number, input: CreateBookingInput) {
             totalAmount: amount,
             startedAt: slots[0]!.startedAt,
             endedAt: new Date(slots.at(-1)!.startedAt.getTime() + SLOT_MS),
+            status: requiresPayment ? "PENDING_PAYMENT" : "CONFIRMED",
+            paymentExpiresAt: expiresAt,
           },
         });
         const claimed = await tx.availability.updateMany({
-          where: { id: { in: input.availabilityIds }, bookingId: null },
+          where: {
+            id: { in: input.availabilityIds },
+            bookingId: null,
+            startedAt: { gt: now },
+          },
           data: { bookingId: booking.id },
         });
         if (claimed.count !== input.availabilityIds.length)
-          throw new BookingConflictError(
-            "One or more slots are no longer available",
-            input.subjectId
-          );
-        // Payment stays pending until the student confirms payment on the detail page.
-        await tx.payment.create({
-          data: {
-            type: "TRANSFER",
-            amount,
-            status: "PENDING",
-            fromUserId: userId,
-            toUserId: subject.tutor.user.id,
-            bookingId: booking.id,
-          },
+          throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable", {
+            subjectId: input.subjectId,
+          });
+        if (requiresPayment)
+          await tx.payment.create({
+            data: {
+              type: "TRANSFER",
+              amount,
+              status: "PENDING",
+              fromUserId: userId,
+              toUserId: subject.tutor.user.id,
+              bookingId: booking.id,
+            },
+          });
+        const detailed = await tx.booking.findUniqueOrThrow({
+          where: { id: booking.id },
+          include: detailInclude,
         });
-        return tx.booking.findUniqueOrThrow({ where: { id: booking.id }, include: detailInclude });
+        return mapBookingResponse(detailed, userId, now);
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
   } catch (error) {
-    // Treat a database serialization race as the same conflict as a taken slot.
-    if (
-      error instanceof BookingConflictError ||
-      error instanceof BookingNotFoundError ||
-      error instanceof BookingForbiddenError
-    )
-      throw error;
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034")
-      throw new BookingConflictError("One or more slots are no longer available", input.subjectId);
-    throw error;
+    if (error instanceof BookingDomainError || !isSerializationError(error)) throw error;
+    throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable", {
+      subjectId: input.subjectId,
+    });
   }
 }
 
-export async function getBooking(userId: number, id: number) {
-  // Only the student or the lesson tutor may read these booking details.
-  const booking = await prisma.booking.findUnique({ where: { id }, include: detailInclude });
-  if (!booking) throw new BookingNotFoundError("Booking not found");
+export async function getBooking(userId: string, id: string) {
+  const now = new Date();
+  await releaseExpiredBookings(now, { id });
+  const booking = await loadDetail(id);
+  if (!booking) throw new BookingNotFoundError();
   if (booking.userId !== userId && booking.subject.tutor.user?.id !== userId)
     throw new BookingForbiddenError("You cannot view this booking");
-  return booking;
+  return mapBookingResponse(booking, userId, now);
 }
 
-// Return the current student's bookings newest first for the booking history page.
-export async function listBookings(userId: number) {
+export async function listBookings(userId: string) {
+  const now = new Date();
+  await releaseExpiredBookings(now, { userId });
   const bookings = await prisma.booking.findMany({
     where: { userId },
     include: detailInclude,
     orderBy: [{ startedAt: "desc" }, { id: "desc" }],
   });
-  // Shape nested tutor data into the same client contract used by booking pages.
-  return bookings.map((booking) => ({
-    ...booking,
-    subject: {
-      ...booking.subject,
-      tutor: {
-        id: booking.subject.tutor.id,
-        name: booking.subject.tutor.user
-          ? `${booking.subject.tutor.user.firstName} ${booking.subject.tutor.user.lastName}`
-          : "Tutor",
-        avatarUrl: booking.subject.tutor.avatarUrl,
-      },
-    },
-  }));
+  return bookings.map((booking) => mapBookingResponse(booking, userId, now));
 }
 
-export async function confirmBookingPayment(userId: number, id: number) {
-  // Debit balance and confirm the booking together so neither can succeed alone.
-  return prisma.$transaction(
-    async (tx) => {
-      const booking = await tx.booking.findUnique({ where: { id }, include: { payments: true } });
-      if (!booking) throw new BookingNotFoundError("Booking not found");
-      if (booking.userId !== userId)
-        throw new BookingForbiddenError("You cannot pay for this booking");
-      if (booking.status !== "PENDING_PAYMENT")
-        throw new BookingConflictError("Booking is not awaiting payment", booking.subjectId);
-      const payment = booking.payments.find((p) => p.type === "TRANSFER" && p.status === "PENDING");
-      if (!payment) throw new BookingPaymentError("Pending payment not found");
-      // The balance condition prevents this update from making the balance negative.
-      const debited = await tx.user.updateMany({
-        where: { id: userId, balance: { gte: payment.amount } },
-        data: { balance: { decrement: payment.amount } },
-      });
-      if (debited.count !== 1) throw new BookingPaymentError("Insufficient balance");
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: { status: "HOLDING", completedAt: new Date() },
-      });
-      return tx.booking.update({
-        where: { id },
-        data: { status: "CONFIRMED" },
-        include: detailInclude,
-      });
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-  );
-}
+export async function confirmBookingPayment(userId: string, id: string) {
+  const now = new Date();
+  await releaseExpiredBookings(now, { id });
 
-export async function rescheduleBooking(userId: number, id: number, input: RescheduleBookingInput) {
-  // BOOK-3: Reserve replacement slots before releasing the original lesson slots.
-  return prisma.$transaction(
-    async (tx) => {
-      const booking = await tx.booking.findUnique({ where: { id } });
-      if (!booking) throw new BookingNotFoundError("Booking not found");
-      if (booking.userId !== userId)
-        throw new BookingForbiddenError("You cannot reschedule this booking");
-      if (
-        booking.status !== "CONFIRMED" ||
-        booking.startedAt.getTime() - Date.now() <= 24 * 60 * 60_000
-      )
-        throw new BookingConflictError(
-          "Rescheduling is allowed only more than 24 hours before the lesson",
-          booking.subjectId
-        );
-      const currentSlotCount = await tx.availability.count({ where: { bookingId: id } });
-      // Rescheduling changes the time but must preserve the purchased duration.
-      if (input.availabilityIds.length !== currentSlotCount)
-        throw new BookingConflictError(
-          "The new time must keep the original lesson duration",
-          booking.subjectId
-        );
-      const slots = await eligibleSlots(tx, booking.subjectId, input.availabilityIds);
-      if (slots.length !== input.availabilityIds.length)
-        throw new BookingConflictError(
-          "One or more slots are no longer available",
-          booking.subjectId
-        );
-      assertContiguous(slots, booking.subjectId);
-      const claimed = await tx.availability.updateMany({
-        where: { id: { in: input.availabilityIds }, bookingId: null },
-        data: { bookingId: id },
-      });
-      if (claimed.count !== input.availabilityIds.length)
-        throw new BookingConflictError(
-          "One or more slots are no longer available",
-          booking.subjectId
-        );
-      // Release old slots only after all replacement slots were claimed successfully.
-      await tx.availability.updateMany({
-        where: { bookingId: id, id: { notIn: input.availabilityIds } },
-        data: { bookingId: null },
-      });
-      return tx.booking.update({
-        where: { id },
-        data: {
-          startedAt: slots[0]!.startedAt,
-          endedAt: new Date(slots.at(-1)!.startedAt.getTime() + SLOT_MS),
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          const booking = await tx.booking.findUnique({
+            where: { id },
+            include: { payments: true },
+          });
+          if (!booking) throw new BookingNotFoundError();
+          if (booking.userId !== userId)
+            throw new BookingForbiddenError("You cannot pay for this booking");
+          if (booking.status === "CONFIRMED")
+            throw new BookingConflictError("BOOKING_ALREADY_PAID", "Booking is already paid");
+          if (booking.status === "CANCELLED" && booking.cancellationReason === "PAYMENT_EXPIRED")
+            throw new BookingConflictError("BOOKING_EXPIRED", "The payment hold has expired");
+          if (booking.status !== "PENDING_PAYMENT")
+            throw new BookingConflictError(
+              "BOOKING_ALREADY_PAID",
+              "Booking is not awaiting payment"
+            );
+          if (
+            !booking.paymentExpiresAt ||
+            booking.paymentExpiresAt.getTime() <= now.getTime() ||
+            booking.startedAt.getTime() <= now.getTime()
+          )
+            throw new BookingConflictError("BOOKING_EXPIRED", "The payment hold has expired");
+
+          const transfer = booking.payments.find(
+            (payment) => payment.type === "TRANSFER" && payment.status === "PENDING"
+          );
+          if (!transfer)
+            throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Pending payment not found");
+
+          const claimed = await tx.booking.updateMany({
+            where: {
+              id,
+              status: "PENDING_PAYMENT",
+              paymentExpiresAt: { gt: now },
+              startedAt: { gt: now },
+            },
+            data: { status: "CONFIRMED", paymentExpiresAt: null },
+          });
+          if (claimed.count !== 1)
+            throw new BookingConflictError("BOOKING_EXPIRED", "The payment hold has expired");
+
+          const debited = await tx.user.updateMany({
+            where: { id: userId, balance: { gte: transfer.amount } },
+            data: { balance: { decrement: transfer.amount } },
+          });
+          if (debited.count !== 1) {
+            const user = await tx.user.findUniqueOrThrow({
+              where: { id: userId },
+              select: { balance: true },
+            });
+            throw new BookingPaymentError("INSUFFICIENT_BALANCE", "Insufficient balance", {
+              walletBalance: decimalString(user.balance),
+              amountDue: decimalString(transfer.amount),
+              shortfall: decimalString(transfer.amount.minus(user.balance)),
+            });
+          }
+          const paymentClaimed = await tx.payment.updateMany({
+            where: { id: transfer.id, status: "PENDING" },
+            data: { status: "HOLDING" },
+          });
+          if (paymentClaimed.count !== 1)
+            throw new BookingConflictError("BOOKING_ALREADY_PAID", "Booking is already paid");
+
+          const detailed = await tx.booking.findUniqueOrThrow({
+            where: { id },
+            include: detailInclude,
+          });
+          return mapBookingResponse(detailed, userId, now);
         },
-        include: detailInclude,
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      );
+    } catch (error) {
+      if (!isSerializationError(error)) throw error;
+      const latest = await prisma.booking.findUnique({
+        where: { id },
+        select: { status: true, cancellationReason: true },
       });
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-  );
+      if (latest?.status === "CONFIRMED")
+        throw new BookingConflictError("BOOKING_ALREADY_PAID", "Booking is already paid");
+      if (attempt === 1) {
+        await releaseExpiredBookings(new Date(), { id });
+        throw new BookingConflictError("BOOKING_EXPIRED", "The payment hold has expired");
+      }
+    }
+  }
+  throw new BookingConflictError("BOOKING_ALREADY_PAID", "Booking payment could not be claimed");
 }
 
-export async function cancelBooking(userId: number, id: number, input: CancelBookingInput) {
-  // BOOK-3: Refund credit, release slots, and cancel status in one transaction.
-  return prisma.$transaction(
-    async (tx) => {
-      const booking = await tx.booking.findUnique({ where: { id }, include: { payments: true } });
-      if (!booking) throw new BookingNotFoundError("Booking not found");
-      if (booking.userId !== userId)
-        throw new BookingForbiddenError("You cannot cancel this booking");
-      if (
-        !["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) ||
-        booking.startedAt <= new Date()
-      )
-        throw new BookingConflictError("Booking cannot be cancelled", booking.subjectId);
-      const policy = cancellationRefund(booking.totalAmount, booking.startedAt);
-      const late = policy.late;
-      const transfer = booking.payments.find(
-        (p) => p.type === "TRANSFER" && p.status === "HOLDING"
-      );
-      let refund = new Prisma.Decimal(0);
-      if (transfer) {
-        // Refund 100% when more than 24 hours away; otherwise refund 70%.
-        refund = cancellationRefund(transfer.amount, booking.startedAt).amount;
-        // Credit the student and keep a separate REFUND record for the audit trail.
-        await tx.user.update({ where: { id: userId }, data: { balance: { increment: refund } } });
-        await tx.payment.create({
+export async function rescheduleBooking(userId: string, id: string, input: RescheduleBookingInput) {
+  const now = new Date();
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const booking = await tx.booking.findUnique({ where: { id } });
+        if (!booking) throw new BookingNotFoundError();
+        if (booking.userId !== userId)
+          throw new BookingForbiddenError("You cannot reschedule this booking");
+        if (
+          booking.status !== "CONFIRMED" ||
+          booking.startedAt.getTime() - now.getTime() <=
+            CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000
+        )
+          throw new BookingConflictError(
+            "BOOKING_NOT_RESCHEDULABLE",
+            `Rescheduling is allowed only more than ${CANCELLATION_POLICY_WINDOW_HOURS} hours before the lesson`
+          );
+
+        const currentSlotCount = await tx.availability.count({ where: { bookingId: id } });
+        if (input.availabilityIds.length !== currentSlotCount)
+          throw new BookingConflictError(
+            "INVALID_SLOT_BLOCK",
+            "The new time must keep the original lesson duration",
+            { subjectId: booking.subjectId }
+          );
+        const slots = await eligibleSlots(tx, booking.subjectId, input.availabilityIds, now);
+        if (slots.length !== input.availabilityIds.length)
+          throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable", {
+            subjectId: booking.subjectId,
+          });
+        assertSlotBlock(slots, booking.subjectId);
+        const claimed = await tx.availability.updateMany({
+          where: {
+            id: { in: input.availabilityIds },
+            bookingId: null,
+            startedAt: { gt: now },
+          },
+          data: { bookingId: id },
+        });
+        if (claimed.count !== input.availabilityIds.length)
+          throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable", {
+            subjectId: booking.subjectId,
+          });
+        await tx.availability.updateMany({
+          where: { bookingId: id, id: { notIn: input.availabilityIds } },
+          data: { bookingId: null },
+        });
+        const detailed = await tx.booking.update({
+          where: { id },
           data: {
-            type: "REFUND",
-            amount: refund,
-            status: "COMPLETED",
-            completedAt: new Date(),
-            fromUserId: transfer.toUserId,
-            toUserId: userId,
-            bookingId: id,
+            startedAt: slots[0]!.startedAt,
+            endedAt: new Date(slots.at(-1)!.startedAt.getTime() + SLOT_MS),
+          },
+          include: detailInclude,
+        });
+        return mapBookingResponse(detailed, userId, now);
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+  } catch (error) {
+    if (error instanceof BookingDomainError || !isSerializationError(error)) throw error;
+    throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable");
+  }
+}
+
+export async function getCancellationQuote(userId: string, id: string) {
+  const now = new Date();
+  await releaseExpiredBookings(now, { id });
+  const booking = await loadDetail(id);
+  if (!booking) throw new BookingNotFoundError();
+  if (booking.userId !== userId) throw new BookingForbiddenError("You cannot cancel this booking");
+  if (
+    !["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) ||
+    booking.startedAt.getTime() <= now.getTime()
+  )
+    throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
+  if (
+    booking.status === "CONFIRMED" &&
+    !booking.payments.some((payment) => payment.type === "TRANSFER" && payment.status === "HOLDING")
+  )
+    throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
+  return quoteFor(booking, now);
+}
+
+export async function cancelBooking(userId: string, id: string, input: CancelBookingInput) {
+  const now = new Date();
+  await releaseExpiredBookings(now, { id });
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const booking = await tx.booking.findUnique({ where: { id }, include: detailInclude });
+        if (!booking) throw new BookingNotFoundError();
+        if (booking.userId !== userId)
+          throw new BookingForbiddenError("You cannot cancel this booking");
+        if (
+          !["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) ||
+          booking.startedAt.getTime() <= now.getTime()
+        )
+          throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
+
+        const quote = quoteFor(booking, now);
+        const transfer = booking.payments.find((payment) => payment.type === "TRANSFER");
+        if (booking.status === "CONFIRMED" && transfer?.status !== "HOLDING")
+          throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
+        if (transfer?.status === "HOLDING" && input.quoteToken !== quote.token)
+          throw new BookingConflictError(
+            "CANCELLATION_QUOTE_CHANGED",
+            "The cancellation amount changed. Review the latest quote before confirming.",
+            { currentQuote: quote }
+          );
+
+        const claimed = await tx.booking.updateMany({
+          where: {
+            id,
+            status: { in: ["PENDING_PAYMENT", "CONFIRMED"] },
+            startedAt: { gt: now },
+          },
+          data: {
+            status: "CANCELLED",
+            cancelledAt: now,
+            cancellationReason: input.reason,
+            paymentExpiresAt: null,
           },
         });
-        await tx.payment.update({ where: { id: transfer.id }, data: { status: "CANCELLED" } });
-      }
-      // A cancelled lesson must no longer block the tutor's availability.
-      await tx.availability.updateMany({ where: { bookingId: id }, data: { bookingId: null } });
-      const updated = await tx.booking.update({
-        where: { id },
-        data: { status: "CANCELLED", cancelledAt: new Date(), cancellationReason: input.reason },
-        include: detailInclude,
-      });
-      return {
-        booking: updated,
-        refund: {
-          amount: refund.toString(),
-          lateCancellation: late,
-          rate: late ? LATE_CANCELLATION_REFUND_RATE : 1,
-        },
-      };
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-  );
+        if (claimed.count !== 1)
+          throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
+
+        let refund = ZERO;
+        if (transfer?.status === "PENDING")
+          await tx.payment.updateMany({
+            where: { id: transfer.id, status: "PENDING" },
+            data: { status: "CANCELLED" },
+          });
+        if (transfer?.status === "HOLDING") {
+          const transferClosed = await tx.payment.updateMany({
+            where: { id: transfer.id, status: "HOLDING" },
+            data: { status: "CANCELLED" },
+          });
+          if (transferClosed.count !== 1)
+            throw new BookingConflictError(
+              "BOOKING_NOT_CANCELLABLE",
+              "Booking was already cancelled"
+            );
+          refund = new Prisma.Decimal(quote.refundAmount);
+          await tx.user.update({
+            where: { id: userId },
+            data: { balance: { increment: refund } },
+          });
+          await tx.payment.create({
+            data: {
+              type: "REFUND",
+              amount: refund,
+              status: "COMPLETED",
+              completedAt: now,
+              fromUserId: transfer.toUserId,
+              toUserId: userId,
+              bookingId: id,
+            },
+          });
+        }
+        await tx.availability.updateMany({
+          where: { bookingId: id },
+          data: { bookingId: null },
+        });
+        const detailed = await tx.booking.findUniqueOrThrow({
+          where: { id },
+          include: detailInclude,
+        });
+        return {
+          booking: mapBookingResponse(detailed, userId, now),
+          refund: {
+            amount: decimalString(refund),
+            lateCancellation: quote.lateCancellation,
+            rate: quote.refundRate,
+            cancellationFee: quote.cancellationFee,
+          },
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+  } catch (error) {
+    if (error instanceof BookingDomainError || !isSerializationError(error)) throw error;
+    throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking was already cancelled");
+  }
 }
