@@ -320,6 +320,16 @@ export async function saveStudentProfile(userId: string, input: StudentProfileRe
       include: { learningAreas: { include: { learningArea: true } } },
     });
 
+    if (input.user) {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          firstName: input.user.firstName,
+          lastName: input.user.lastName,
+        },
+      });
+    }
+
     return savedStudent;
   });
 

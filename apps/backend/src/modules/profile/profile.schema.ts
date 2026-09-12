@@ -57,6 +57,12 @@ export const studentProfileRequestSchema = z.object({
   goals: z.array(z.string().trim().min(1).max(100)).min(1).max(10),
   preferredLearningPeriod: z.enum(preferredLearningPeriods),
   preferredDurationMinutes: z.union([z.literal(30), z.literal(60), z.literal(90)]),
+  user: z
+    .object({
+      firstName: z.string().trim().min(1).max(100),
+      lastName: z.string().trim().min(1).max(100),
+    })
+    .optional(),
 });
 
 export type StudentProfileRequest = z.infer<typeof studentProfileRequestSchema>;
