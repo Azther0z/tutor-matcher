@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import BookingDetailPage from "./page";
 
 const bookingId = "f0f21183-1af0-49a9-b35f-63d9431b2748";
+const quoteToken = "a".repeat(64);
+const changedQuoteToken = "b".repeat(64);
 const replace = jest.fn();
 jest.mock("next/navigation", () => ({
   useParams: () => ({ id: bookingId }),
@@ -45,7 +47,7 @@ const booking = {
 };
 
 const quote = {
-  token: "quote-one",
+  token: quoteToken,
   generatedAt: "2029-01-01T00:00:00.000Z",
   bookingId,
   lateCancellation: true,
@@ -81,7 +83,7 @@ it("shows server cancellation terms before sending the quote token", async () =>
   expect(global.fetch).toHaveBeenLastCalledWith(
     `/api/bookings/${bookingId}/cancel`,
     expect.objectContaining({
-      body: JSON.stringify({ quoteToken: "quote-one" }),
+      body: JSON.stringify({ quoteToken }),
     })
   );
 });
@@ -129,7 +131,7 @@ it("does not show student actions when the backend denies them", async () => {
 it("requires a second confirmation when the server quote changes", async () => {
   const currentQuote = {
     ...quote,
-    token: "quote-two",
+    token: changedQuoteToken,
     refundAmount: "60",
     cancellationFee: "40",
   };
