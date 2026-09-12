@@ -65,8 +65,8 @@ export const learningAreaSearchSchema = z.object({
   search: z.string().trim().max(100).optional(),
 });
 
-// Account settings (/settings/account) cover email, password, and deactivation
-// only. Public listing fields live on the Tutor profile above.
+// Account settings (/settings/account) cover email and password only. Public
+// listing fields live on the Tutor profile above.
 export const accountUpdateSchema = z
   .object({
     email: z.email().optional(),
@@ -80,9 +80,3 @@ export const accountUpdateSchema = z
   });
 
 export type AccountUpdateRequest = z.infer<typeof accountUpdateSchema>;
-
-export const accountDeactivateSchema = z.object({
-  currentPassword: z.string().min(1),
-});
-
-export type AccountDeactivateRequest = z.infer<typeof accountDeactivateSchema>;

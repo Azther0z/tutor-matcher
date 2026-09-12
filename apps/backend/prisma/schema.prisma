@@ -55,10 +55,6 @@ model User {
   balance   Decimal  @default(0) @db.Decimal(12, 2)
   isAdmin   Boolean  @default(false) @map("is_admin")
 
-  // Set when the member deactivates their own account from /settings/account.
-  // A deactivated account keeps its rows but can no longer log in.
-  deactivatedAt DateTime? @map("deactivated_at")
-
   // A user account can optionally be linked to a tutor profile
   tutorId String? @unique @map("tutor_id") @db.Uuid
   tutor   Tutor?  @relation(fields: [tutorId], references: [id], onDelete: SetNull)

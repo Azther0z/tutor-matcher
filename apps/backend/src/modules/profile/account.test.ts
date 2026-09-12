@@ -17,7 +17,6 @@ const account = {
   id: userId,
   email: "member@example.com",
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
-  deactivatedAt: null,
 };
 
 const storedUser = { ...account, password: "current-password" };
@@ -48,15 +47,6 @@ describe("Account settings API", () => {
 
       expect(response.body).toMatchObject({ id: userId, email: "member@example.com" });
       expect(response.body).not.toHaveProperty("password");
-    });
-
-    it("returns 404 for a deactivated account", async () => {
-      userFindUnique.mockResolvedValue({ ...account, deactivatedAt: new Date() });
-
-      await request(app)
-        .get("/api/profiles/me/account")
-        .set("Authorization", `Bearer ${tokenFor()}`)
-        .expect(404);
     });
   });
 
@@ -162,60 +152,6 @@ describe("Account settings API", () => {
         data: { email: undefined, password: "a-longer-password" },
         select: expect.any(Object),
       });
-    });
-  });
-
-  describe("POST /api/profiles/me/account/deactivate", () => {
-    it("requires authentication", async () => {
-      await request(app)
-        .post("/api/profiles/me/account/deactivate")
-        .send({ currentPassword: "current-password" })
-        .expect(401);
-
-      expect(userUpdate).not.toHaveBeenCalled();
-    });
-
-    it("rejects an incorrect current password", async () => {
-      userFindUnique.mockResolvedValue(storedUser);
-
-      await request(app)
-        .post("/api/profiles/me/account/deactivate")
-        .set("Authorization", `Bearer ${tokenFor()}`)
-        .send({ currentPassword: "wrong-password" })
-        .expect(403);
-
-      expect(userUpdate).not.toHaveBeenCalled();
-    });
-
-    it("stamps the account as deactivated", async () => {
-      const deactivatedAt = new Date("2026-09-06T00:00:00.000Z");
-      userFindUnique.mockResolvedValue(storedUser);
-      userUpdate.mockResolvedValue({ ...account, deactivatedAt });
-
-      const response = await request(app)
-        .post("/api/profiles/me/account/deactivate")
-        .set("Authorization", `Bearer ${tokenFor()}`)
-        .send({ currentPassword: "current-password" })
-        .expect(200);
-
-      expect(userUpdate).toHaveBeenCalledWith({
-        where: { id: userId },
-        data: { deactivatedAt: expect.any(Date) },
-        select: expect.any(Object),
-      });
-      expect(response.body).toEqual({ id: userId, deactivatedAt: deactivatedAt.toISOString() });
-    });
-
-    it("refuses to deactivate an already deactivated account", async () => {
-      userFindUnique.mockResolvedValue({ ...storedUser, deactivatedAt: new Date() });
-
-      await request(app)
-        .post("/api/profiles/me/account/deactivate")
-        .set("Authorization", `Bearer ${tokenFor()}`)
-        .send({ currentPassword: "current-password" })
-        .expect(404);
-
-      expect(userUpdate).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 import {
   AccountNotFoundError,
-  deactivateAccount,
   EmailAlreadyInUseError,
   enrollTutor,
   getAccount,
@@ -19,7 +18,6 @@ import {
   UserNotFoundError,
 } from "./profile.service.ts";
 import type {
-  AccountDeactivateRequest,
   AccountUpdateRequest,
   ProfileRequest,
   TutorEnrollmentRequest,
@@ -154,16 +152,6 @@ export async function updateAccountForCurrentUser(req: Request, res: Response) {
     });
 
     res.status(200).json({ account, token });
-  } catch (error) {
-    if (handleAccountError(error, res)) return;
-    throw error;
-  }
-}
-
-export async function deactivateAccountForCurrentUser(req: Request, res: Response) {
-  try {
-    const account = await deactivateAccount(req.user!.sub, req.body as AccountDeactivateRequest);
-    res.status(200).json({ id: account.id, deactivatedAt: account.deactivatedAt });
   } catch (error) {
     if (handleAccountError(error, res)) return;
     throw error;

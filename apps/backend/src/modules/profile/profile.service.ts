@@ -1,6 +1,5 @@
 import { prisma } from "../../lib/db.ts";
 import type {
-  AccountDeactivateRequest,
   AccountUpdateRequest,
   ProfileRequest,
   StudentProfileRequest,
@@ -339,19 +338,16 @@ const accountSelect = {
   id: true,
   email: true,
   createdAt: true,
-  deactivatedAt: true,
 } as const;
 
-// Loads the account for a credential change and re-authenticates it. A
-// deactivated account is treated as gone: its token may still be unexpired, but
-// it can no longer act on itself.
+// Loads the account for a credential change and re-authenticates it.
 async function authenticateAccount(userId: string, currentPassword: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { ...accountSelect, password: true },
   });
 
-  if (!user || user.deactivatedAt) {
+  if (!user) {
     throw new AccountNotFoundError();
   }
 
@@ -367,7 +363,7 @@ async function authenticateAccount(userId: string, currentPassword: string) {
 export async function getAccount(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: accountSelect });
 
-  if (!user || user.deactivatedAt) {
+  if (!user) {
     throw new AccountNotFoundError();
   }
 
@@ -404,14 +400,4 @@ export async function updateAccount(userId: string, input: AccountUpdateRequest)
 
     throw error;
   }
-}
-
-export async function deactivateAccount(userId: string, input: AccountDeactivateRequest) {
-  await authenticateAccount(userId, input.currentPassword);
-
-  return prisma.user.update({
-    where: { id: userId },
-    data: { deactivatedAt: new Date() },
-    select: accountSelect,
-  });
 }
