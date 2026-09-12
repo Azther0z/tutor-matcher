@@ -16,6 +16,8 @@ const userId = "11111111-1111-4111-8111-111111111111";
 const account = {
   id: userId,
   email: "member@example.com",
+  firstName: "Ada",
+  lastName: "Lovelace",
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
 };
 
@@ -45,7 +47,12 @@ describe("Account settings API", () => {
         .set("Authorization", `Bearer ${tokenFor()}`)
         .expect(200);
 
-      expect(response.body).toMatchObject({ id: userId, email: "member@example.com" });
+      expect(response.body).toMatchObject({
+        id: userId,
+        email: "member@example.com",
+        firstName: "Ada",
+        lastName: "Lovelace",
+      });
       expect(response.body).not.toHaveProperty("password");
     });
   });
@@ -85,6 +92,16 @@ describe("Account settings API", () => {
         .put("/api/profiles/me/account")
         .set("Authorization", `Bearer ${tokenFor()}`)
         .send({ currentPassword: "current-password" })
+        .expect(400);
+
+      expect(userUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects a firstName without a matching lastName", async () => {
+      await request(app)
+        .put("/api/profiles/me/account")
+        .set("Authorization", `Bearer ${tokenFor()}`)
+        .send({ currentPassword: "current-password", firstName: "Ada" })
         .expect(400);
 
       expect(userUpdate).not.toHaveBeenCalled();
@@ -130,7 +147,12 @@ describe("Account settings API", () => {
 
       expect(userUpdate).toHaveBeenCalledWith({
         where: { id: userId },
-        data: { email: "new@example.com", password: undefined },
+        data: {
+          email: "new@example.com",
+          password: undefined,
+          firstName: undefined,
+          lastName: undefined,
+        },
         select: expect.any(Object),
       });
       expect(response.body.account.email).toBe("new@example.com");
@@ -149,9 +171,37 @@ describe("Account settings API", () => {
 
       expect(userUpdate).toHaveBeenCalledWith({
         where: { id: userId },
-        data: { email: undefined, password: "a-longer-password" },
+        data: {
+          email: undefined,
+          password: "a-longer-password",
+          firstName: undefined,
+          lastName: undefined,
+        },
         select: expect.any(Object),
       });
+    });
+
+    it("saves a new name without an email or password change", async () => {
+      userFindUnique.mockResolvedValue(storedUser);
+      userUpdate.mockResolvedValue({ ...account, firstName: "Grace", lastName: "Hopper" });
+
+      const response = await request(app)
+        .put("/api/profiles/me/account")
+        .set("Authorization", `Bearer ${tokenFor()}`)
+        .send({ currentPassword: "current-password", firstName: "Grace", lastName: "Hopper" })
+        .expect(200);
+
+      expect(userUpdate).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: {
+          email: undefined,
+          password: undefined,
+          firstName: "Grace",
+          lastName: "Hopper",
+        },
+        select: expect.any(Object),
+      });
+      expect(response.body.account).toMatchObject({ firstName: "Grace", lastName: "Hopper" });
     });
   });
 });

@@ -337,6 +337,8 @@ export async function searchLearningAreas(search?: string) {
 const accountSelect = {
   id: true,
   email: true,
+  firstName: true,
+  lastName: true,
   createdAt: true,
 } as const;
 
@@ -388,6 +390,8 @@ export async function updateAccount(userId: string, input: AccountUpdateRequest)
       data: {
         email: email ?? undefined,
         password: input.newPassword ?? undefined,
+        firstName: input.firstName ?? undefined,
+        lastName: input.lastName ?? undefined,
       },
       select: accountSelect,
     });
