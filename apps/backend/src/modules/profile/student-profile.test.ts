@@ -5,10 +5,12 @@ const learningAreaCount = jest.fn<(args: unknown) => Promise<number>>();
 const learningAreaFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const studentFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 const studentUpsert = jest.fn<(args: unknown) => Promise<unknown>>();
+const userUpdate = jest.fn<(args: unknown) => Promise<unknown>>();
 const transaction = jest.fn<(callback: (tx: unknown) => Promise<unknown>) => Promise<unknown>>();
 
 const tx = {
   student: { upsert: studentUpsert },
+  user: { update: userUpdate },
 };
 
 learningAreaCount.mockResolvedValue(2);
@@ -56,6 +58,7 @@ describe("Student profile API", () => {
     learningAreaFindMany.mockReset();
     studentFindUnique.mockReset();
     studentUpsert.mockReset();
+    userUpdate.mockReset();
     transaction.mockReset();
     transaction.mockImplementation(async (callback) => callback(tx));
     learningAreaCount.mockResolvedValue(2);
@@ -136,6 +139,51 @@ describe("Student profile API", () => {
         { id: "22222222-2222-4222-8222-222222222222", name: "English" },
       ],
     });
+  });
+
+  it("updates the user's name when provided", async () => {
+    learningAreaCount.mockResolvedValue(2);
+    learningAreaFindMany.mockResolvedValue(profile.learningAreaIds.map((id) => ({ id })));
+    studentUpsert.mockResolvedValue(savedStudent);
+    userUpdate.mockResolvedValue({});
+    transaction.mockImplementation(async (callback) => callback(tx));
+
+    await request(app)
+      .put("/api/profiles/me/student")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .send({ ...profile, user: { firstName: "New", lastName: "Name" } })
+      .expect(200);
+
+    expect(userUpdate).toHaveBeenCalledWith({
+      where: { id: "11111111-1111-4111-8111-111111111111" },
+      data: { firstName: "New", lastName: "Name" },
+    });
+  });
+
+  it("does not touch the user's name when omitted", async () => {
+    learningAreaCount.mockResolvedValue(2);
+    learningAreaFindMany.mockResolvedValue(profile.learningAreaIds.map((id) => ({ id })));
+    studentUpsert.mockResolvedValue(savedStudent);
+    transaction.mockImplementation(async (callback) => callback(tx));
+
+    await request(app)
+      .put("/api/profiles/me/student")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .send(profile)
+      .expect(200);
+
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rejects an incomplete user block", async () => {
+    await request(app)
+      .put("/api/profiles/me/student")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .send({ ...profile, user: { firstName: "New" } })
+      .expect(400);
+
+    expect(learningAreaCount).not.toHaveBeenCalled();
+    expect(userUpdate).not.toHaveBeenCalled();
   });
 
   it("returns learning-area suggestions", async () => {
