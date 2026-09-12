@@ -68,8 +68,9 @@ model User {
 
   student Student?
 
-  bookings Booking[]
-  reviews  Review[]
+  bookings          Booking[] @relation("BookingStudent")
+  bookingsCancelled Booking[] @relation("BookingCancelledBy")
+  reviews           Review[]
 
   sentMessages     Message[] @relation("MessagesSent")
   receivedMessages Message[] @relation("MessagesReceived")
@@ -189,10 +190,14 @@ model Booking {
   cancellationReason String?       @map("cancellation_reason")
 
   userId String @map("user_id") @db.Uuid
-  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user   User   @relation("BookingStudent", fields: [userId], references: [id], onDelete: Restrict)
 
   subjectId String  @map("subject_id") @db.Uuid
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  // BOOK-4: who cancelled the lesson — the student or the tutor — for refund routing and reliability tracking.
+  cancelledByUserId String? @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy       User?   @relation("BookingCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
 
   availabilities Availability[]
   payments       Payment[]
@@ -202,6 +207,7 @@ model Booking {
   @@index([subjectId])
   @@index([userId, status])
   @@index([status, paymentExpiresAt])
+  @@index([cancelledByUserId])
   @@map("bookings")
 }
 

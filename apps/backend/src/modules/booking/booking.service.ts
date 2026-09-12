@@ -43,6 +43,9 @@ export type BookingErrorCode =
   | "INSUFFICIENT_BALANCE"
   | "CANCELLATION_QUOTE_CHANGED";
 
+// BOOK-4: which side of the booking the current caller is acting as.
+export type BookingActor = "STUDENT" | "TUTOR";
+
 export class BookingDomainError extends Error {
   constructor(
     public readonly code: BookingErrorCode,
@@ -155,14 +158,20 @@ export function assertSlotBlock(slots: Array<{ startedAt: Date }>, subjectId: st
 }
 
 // BOOK-3 calculates refunds from server time; the client never supplies money values.
-export function cancellationRefund(amount: Prisma.Decimal, startsAt: Date, now = new Date()) {
+// BOOK-4: a tutor-initiated cancellation never charges the student a late fee.
+export function cancellationRefund(
+  amount: Prisma.Decimal,
+  startsAt: Date,
+  now = new Date(),
+  actor: BookingActor = "STUDENT"
+) {
   const policyMs = CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
   const late = startsAt.getTime() - now.getTime() <= policyMs;
-  const rate = late ? LATE_CANCELLATION_REFUND_RATE : 1;
+  const rate = actor === "TUTOR" ? 1 : late ? LATE_CANCELLATION_REFUND_RATE : 1;
   return { late, rate, amount: amount.mul(rate).toDecimalPlaces(2) };
 }
 
-function quoteFor(booking: QuoteSource, now: Date) {
+function quoteFor(booking: QuoteSource, now: Date, actor: BookingActor = "STUDENT") {
   const transfer = booking.payments.find(
     (payment) => payment.type === "TRANSFER" && payment.status === "COMPLETED"
   );
@@ -170,7 +179,7 @@ function quoteFor(booking: QuoteSource, now: Date) {
   const late =
     booking.startedAt.getTime() - now.getTime() <= CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
   const policy = transfer
-    ? cancellationRefund(transfer.amount, booking.startedAt, now)
+    ? cancellationRefund(transfer.amount, booking.startedAt, now, actor)
     : { late, rate: 0, amount: ZERO };
   const fee = originalAmount.minus(policy.amount).toDecimalPlaces(2);
   const token = createHash("sha256")
@@ -207,6 +216,8 @@ export function mapBookingResponse(
   now = new Date()
 ) {
   const isStudent = booking.userId === viewerUserId;
+  // BOOK-4: the tutor who owns the subject can view and act on the lesson too.
+  const isTutor = booking.subject.tutor.user?.id === viewerUserId;
   const transfer = booking.payments.find((payment) => payment.type === "TRANSFER");
   const amountDue =
     booking.status === "PENDING_PAYMENT" ? (transfer?.amount ?? booking.totalAmount) : ZERO;
@@ -223,12 +234,21 @@ export function mapBookingResponse(
     beforeDeadline &&
     beforeLesson;
   const canPay = payEligible && shortfall.isZero();
+  // BOOK-4: cancel/reschedule are available to either side of the booking, not the student alone.
   const canCancel =
-    isStudent && ["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) && beforeLesson;
+    (isStudent || isTutor) &&
+    ["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) &&
+    beforeLesson;
   const canReschedule =
-    isStudent &&
+    (isStudent || isTutor) &&
     booking.status === "CONFIRMED" &&
     booking.startedAt.getTime() - now.getTime() > CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
+  const cancelledByRole =
+    booking.cancelledByUserId === null
+      ? null
+      : booking.cancelledByUserId === booking.userId
+        ? ("STUDENT" as const)
+        : ("TUTOR" as const);
 
   return {
     id: booking.id,
@@ -243,6 +263,8 @@ export function mapBookingResponse(
     paymentExpiresAt: booking.paymentExpiresAt?.toISOString() ?? null,
     cancelledAt: booking.cancelledAt?.toISOString() ?? null,
     cancellationReason: booking.cancellationReason,
+    cancelledByRole,
+    viewerRole: isStudent ? ("STUDENT" as const) : ("TUTOR" as const),
     student: {
       id: booking.user.id,
       name: `${booking.user.firstName} ${booking.user.lastName}`,
@@ -284,18 +306,28 @@ async function loadDetail(id: string) {
   return prisma.booking.findUnique({ where: { id }, include: detailInclude });
 }
 
+// BOOK-4: the tutor who owns the subject may act on the booking too, not only the student.
+function bookingActor(booking: BookingDetailRecord, userId: string, action: string): BookingActor {
+  if (booking.userId === userId) return "STUDENT";
+  if (booking.subject.tutor.user?.id === userId) return "TUTOR";
+  throw new BookingForbiddenError(`You cannot ${action} this booking`);
+}
+
 // Lazily expires abandoned payment-due bookings before relevant reads and writes.
 export async function releaseExpiredBookings(
   now = new Date(),
-  filter: { id?: string; userId?: string; subjectId?: string } = {}
+  filter: { id?: string; userId?: string; subjectId?: string; subjectIds?: string[] } = {}
 ) {
+  // subjectIds (BOOK-4's tutor listing) is translated below; it is not itself a Booking field.
+  const { subjectIds, ...scalarFilter } = filter;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       return await prisma.$transaction(
         async (tx) => {
           const expired = await tx.booking.findMany({
             where: {
-              ...filter,
+              ...scalarFilter,
+              ...(subjectIds ? { subjectId: { in: subjectIds } } : {}),
               status: "PENDING_PAYMENT",
               OR: [{ paymentExpiresAt: { lte: now } }, { paymentExpiresAt: null }],
             },
@@ -486,11 +518,25 @@ export async function getBooking(userId: string, id: string) {
   return mapBookingResponse(booking, userId, now);
 }
 
-export async function listBookings(userId: string) {
+export async function listBookings(userId: string, role: BookingActor = "STUDENT") {
   const now = new Date();
-  await releaseExpiredBookings(now, { userId });
+  let where: Prisma.BookingWhereInput;
+  if (role === "TUTOR") {
+    // A tutor's bookings are reached through the subjects they own, not a direct userId column.
+    const subjects = await prisma.subject.findMany({
+      where: { tutor: { user: { id: userId } } },
+      select: { id: true },
+    });
+    const subjectIds = subjects.map((subject) => subject.id);
+    if (subjectIds.length === 0) return [];
+    await releaseExpiredBookings(now, { subjectIds });
+    where = { subjectId: { in: subjectIds } };
+  } else {
+    await releaseExpiredBookings(now, { userId });
+    where = { userId };
+  }
   const bookings = await prisma.booking.findMany({
-    where: { userId },
+    where,
     include: detailInclude,
     orderBy: [{ startedAt: "desc" }, { id: "desc" }],
   });
@@ -600,10 +646,9 @@ export async function rescheduleBooking(userId: string, id: string, input: Resch
   try {
     return await prisma.$transaction(
       async (tx) => {
-        const booking = await tx.booking.findUnique({ where: { id } });
+        const booking = await tx.booking.findUnique({ where: { id }, include: detailInclude });
         if (!booking) throw new BookingNotFoundError();
-        if (booking.userId !== userId)
-          throw new BookingForbiddenError("You cannot reschedule this booking");
+        bookingActor(booking, userId, "reschedule");
         if (
           booking.status !== "CONFIRMED" ||
           booking.startedAt.getTime() - now.getTime() <=
@@ -666,7 +711,7 @@ export async function getCancellationQuote(userId: string, id: string) {
   await releaseExpiredBookings(now, { id });
   const booking = await loadDetail(id);
   if (!booking) throw new BookingNotFoundError();
-  if (booking.userId !== userId) throw new BookingForbiddenError("You cannot cancel this booking");
+  const actor = bookingActor(booking, userId, "cancel");
   if (
     !["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) ||
     booking.startedAt.getTime() <= now.getTime()
@@ -679,7 +724,7 @@ export async function getCancellationQuote(userId: string, id: string) {
     )
   )
     throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
-  return quoteFor(booking, now);
+  return quoteFor(booking, now, actor);
 }
 
 export async function cancelBooking(userId: string, id: string, input: CancelBookingInput) {
@@ -691,15 +736,14 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
         const booking = await tx.booking.findUnique({ where: { id }, include: detailInclude });
         const transactionNow = new Date();
         if (!booking) throw new BookingNotFoundError();
-        if (booking.userId !== userId)
-          throw new BookingForbiddenError("You cannot cancel this booking");
+        const actor = bookingActor(booking, userId, "cancel");
         if (
           !["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) ||
           booking.startedAt.getTime() <= transactionNow.getTime()
         )
           throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
 
-        const quote = quoteFor(booking, transactionNow);
+        const quote = quoteFor(booking, transactionNow, actor);
         const transfer = booking.payments.find((payment) => payment.type === "TRANSFER");
         if (booking.status === "CONFIRMED" && transfer?.status !== "COMPLETED")
           throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
@@ -720,6 +764,8 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
             status: "CANCELLED",
             cancelledAt: transactionNow,
             cancellationReason: input.reason,
+            // BOOK-4: record which side cancelled, for refund routing and future reliability tracking.
+            cancelledByUserId: userId,
             paymentExpiresAt: null,
           },
         });
@@ -735,8 +781,9 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
         if (transfer?.status === "COMPLETED") {
           // Keep the original payment immutable; refund from Platform and retain the quoted fee.
           refund = new Prisma.Decimal(quote.refundAmount);
+          // BOOK-4: the refund always goes to the student, whichever side cancelled.
           await tx.user.update({
-            where: { id: userId },
+            where: { id: booking.userId },
             data: { balance: { increment: refund } },
           });
           await tx.payment.create({
@@ -747,7 +794,7 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
               completedAt: transactionNow,
               // Release the refundable portion from platform escrow, not from the tutor wallet.
               fromUserId: null,
-              toUserId: userId,
+              toUserId: booking.userId,
               bookingId: id,
             },
           });
