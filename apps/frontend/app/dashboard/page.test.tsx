@@ -40,5 +40,9 @@ describe("DashboardPage", () => {
       expect(screen.getByText("Your Student profile is ready")).toBeInTheDocument()
     );
     expect(screen.queryByText("Complete your Student profile")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Edit your profile" })).toHaveAttribute(
+      "href",
+      "/settings/student"
+    );
   });
 });
