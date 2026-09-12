@@ -113,12 +113,10 @@ describe("Account settings API", () => {
     });
 
     it("rejects an email already used by another account", async () => {
-      userFindUnique
-        .mockResolvedValueOnce(storedUser)
-        .mockResolvedValueOnce({
-          id: "22222222-2222-4222-8222-222222222222",
-          email: "taken@example.com",
-        });
+      userFindUnique.mockResolvedValueOnce(storedUser).mockResolvedValueOnce({
+        id: "22222222-2222-4222-8222-222222222222",
+        email: "taken@example.com",
+      });
 
       const response = await request(app)
         .put("/api/profiles/me/account")
