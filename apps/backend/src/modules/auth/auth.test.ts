@@ -11,6 +11,7 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
 }));
 
 const { app } = await import("../../app.ts");
+const { signAuthToken } = await import("../../lib/jwt.ts");
 const { verifyAuthToken } = await import("../../lib/jwt.ts");
 
 describe("POST /api/auth/signup", () => {
@@ -130,5 +131,40 @@ describe("POST /api/auth/login", () => {
       .post("/api/auth/login")
       .send({ email: "ada@example.com", password: "wrongpass" })
       .expect(401);
+  });
+});
+
+describe("GET /api/auth/me", () => {
+  beforeEach(() => {
+    findUnique.mockReset();
+  });
+
+  it("returns the current user for a valid token", async () => {
+    findUnique.mockResolvedValue({
+      id: userId,
+      email: "ada@example.com",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      isAdmin: false,
+    });
+
+    const token = signAuthToken({ sub: userId, email: "ada@example.com", isAdmin: false });
+    const res = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(res.body).toEqual({
+      id: userId,
+      email: "ada@example.com",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      isAdmin: false,
+    });
+  });
+
+  it("requires authentication", async () => {
+    await request(app).get("/api/auth/me").expect(401);
+    expect(findUnique).not.toHaveBeenCalled();
   });
 });

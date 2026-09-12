@@ -1,20 +1,34 @@
 export const AUTH_TOKEN_KEY = "authToken";
+const AUTH_CHANGE_EVENT = "tutor-matcher-auth-change";
+
+export type AuthUser = {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+};
 
 export function getAuthToken() {
+  if (typeof window === "undefined") return null;
   return localStorage.getItem(AUTH_TOKEN_KEY);
 }
 
 export function setAuthToken(token: string) {
   localStorage.setItem(AUTH_TOKEN_KEY, token);
+  window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
 }
 
 export function clearAuthToken() {
   localStorage.removeItem(AUTH_TOKEN_KEY);
+  window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
 }
 
 export function subscribeToAuth(callback: () => void) {
   window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
+  window.addEventListener(AUTH_CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(AUTH_CHANGE_EVENT, callback);
+  };
 }
 
 // The client snapshot always resolves definitively (true/false); `getAuthServerSnapshot`
