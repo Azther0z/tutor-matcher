@@ -15,6 +15,13 @@ export class InvalidCredentialsError extends Error {
   }
 }
 
+export class CurrentUserNotFoundError extends Error {
+  constructor() {
+    super("User not found");
+    this.name = "CurrentUserNotFoundError";
+  }
+}
+
 export async function signup({ email, password }: SignupInput) {
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
@@ -59,5 +66,27 @@ export async function login({ email, password }: LoginInput) {
     throw new InvalidCredentialsError();
   }
 
-  return { id: user.id, email: user.email, isAdmin: user.isAdmin };
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    isAdmin: user.isAdmin,
+  };
+}
+
+export async function getCurrentUser(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      isAdmin: true,
+    },
+  });
+
+  if (!user) throw new CurrentUserNotFoundError();
+  return user;
 }
