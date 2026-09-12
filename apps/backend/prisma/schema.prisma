@@ -213,7 +213,8 @@ model Payment {
   createdAt   DateTime      @default(now()) @map("created_at")
   completedAt DateTime?     @map("completed_at")
 
-  // A null party represents the platform side of escrow, refunds, fees, and future top-ups.
+  // BOOK-1/3 uses a null party as Platform: Student -> Platform, then Platform -> Student refund.
+  // Tutor earning settlement is a separate future movement after lesson completion.
   fromUserId String? @map("from_user_id") @db.Uuid
   fromUser   User?   @relation("PaymentsFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
 

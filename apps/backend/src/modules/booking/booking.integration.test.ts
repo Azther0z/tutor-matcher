@@ -130,7 +130,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     expect(slot.bookingId).toBeNull();
   });
 
-  it("releases a paid cancellation from escrow without changing the tutor wallet", async () => {
+  it("refunds from Platform while keeping the original payment and tutor wallet unchanged", async () => {
     const created = await authorize(
       request(app)
         .post("/api/bookings")
@@ -168,7 +168,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     expect(tutor.balance.toFixed(2)).toBe("0.00");
     expect(payments).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ type: "TRANSFER", status: "CANCELLED" }),
+        expect.objectContaining({
+          type: "TRANSFER",
+          status: "COMPLETED",
+          completedAt: expect.any(Date),
+          fromUserId: STUDENT_ID,
+          toUserId: null,
+        }),
         expect.objectContaining({
           type: "REFUND",
           status: "COMPLETED",

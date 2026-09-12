@@ -36,7 +36,7 @@ const booking = {
     { id: "073ea12c-9fb1-4c70-9910-554432c8dc21", startedAt: "2030-01-10T09:00:00.000Z" },
   ],
   payment: {
-    status: "HOLDING",
+    status: "COMPLETED",
     amountDue: "100",
     walletBalance: "250",
     shortfall: "0",

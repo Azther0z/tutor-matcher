@@ -164,7 +164,7 @@ export function cancellationRefund(amount: Prisma.Decimal, startsAt: Date, now =
 
 function quoteFor(booking: QuoteSource, now: Date) {
   const transfer = booking.payments.find(
-    (payment) => payment.type === "TRANSFER" && payment.status === "HOLDING"
+    (payment) => payment.type === "TRANSFER" && payment.status === "COMPLETED"
   );
   const originalAmount = transfer?.amount ?? ZERO;
   const late =
@@ -562,10 +562,10 @@ export async function confirmBookingPayment(userId: string, id: string) {
               shortfall: decimalString(transfer.amount.minus(user.balance)),
             });
           }
-          // HOLDING represents platform escrow. Tutor earnings are credited only after completion.
+          // The Student payment completes into platform custody; Tutor earnings settle separately.
           const paymentClaimed = await tx.payment.updateMany({
             where: { id: transfer.id, status: "PENDING" },
-            data: { status: "HOLDING" },
+            data: { status: "COMPLETED", completedAt: transactionNow },
           });
           if (paymentClaimed.count !== 1)
             throw new BookingConflictError("BOOKING_ALREADY_PAID", "Booking is already paid");
@@ -674,7 +674,9 @@ export async function getCancellationQuote(userId: string, id: string) {
     throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
   if (
     booking.status === "CONFIRMED" &&
-    !booking.payments.some((payment) => payment.type === "TRANSFER" && payment.status === "HOLDING")
+    !booking.payments.some(
+      (payment) => payment.type === "TRANSFER" && payment.status === "COMPLETED"
+    )
   )
     throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
   return quoteFor(booking, now);
@@ -699,9 +701,9 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
 
         const quote = quoteFor(booking, transactionNow);
         const transfer = booking.payments.find((payment) => payment.type === "TRANSFER");
-        if (booking.status === "CONFIRMED" && transfer?.status !== "HOLDING")
+        if (booking.status === "CONFIRMED" && transfer?.status !== "COMPLETED")
           throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
-        if (transfer?.status === "HOLDING" && input.quoteToken !== quote.token)
+        if (transfer?.status === "COMPLETED" && input.quoteToken !== quote.token)
           throw new BookingConflictError(
             "CANCELLATION_QUOTE_CHANGED",
             "The cancellation amount changed. Review the latest quote before confirming.",
@@ -730,16 +732,8 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
             where: { id: transfer.id, status: "PENDING" },
             data: { status: "CANCELLED" },
           });
-        if (transfer?.status === "HOLDING") {
-          const transferClosed = await tx.payment.updateMany({
-            where: { id: transfer.id, status: "HOLDING" },
-            data: { status: "CANCELLED" },
-          });
-          if (transferClosed.count !== 1)
-            throw new BookingConflictError(
-              "BOOKING_NOT_CANCELLABLE",
-              "Booking was already cancelled"
-            );
+        if (transfer?.status === "COMPLETED") {
+          // Keep the original payment immutable; refund from Platform and retain the quoted fee.
           refund = new Prisma.Decimal(quote.refundAmount);
           await tx.user.update({
             where: { id: userId },

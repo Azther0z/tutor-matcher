@@ -210,7 +210,13 @@ async function main() {
   if (existingPayment) {
     await prisma.payment.update({
       where: { id: existingPayment.id },
-      data: { amount: "75.00", status: "COMPLETED" },
+      data: {
+        amount: "75.00",
+        status: "COMPLETED",
+        completedAt: FIXTURE_AVAILABILITY,
+        fromUserId: bob.id,
+        toUserId: null,
+      },
     });
   } else {
     await prisma.payment.create({
@@ -218,8 +224,8 @@ async function main() {
         type: "TRANSFER",
         amount: "75.00",
         status: "COMPLETED",
+        completedAt: FIXTURE_AVAILABILITY,
         fromUser: { connect: { id: bob.id } },
-        toUser: { connect: { id: alice.id } },
         booking: { connect: { id: booking.id } },
       },
     });
