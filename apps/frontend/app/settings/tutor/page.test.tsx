@@ -19,6 +19,9 @@ function completeRequiredFields() {
     target: { value: "https://example.com/intro.mp4" },
   });
   fireEvent.change(screen.getByLabelText(/Government ID/), { target: { value: "ID-123" } });
+  fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
+    target: { value: "https://example.com/certification.pdf" },
+  });
 }
 
 describe("TutorSettingsPage", () => {
@@ -33,6 +36,9 @@ describe("TutorSettingsPage", () => {
     expect(screen.getByText("Tutor bio is required.")).toBeInTheDocument();
     expect(screen.getByText("Intro video URL is required.")).toBeInTheDocument();
     expect(screen.getByText("Government ID is required.")).toBeInTheDocument();
+    expect(
+      screen.getByText("A teaching certification document is required.")
+    ).toBeInTheDocument();
   });
 
   it("requires login before sending the profile", () => {
@@ -74,6 +80,7 @@ describe("TutorSettingsPage", () => {
           bio: "I teach mathematics.",
           introVideoUrl: "https://example.com/intro.mp4",
           governmentId: "ID-123",
+          certificationUrl: "https://example.com/certification.pdf",
         },
       }),
     });

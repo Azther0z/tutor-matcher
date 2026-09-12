@@ -6,6 +6,13 @@ const findUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 const userId = "11111111-1111-4111-8111-111111111111";
 const otherUserId = "77777777-7777-4777-8777-777777777777";
 
+const signupBody = {
+  firstName: "Ada",
+  lastName: "Lovelace",
+  email: "ada@example.com",
+  password: "supersecret",
+};
+
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: { user: { create, findUnique } },
 }));
@@ -27,25 +34,51 @@ describe("POST /api/auth/signup", () => {
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
 
-    const res = await request(app)
-      .post("/api/auth/signup")
-      .send({ email: "ada@example.com", password: "supersecret" })
-      .expect(201);
+    const res = await request(app).post("/api/auth/signup").send(signupBody).expect(201);
 
     expect(res.body).toMatchObject({ id: userId, email: "ada@example.com" });
     expect(res.body).not.toHaveProperty("password");
     expect(create).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        firstName: "Ada",
+        lastName: "Lovelace",
         email: "ada@example.com",
         password: "supersecret",
+        bio: null,
       }),
+    });
+  });
+
+  it("stores an optional bio when one is provided", async () => {
+    create.mockResolvedValue({
+      id: userId,
+      email: "ada@example.com",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+
+    await request(app)
+      .post("/api/auth/signup")
+      .send({ ...signupBody, bio: "Maths tutor" })
+      .expect(201);
+
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ bio: "Maths tutor" }),
     });
   });
 
   it("rejects an invalid body with 400", async () => {
     await request(app)
       .post("/api/auth/signup")
-      .send({ email: "not-an-email", password: "short" })
+      .send({ ...signupBody, email: "not-an-email", password: "short" })
+      .expect(400);
+
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a body without a name with 400", async () => {
+    await request(app)
+      .post("/api/auth/signup")
+      .send({ email: "ada@example.com", password: "supersecret" })
       .expect(400);
 
     expect(create).not.toHaveBeenCalled();
@@ -54,10 +87,7 @@ describe("POST /api/auth/signup", () => {
   it("returns 409 when the email is already taken", async () => {
     findUnique.mockResolvedValue({ id: otherUserId });
 
-    await request(app)
-      .post("/api/auth/signup")
-      .send({ email: "ada@example.com", password: "supersecret" })
-      .expect(409);
+    await request(app).post("/api/auth/signup").send(signupBody).expect(409);
 
     expect(create).not.toHaveBeenCalled();
   });
@@ -65,10 +95,7 @@ describe("POST /api/auth/signup", () => {
   it("returns 409 when a concurrent signup wins the race (DB unique constraint)", async () => {
     create.mockRejectedValue(Object.assign(new Error("dup"), { code: "P2002" }));
 
-    await request(app)
-      .post("/api/auth/signup")
-      .send({ email: "ada@example.com", password: "supersecret" })
-      .expect(409);
+    await request(app).post("/api/auth/signup").send(signupBody).expect(409);
   });
 });
 

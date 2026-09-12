@@ -8,6 +8,7 @@ import {
   clearAuthToken,
   getAuthServerSnapshot,
   getAuthSnapshot,
+  getAuthToken,
   subscribeToAuth,
 } from "@/src/lib/auth";
 
@@ -39,8 +40,35 @@ export function Navbar() {
   const [subjectsOpen, setSubjectsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const isAuthed = useSyncExternalStore(subscribeToAuth, getAuthSnapshot, getAuthServerSnapshot);
+  // Tracks only the last-fetched tutor status; whether that counts as
+  // "approved" is derived below so logging out hides the button immediately
+  // without needing an effect to reset this back to null.
+  const [tutorStatus, setTutorStatus] = useState<string | null>(null);
+  const isApprovedTutor = isAuthed === true && tutorStatus === "APPROVED";
   const subjectsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isAuthed) return;
+
+    const token = getAuthToken();
+    if (!token) return;
+
+    let cancelled = false;
+
+    fetch("/api/profiles/me/tutor", { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { status: string } | null) => {
+        if (!cancelled) setTutorStatus(data?.status ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setTutorStatus(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthed]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -136,12 +164,14 @@ export function Navbar() {
             )
           )}
 
-          <Link
-            href="/enroll-tutor"
-            className="rounded-full bg-brand-navy px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-navy-dark"
-          >
-            Become a tutor
-          </Link>
+          {!isApprovedTutor && (
+            <Link
+              href="/enroll-tutor"
+              className="rounded-full bg-brand-navy px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-navy-dark"
+            >
+              Become a tutor
+            </Link>
+          )}
         </div>
 
         <div ref={profileRef} className="relative">

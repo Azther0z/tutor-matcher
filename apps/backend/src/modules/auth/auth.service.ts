@@ -15,7 +15,7 @@ export class InvalidCredentialsError extends Error {
   }
 }
 
-export async function signup({ email, password }: SignupInput) {
+export async function signup({ firstName, lastName, email, password, bio }: SignupInput) {
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
   if (existing) {
@@ -25,12 +25,11 @@ export async function signup({ email, password }: SignupInput) {
   try {
     const user = await prisma.user.create({
       data: {
+        firstName,
+        lastName,
         email,
         password,
-        // firstName / lastName are required by the schema but not collected at
-        // signup yet; they are filled in later on the profile screen.
-        firstName: "",
-        lastName: "",
+        bio: bio ?? null,
       },
     });
 

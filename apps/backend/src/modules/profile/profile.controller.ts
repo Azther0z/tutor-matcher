@@ -1,6 +1,12 @@
 import type { Request, Response } from "express";
-import { ProfileForbiddenError, updateTutorProfile } from "./profile.service.ts";
-import type { ProfileRequest } from "./profile.schema.ts";
+import {
+  ProfileForbiddenError,
+  TutorAlreadyApprovedError,
+  enrollTutor,
+  getTutorApplication,
+  updateTutorProfile,
+} from "./profile.service.ts";
+import type { ProfileRequest, TutorEnrollmentRequest } from "./profile.schema.ts";
 import { learningAreaSearchSchema } from "./profile.schema.ts";
 import {
   getStudentProfile,
@@ -8,6 +14,7 @@ import {
   saveStudentProfile,
   searchLearningAreas,
   StudentProfileNotFoundError,
+  UserNotFoundError,
 } from "./profile.service.ts";
 
 export async function updateProfile(req: Request, res: Response) {
@@ -17,6 +24,39 @@ export async function updateProfile(req: Request, res: Response) {
   } catch (error) {
     if (error instanceof ProfileForbiddenError) {
       res.status(403).json({ message: error.message });
+      return;
+    }
+
+    throw error;
+  }
+}
+
+export async function getTutorApplicationForCurrentUser(req: Request, res: Response) {
+  try {
+    const application = await getTutorApplication(req.user!.sub);
+    res.status(200).json(application);
+  } catch (error) {
+    if (error instanceof UserNotFoundError) {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+
+    throw error;
+  }
+}
+
+export async function enrollTutorForCurrentUser(req: Request, res: Response) {
+  try {
+    const result = await enrollTutor(req.user!.sub, req.body as TutorEnrollmentRequest);
+    res.status(200).json(result);
+  } catch (error) {
+    if (error instanceof UserNotFoundError) {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+
+    if (error instanceof TutorAlreadyApprovedError) {
+      res.status(409).json({ message: error.message });
       return;
     }
 
@@ -45,6 +85,11 @@ export async function saveStudentProfileForCurrentUser(req: Request, res: Respon
   } catch (error) {
     if (error instanceof LearningAreaNotFoundError) {
       res.status(400).json({ message: error.message });
+      return;
+    }
+
+    if (error instanceof UserNotFoundError) {
+      res.status(404).json({ message: error.message });
       return;
     }
 

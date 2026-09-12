@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useState } from "react";
 
 type FieldName =
-  "firstName" | "lastName" | "avatarUrl" | "tutorBio" | "introVideoUrl" | "governmentId";
+  | "firstName"
+  | "lastName"
+  | "avatarUrl"
+  | "tutorBio"
+  | "introVideoUrl"
+  | "governmentId"
+  | "certificationUrl";
 type FieldErrors = Partial<Record<FieldName, string>>;
 
 const inputClassName =
@@ -18,6 +24,7 @@ export default function TutorSettingsPage() {
   const [tutorBio, setTutorBio] = useState("");
   const [introVideoUrl, setIntroVideoUrl] = useState("");
   const [governmentId, setGovernmentId] = useState("");
+  const [certificationUrl, setCertificationUrl] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -41,6 +48,10 @@ export default function TutorSettingsPage() {
     if (!introVideoUrl.trim()) errors.introVideoUrl = "Intro video URL is required.";
     else if (!isValidUrl(introVideoUrl)) errors.introVideoUrl = "Enter a valid intro video URL.";
     if (!governmentId.trim()) errors.governmentId = "Government ID is required.";
+    if (!certificationUrl.trim())
+      errors.certificationUrl = "A teaching certification document is required.";
+    else if (!isValidUrl(certificationUrl))
+      errors.certificationUrl = "Enter a valid certification document URL.";
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -81,6 +92,7 @@ export default function TutorSettingsPage() {
             bio: tutorBio.trim(),
             introVideoUrl: introVideoUrl.trim(),
             governmentId: governmentId.trim(),
+            certificationUrl: certificationUrl.trim(),
           },
         }),
       });
@@ -227,6 +239,25 @@ export default function TutorSettingsPage() {
               </span>
               {fieldErrors.governmentId && (
                 <span className="text-red-600">{fieldErrors.governmentId}</span>
+              )}
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Teaching certification document URL
+              <input
+                type="url"
+                name="certificationUrl"
+                placeholder="https://example.com/certification.pdf"
+                value={certificationUrl}
+                onChange={(event) => setCertificationUrl(event.target.value)}
+                aria-invalid={!!fieldErrors.certificationUrl}
+                className={inputClassName}
+              />
+              <span className="font-normal text-zinc-500">
+                Used for Tutor verification and not displayed publicly.
+              </span>
+              {fieldErrors.certificationUrl && (
+                <span className="text-red-600">{fieldErrors.certificationUrl}</span>
               )}
             </label>
           </div>
