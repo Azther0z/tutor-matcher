@@ -36,9 +36,7 @@ describe("TutorSettingsPage", () => {
     expect(screen.getByText("Tutor bio is required.")).toBeInTheDocument();
     expect(screen.getByText("Intro video URL is required.")).toBeInTheDocument();
     expect(screen.getByText("Government ID is required.")).toBeInTheDocument();
-    expect(
-      screen.getByText("A teaching certification document is required.")
-    ).toBeInTheDocument();
+    expect(screen.getByText("A teaching certification document is required.")).toBeInTheDocument();
   });
 
   it("requires login before sending the profile", () => {

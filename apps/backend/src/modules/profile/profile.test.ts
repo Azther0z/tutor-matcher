@@ -348,7 +348,12 @@ describe("GET /api/profiles/me/tutor", () => {
     governmentId: "ID-123",
     status: "PENDING",
     enrolledAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
-    certifications: [{ id: "99999999-9999-4999-8999-999999999999", fileUrl: "https://example.com/certification.pdf" }],
+    certifications: [
+      {
+        id: "99999999-9999-4999-8999-999999999999",
+        fileUrl: "https://example.com/certification.pdf",
+      },
+    ],
   };
   const tutorWithoutCertifications = {
     id: tutorRecord.id,

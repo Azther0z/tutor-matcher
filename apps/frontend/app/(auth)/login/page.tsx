@@ -76,7 +76,8 @@ function LoginForm() {
       }
 
       const next = explicitNextPath(searchParams.get("next"));
-      const landingPath = next ?? (data?.token ? await resolveDefaultLandingPath(data.token) : "/dashboard");
+      const landingPath =
+        next ?? (data?.token ? await resolveDefaultLandingPath(data.token) : "/dashboard");
 
       router.push(landingPath);
     } catch {

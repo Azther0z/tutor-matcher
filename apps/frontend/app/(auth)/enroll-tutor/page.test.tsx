@@ -50,9 +50,7 @@ describe("EnrollTutorPage", () => {
     mockApplication({ status: "NONE", tutor: null });
     render(<EnrollTutorPage />);
 
-    expect(
-      await screen.findByRole("button", { name: "Submit application" })
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Submit application" })).toBeInTheDocument();
     expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
   });
 
@@ -67,9 +65,7 @@ describe("EnrollTutorPage", () => {
     expect(screen.getByText("Tutor bio is required.")).toBeInTheDocument();
     expect(screen.getByText("Intro video URL is required.")).toBeInTheDocument();
     expect(screen.getByText("Government ID is required.")).toBeInTheDocument();
-    expect(
-      screen.getByText("A teaching certification document is required.")
-    ).toBeInTheDocument();
+    expect(screen.getByText("A teaching certification document is required.")).toBeInTheDocument();
   });
 
   it("submits the public Tutor details and then shows the awaiting-approval panel", async () => {
@@ -129,7 +125,9 @@ describe("EnrollTutorPage", () => {
     render(<EnrollTutorPage />);
 
     expect(
-      await screen.findByText("Your previous application was not approved. Update your details and re-submit.")
+      await screen.findByText(
+        "Your previous application was not approved. Update your details and re-submit."
+      )
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Tutor bio")).toHaveValue("I teach mathematics.");
     expect(screen.getByLabelText(/Teaching certification document URL/)).toHaveValue(
@@ -142,7 +140,9 @@ describe("EnrollTutorPage", () => {
     render(<EnrollTutorPage />);
 
     expect(
-      await screen.findByText("We could not load your Tutor application. Please refresh and try again.")
+      await screen.findByText(
+        "We could not load your Tutor application. Please refresh and try again."
+      )
     ).toBeInTheDocument();
   });
 });
