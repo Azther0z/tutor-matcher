@@ -212,8 +212,9 @@ export function mapBookingResponse(
     booking.status === "PENDING_PAYMENT" ? (transfer?.amount ?? booking.totalAmount) : ZERO;
   const walletBalance = booking.user.balance;
   const shortfall = amountDue.greaterThan(walletBalance) ? amountDue.minus(walletBalance) : ZERO;
+  // A paid booking always has a deadline; a legacy/null pending row is never payable.
   const beforeDeadline =
-    !booking.paymentExpiresAt || booking.paymentExpiresAt.getTime() > now.getTime();
+    booking.paymentExpiresAt !== null && booking.paymentExpiresAt.getTime() > now.getTime();
   const beforeLesson = booking.startedAt.getTime() > now.getTime();
   const payEligible =
     isStudent &&
@@ -296,7 +297,7 @@ export async function releaseExpiredBookings(
             where: {
               ...filter,
               status: "PENDING_PAYMENT",
-              paymentExpiresAt: { lte: now },
+              OR: [{ paymentExpiresAt: { lte: now } }, { paymentExpiresAt: null }],
             },
             select: { id: true },
           });
@@ -306,7 +307,7 @@ export async function releaseExpiredBookings(
               where: {
                 id: candidate.id,
                 status: "PENDING_PAYMENT",
-                paymentExpiresAt: { lte: now },
+                OR: [{ paymentExpiresAt: { lte: now } }, { paymentExpiresAt: null }],
               },
               data: {
                 status: "CANCELLED",
@@ -454,7 +455,8 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
               amount,
               status: "PENDING",
               fromUserId: userId,
-              toUserId: subject.tutor.user.id,
+              // The platform holds payment until completion; the tutor is the booking beneficiary.
+              toUserId: null,
               bookingId: booking.id,
             },
           });
@@ -496,8 +498,7 @@ export async function listBookings(userId: string) {
 }
 
 export async function confirmBookingPayment(userId: string, id: string) {
-  const now = new Date();
-  await releaseExpiredBookings(now, { id });
+  await releaseExpiredBookings(new Date(), { id });
 
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -507,6 +508,8 @@ export async function confirmBookingPayment(userId: string, id: string) {
             where: { id },
             include: { payments: true },
           });
+          // Capture time inside the serializable transaction so cleanup cannot leave a stale deadline.
+          const transactionNow = new Date();
           if (!booking) throw new BookingNotFoundError();
           if (booking.userId !== userId)
             throw new BookingForbiddenError("You cannot pay for this booking");
@@ -521,8 +524,8 @@ export async function confirmBookingPayment(userId: string, id: string) {
             );
           if (
             !booking.paymentExpiresAt ||
-            booking.paymentExpiresAt.getTime() <= now.getTime() ||
-            booking.startedAt.getTime() <= now.getTime()
+            booking.paymentExpiresAt.getTime() <= transactionNow.getTime() ||
+            booking.startedAt.getTime() <= transactionNow.getTime()
           )
             throw new BookingConflictError("BOOKING_EXPIRED", "The payment hold has expired");
 
@@ -536,8 +539,8 @@ export async function confirmBookingPayment(userId: string, id: string) {
             where: {
               id,
               status: "PENDING_PAYMENT",
-              paymentExpiresAt: { gt: now },
-              startedAt: { gt: now },
+              paymentExpiresAt: { gt: transactionNow },
+              startedAt: { gt: transactionNow },
             },
             data: { status: "CONFIRMED", paymentExpiresAt: null },
           });
@@ -559,6 +562,7 @@ export async function confirmBookingPayment(userId: string, id: string) {
               shortfall: decimalString(transfer.amount.minus(user.balance)),
             });
           }
+          // HOLDING represents platform escrow. Tutor earnings are credited only after completion.
           const paymentClaimed = await tx.payment.updateMany({
             where: { id: transfer.id, status: "PENDING" },
             data: { status: "HOLDING" },
@@ -570,7 +574,7 @@ export async function confirmBookingPayment(userId: string, id: string) {
             where: { id },
             include: detailInclude,
           });
-          return mapBookingResponse(detailed, userId, now);
+          return mapBookingResponse(detailed, userId, transactionNow);
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
       );
@@ -683,16 +687,17 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
     return await prisma.$transaction(
       async (tx) => {
         const booking = await tx.booking.findUnique({ where: { id }, include: detailInclude });
+        const transactionNow = new Date();
         if (!booking) throw new BookingNotFoundError();
         if (booking.userId !== userId)
           throw new BookingForbiddenError("You cannot cancel this booking");
         if (
           !["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) ||
-          booking.startedAt.getTime() <= now.getTime()
+          booking.startedAt.getTime() <= transactionNow.getTime()
         )
           throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
 
-        const quote = quoteFor(booking, now);
+        const quote = quoteFor(booking, transactionNow);
         const transfer = booking.payments.find((payment) => payment.type === "TRANSFER");
         if (booking.status === "CONFIRMED" && transfer?.status !== "HOLDING")
           throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
@@ -707,11 +712,11 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
           where: {
             id,
             status: { in: ["PENDING_PAYMENT", "CONFIRMED"] },
-            startedAt: { gt: now },
+            startedAt: { gt: transactionNow },
           },
           data: {
             status: "CANCELLED",
-            cancelledAt: now,
+            cancelledAt: transactionNow,
             cancellationReason: input.reason,
             paymentExpiresAt: null,
           },
@@ -745,8 +750,9 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
               type: "REFUND",
               amount: refund,
               status: "COMPLETED",
-              completedAt: now,
-              fromUserId: transfer.toUserId,
+              completedAt: transactionNow,
+              // Release the refundable portion from platform escrow, not from the tutor wallet.
+              fromUserId: null,
               toUserId: userId,
               bookingId: id,
             },
@@ -761,7 +767,7 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
           include: detailInclude,
         });
         return {
-          booking: mapBookingResponse(detailed, userId, now),
+          booking: mapBookingResponse(detailed, userId, transactionNow),
           refund: {
             amount: decimalString(refund),
             lateCancellation: quote.lateCancellation,

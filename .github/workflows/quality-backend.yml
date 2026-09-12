@@ -24,6 +24,24 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tutor_matcher
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tutor_matcher
+      JWT_SECRET: ci-booking-test-secret
+      RUN_DATABASE_INTEGRATION: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,6 +51,8 @@ jobs:
           cache-dependency-path: apps/backend/package-lock.json
       - working-directory: apps/backend
         run: npm ci
+      - working-directory: apps/backend
+        run: npx prisma db push
       - working-directory: apps/backend
         run: npm run lint
       - working-directory: apps/backend

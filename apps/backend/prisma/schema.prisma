@@ -213,11 +213,12 @@ model Payment {
   createdAt   DateTime      @default(now()) @map("created_at")
   completedAt DateTime?     @map("completed_at")
 
-  fromUserId String @map("from_user_id") @db.Uuid
-  fromUser   User   @relation("PaymentsFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
+  // A null party represents the platform side of escrow, refunds, fees, and future top-ups.
+  fromUserId String? @map("from_user_id") @db.Uuid
+  fromUser   User?   @relation("PaymentsFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
 
-  toUserId String @map("to_user_id") @db.Uuid
-  toUser   User   @relation("PaymentsTo", fields: [toUserId], references: [id], onDelete: Restrict)
+  toUserId String? @map("to_user_id") @db.Uuid
+  toUser   User?   @relation("PaymentsTo", fields: [toUserId], references: [id], onDelete: Restrict)
 
   bookingId String?  @map("booking_id") @db.Uuid
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
