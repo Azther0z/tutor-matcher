@@ -74,6 +74,8 @@ export default function StudentSettingsPage() {
         }
 
         const data = (await response.json()) as {
+          firstName?: string;
+          lastName?: string;
           educationLevel?: string;
           goals?: string[];
           preferredLearningPeriod?: string;
@@ -81,6 +83,8 @@ export default function StudentSettingsPage() {
           learningAreas?: LearningArea[];
         };
 
+        setFirstName(data.firstName ?? "");
+        setLastName(data.lastName ?? "");
         setEducationLevel(data.educationLevel ?? "");
         setGoals(data.goals ?? []);
         setPeriod(data.preferredLearningPeriod ?? "");
@@ -166,16 +170,8 @@ export default function StudentSettingsPage() {
 
   function validate() {
     const errors: FieldErrors = {};
-    // Name is optional here (the backend's `user` block on this endpoint is
-    // opt-in) so a Student can fix just their learning preferences without
-    // re-typing their name. But a half-filled name is still invalid, since
-    // the backend requires both fields whenever the block is present.
-    const hasFirstName = firstName.trim().length > 0;
-    const hasLastName = lastName.trim().length > 0;
-    if (hasFirstName !== hasLastName) {
-      if (!hasFirstName) errors.firstName = "Enter a first name, or leave both name fields empty.";
-      if (!hasLastName) errors.lastName = "Enter a last name, or leave both name fields empty.";
-    }
+    if (!firstName.trim()) errors.firstName = "First name is required.";
+    if (!lastName.trim()) errors.lastName = "Last name is required.";
     setFieldErrors(errors);
 
     const sectionsComplete = Boolean(
@@ -222,9 +218,7 @@ export default function StudentSettingsPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...(firstName.trim() && lastName.trim()
-            ? { user: { firstName: firstName.trim(), lastName: lastName.trim() } }
-            : {}),
+          user: { firstName: firstName.trim(), lastName: lastName.trim() },
           educationLevel,
           learningAreaIds: selectedAreas.map((area) => area.id),
           goals,
@@ -262,15 +256,12 @@ export default function StudentSettingsPage() {
         <section className="rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
           <div className="mb-5">
             <h2 className="text-xl font-semibold">Personal details</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Only change these if you want to update your name. Leave both fields empty to keep it
-              as-is.
-            </p>
+            <p className="mt-1 text-sm text-zinc-500">Information connected to your account.</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5 text-sm font-medium">
-              First name <span className="font-normal text-zinc-500">(optional)</span>
+              First name
               <input
                 name="firstName"
                 value={firstName}
@@ -284,7 +275,7 @@ export default function StudentSettingsPage() {
             </label>
 
             <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Last name <span className="font-normal text-zinc-500">(optional)</span>
+              Last name
               <input
                 name="lastName"
                 value={lastName}
