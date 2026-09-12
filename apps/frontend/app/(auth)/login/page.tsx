@@ -5,9 +5,32 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { setAuthToken } from "@/src/lib/auth";
 
-function safeNextPath(next: string | null) {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/dashboard";
-  return next;
+function explicitNextPath(next: string | null) {
+  if (next && next.startsWith("/") && !next.startsWith("//")) return next;
+  return null;
+}
+
+// An approved Tutor lands on their own dashboard by default; everyone else
+// lands on the student dashboard. An explicit `?next=` (set when a guard
+// redirected here) always takes priority over this.
+async function resolveDefaultLandingPath(token: string) {
+  try {
+    const response = await fetch("/api/profiles/me/tutor", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.ok) {
+      const data = (await response.json()) as { status: string };
+      if (data.status === "APPROVED") {
+        return "/dashboard/tutor";
+      }
+    }
+  } catch {
+    // Network hiccup right after login — fall back to the student dashboard
+    // rather than blocking navigation.
+  }
+
+  return "/dashboard";
 }
 
 export default function LoginPage() {
@@ -52,7 +75,11 @@ function LoginForm() {
         setAuthToken(data.token);
       }
 
-      router.push(safeNextPath(searchParams.get("next")));
+      const next = explicitNextPath(searchParams.get("next"));
+      const landingPath =
+        next ?? (data?.token ? await resolveDefaultLandingPath(data.token) : "/dashboard");
+
+      router.push(landingPath);
     } catch {
       setError("Could not reach the server. Please try again.");
     } finally {

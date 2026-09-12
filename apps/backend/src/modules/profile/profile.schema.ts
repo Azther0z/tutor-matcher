@@ -23,13 +23,29 @@ export const profileRequestSchema = z.object({
   }),
   tutor: z.object({
     avatarUrl: optionalUrl,
-    bio: optionalText,
+    bio: z.string().trim().min(1).max(2000),
     introVideoUrl: optionalUrl,
     governmentId: z.string().trim().min(1).max(255),
+    certificationUrl: z.url(),
   }),
 });
 
 export type ProfileRequest = z.infer<typeof profileRequestSchema>;
+
+// Tutor enrollment collects the public Tutor details plus the application's
+// required documents — the account's name and personal bio are already set
+// elsewhere (signup / settings). All three application requirements
+// (government ID, teaching-certification document, bio) are required here and
+// validated server-side; avatar and intro video are additional listing details.
+export const tutorEnrollmentRequestSchema = z.object({
+  avatarUrl: optionalUrl,
+  bio: z.string().trim().min(1).max(2000),
+  introVideoUrl: z.url(),
+  governmentId: z.string().trim().min(1).max(255),
+  certificationUrl: z.url(),
+});
+
+export type TutorEnrollmentRequest = z.infer<typeof tutorEnrollmentRequestSchema>;
 
 export const studentProfileRequestSchema = z.object({
   educationLevel: z.enum(studentEducationLevels),

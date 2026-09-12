@@ -4,6 +4,7 @@ import { Navbar } from "./navbar";
 import { clearAuthToken, setAuthToken } from "@/src/lib/auth";
 
 const mockPush = jest.fn();
+const fetchMock = jest.fn();
 
 jest.mock("next/navigation", () => ({
   usePathname: () => "/",
@@ -13,7 +14,8 @@ jest.mock("next/navigation", () => ({
 beforeEach(() => {
   clearAuthToken();
   mockPush.mockReset();
-  global.fetch = jest.fn();
+  fetchMock.mockReset();
+  global.fetch = fetchMock;
 });
 
 function renderNavbar() {
@@ -22,6 +24,24 @@ function renderNavbar() {
       <Navbar />
     </AuthProvider>
   );
+}
+
+function mockAuthedUser(
+  user: { firstName: string; lastName: string; email?: string },
+  tutorStatus = "NONE"
+) {
+  fetchMock.mockImplementation((url: string) => {
+    if (url === "/api/auth/me") {
+      return Promise.resolve({ ok: true, json: async () => user });
+    }
+    if (url === "/api/profiles/me/tutor") {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ status: tutorStatus, tutor: null }),
+      });
+    }
+    return Promise.resolve({ ok: false, json: async () => ({}) });
+  });
 }
 
 describe("Navbar", () => {
@@ -35,14 +55,7 @@ describe("Navbar", () => {
 
   it("shows the balance and account menu after login", async () => {
     setAuthToken("student-token");
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        firstName: "Mina",
-        lastName: "Kittirat",
-        email: "mina@example.com",
-      }),
-    });
+    mockAuthedUser({ firstName: "Mina", lastName: "Kittirat", email: "mina@example.com" });
     renderNavbar();
 
     const accountButton = await screen.findByRole("button", { name: "Open account menu" });
@@ -58,10 +71,7 @@ describe("Navbar", () => {
 
   it("clears the session and returns home when Logout is clicked", async () => {
     setAuthToken("student-token");
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => ({ firstName: "Mina", lastName: "Kittirat" }),
-    });
+    mockAuthedUser({ firstName: "Mina", lastName: "Kittirat" });
     renderNavbar();
 
     fireEvent.click(await screen.findByRole("button", { name: "Open account menu" }));
@@ -70,5 +80,31 @@ describe("Navbar", () => {
     await waitFor(() => expect(screen.getByRole("link", { name: "Login" })).toBeInTheDocument());
     expect(localStorage.getItem("authToken")).toBeNull();
     expect(mockPush).toHaveBeenCalledWith("/");
+  });
+
+  it("shows Become a tutor for a logged-out visitor", async () => {
+    renderNavbar();
+
+    expect(await screen.findByRole("link", { name: "Become a tutor" })).toBeInTheDocument();
+  });
+
+  it("shows Become a tutor for a logged-in user who is not an approved Tutor", async () => {
+    setAuthToken("student-token");
+    mockAuthedUser({ firstName: "Mina", lastName: "Kittirat" }, "NONE");
+    renderNavbar();
+
+    await screen.findByRole("button", { name: "Open account menu" });
+    expect(screen.getByRole("link", { name: "Become a tutor" })).toBeInTheDocument();
+  });
+
+  it("hides Become a tutor for an approved Tutor", async () => {
+    setAuthToken("tutor-token");
+    mockAuthedUser({ firstName: "Ada", lastName: "Lovelace" }, "APPROVED");
+    renderNavbar();
+
+    await screen.findByRole("button", { name: "Open account menu" });
+    await waitFor(() =>
+      expect(screen.queryByRole("link", { name: "Become a tutor" })).not.toBeInTheDocument()
+    );
   });
 });

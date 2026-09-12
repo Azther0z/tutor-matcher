@@ -5,6 +5,7 @@ const learningAreaCount = jest.fn<(args: unknown) => Promise<number>>();
 const learningAreaFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const studentFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 const studentUpsert = jest.fn<(args: unknown) => Promise<unknown>>();
+const userFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 const transaction = jest.fn<(callback: (tx: unknown) => Promise<unknown>) => Promise<unknown>>();
 
 const tx = {
@@ -17,6 +18,7 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
     learningArea: { count: learningAreaCount, findMany: learningAreaFindMany },
     student: { findUnique: studentFindUnique },
+    user: { findUnique: userFindUnique },
     $transaction: transaction,
   },
 }));
@@ -56,13 +58,28 @@ describe("Student profile API", () => {
     learningAreaFindMany.mockReset();
     studentFindUnique.mockReset();
     studentUpsert.mockReset();
+    userFindUnique.mockReset();
     transaction.mockReset();
     transaction.mockImplementation(async (callback) => callback(tx));
     learningAreaCount.mockResolvedValue(2);
+    userFindUnique.mockResolvedValue({ id: "11111111-1111-4111-8111-111111111111" });
   });
 
   it("requires authentication", async () => {
     await request(app).put("/api/profiles/me/student").send(profile).expect(401);
+    expect(studentUpsert).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the account no longer exists", async () => {
+    userFindUnique.mockResolvedValue(null);
+
+    await request(app)
+      .put("/api/profiles/me/student")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .send(profile)
+      .expect(404);
+
+    expect(learningAreaCount).not.toHaveBeenCalled();
     expect(studentUpsert).not.toHaveBeenCalled();
   });
 

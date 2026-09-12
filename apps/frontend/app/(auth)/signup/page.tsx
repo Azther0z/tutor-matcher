@@ -8,6 +8,9 @@ type PolicyDocument = "privacy" | "terms";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [bio, setBio] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -19,6 +22,11 @@ export default function SignupPage() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("Please enter your first and last name.");
+      return;
+    }
 
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
@@ -41,7 +49,13 @@ export default function SignupPage() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email,
+          password,
+          bio: bio.trim() || null,
+        }),
       });
 
       if (!res.ok) {
@@ -66,6 +80,34 @@ export default function SignupPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5 text-sm font-medium">
+            First name
+            <input
+              type="text"
+              name="firstName"
+              required
+              autoComplete="given-name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5 text-sm font-medium">
+            Last name
+            <input
+              type="text"
+              name="lastName"
+              required
+              autoComplete="family-name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+            />
+          </label>
+        </div>
+
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Email
           <input
@@ -102,6 +144,18 @@ export default function SignupPage() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
+          Bio <span className="font-normal text-zinc-500">(optional)</span>
+          <textarea
+            name="bio"
+            rows={3}
+            maxLength={2000}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            className="rounded-lg border border-black/[.12] bg-transparent px-3 py-2 text-base outline-none focus:border-foreground dark:border-white/[.18]"
           />
         </label>
 

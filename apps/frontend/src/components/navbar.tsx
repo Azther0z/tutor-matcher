@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/src/components/auth-provider";
-import { clearAuthToken, type AuthUser } from "@/src/lib/auth";
+import { clearAuthToken, getAuthToken, type AuthUser } from "@/src/lib/auth";
 
 type NavLink = {
   label: string;
@@ -45,6 +45,33 @@ export function Navbar() {
   const { user, status } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  // Tracks only the last-fetched tutor status; whether that counts as
+  // "approved" is derived below so a logged-out/loading state never shows as
+  // approved without needing a separate effect to reset it.
+  const [tutorStatus, setTutorStatus] = useState<string | null>(null);
+  const isApprovedTutor = status === "authenticated" && tutorStatus === "APPROVED";
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+
+    const token = getAuthToken();
+    if (!token) return;
+
+    let cancelled = false;
+
+    fetch("/api/profiles/me/tutor", { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { status: string } | null) => {
+        if (!cancelled) setTutorStatus(data?.status ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setTutorStatus(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -86,6 +113,15 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
+
+          {!isApprovedTutor && (
+            <Link
+              href="/enroll-tutor"
+              className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-zinc-200"
+            >
+              Become a tutor
+            </Link>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
