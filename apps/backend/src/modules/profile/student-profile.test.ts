@@ -44,6 +44,7 @@ const savedStudent = {
   preferredLearningPeriod: profile.preferredLearningPeriod,
   preferredDurationMinutes: profile.preferredDurationMinutes,
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+  user: { firstName: "Ada", lastName: "Lovelace" },
   learningAreas: [
     { learningArea: { id: "11111111-1111-4111-8111-111111111111", name: "Mathematics" } },
     { learningArea: { id: "22222222-2222-4222-8222-222222222222", name: "English" } },
@@ -165,7 +166,7 @@ describe("Student profile API", () => {
     userUpdate.mockResolvedValue({});
     transaction.mockImplementation(async (callback) => callback(tx));
 
-    await request(app)
+    const response = await request(app)
       .put("/api/profiles/me/student")
       .set("Authorization", `Bearer ${tokenFor()}`)
       .send({ ...profile, user: { firstName: "New", lastName: "Name" } })
@@ -175,6 +176,10 @@ describe("Student profile API", () => {
       where: { id: "11111111-1111-4111-8111-111111111111" },
       data: { firstName: "New", lastName: "Name" },
     });
+    // Regression guard: the upsert's `include.user` is read before this
+    // transaction's user.update runs, so the response must be patched with
+    // the freshly-submitted name rather than echoing back stale data.
+    expect(response.body).toMatchObject({ firstName: "New", lastName: "Name" });
   });
 
   it("does not touch the user's name when omitted", async () => {
@@ -232,5 +237,21 @@ describe("Student profile API", () => {
       .get("/api/profiles/me/student")
       .set("Authorization", `Bearer ${tokenFor()}`)
       .expect(404);
+  });
+
+  it("returns the student's profile including the user's name", async () => {
+    studentFindUnique.mockResolvedValue(savedStudent);
+
+    const response = await request(app)
+      .get("/api/profiles/me/student")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      id: savedStudent.id,
+      userId: savedStudent.userId,
+      firstName: "Ada",
+      lastName: "Lovelace",
+    });
   });
 });

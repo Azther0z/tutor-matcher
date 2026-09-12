@@ -246,6 +246,8 @@ function studentProfileResponse(student: Awaited<ReturnType<typeof findStudentPr
   return {
     id: student.id,
     userId: student.userId,
+    firstName: student.user.firstName,
+    lastName: student.user.lastName,
     educationLevel: student.educationLevel,
     goals: student.goals,
     preferredLearningPeriod: student.preferredLearningPeriod,
@@ -258,7 +260,10 @@ function studentProfileResponse(student: Awaited<ReturnType<typeof findStudentPr
 export async function findStudentProfile(userId: string) {
   return prisma.student.findUnique({
     where: { userId },
-    include: { learningAreas: { include: { learningArea: true } } },
+    include: {
+      learningAreas: { include: { learningArea: true } },
+      user: { select: { firstName: true, lastName: true } },
+    },
   });
 }
 
@@ -317,7 +322,10 @@ export async function saveStudentProfile(userId: string, input: StudentProfileRe
           })),
         },
       },
-      include: { learningAreas: { include: { learningArea: true } } },
+      include: {
+        learningAreas: { include: { learningArea: true } },
+        user: { select: { firstName: true, lastName: true } },
+      },
     });
 
     if (input.user) {
@@ -333,7 +341,15 @@ export async function saveStudentProfile(userId: string, input: StudentProfileRe
     return savedStudent;
   });
 
-  return studentProfileResponse(student);
+  // The upsert's `include.user` is evaluated before the user.update above runs
+  // in the same transaction, so it can return stale firstName/lastName when a
+  // rename was requested. Patch the response in-memory instead of reordering
+  // the transaction or re-querying.
+  const responseStudent = input.user
+    ? { ...student, user: { firstName: input.user.firstName, lastName: input.user.lastName } }
+    : student;
+
+  return studentProfileResponse(responseStudent);
 }
 
 export async function searchLearningAreas(search?: string) {
