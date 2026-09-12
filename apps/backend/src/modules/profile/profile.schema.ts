@@ -64,3 +64,27 @@ export type StudentProfileRequest = z.infer<typeof studentProfileRequestSchema>;
 export const learningAreaSearchSchema = z.object({
   search: z.string().trim().max(100).optional(),
 });
+
+// Account settings (/settings/account) cover identity and credentials: name,
+// email, and password. Public listing fields live on the Tutor profile above.
+export const accountUpdateSchema = z
+  .object({
+    email: z.email().optional(),
+    firstName: z.string().trim().min(1).max(100).optional(),
+    lastName: z.string().trim().min(1).max(100).optional(),
+    // Re-authentication: changing sign-in credentials always costs the current
+    // password, even though the request is already authenticated.
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(8).max(100).optional(),
+  })
+  .refine((input) => (input.firstName === undefined) === (input.lastName === undefined), {
+    message: "Provide both firstName and lastName, or neither",
+    path: ["lastName"],
+  })
+  .refine(
+    (input) =>
+      input.email !== undefined || input.newPassword !== undefined || input.firstName !== undefined,
+    { message: "Provide a new email address, name, or password" }
+  );
+
+export type AccountUpdateRequest = z.infer<typeof accountUpdateSchema>;

@@ -2,13 +2,16 @@ import { Router } from "express";
 import { validate } from "../../middleware/validate.ts";
 import {
   enrollTutorForCurrentUser,
+  getAccountForCurrentUser,
   getLearningAreaSuggestions,
   getStudentProfileForCurrentUser,
   getTutorApplicationForCurrentUser,
   saveStudentProfileForCurrentUser,
+  updateAccountForCurrentUser,
   updateProfile,
 } from "./profile.controller.ts";
 import {
+  accountUpdateSchema,
   learningAreaSearchSchema,
   profileRequestSchema,
   studentProfileRequestSchema,
@@ -31,3 +34,5 @@ profileRouter.put(
   validate(studentProfileRequestSchema),
   saveStudentProfileForCurrentUser
 );
+profileRouter.get("/me/account", getAccountForCurrentUser);
+profileRouter.put("/me/account", validate(accountUpdateSchema), updateAccountForCurrentUser);

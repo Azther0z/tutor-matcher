@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/db.ts";
 import type {
+  AccountUpdateRequest,
   ProfileRequest,
   StudentProfileRequest,
   TutorEnrollmentRequest,
@@ -134,6 +135,27 @@ export async function enrollTutor(userId: string, input: TutorEnrollmentRequest)
 
     return { tutor: { ...tutor, certificationUrl: certification.fileUrl } };
   });
+}
+
+export class AccountNotFoundError extends Error {
+  constructor(message = "Account not found") {
+    super(message);
+    this.name = "AccountNotFoundError";
+  }
+}
+
+export class InvalidCurrentPasswordError extends Error {
+  constructor(message = "Current password is incorrect") {
+    super(message);
+    this.name = "InvalidCurrentPasswordError";
+  }
+}
+
+export class EmailAlreadyInUseError extends Error {
+  constructor(message = "A user with this email already exists") {
+    super(message);
+    this.name = "EmailAlreadyInUseError";
+  }
 }
 
 export async function updateTutorProfile(userId: string, input: ProfileRequest) {
@@ -310,4 +332,76 @@ export async function searchLearningAreas(search?: string) {
     orderBy: { name: "asc" },
     take: 20,
   });
+}
+
+const accountSelect = {
+  id: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  createdAt: true,
+} as const;
+
+// Loads the account for a credential change and re-authenticates it.
+async function authenticateAccount(userId: string, currentPassword: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { ...accountSelect, password: true },
+  });
+
+  if (!user) {
+    throw new AccountNotFoundError();
+  }
+
+  // NOTE: passwords are still stored in plaintext (see auth.service). Swap this
+  // for a constant-time hash comparison once hashing is added to both flows.
+  if (user.password !== currentPassword) {
+    throw new InvalidCurrentPasswordError();
+  }
+
+  return user;
+}
+
+export async function getAccount(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: accountSelect });
+
+  if (!user) {
+    throw new AccountNotFoundError();
+  }
+
+  return user;
+}
+
+export async function updateAccount(userId: string, input: AccountUpdateRequest) {
+  const user = await authenticateAccount(userId, input.currentPassword);
+  const email = input.email?.trim();
+
+  if (email && email !== user.email) {
+    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+
+    if (existing && existing.id !== userId) {
+      throw new EmailAlreadyInUseError();
+    }
+  }
+
+  try {
+    return await prisma.user.update({
+      where: { id: userId },
+      data: {
+        email: email ?? undefined,
+        password: input.newPassword ?? undefined,
+        firstName: input.firstName ?? undefined,
+        lastName: input.lastName ?? undefined,
+      },
+      select: accountSelect,
+    });
+  } catch (error) {
+    // Safety net for the race where two email changes pass the check above
+    // concurrently; the DB unique constraint on `email` still rejects one.
+    if (error instanceof Error && (error as { code?: string }).code === "P2002") {
+      throw new EmailAlreadyInUseError();
+    }
+
+    throw error;
+  }
 }
