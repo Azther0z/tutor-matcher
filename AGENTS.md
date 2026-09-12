@@ -40,6 +40,24 @@
 
 ### Current Work Log
 
+### 2026-09-12 — Remove accidental app-to-root dependency blocking CI
+
+- Files changed: `apps/backend/package.json` and `package-lock.json`,
+  `apps/frontend/package.json` and `package-lock.json`, plus this `AGENTS.md` entry.
+- Removed the unused `tutor-matcher: file:../..` dependency from both app manifests and
+  removed its root-package and symlink metadata from both lockfiles. Existing runtime
+  dependencies, including `bcryptjs`, `express-rate-limit`, and `resend`, remain unchanged.
+- Progress: all four package files parse as valid JSON; no local `tutor-matcher` dependency
+  or lock entry remains; repository `npm run format:check` passes. Backend lint, Jest (48 tests),
+  TypeScript build, frontend lint, Jest (21 tests), Next.js build, and Compose config validation
+  all pass.
+- Verification limitation: clean `npm ci` could not complete on this Windows host because existing
+  `node_modules` native binaries are locked (`EPERM` on `esbuild.exe`/`lightningcss`); no process
+  was stopped. Backend BDD requires Node 20/22/24+ but this host has Node 23.9.0. Docker image
+  builds remain unverified because Docker Engine is not reachable.
+- Remaining: rerun backend BDD on a supported Node version and Docker image builds when available,
+  then commit/push separately if requested and inspect the resulting GitHub Actions runs.
+
 ### 2026-09-12 — Restore local authentication after UUID schema drift
 
 - Files changed: `AGENTS.md` only; application source files were not changed.

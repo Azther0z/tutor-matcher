@@ -37,7 +37,6 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0",
     "resend": "^6.26.0",
-    "tutor-matcher": "file:../..",
     "zod": "^4.5.2"
   },
   "devDependencies": {
