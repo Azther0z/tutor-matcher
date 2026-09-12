@@ -22,36 +22,16 @@ const prisma = new PrismaClient({ adapter });
 faker.seed(20260828);
 
 const FIXED_USERS = [
-  {
-    firstName: "Alice",
-    lastName: "Johnson",
-    email: "alice@example.com",
-    isAdmin: false,
-    balance: "0.00",
-  },
-  {
-    firstName: "Bob",
-    lastName: "Smith",
-    email: "bob@example.com",
-    isAdmin: false,
-    // Only the development fixture student is funded; production sign-up still starts at zero.
-    balance: "10000.00",
-  },
+  { firstName: "Alice", lastName: "Johnson", email: "alice@example.com", isAdmin: false },
+  { firstName: "Bob", lastName: "Smith", email: "bob@example.com", isAdmin: false },
   // Carol handles the report fixture below, so she has to be a real admin.
-  {
-    firstName: "Carol",
-    lastName: "Davis",
-    email: "carol@example.com",
-    isAdmin: true,
-    balance: "0.00",
-  },
+  { firstName: "Carol", lastName: "Davis", email: "carol@example.com", isAdmin: true },
 ];
 
 const GENERATED_USERS = 20;
 const FIXTURE_TUTOR_GOVERNMENT_ID = "development-tutor-001";
 const FIXTURE_SUBJECT_NAME = "Mathematics";
-const FIXTURE_AVAILABILITY = new Date("2030-01-15T02:00:00.000Z");
-const FIXTURE_SLOT_MS = 30 * 60_000;
+const FIXTURE_AVAILABILITY = new Date("2026-09-01T10:00:00.000Z");
 const FIXTURE_BOOKING_DESCRIPTION = "Development booking fixture";
 const FIXTURE_CERTIFICATION_URL = "https://example.com/development-certificate.pdf";
 const FIXTURE_MESSAGE = "Development message fixture";
@@ -95,7 +75,7 @@ async function main() {
   for (const user of FIXED_USERS) {
     await prisma.user.upsert({
       where: { email: user.email },
-      update: { isAdmin: user.isAdmin, balance: user.balance },
+      update: { isAdmin: user.isAdmin },
       create: { ...user, password: "development-only" },
     });
   }
@@ -160,48 +140,28 @@ async function main() {
         },
       });
 
-  // Keep a coherent one-hour booked block plus future unclaimed slots for BOOK-1 testing.
-  const fixtureAvailabilities = [];
-  for (const startedAt of [
-    FIXTURE_AVAILABILITY,
-    new Date(FIXTURE_AVAILABILITY.getTime() + FIXTURE_SLOT_MS),
-  ]) {
-    const existing = await prisma.availability.findFirst({ where: { startedAt } });
-    const availability = existing ?? (await prisma.availability.create({ data: { startedAt } }));
-    fixtureAvailabilities.push(availability);
-    await prisma.availabilitySubject.upsert({
-      where: {
-        availabilityId_subjectId: {
-          availabilityId: availability.id,
-          subjectId: subject.id,
-        },
-      },
-      update: {},
-      create: {
-        availability: { connect: { id: availability.id } },
-        subject: { connect: { id: subject.id } },
-      },
-    });
-  }
+  const existingAvailability = await prisma.availability.findFirst({
+    where: { startedAt: FIXTURE_AVAILABILITY },
+  });
+  const availability = existingAvailability
+    ? existingAvailability
+    : await prisma.availability.create({
+        data: { startedAt: FIXTURE_AVAILABILITY },
+      });
 
-  for (let offset = 4; offset < 12; offset++) {
-    const startedAt = new Date(FIXTURE_AVAILABILITY.getTime() + offset * FIXTURE_SLOT_MS);
-    const existing = await prisma.availability.findFirst({ where: { startedAt } });
-    const availability = existing ?? (await prisma.availability.create({ data: { startedAt } }));
-    await prisma.availabilitySubject.upsert({
-      where: {
-        availabilityId_subjectId: {
-          availabilityId: availability.id,
-          subjectId: subject.id,
-        },
+  await prisma.availabilitySubject.upsert({
+    where: {
+      availabilityId_subjectId: {
+        availabilityId: availability.id,
+        subjectId: subject.id,
       },
-      update: {},
-      create: {
-        availability: { connect: { id: availability.id } },
-        subject: { connect: { id: subject.id } },
-      },
-    });
-  }
+    },
+    update: {},
+    create: {
+      availability: { connect: { id: availability.id } },
+      subject: { connect: { id: subject.id } },
+    },
+  });
 
   const existingBooking = await prisma.booking.findFirst({
     where: {
@@ -218,8 +178,8 @@ async function main() {
           zoomMeetingUrl: "https://zoom.us/j/development-fixture",
           totalAmount: "75.00",
           startedAt: FIXTURE_AVAILABILITY,
-          endedAt: new Date(FIXTURE_AVAILABILITY.getTime() + 60 * 60_000),
-          status: "CONFIRMED",
+          endedAt: new Date(FIXTURE_AVAILABILITY.getTime() + 30 * 60_000),
+          status: "COMPLETED",
           user: { connect: { id: bob.id } },
           subject: { connect: { id: subject.id } },
         },
@@ -232,18 +192,17 @@ async function main() {
         zoomMeetingUrl: "https://zoom.us/j/development-fixture",
         totalAmount: "75.00",
         startedAt: FIXTURE_AVAILABILITY,
-        endedAt: new Date(FIXTURE_AVAILABILITY.getTime() + 60 * 60_000),
-        status: "CONFIRMED",
+        endedAt: new Date(FIXTURE_AVAILABILITY.getTime() + 30 * 60_000),
+        status: "COMPLETED",
         paymentExpiresAt: null,
       },
     });
   }
 
-  for (const availability of fixtureAvailabilities)
-    await prisma.availability.update({
-      where: { id: availability.id },
-      data: { booking: { connect: { id: booking.id } } },
-    });
+  await prisma.availability.update({
+    where: { id: availability.id },
+    data: { booking: { connect: { id: booking.id } } },
+  });
 
   const existingPayment = await prisma.payment.findFirst({
     where: { bookingId: booking.id, type: "TRANSFER" },
@@ -251,14 +210,14 @@ async function main() {
   if (existingPayment) {
     await prisma.payment.update({
       where: { id: existingPayment.id },
-      data: { amount: "75.00", status: "HOLDING", completedAt: null },
+      data: { amount: "75.00", status: "COMPLETED" },
     });
   } else {
     await prisma.payment.create({
       data: {
         type: "TRANSFER",
         amount: "75.00",
-        status: "HOLDING",
+        status: "COMPLETED",
         fromUser: { connect: { id: bob.id } },
         toUser: { connect: { id: alice.id } },
         booking: { connect: { id: booking.id } },
