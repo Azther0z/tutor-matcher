@@ -74,10 +74,10 @@ export default function DashboardPage() {
               </p>
             </div>
             <Link
-              href="/onboarding/student"
+              href="/settings/student"
               className="flex h-11 w-fit items-center justify-center rounded-full bg-foreground px-5 font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
             >
-              Continue onboarding
+              Set up your profile
             </Link>
           </section>
         )}

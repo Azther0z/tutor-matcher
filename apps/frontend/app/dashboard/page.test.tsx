@@ -24,9 +24,9 @@ describe("DashboardPage", () => {
     render(<DashboardPage />);
 
     expect(await screen.findByText("Complete your Student profile")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Continue onboarding" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Set up your profile" })).toHaveAttribute(
       "href",
-      "/onboarding/student"
+      "/settings/student"
     );
   });
 
