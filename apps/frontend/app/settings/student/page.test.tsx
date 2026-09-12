@@ -10,16 +10,10 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-function fillName() {
-  fireEvent.change(screen.getByLabelText(/First name/), { target: { value: "Ada" } });
-  fireEvent.change(screen.getByLabelText(/Last name/), { target: { value: "Lovelace" } });
-}
-
 // Renders with no logged-in session (skips the GET-prefill fetch, since it
-// requires an authToken) and fills out every section, including name, by hand.
+// requires an authToken) and fills out every Student-preference section by hand.
 async function completeSectionsFresh() {
   localStorage.setItem("authToken", "student-token");
-  fillName();
   const searchInput = screen.getByLabelText("Search learning areas");
   fireEvent.focus(searchInput);
   fireEvent.click(await screen.findByRole("button", { name: "Mathematics" }));
@@ -36,13 +30,23 @@ async function completeSectionsFresh() {
 }
 
 describe("StudentSettingsPage", () => {
-  it("prefills name and learning preferences from the saved Student profile on mount", async () => {
+  it("shows the settings sidebar with Student profile active", () => {
+    render(<StudentSettingsPage />);
+
+    const link = screen.getByRole("link", { name: "Student profile" });
+    expect(link).toHaveAttribute("href", "/settings/student");
+    expect(link).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Account" })).toHaveAttribute(
+      "href",
+      "/settings/account"
+    );
+  });
+
+  it("prefills learning preferences from the saved Student profile on mount", async () => {
     localStorage.setItem("authToken", "student-token");
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        firstName: "Ada",
-        lastName: "Lovelace",
         educationLevel: "UPPER_SECONDARY_SCHOOL",
         goals: ["EXAM_PREPARATION"],
         preferredLearningPeriod: "EVENING",
@@ -54,8 +58,6 @@ describe("StudentSettingsPage", () => {
     render(<StudentSettingsPage />);
 
     expect(await screen.findByText("Mathematics")).toBeInTheDocument();
-    expect(screen.getByLabelText(/First name/)).toHaveValue("Ada");
-    expect(screen.getByLabelText(/Last name/)).toHaveValue("Lovelace");
     expect(screen.getByLabelText("Education level")).toHaveValue("UPPER_SECONDARY_SCHOOL");
     expect(screen.getByLabelText("Prepare for an examination")).toBeChecked();
     expect(screen.getByLabelText("Preferred learning period")).toHaveValue("EVENING");
@@ -73,53 +75,16 @@ describe("StudentSettingsPage", () => {
     render(<StudentSettingsPage />);
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    expect(screen.getByLabelText(/First name/)).toHaveValue("");
-    expect(screen.getByLabelText(/Last name/)).toHaveValue("");
     expect(screen.getByLabelText("Education level")).toHaveValue("");
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("blocks saving and shows a combined message when name is half-filled and sections are incomplete", () => {
-    render(<StudentSettingsPage />);
-
-    fireEvent.change(screen.getByLabelText(/First name/), { target: { value: "Ada" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByText("Last name is required.")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Complete the highlighted fields and finish every section before saving your profile."
-      )
-    ).toBeInTheDocument();
-  });
-
-  it("blocks submission and shows a combined message when name is left blank and sections are incomplete", () => {
+  it("blocks submission when required Student-preference sections are incomplete", () => {
     render(<StudentSettingsPage />);
 
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByText("First name is required.")).toBeInTheDocument();
-    expect(screen.getByText("Last name is required.")).toBeInTheDocument();
-    // Name and sections are both invalid at this point, so the combined
-    // message wins over the sections-only one.
-    expect(
-      screen.getByText(
-        "Complete the highlighted fields and finish every section before saving your profile."
-      )
-    ).toBeInTheDocument();
-  });
-
-  it("blocks submission when required sections are incomplete but name is filled in", () => {
-    render(<StudentSettingsPage />);
-
-    fillName();
-    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.queryByText("First name is required.")).not.toBeInTheDocument();
-    expect(screen.queryByText("Last name is required.")).not.toBeInTheDocument();
     expect(
       screen.getByText("Please complete every section before saving your profile.")
     ).toBeInTheDocument();
@@ -146,7 +111,7 @@ describe("StudentSettingsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("sends the full request body, including the user key, on save", async () => {
+  it("sends the Student-preference request body on save", async () => {
     fetchMock
       .mockResolvedValueOnce({
         ok: true,
@@ -167,7 +132,6 @@ describe("StudentSettingsPage", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        user: { firstName: "Ada", lastName: "Lovelace" },
         educationLevel: "UPPER_SECONDARY_SCHOOL",
         learningAreaIds: [learningAreaId],
         goals: ["EXAM_PREPARATION"],

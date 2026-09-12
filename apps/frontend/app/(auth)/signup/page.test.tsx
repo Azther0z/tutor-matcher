@@ -43,6 +43,15 @@ const signupRequestBody = JSON.stringify({
 });
 
 describe("SignupPage", () => {
+  it("requires a first and last name before creating an account", () => {
+    render(<SignupPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Please enter your first and last name.");
+  });
+
   it("creates an account and sends the user to login", async () => {
     fetchMock.mockResolvedValue({
       ok: true,

@@ -42,7 +42,7 @@ describe("DashboardPage", () => {
     expect(screen.queryByText("Complete your Student profile")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Edit your profile" })).toHaveAttribute(
       "href",
-      "/settings/student"
+      "/settings/account"
     );
   });
 });

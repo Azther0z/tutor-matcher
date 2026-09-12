@@ -39,7 +39,7 @@ describe("Account settings API", () => {
       expect(userFindUnique).not.toHaveBeenCalled();
     });
 
-    it("returns the current email without the password", async () => {
+    it("returns the current account details without the password", async () => {
       userFindUnique.mockResolvedValue(account);
 
       const response = await request(app)

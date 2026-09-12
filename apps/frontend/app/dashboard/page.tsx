@@ -91,7 +91,7 @@ export default function DashboardPage() {
               </p>
             </div>
             <Link
-              href="/settings/student"
+              href="/settings/account"
               className="flex h-11 w-fit items-center justify-center rounded-full bg-foreground px-5 font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
             >
               Edit your profile
