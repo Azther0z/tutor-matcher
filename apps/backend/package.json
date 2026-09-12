@@ -33,9 +33,11 @@
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0",
     "resend": "^6.26.0",
+    "tutor-matcher": "file:../..",
     "zod": "^4.5.2"
   },
   "devDependencies": {

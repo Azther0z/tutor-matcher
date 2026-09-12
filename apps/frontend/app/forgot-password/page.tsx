@@ -15,7 +15,8 @@ export default function ForgotPasswordPage() {
     event.preventDefault();
     setError(null);
 
-    if (!email.includes("@")) {
+    const normalizedEmail = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       setError("Please enter a valid email address.");
       return;
     }
@@ -26,7 +27,7 @@ export default function ForgotPasswordPage() {
       const res = await fetch("/api/auth/password-reset/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: normalizedEmail }),
       });
       const data = (await res.json().catch(() => null)) as { message?: string } | null;
 

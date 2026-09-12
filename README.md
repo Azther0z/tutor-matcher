@@ -77,8 +77,11 @@ source changes; rerun `just up` after changing application code. To run both dev
 servers with hot reload attached to the current terminal instead (Ctrl+C stops
 both), use `just dev` (`npm run dev`); this assumes Postgres is already running.
 
-The root `.env` file is created from `.env.example` automatically. Edit
-`FRONTEND_PORT` or `BACKEND_PORT` there to avoid port conflicts on your device.
+The root `.env` file is created from `.env.example` automatically and is read by Docker
+Compose. Edit `FRONTEND_PORT` or `BACKEND_PORT` there to avoid port conflicts on your device;
+the same file also holds the Compose password-reset delivery mode and Resend settings.
+The backend `.env` is a separate file for host development with `just dev`; it uses the local
+database URL and defaults to logging reset links.
 
 ### Password reset email delivery
 
@@ -103,6 +106,8 @@ Use `onboarding@resend.dev` only for testing and send to the email address that
 owns the Resend account. Never commit an API key; `*.env` files are ignored by Git.
 The `just up` Compose flow remains production-style and defaults to `resend`, so
 configure its Resend credentials explicitly when password-reset email is needed.
+Do not add `apps/backend/.env` as a Compose `env_file`: its `DATABASE_URL` points to
+`localhost`, while the backend container must connect to the `postgres` service.
 
 <details>
 <summary>Run each server in its own terminal</summary>

@@ -21,6 +21,7 @@ services:
       context: ./apps/backend
     restart: unless-stopped
     environment:
+      NODE_ENV: production
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tutor_matcher
       PORT: "8000"
       EMAIL_DELIVERY_MODE: ${EMAIL_DELIVERY_MODE:-resend}

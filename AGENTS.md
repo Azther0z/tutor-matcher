@@ -40,6 +40,39 @@
 
 ### Current Work Log
 
+### 2026-09-12 — Restore local authentication after UUID schema drift
+
+- Files changed: `AGENTS.md` only; application source files were not changed.
+- Reset the disposable local PostgreSQL schema with `prisma db push --force-reset` so
+  integer identifiers from the stale database were replaced by the UUID identifiers in
+  `apps/backend/prisma/schema.prisma`, then regenerated Prisma Client and reseeded mock data.
+- Removed the temporary smoke-test account after confirming signup, login, JWT-backed
+  `/api/auth/me`, and the frontend API proxy all work against the synchronized database.
+- Progress: PostgreSQL is healthy with 23 seeded users; backend Jest (48 tests), frontend
+  Jest (21 tests), live signup (`201`), login (`200`), and current-user (`200`) checks pass.
+- Remaining: No work is known for this local authentication incident.
+
+### 2026-09-12 — Implement PR #72 review fixes
+
+- Files changed: auth service/routes/tests, password-reset constants, email helper/tests,
+  Prisma schema, frontend forgot-password page/tests, environment examples, Docker Compose,
+  README, `docs/project-schema.md`, and backend dependency manifests.
+- Implemented bcrypt upgrade-on-login for legacy plaintext passwords; a failed upgrade now
+  reaches the global HTTP 500 handler without issuing a JWT.
+- Added a five-requests-per-15-minutes password-reset limiter with generic `429` responses,
+  retry information, and standard rate-limit headers. Password-reset token replacement now
+  uses a database-enforced unique user relation and atomic `upsert`, and failed delivery
+  cleanup matches both token ID and hash.
+- Centralized the 30-minute reset expiry, passed it into both email formats, tightened the
+  frontend email check and trimming, documented `NODE_ENV` and Compose Resend variables, and
+  kept Compose separate from the host backend `.env` because their database hosts differ.
+- Progress: Backend Jest (48 tests), frontend Jest (21 tests), backend/frontend lint, both
+  production builds, Prisma format/validate/generate, and targeted formatting checks pass.
+  Repository-wide format check still reports the pre-existing unrelated baseline warnings.
+- Remaining: No code work is known for this plan. Updating PR #72, replying/resolving review
+  threads, and requesting new reviews are external GitHub actions and require explicit user
+  authorization; seed-token clarification remains open.
+
 ### 2026-09-12 — Rebase AUTH-3 onto current main
 
 - Files changed: auth controller/routes/service/tests, `schema.prisma`, password-reset
@@ -52,8 +85,8 @@
   workflow.
 - Progress: Prisma validation, backend Jest (45 tests), frontend Jest (19 tests),
   backend/frontend lint, and backend/frontend production builds pass.
-- Remaining: stage the resolution and complete the in-progress rebase; push the
-  rewritten branch with `--force-with-lease` only when explicitly requested.
+- Progress: the rebase is complete and no rebase metadata remains. Pushing the rewritten
+  branch with `--force-with-lease` remains an explicit user-authorized follow-up.
 
 ### 2026-09-08 — Issue #73 Windows justfile workflows
 

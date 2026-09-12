@@ -14,6 +14,7 @@ jest.unstable_mockModule("resend", () => ({ Resend: ResendMock }));
 const { env, resolveEmailDeliveryMode } = await import("./env.ts");
 const { EmailConfigurationError, EmailDeliveryError, sendPasswordResetEmail } =
   await import("./email.ts");
+const { PASSWORD_RESET_TTL_MINUTES } = await import("./password-reset.ts");
 
 const originalEmailConfig = {
   emailDeliveryMode: env.emailDeliveryMode,
@@ -66,6 +67,7 @@ describe("sendPasswordResetEmail", () => {
     await sendPasswordResetEmail({
       to: "ada@example.com",
       resetUrl: "http://localhost:3000/reset-password?token=raw-token",
+      expiresInMinutes: PASSWORD_RESET_TTL_MINUTES,
     });
 
     expect(consoleInfo).toHaveBeenCalledWith(
@@ -87,6 +89,7 @@ describe("sendPasswordResetEmail", () => {
     await sendPasswordResetEmail({
       to: "ada@example.com",
       resetUrl: "http://localhost:3000/reset-password?token=raw-token",
+      expiresInMinutes: PASSWORD_RESET_TTL_MINUTES,
     });
 
     expect(ResendMock).toHaveBeenCalledWith("re_test_key");
@@ -103,7 +106,11 @@ describe("sendPasswordResetEmail", () => {
     Object.assign(env, { emailDeliveryMode: "smtp" });
 
     await expect(
-      sendPasswordResetEmail({ to: "ada@example.com", resetUrl: "http://localhost/reset" })
+      sendPasswordResetEmail({
+        to: "ada@example.com",
+        resetUrl: "http://localhost/reset",
+        expiresInMinutes: PASSWORD_RESET_TTL_MINUTES,
+      })
     ).rejects.toBeInstanceOf(EmailConfigurationError);
     expect(ResendMock).not.toHaveBeenCalled();
   });
@@ -122,7 +129,11 @@ describe("sendPasswordResetEmail", () => {
     });
 
     await expect(
-      sendPasswordResetEmail({ to: "ada@example.com", resetUrl: "http://localhost/reset" })
+      sendPasswordResetEmail({
+        to: "ada@example.com",
+        resetUrl: "http://localhost/reset",
+        expiresInMinutes: PASSWORD_RESET_TTL_MINUTES,
+      })
     ).rejects.toBeInstanceOf(EmailConfigurationError);
     expect(ResendMock).not.toHaveBeenCalled();
   });
@@ -137,7 +148,11 @@ describe("sendPasswordResetEmail", () => {
     });
 
     await expect(
-      sendPasswordResetEmail({ to: "ada@example.com", resetUrl: "http://localhost/reset" })
+      sendPasswordResetEmail({
+        to: "ada@example.com",
+        resetUrl: "http://localhost/reset",
+        expiresInMinutes: PASSWORD_RESET_TTL_MINUTES,
+      })
     ).rejects.toBeInstanceOf(EmailDeliveryError);
   });
 
@@ -151,7 +166,33 @@ describe("sendPasswordResetEmail", () => {
     });
 
     await expect(
-      sendPasswordResetEmail({ to: "ada@example.com", resetUrl: "http://localhost/reset" })
+      sendPasswordResetEmail({
+        to: "ada@example.com",
+        resetUrl: "http://localhost/reset",
+        expiresInMinutes: PASSWORD_RESET_TTL_MINUTES,
+      })
     ).rejects.toBeInstanceOf(EmailDeliveryError);
+  });
+
+  it("uses the supplied expiry in both email formats", async () => {
+    resendSend.mockResolvedValue({ id: "email-id" });
+    Object.assign(env, {
+      emailDeliveryMode: "resend",
+      resendApiKey: "re_test_key",
+      resendFromEmail: "Tutor Matcher <onboarding@resend.dev>",
+      frontendUrlConfigured: true,
+    });
+
+    await sendPasswordResetEmail({
+      to: "ada@example.com",
+      resetUrl: "http://localhost/reset",
+      expiresInMinutes: 45,
+    });
+
+    const payload = resendSend.mock.calls[0]?.[0] as { html: string; text: string };
+    expect(payload.html).toContain("45 minutes");
+    expect(payload.text).toContain("45 minutes");
+    expect(payload.html).not.toContain("30 minutes");
+    expect(payload.text).not.toContain("30 minutes");
   });
 });

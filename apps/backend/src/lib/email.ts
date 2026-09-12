@@ -4,6 +4,7 @@ import { env, type EmailDeliveryMode } from "./env.ts";
 type PasswordResetEmail = {
   to: string;
   resetUrl: string;
+  expiresInMinutes: number;
 };
 
 type EmailPayload = {
@@ -52,7 +53,11 @@ function createResendClient(): EmailClient {
   return new Resend(env.resendApiKey);
 }
 
-export async function sendPasswordResetEmail({ to, resetUrl }: PasswordResetEmail) {
+export async function sendPasswordResetEmail({
+  to,
+  resetUrl,
+  expiresInMinutes,
+}: PasswordResetEmail) {
   if (getEmailDeliveryMode() === "log") {
     console.info(`[password-reset] Reset link for ${to}: ${resetUrl}`);
     return;
@@ -64,9 +69,9 @@ export async function sendPasswordResetEmail({ to, resetUrl }: PasswordResetEmai
     subject: "Reset your Tutor Matcher password",
     html: `<p>We received a request to reset your Tutor Matcher password.</p>
       <p><a href="${resetUrl}">Reset your password</a></p>
-      <p>This link expires in 30 minutes and can only be used once.</p>
+      <p>This link expires in ${expiresInMinutes} minutes and can only be used once.</p>
       <p>If you did not request this, you can safely ignore this email.</p>`,
-    text: `Reset your Tutor Matcher password: ${resetUrl}\n\nThis link expires in 30 minutes and can only be used once. If you did not request this, you can safely ignore this email.`,
+    text: `Reset your Tutor Matcher password: ${resetUrl}\n\nThis link expires in ${expiresInMinutes} minutes and can only be used once. If you did not request this, you can safely ignore this email.`,
   };
 
   const client = createResendClient();

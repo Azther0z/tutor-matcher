@@ -72,16 +72,16 @@ are the database names; the Prisma field name is given where it differs.
 
 ### password_reset_tokens
 
-| Column                  | Type      | Constraints                                     | Notes                                          |
-| ----------------------- | --------- | ----------------------------------------------- | ---------------------------------------------- |
-| password_reset_token_id | UUID      | PK, DEFAULT UUID                                | Prisma `id`                                    |
-| token_hash              | TEXT      | UNIQUE, NOT NULL                                | SHA-256 hash; the raw token is never persisted |
-| expires_at              | TIMESTAMP | NOT NULL                                        | 30 minutes after issuance                      |
-| used_at                 | TIMESTAMP | NULL                                            | Set atomically when the password is changed    |
-| created_at              | TIMESTAMP | NOT NULL, DEFAULT now()                         | Issuance time                                  |
-| user_id                 | UUID      | NOT NULL, FK → users.user_id, ON DELETE CASCADE | Token owner                                    |
+| Column                  | Type      | Constraints                                             | Notes                                          |
+| ----------------------- | --------- | ------------------------------------------------------- | ---------------------------------------------- |
+| password_reset_token_id | UUID      | PK, DEFAULT UUID                                        | Prisma `id`                                    |
+| token_hash              | TEXT      | UNIQUE, NOT NULL                                        | SHA-256 hash; the raw token is never persisted |
+| expires_at              | TIMESTAMP | NOT NULL                                                | 30 minutes after issuance                      |
+| used_at                 | TIMESTAMP | NULL                                                    | Set atomically when the password is changed    |
+| created_at              | TIMESTAMP | NOT NULL, DEFAULT now()                                 | Issuance time                                  |
+| user_id                 | UUID      | UNIQUE, NOT NULL, FK → users.user_id, ON DELETE CASCADE | One current token per user                     |
 
-Indexes: unique `token_hash`, `user_id`, and `expires_at`.
+Indexes: unique `token_hash`, unique `user_id`, and `expires_at`.
 
 ### tutors
 
@@ -292,6 +292,7 @@ Present today: `subjects(tutor_id)`, `bookings(user_id)`, `bookings(subject_id)`
 `messages(from_user_id)`, `messages(to_user_id)`, `reports(admin_user_id)`,
 `reports(reporter_user_id)`, `reports(reported_user_id)`, plus the unique indexes on
 `users(email)`, `users(tutor_id)`, `password_reset_tokens(token_hash)`,
+`password_reset_tokens(user_id)`,
 `availabilities(booking_id)`, and
 `payments(booking_id)`.
 

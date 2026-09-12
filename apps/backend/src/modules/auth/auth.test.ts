@@ -6,6 +6,7 @@ const userCreate = jest.fn<(args: unknown) => Promise<unknown>>();
 const userFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 const userUpdate = jest.fn<(args: unknown) => Promise<unknown>>();
 const tokenCreate = jest.fn<(args: unknown) => Promise<unknown>>();
+const tokenUpsert = jest.fn<(args: unknown) => Promise<unknown>>();
 const tokenDeleteMany = jest.fn<(args: unknown) => Promise<unknown>>();
 const tokenFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 const tokenUpdateMany = jest.fn<(args: unknown) => Promise<unknown>>();
@@ -18,6 +19,7 @@ const transactionClient = {
   user: { update: userUpdate },
   passwordResetToken: {
     create: tokenCreate,
+    upsert: tokenUpsert,
     deleteMany: tokenDeleteMany,
     findUnique: tokenFindUnique,
     updateMany: tokenUpdateMany,
@@ -51,6 +53,8 @@ jest.unstable_mockModule("../../lib/email.ts", () => ({
 }));
 
 const { app } = await import("../../app.ts");
+const { passwordResetRateLimiter } = await import("./auth.routes.ts");
+const { GENERIC_PASSWORD_RESET_MESSAGE } = await import("../../lib/password-reset.ts");
 const { signAuthToken, verifyAuthToken } = await import("../../lib/jwt.ts");
 
 beforeEach(() => {
@@ -58,6 +62,7 @@ beforeEach(() => {
   userFindUnique.mockReset();
   userUpdate.mockReset();
   tokenCreate.mockReset();
+  tokenUpsert.mockReset();
   tokenDeleteMany.mockReset();
   tokenFindUnique.mockReset();
   tokenUpdateMany.mockReset();
@@ -66,6 +71,8 @@ beforeEach(() => {
   userFindUnique.mockResolvedValue(null);
   tokenDeleteMany.mockResolvedValue({ count: 1 });
   sendPasswordResetEmail.mockResolvedValue();
+  passwordResetRateLimiter.resetKey("::ffff:127.0.0.1");
+  passwordResetRateLimiter.resetKey("127.0.0.1");
 });
 
 afterEach(() => {
@@ -189,7 +196,7 @@ describe("POST /api/auth/login", () => {
     expect(userUpdate).not.toHaveBeenCalled();
   });
 
-  it("continues to accept a legacy plaintext password", async () => {
+  it("upgrades a valid legacy plaintext password to bcrypt", async () => {
     userFindUnique.mockResolvedValue({
       id: userId,
       email: "ada@example.com",
@@ -199,12 +206,41 @@ describe("POST /api/auth/login", () => {
       isAdmin: false,
     });
 
+    userUpdate.mockResolvedValue({ id: userId });
+
     await request(app)
       .post("/api/auth/login")
       .send({ email: "ada@example.com", password: "supersecret" })
       .expect(200);
 
-    expect(userUpdate).not.toHaveBeenCalled();
+    expect(userUpdate).toHaveBeenCalledTimes(1);
+    const updateCall = userUpdate.mock.calls[0]?.[0] as {
+      where: { id: string };
+      data: { password: string };
+    };
+    expect(updateCall.where).toEqual({ id: userId });
+    await expect(bcrypt.compare("supersecret", updateCall.data.password)).resolves.toBe(true);
+  });
+
+  it("returns 500 and does not issue a token when legacy password upgrade fails", async () => {
+    userFindUnique.mockResolvedValue({
+      id: userId,
+      email: "ada@example.com",
+      password: "supersecret",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      isAdmin: false,
+    });
+    userUpdate.mockRejectedValue(new Error("database unavailable"));
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const res = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "ada@example.com", password: "supersecret" })
+      .expect(500);
+
+    expect(res.body).toEqual({ message: "Internal server error" });
+    expect(res.body).not.toHaveProperty("token");
   });
 
   it("returns 400 for an invalid body", async () => {
@@ -274,7 +310,7 @@ describe("password reset", () => {
     userFindUnique
       .mockResolvedValueOnce({ id: userId, email: "ada@example.com" })
       .mockResolvedValueOnce(null);
-    tokenCreate.mockResolvedValue({ id: resetTokenId, tokenHash: "hashed-token" });
+    tokenUpsert.mockResolvedValue({ id: resetTokenId, tokenHash: "hashed-token" });
 
     const registered = await request(app)
       .post("/api/auth/password-reset/request")
@@ -291,30 +327,38 @@ describe("password reset", () => {
 
   it("stores only a SHA-256 token hash, invalidates old tokens, and emails the raw link", async () => {
     userFindUnique.mockResolvedValue({ id: userId, email: "ada@example.com" });
-    tokenCreate.mockResolvedValue({ id: resetTokenId, tokenHash: "hashed-token" });
+    tokenUpsert.mockResolvedValue({ id: resetTokenId, tokenHash: "hashed-token" });
 
     await request(app)
       .post("/api/auth/password-reset/request")
       .send({ email: "ADA@example.com" })
       .expect(200);
 
-    expect(tokenDeleteMany).toHaveBeenCalledWith({ where: { userId } });
-    const createCall = tokenCreate.mock.calls[0]?.[0] as {
-      data: { tokenHash: string; userId: string; expiresAt: Date };
+    const upsertCall = tokenUpsert.mock.calls[0]?.[0] as {
+      where: { userId: string };
+      update: { tokenHash: string; expiresAt: Date; usedAt: null };
+      create: { tokenHash: string; userId: string; expiresAt: Date };
     };
-    expect(createCall.data.userId).toBe(userId);
-    expect(createCall.data.tokenHash).toMatch(/^[a-f0-9]{64}$/);
-    expect(createCall.data.expiresAt.getTime()).toBeGreaterThan(Date.now() + 29 * 60 * 1000);
-    expect(createCall.data.expiresAt.getTime()).toBeLessThan(Date.now() + 31 * 60 * 1000);
+    expect(upsertCall.where).toEqual({ userId });
+    expect(upsertCall.create.userId).toBe(userId);
+    expect(upsertCall.create.tokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(upsertCall.create.expiresAt.getTime()).toBeGreaterThan(Date.now() + 29 * 60 * 1000);
+    expect(upsertCall.create.expiresAt.getTime()).toBeLessThan(Date.now() + 31 * 60 * 1000);
+    expect(upsertCall.update).toEqual({
+      tokenHash: upsertCall.create.tokenHash,
+      expiresAt: upsertCall.create.expiresAt,
+      usedAt: null,
+    });
     expect(sendPasswordResetEmail).toHaveBeenCalledWith({
       to: "ada@example.com",
       resetUrl: expect.stringMatching(/^http:\/\/localhost:3000\/reset-password\?token=/),
+      expiresInMinutes: 30,
     });
   });
 
   it("deletes a newly-created token when email delivery fails", async () => {
     userFindUnique.mockResolvedValue({ id: userId, email: "ada@example.com" });
-    tokenCreate.mockResolvedValue({ id: resetTokenId, tokenHash: "hashed-token" });
+    tokenUpsert.mockResolvedValue({ id: resetTokenId, tokenHash: "hashed-token" });
     sendPasswordResetEmail.mockRejectedValue(new Error("Resend unavailable"));
     jest.spyOn(console, "error").mockImplementation(() => undefined);
 
@@ -323,7 +367,28 @@ describe("password reset", () => {
       .send({ email: "ada@example.com" })
       .expect(500);
 
-    expect(tokenDeleteMany).toHaveBeenLastCalledWith({ where: { id: resetTokenId } });
+    expect(tokenDeleteMany).toHaveBeenLastCalledWith({
+      where: { id: resetTokenId, tokenHash: "hashed-token" },
+    });
+  });
+
+  it("limits password reset requests to five per IP in fifteen minutes", async () => {
+    const responses = [];
+
+    for (let index = 0; index < 6; index += 1) {
+      responses.push(
+        await request(app)
+          .post("/api/auth/password-reset/request")
+          .send({ email: `unknown-${index}@example.com` })
+      );
+    }
+
+    expect(responses.slice(0, 5).every((response) => response.status === 200)).toBe(true);
+    expect(responses[5]?.status).toBe(429);
+    expect(responses[5]?.body).toEqual({ message: GENERIC_PASSWORD_RESET_MESSAGE });
+    expect(responses[5]?.headers["ratelimit-limit"]).toBe("5");
+    expect(responses[5]?.headers["ratelimit-remaining"]).toBe("0");
+    expect(responses[5]?.headers["retry-after"]).toBeDefined();
   });
 
   it("validates a live token and rejects expired or used tokens", async () => {

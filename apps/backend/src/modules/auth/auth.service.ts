@@ -2,16 +2,17 @@ import { createHash, randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "../../lib/db.ts";
 import { buildPasswordResetUrl, sendPasswordResetEmail } from "../../lib/email.ts";
+import {
+  GENERIC_PASSWORD_RESET_MESSAGE,
+  PASSWORD_RESET_TTL_MINUTES,
+  PASSWORD_RESET_TTL_MS,
+} from "../../lib/password-reset.ts";
 import type {
   LoginInput,
   PasswordResetConfirmInput,
   PasswordResetRequestInput,
   SignupInput,
 } from "./auth.schema.ts";
-
-export const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
-export const GENERIC_PASSWORD_RESET_MESSAGE =
-  "If an account exists for that email, we sent a password reset link.";
 
 export class SignupConflictError extends Error {
   constructor(message: string) {
@@ -90,6 +91,14 @@ export async function login({ email, password }: LoginInput) {
     throw new InvalidCredentialsError();
   }
 
+  if (!isBcryptPassword) {
+    const passwordHash = await bcrypt.hash(password, 12);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: passwordHash },
+    });
+  }
+
   return {
     id: user.id,
     email: user.email,
@@ -142,21 +151,25 @@ export async function requestPasswordReset({ email }: PasswordResetRequestInput)
   const tokenHash = hashResetToken(rawToken);
   const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
 
-  const resetToken = await prisma.$transaction(async (transaction) => {
-    await transaction.passwordResetToken.deleteMany({ where: { userId: user.id } });
-    return transaction.passwordResetToken.create({
-      data: { tokenHash, userId: user.id, expiresAt },
+  const resetToken = await prisma.$transaction(async (transaction) =>
+    transaction.passwordResetToken.upsert({
+      where: { userId: user.id },
+      update: { tokenHash, expiresAt, usedAt: null },
+      create: { tokenHash, userId: user.id, expiresAt },
       select: { id: true, tokenHash: true },
-    });
-  });
+    })
+  );
 
   try {
     await sendPasswordResetEmail({
       to: user.email,
       resetUrl: buildPasswordResetUrl(rawToken),
+      expiresInMinutes: PASSWORD_RESET_TTL_MINUTES,
     });
   } catch (error) {
-    await prisma.passwordResetToken.deleteMany({ where: { id: resetToken.id } });
+    await prisma.passwordResetToken.deleteMany({
+      where: { id: resetToken.id, tokenHash: resetToken.tokenHash },
+    });
     throw error;
   }
 
