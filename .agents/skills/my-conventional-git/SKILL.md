@@ -70,9 +70,8 @@ chore/OPS-0-update-ci-configuration
 
 The repository templates live at `.github/ISSUE_TEMPLATE/story.md` and
 `.github/ISSUE_TEMPLATE/non-story.md`, plus `.github/pull_request_template.md`.
-`.github/workflows/convention.yml` enforces issue titles, PR titles, and PR branches. Commit
-headers remain documented but are not checked by this workflow. Generated merge commits on `main`
-are therefore outside this workflow's scope.
+`.github/workflows/convention.yml` enforces PR titles and PR branches. Issue titles and commit
+headers remain documented but are not checked by this workflow.
 
 ## Safety
 

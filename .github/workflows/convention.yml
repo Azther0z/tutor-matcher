@@ -1,8 +1,6 @@
 name: Convention
 
 on:
-  issues:
-    types: [opened, edited, reopened]
   pull_request:
     types: [opened, edited, reopened, synchronize]
 
@@ -23,9 +21,6 @@ jobs:
             const epic = "(?:AUTH|PROF|DISC|BOOK|PAY|CLASS|MSG|REV|SAFE)";
             const storyNumber = "(?:0|[1-9][0-9]*)";
             const workItemId = `(?:${epic}-${storyNumber}|OPS-0)`;
-            const issueTitlePattern = new RegExp(
-              `^\\[${workItemId}\\] [A-Z][^\\r\\n]*\\S$`,
-            );
             const slug = "[a-z0-9]+(?:-[a-z0-9]+)*";
             const titleType =
               "build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test";
@@ -38,13 +33,6 @@ jobs:
               `^(${branchType})\\/(${workItemId})-${slug}$`,
             );
             const errors = [];
-
-            if (context.eventName === "issues") {
-              const title = context.payload.issue.title;
-              if (!issueTitlePattern.test(title)) {
-                errors.push("Issue titles must use [<EPIC>-N] Sentence or [OPS-0] Sentence.");
-              }
-            }
 
             if (context.eventName === "pull_request") {
               const pullRequest = context.payload.pull_request;
