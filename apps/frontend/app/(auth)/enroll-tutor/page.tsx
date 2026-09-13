@@ -266,7 +266,7 @@ function EnrollTutorForm() {
                 setFieldErrors({});
                 setPhase({ name: "form", application });
               }}
-              className="flex h-11 items-center justify-center rounded-full border border-black/[.12] px-5 text-sm font-medium hover:bg-black/[.04] dark:border-white/[.18] dark:hover:bg-white/[.08]"
+              className="flex h-11 cursor-pointer items-center justify-center rounded-full border border-black/[.12] px-5 text-sm font-medium hover:bg-black/[.04] dark:border-white/[.18] dark:hover:bg-white/[.08]"
             >
               Cancel &amp; re-submit
             </button>
@@ -430,7 +430,7 @@ function EnrollTutorForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="flex h-12 items-center justify-center rounded-full bg-foreground px-6 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
+            className="flex h-12 cursor-pointer items-center justify-center rounded-full bg-foreground px-6 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
           >
             {submitting ? "Submitting…" : "Submit application"}
           </button>
