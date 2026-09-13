@@ -18,7 +18,7 @@ function completeRequiredFields() {
   fireEvent.change(screen.getByLabelText("Intro video URL"), {
     target: { value: "https://example.com/intro.mp4" },
   });
-  fireEvent.change(screen.getByLabelText(/Government ID/), {
+  fireEvent.change(screen.getByLabelText(/Identification card/), {
     target: { value: "https://example.com/government-id.pdf" },
   });
   fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
@@ -37,7 +37,7 @@ describe("TutorSettingsPage", () => {
     expect(screen.getByText("Last name is required.")).toBeInTheDocument();
     expect(screen.getByText("Tutor bio is required.")).toBeInTheDocument();
     expect(screen.getByText("Intro video URL is required.")).toBeInTheDocument();
-    expect(screen.getByText("Government ID URL is required.")).toBeInTheDocument();
+    expect(screen.getByText("Identification card URL is required.")).toBeInTheDocument();
     expect(screen.getByText("A teaching certification document is required.")).toBeInTheDocument();
   });
 
@@ -79,7 +79,7 @@ describe("TutorSettingsPage", () => {
           avatarUrl: "https://example.com/avatar.jpg",
           bio: "I teach mathematics.",
           introVideoUrl: "https://example.com/intro.mp4",
-          governmentId: "https://example.com/government-id.pdf",
+          identificationCardUrl: "https://example.com/government-id.pdf",
           certificationUrl: "https://example.com/certification.pdf",
         },
       }),

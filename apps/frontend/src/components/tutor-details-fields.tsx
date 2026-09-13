@@ -141,13 +141,13 @@ export function TutorDetailsFields({
           placeholder="https://example.com/intro-video.mp4"
         />
         <TutorField
-          name="governmentId"
-          label="Government ID URL"
-          value={values.governmentId}
+          name="identificationCardUrl"
+          label="Identification card URL"
+          value={values.identificationCardUrl}
           onChange={onChange}
-          error={errors.governmentId}
+          error={errors.identificationCardUrl}
           type="url"
-          placeholder="https://example.com/government-id.pdf"
+          placeholder="https://example.com/identification-card.pdf"
           maxLength={255}
           helper="Used for Tutor verification and not displayed publicly."
         />

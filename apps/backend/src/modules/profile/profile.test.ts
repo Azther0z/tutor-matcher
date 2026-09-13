@@ -30,7 +30,7 @@ const profile = {
     avatarUrl: "https://example.com/avatar.jpg",
     bio: "I teach calculus.",
     introVideoUrl: "https://example.com/intro.mp4",
-    governmentId: "https://example.com/government-id.pdf",
+    identificationCardUrl: "https://example.com/government-id.pdf",
     certificationUrl: "https://example.com/certification.pdf",
   },
 };
@@ -41,7 +41,7 @@ const tutorFields = {
   avatarUrl: profile.tutor.avatarUrl,
   bio: profile.tutor.bio,
   introVideoUrl: profile.tutor.introVideoUrl,
-  governmentId: profile.tutor.governmentId,
+  identificationCardUrl: profile.tutor.identificationCardUrl,
 };
 
 function tokenFor(userId: string) {
@@ -72,7 +72,7 @@ describe("PUT /api/profiles/me", () => {
     await request(app)
       .put("/api/profiles/me")
       .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
-      .send({ ...profile, tutor: { ...profile.tutor, governmentId: "" } })
+      .send({ ...profile, tutor: { ...profile.tutor, identificationCardUrl: "" } })
       .expect(400);
 
     expect(transaction).not.toHaveBeenCalled();
@@ -92,7 +92,7 @@ describe("PUT /api/profiles/me", () => {
     await request(app)
       .put("/api/profiles/me")
       .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
-      .send({ ...profile, tutor: { ...profile.tutor, governmentId: "ID-123" } })
+      .send({ ...profile, tutor: { ...profile.tutor, identificationCardUrl: "ID-123" } })
       .expect(400);
 
     expect(transaction).not.toHaveBeenCalled();
@@ -241,7 +241,7 @@ describe("PUT /api/profiles/me/tutor", () => {
     await request(app)
       .put("/api/profiles/me/tutor")
       .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .send({ ...enrollmentInput, governmentId: "" })
+      .send({ ...enrollmentInput, identificationCardUrl: "" })
       .expect(400);
 
     expect(transaction).not.toHaveBeenCalled();
@@ -271,7 +271,7 @@ describe("PUT /api/profiles/me/tutor", () => {
     await request(app)
       .put("/api/profiles/me/tutor")
       .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .send({ ...enrollmentInput, governmentId: "ID-123" })
+      .send({ ...enrollmentInput, identificationCardUrl: "ID-123" })
       .expect(400);
 
     expect(transaction).not.toHaveBeenCalled();
@@ -380,7 +380,7 @@ describe("GET /api/profiles/me/tutor", () => {
     avatarUrl: null,
     bio: "I teach calculus.",
     introVideoUrl: "https://example.com/intro.mp4",
-    governmentId: "https://example.com/government-id.pdf",
+    identificationCardUrl: "https://example.com/government-id.pdf",
     status: "PENDING",
     enrolledAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
     certifications: [
@@ -395,7 +395,7 @@ describe("GET /api/profiles/me/tutor", () => {
     avatarUrl: tutorRecord.avatarUrl,
     bio: tutorRecord.bio,
     introVideoUrl: tutorRecord.introVideoUrl,
-    governmentId: tutorRecord.governmentId,
+    identificationCardUrl: tutorRecord.identificationCardUrl,
     status: tutorRecord.status,
     enrolledAt: tutorRecord.enrolledAt,
   };

@@ -31,10 +31,9 @@ export class TutorAlreadyApprovedError extends Error {
 // UNPUBLISHED both mean "this account can use the Tutor capability".
 export type TutorApplicationStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
 
-// SAFE-2 is not part of the current sprint, so a complete application is
-// approved immediately. Keep it UNPUBLISHED until the Tutor has configured a
-// public listing; PENDING and REJECTED remain available for the future admin
-// review workflow.
+// Tutor application review is not implemented yet, so a complete application
+// grants the Tutor capability immediately. UNPUBLISHED keeps the public listing
+// hidden until the Tutor finishes configuring it.
 const AUTO_APPROVED_TUTOR_STATUS = "UNPUBLISHED" as const;
 
 const tutorApplicationSelect = {
@@ -42,7 +41,7 @@ const tutorApplicationSelect = {
   avatarUrl: true,
   bio: true,
   introVideoUrl: true,
-  governmentId: true,
+  identificationCardUrl: true,
   status: true,
   enrolledAt: true,
   // The enrollment application manages exactly one certification document —
@@ -113,7 +112,7 @@ export async function enrollTutor(userId: string, input: TutorEnrollmentRequest)
       avatarUrl: input.avatarUrl,
       bio: input.bio,
       introVideoUrl: input.introVideoUrl,
-      governmentId: input.governmentId,
+      identificationCardUrl: input.identificationCardUrl,
       status: AUTO_APPROVED_TUTOR_STATUS,
     };
 
@@ -195,7 +194,7 @@ export async function updateTutorProfile(userId: string, input: ProfileRequest) 
       avatarUrl: input.tutor.avatarUrl,
       bio: input.tutor.bio,
       introVideoUrl: input.tutor.introVideoUrl,
-      governmentId: input.tutor.governmentId,
+      identificationCardUrl: input.tutor.identificationCardUrl,
     };
 
     const tutor = await tx.tutor.update({ where: { id: existingUser.tutorId }, data: tutorData });

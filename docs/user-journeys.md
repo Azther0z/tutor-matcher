@@ -33,7 +33,7 @@ Guards run before render, not after.
 | `/(auth)/login`            | Log in and sign up                                                    | Public         |
 | `/forgot-password`         | Request a password reset link                                         | Public         |
 | `/reset-password?token=…`  | Validate a reset link and choose a new password                       | Public         |
-| `/(auth)/enroll-tutor`     | Tutor application: document URLs, bio, submit, approved state         | Requires login |
+| `/(auth)/enroll-tutor`     | Tutor application: documents, bio, submit, pending state              | Requires login |
 | `/dashboard`               | Student dashboard                                                     | Requires login |
 | `/dashboard/tutor`         | Tutor dashboard — classes, earnings, bookings, subjects, availability | Role: tutor    |
 | `/bookings`                | All bookings, tabbed by status                                        | Requires login |
@@ -60,8 +60,7 @@ Guards run before render, not after.
    to `/(auth)/enroll-tutor`.
 3. An approved tutor opening `/(auth)/enroll-tutor` is sent to `/dashboard/tutor`.
 4. Until a user is approved, tutor links rendered on any page point at the tutor
-   application instead of the tutor page. The current sprint approves a complete
-   application immediately after submission.
+   application instead of the tutor page.
 5. Public routes render for logged-out visitors; the header shows **Log in / Sign up**
    instead of the wallet balance and avatar menu.
 
@@ -241,20 +240,17 @@ Related stories: US6-1 … US6-3.
 ## 6 · Becoming a tutor
 
 1. A logged-in student opens **Become a tutor** → `/(auth)/enroll-tutor`.
-2. The application requires **all three**: a government ID document URL, a teaching
-   certification document URL, and a bio. Submission is rejected until all three are
+2. The application requires **all three**: a government ID document, a teaching
+   certification document, and a bio. Submit stays disabled until all three are
    present. Subjects are not part of the application — they are added afterwards in
    `/settings/tutor`.
-3. In the current sprint, submitting a complete application stores the document URLs
-   and grants the Tutor capability immediately. The stored Tutor status is
-   `UNPUBLISHED` until the public listing is configured, and `/(auth)/enroll-tutor`
-   redirects to `/dashboard/tutor`.
-4. `PENDING` and `REJECTED` remain supported for the future SAFE-2 admin-review
-   workflow. A pending applicant remains a student and can cancel and re-submit;
-   a rejected applicant can update the application and submit again.
-5. Once SAFE-2 is implemented, an admin approves or rejects applications at
-   `/admin/tutor-requests`. Approval grants the Tutor capability; rejection notifies
-   the applicant with a reason.
+3. Submitting sets the application to **pending**. The page then shows the uploaded
+   documents, the bio state, and _Awaiting approval_, with **Cancel & re-submit**.
+4. While pending the user is still a student: `/dashboard/tutor` and `/settings/tutor`
+   bounce back to the application.
+5. An admin approves or rejects at `/admin/tutor-requests`. Approval grants the tutor
+   capability; rejection notifies the applicant with a reason.
+6. After approval, `/(auth)/enroll-tutor` redirects to `/dashboard/tutor`.
 
 Related stories: US1-4, US9-1.
 

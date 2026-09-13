@@ -85,28 +85,25 @@ Indexes: unique `token_hash`, unique `user_id`, and `expires_at`.
 
 ### tutors
 
-| Column          | Type        | Constraints                 | Notes                                              |
-| --------------- | ----------- | --------------------------- | -------------------------------------------------- |
-| tutor_id        | SERIAL      | PK                          |                                                    |
-| avatar_url      | TEXT        | NULL                        |                                                    |
-| bio             | TEXT        | NULL                        | Listing bio                                        |
-| intro_video_url | TEXT        | NULL                        |                                                    |
-| government_id   | TEXT        | NOT NULL                    | Government ID URL reference supplied when applying |
-| enrolled_at     | TIMESTAMP   | NOT NULL, DEFAULT now()     |                                                    |
-| status          | TutorStatus | NOT NULL, DEFAULT `PENDING` | `PENDING`, `UNPUBLISHED`, `PUBLISHED`, `REJECTED`  |
+| Column          | Type        | Constraints                 | Notes                                             |
+| --------------- | ----------- | --------------------------- | ------------------------------------------------- |
+| tutor_id        | SERIAL      | PK                          |                                                   |
+| avatar_url      | TEXT        | NULL                        |                                                   |
+| bio             | TEXT        | NULL                        | Listing bio                                       |
+| intro_video_url | TEXT        | NULL                        |                                                   |
+| government_id   | TEXT        | NOT NULL                    | Identity reference supplied when applying         |
+| enrolled_at     | TIMESTAMP   | NOT NULL, DEFAULT now()     |                                                   |
+| status          | TutorStatus | NOT NULL, DEFAULT `PENDING` | `PENDING`, `UNPUBLISHED`, `PUBLISHED`, `REJECTED` |
 
 `status` currently carries both the application decision and the listing's published
-state — see [Reconciliation](#reconciliation-requirement-vs-implementation). The
-current tutor-enrollment endpoint writes `UNPUBLISHED` after a complete submission so
-the account is immediately usable as a Tutor; `PENDING` and `REJECTED` remain reserved
-for the future admin-review workflow.
+state — see [Reconciliation](#reconciliation-requirement-vs-implementation).
 
 ### certifications
 
 | Column           | Type   | Constraints                                        |
 | ---------------- | ------ | -------------------------------------------------- |
 | certification_id | SERIAL | PK                                                 |
-| file_url         | TEXT   | NOT NULL                                           | Certification URL reference |
+| file_url         | TEXT   | NOT NULL                                           |
 | tutor_id         | INT    | NOT NULL, FK → tutors.tutor_id, ON DELETE RESTRICT |
 
 Index: `tutor_id`.

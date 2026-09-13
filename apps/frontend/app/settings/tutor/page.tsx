@@ -22,7 +22,7 @@ export default function TutorSettingsPage() {
     avatarUrl: "",
     bio: "",
     introVideoUrl: "",
-    governmentId: "",
+    identificationCardUrl: "",
     certificationUrl: "",
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -73,7 +73,7 @@ export default function TutorSettingsPage() {
             avatarUrl: details.avatarUrl.trim() || null,
             bio: details.bio.trim(),
             introVideoUrl: details.introVideoUrl.trim(),
-            governmentId: details.governmentId.trim(),
+            identificationCardUrl: details.identificationCardUrl.trim(),
             certificationUrl: details.certificationUrl.trim(),
           },
         }),

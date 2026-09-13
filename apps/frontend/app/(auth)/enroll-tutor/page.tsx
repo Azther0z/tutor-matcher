@@ -144,7 +144,7 @@ function EnrollTutorForm() {
           avatarUrl: details.avatarUrl.trim() || null,
           bio: details.bio.trim(),
           introVideoUrl: details.introVideoUrl.trim(),
-          governmentId: details.governmentId.trim(),
+          identificationCardUrl: details.identificationCardUrl.trim(),
           certificationUrl: details.certificationUrl.trim(),
           consentAccepted,
         }),
@@ -214,8 +214,8 @@ function EnrollTutorForm() {
             <dd className="whitespace-pre-wrap">{application.bio}</dd>
             <dt className="font-medium text-zinc-500">Intro video URL</dt>
             <dd className="break-all">{application.introVideoUrl}</dd>
-            <dt className="font-medium text-zinc-500">Government ID</dt>
-            <dd className="break-all">{application.governmentId}</dd>
+            <dt className="font-medium text-zinc-500">Identification card</dt>
+            <dd className="break-all">{application.identificationCardUrl}</dd>
             <dt className="font-medium text-zinc-500">Certification document</dt>
             <dd className="break-all">{application.certificationUrl}</dd>
             {application.avatarUrl && (

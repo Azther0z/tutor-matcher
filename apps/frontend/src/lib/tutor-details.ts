@@ -2,7 +2,7 @@ export type TutorDetails = {
   avatarUrl: string;
   bio: string;
   introVideoUrl: string;
-  governmentId: string;
+  identificationCardUrl: string;
   certificationUrl: string;
 };
 
@@ -13,7 +13,7 @@ export const emptyTutorDetails: TutorDetails = {
   avatarUrl: "",
   bio: "",
   introVideoUrl: "",
-  governmentId: "",
+  identificationCardUrl: "",
   certificationUrl: "",
 };
 
@@ -43,10 +43,10 @@ export function validateTutorDetails(values: TutorDetails): TutorDetailsFieldErr
     errors.introVideoUrl = "Enter a valid intro video URL.";
   }
 
-  if (!values.governmentId.trim()) {
-    errors.governmentId = "Government ID URL is required.";
-  } else if (!isValidUrl(values.governmentId)) {
-    errors.governmentId = "Enter a valid government ID URL.";
+  if (!values.identificationCardUrl.trim()) {
+    errors.identificationCardUrl = "Identification card URL is required.";
+  } else if (!isValidUrl(values.identificationCardUrl)) {
+    errors.identificationCardUrl = "Enter a valid identification card URL.";
   }
 
   if (!values.certificationUrl.trim()) {

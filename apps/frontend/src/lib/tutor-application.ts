@@ -8,7 +8,7 @@ export type TutorApplication = {
   avatarUrl: string | null;
   bio: string | null;
   introVideoUrl: string | null;
-  governmentId: string;
+  identificationCardUrl: string;
   certificationUrl: string | null;
   status: TutorRecordStatus;
   enrolledAt: string;
@@ -29,7 +29,7 @@ export function tutorDetailsFromApplication(application: TutorApplication | null
     avatarUrl: application?.avatarUrl ?? "",
     bio: application?.bio ?? "",
     introVideoUrl: application?.introVideoUrl ?? "",
-    governmentId: application?.governmentId ?? "",
+    identificationCardUrl: application?.identificationCardUrl ?? "",
     certificationUrl: application?.certificationUrl ?? "",
   };
 }
