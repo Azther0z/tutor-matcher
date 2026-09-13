@@ -390,8 +390,9 @@ function EnrollTutorForm() {
         <section className="rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
           <div className="mb-5">
             <h2 className="text-xl font-semibold">Consent to data processing</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Review how your application documents will be used before submitting.
+            <p id="tutor-consent-summary" className="mt-1 text-sm text-zinc-500">
+              Your government ID, teaching credentials, and payout details will be processed as
+              described below.
             </p>
           </div>
 
@@ -402,13 +403,11 @@ function EnrollTutorForm() {
               checked={consentAccepted}
               onChange={(event) => setConsentAccepted(event.target.checked)}
               aria-invalid={!!fieldErrors.consentAccepted}
-              aria-describedby="tutor-consent-description"
+              aria-describedby="tutor-consent-summary tutor-consent-description"
               className="mt-0.5 h-4 w-4 rounded border-black/[.25] dark:border-white/[.3]"
             />
             <span id="tutor-consent-description">
-              I consent to Tutor Matcher collecting and processing my government ID, teaching
-              certification documents, and payout information to verify my identity, confirm my
-              teaching credentials, and enable payouts, as described in the{" "}
+              I consent to this processing, as described in the{" "}
               <button
                 type="button"
                 onClick={() => setOpenDocument("privacy")}
