@@ -6,8 +6,17 @@ import {
   CurrentUserNotFoundError,
   InvalidCredentialsError,
   getCurrentUser as getCurrentUserService,
+  requestPasswordReset as requestPasswordResetService,
+  validatePasswordResetToken as validatePasswordResetTokenService,
+  confirmPasswordReset as confirmPasswordResetService,
+  InvalidPasswordResetTokenError,
 } from "./auth.service.ts";
-import type { LoginInput, SignupInput } from "./auth.schema.ts";
+import type {
+  LoginInput,
+  PasswordResetConfirmInput,
+  PasswordResetRequestInput,
+  SignupInput,
+} from "./auth.schema.ts";
 import { signAuthToken } from "../../lib/jwt.ts";
 
 export async function signup(req: Request, res: Response) {
@@ -50,6 +59,44 @@ export async function getCurrentUser(req: Request, res: Response) {
   } catch (error) {
     if (error instanceof CurrentUserNotFoundError) {
       res.status(404).json({ message: error.message });
+      return;
+    }
+
+    throw error;
+  }
+}
+
+export async function requestPasswordReset(req: Request, res: Response) {
+  const input = req.body as PasswordResetRequestInput;
+  const result = await requestPasswordResetService(input);
+  res.status(200).json(result);
+}
+
+export async function validatePasswordResetToken(req: Request, res: Response) {
+  const { token } = req.query as { token: string };
+
+  try {
+    const result = await validatePasswordResetTokenService(token);
+    res.status(200).json(result);
+  } catch (error) {
+    if (error instanceof InvalidPasswordResetTokenError) {
+      res.status(400).json({ message: error.message });
+      return;
+    }
+
+    throw error;
+  }
+}
+
+export async function confirmPasswordReset(req: Request, res: Response) {
+  const input = req.body as PasswordResetConfirmInput;
+
+  try {
+    const result = await confirmPasswordResetService(input);
+    res.status(200).json(result);
+  } catch (error) {
+    if (error instanceof InvalidPasswordResetTokenError) {
+      res.status(400).json({ message: error.message });
       return;
     }
 
