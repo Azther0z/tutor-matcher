@@ -1,0 +1,23 @@
+# New: docs/backlog/reconciliation.md section 2 (➕). Product behaviour with no existing
+# story — see issue #63, section 3.
+id: PAY-6
+title: "Completed-lesson earnings clear into available balance"
+description: "As a Tutor, I want a completed lesson's earnings to clear into my available wallet balance after a hold period so that I can use or withdraw them, while still seeing them as pending until then."
+epic: "Payments & Billing"
+role: "Tutor"
+lifecycle: backlog
+story_points: 3
+dependencies: ["PAY-5", "CLASS-2"]
+acceptance_criteria:
+  - given: "a paid lesson is completed,"
+    when: "settlement runs and the clearing period ends,"
+    then: "the net earning (after the platform fee) is added to the available wallet balance."
+  - given: "an earning has not finished clearing,"
+    when: "the wallet is viewed,"
+    then: "it appears as pending and is excluded from the available balance."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "Wallet, Payments & Payouts / US5-4"
+journey:
+  - route: "/wallet"
+    action: "Clear completed-lesson earnings into available balance"

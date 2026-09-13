@@ -1,0 +1,23 @@
+# New: docs/backlog/reconciliation.md section 2 (➕). Product behaviour with no existing
+# story — see issue #63, section 3.
+id: PROF-7
+title: "Wallet and payout account settings"
+description: "As any user, I want wallet and payout account settings so that I can withdraw my wallet balance to the correct bank account, whether or not I am a Tutor."
+epic: "User Profile Management"
+role: "user"
+lifecycle: backlog
+story_points: 3
+dependencies: []
+acceptance_criteria:
+  - given: "a user saves their payout account details,"
+    when: "saved,"
+    then: "future payout requests use the selected account."
+  - given: "a user is not a Tutor,"
+    when: "they open payout account settings,"
+    then: "the settings are still available, because wallet withdrawals are not tutor-only."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "User Profile & Settings / US2-6"
+journey:
+  - route: "/settings/wallet"
+    action: "Set payout account"

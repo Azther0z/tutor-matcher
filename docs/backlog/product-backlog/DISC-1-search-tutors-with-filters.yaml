@@ -1,22 +1,25 @@
+# Reworded: docs/backlog/reconciliation.md marks this ✏️. The real filter set is keyword,
+# subject, maximum price, minimum rating, and format, plus sorting. There is no
+# availability filter and no language filter (docs/user-journeys.md).
 id: DISC-1
 title: "Search tutors with filters"
-description: "As a Student, I want to search tutors by subject, price, availability, rating, and language so that I can find a tutor that fits my needs."
+description: "As a Student, I want to search tutors by keyword, subject, maximum price, minimum rating, and format, and sort the results, so that I can find a tutor that fits my needs."
 epic: "Tutor Search & Discovery"
 role: "Student"
 lifecycle: backlog
 story_points: 5
 dependencies: ["PROF-2", "PROF-3"]
 acceptance_criteria:
-  - given: "a Student applies filters,"
+  - given: "a Student applies filters (keyword, subject, maximum price, minimum rating, format) or a sort order,"
     when: "they run a search,"
-    then: "results match all selected filters and are paginated."
+    then: "results match all selected filters and the chosen sort order, and are paginated."
   - given: "no tutors match the filters,"
     when: "the search runs,"
     then: "a 'no results' state with suggestions to broaden filters is shown."
 sprint: sprint-1
 assignees: ["Poom", "Pee"]
 status: todo
-order: 17
+order: 11
 estimate_hours: 20
 tasks:
   - id: DISC-1-T1
@@ -26,7 +29,7 @@ tasks:
     status: todo
     estimate_hours: 3
   - id: DISC-1-T2
-    title: "Build the filter UI (subject, price, availability, rating, language)"
+    title: "Build the filter UI (keyword, subject, max price, min rating, format) and sorting"
     assignees: ["Poom", "Pee"]
     role: Frontend
     status: todo

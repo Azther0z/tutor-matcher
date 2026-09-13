@@ -28,6 +28,9 @@ epics:
   - id: EPIC-9
     acronym: SAFE
     name: "Admin, Trust & Safety"
+  - id: EPIC-10
+    acronym: IA
+    name: "Information Architecture & Navigation"
 sources:
   - file: ../sources/Product Backlog v1.2.html
     kind: product-backlog
@@ -40,12 +43,14 @@ journey_coverage:
   notes:
     - "Coverage maps meaningful route/action pairs; SVG labels are not automatically product stories."
     - "Implementation and navigation details are classified as non-story."
-    - "Independent journey gaps are invitations, payment method, and tutor stats/engagement."
+    - "SVG-derived routes that drifted from the product's current route model (see docs/backlog/reconciliation.md, section 3) are kept as historical entries; the current routes are added alongside them, not substituted in place."
+    - "PAY-4 (payment method), BOOK-5/BOOK-6 (invitations), and PROF-1 (learner profile) are cancelled; the routes they used to cover are reclassified as non-story because the product has no replacement behaviour there."
   entries:
+    # --- Authentication ---
     - classification: story
       route: "(auth)/signup"
       action: "Sign up"
-      story_ids: [AUTH-1, AUTH-5, AUTH-6]
+      story_ids: [AUTH-1, AUTH-5]
     - classification: story
       route: "(auth)/Login"
       action: "Login"
@@ -57,23 +62,45 @@ journey_coverage:
     - classification: story
       route: "(auth)/enroll-tutor"
       action: "Upload ID, certification"
-      story_ids: [AUTH-4]
+      story_ids: [AUTH-4, AUTH-6]
+    - classification: story
+      route: "(auth)/enroll-tutor"
+      action: "Track application status"
+      story_ids: [AUTH-8]
+    - classification: story
+      route: "*"
+      action: "Enforce route access by login state and role"
+      story_ids: [AUTH-7]
+
+    # --- Booking (historical SVG route, kept per the additive policy) ---
     - classification: story
       route: "/booking"
       action: "Booking"
-      story_ids: [BOOK-1, BOOK-2, BOOK-3, BOOK-4]
+      story_ids: [BOOK-1, BOOK-3, BOOK-4]
     - classification: story
       route: "/bookings/:id"
       action: "View booking"
-      story_ids: [BOOK-1, BOOK-2, BOOK-3, BOOK-4]
-    - classification: story
+      story_ids: [BOOK-1, BOOK-3, BOOK-4]
+    - classification: non-story
       route: "/booking"
       action: "Invite classmate"
-      story_ids: [BOOK-5]
-    - classification: story
+    - classification: non-story
       route: "/booking"
       action: "Accept invite"
-      story_ids: [BOOK-6]
+
+    # --- Booking (current product routes) ---
+    - classification: story
+      route: "/bookings/s/:subjectId"
+      action: "Start a subject-locked booking and select a continuous time block"
+      story_ids: [BOOK-7]
+    - classification: story
+      route: "/bookings/:id"
+      action: "Pay from wallet and auto-confirm"
+      story_ids: [BOOK-8]
+    - classification: story
+      route: "/bookings"
+      action: "Filter by All, Upcoming, Payment due, Past, and view tutor booking detail"
+      story_ids: [BOOK-9]
     - classification: story
       route: "/bookings/:id"
       action: "Get zoom meeting link"
@@ -82,6 +109,8 @@ journey_coverage:
       route: "/bookings/:id"
       action: "booking status"
       story_ids: [CLASS-2]
+
+    # --- Discovery ---
     - classification: story
       route: "/search"
       action: "Search & Browse Tutors"
@@ -91,41 +120,77 @@ journey_coverage:
       action: "Tutor Profile Detail"
       story_ids: [DISC-3]
     - classification: story
+      route: "/tutors/:id/:subjectId"
+      action: "View subject detail and its 48-slot availability"
+      story_ids: [DISC-4]
+    - classification: story
       route: "/tutors/:id"
       action: "Message this tutor"
       story_ids: [MSG-1]
     - classification: story
-      route: "/settings/notification"
+      route: "/settings/notifications"
       action: "Notification settings"
       story_ids: [MSG-2]
+    - classification: non-story
+      route: "/settings/notification"
+      action: "Notification settings (historical SVG route)"
+
+    # --- Wallet (historical SVG route, kept per the additive policy) ---
     - classification: story
       route: "/topup"
       action: "Topup"
       story_ids: [PAY-1]
-    - classification: story
+    - classification: non-story
       route: "/payments"
-      action: "View earning"
-      story_ids: [PAY-2]
-    - classification: story
+      action: "View earning (cancelled as its own story — see PAY-2)"
+    - classification: non-story
       route: "/payments"
-      action: "Request payout"
-      story_ids: [PAY-2]
+      action: "Request payout (cancelled as its own story — see PAY-2)"
     - classification: story
       route: "/payments/:id"
       action: "View status"
       story_ids: [PAY-3]
-    - classification: story
+    - classification: non-story
       route: "/payments"
       action: "Update payment method"
-      story_ids: [PAY-4]
+
+    # --- Wallet (current product routes) ---
     - classification: story
-      route: "/settings"
-      action: "Update subject"
-      story_ids: [PROF-1]
+      route: "/wallet/topup"
+      action: "Top up wallet balance"
+      story_ids: [PAY-1]
     - classification: story
+      route: "/wallet"
+      action: "View one wallet balance and filterable ledger"
+      story_ids: [PAY-5]
+    - classification: story
+      route: "/wallet"
+      action: "Clear completed-lesson earnings into available balance"
+      story_ids: [PAY-6]
+    - classification: story
+      route: "/wallet"
+      action: "Request payout"
+      story_ids: [PAY-7]
+    - classification: story
+      route: "/wallet/transactions/:id"
+      action: "View transaction detail"
+      story_ids: [PAY-5]
+    - classification: story
+      route: "/settings/wallet"
+      action: "Set payout account"
+      story_ids: [PROF-7]
+
+    # --- Profile & settings ---
+    - classification: non-story
       route: "/settings"
+      action: "Update subject (learner profile, cancelled — see PROF-1)"
+    - classification: story
+      route: "/settings/account"
       action: "Update account"
       story_ids: [PROF-4]
+    - classification: non-story
+      route: "/settings"
+      action: "Update account (historical SVG route)"
     - classification: story
       route: "/settings/tutor"
       action: "Upload profile information"
@@ -139,13 +204,19 @@ journey_coverage:
       action: "Update availability"
       story_ids: [PROF-3]
     - classification: story
+      route: "/settings/tutor"
+      action: "Manage subjects and assign them to availability slots"
+      story_ids: [PROF-6]
+    - classification: story
       route: "/dashboard/tutor"
       action: "Stats"
       story_ids: [PROF-5]
     - classification: story
       route: "/dashboard/tutor"
       action: "engagement"
-      story_ids: [PROF-5]
+      story_ids: [PROF-5, IA-2]
+
+    # --- Reviews ---
     - classification: story
       route: "/tutors/:id/:subjectId"
       action: "Review list"
@@ -159,15 +230,33 @@ journey_coverage:
       action: "Review list"
       story_ids: [REV-3]
     - classification: story
+      route: "/reviews/:tutorId"
+      action: "Read-only review list for a tutor"
+      story_ids: [REV-1, REV-2, REV-3]
+
+    # --- Admin, trust & safety ---
+    - classification: story
       route: "/dashboard"
       action: "Review"
       story_ids: [REV-4, SAFE-1, SAFE-2]
-    - classification: non-story
+    - classification: story
+      route: "/admin/tutor-requests"
+      action: "Approve or reject tutor applications and listing changes"
+      story_ids: [SAFE-2, SAFE-3]
+    - classification: story
+      route: "/admin/tutor-requests"
+      action: "Resolve payment disputes and refunds"
+      story_ids: [SAFE-4]
+
+    # --- Dashboard & navigation ---
+    - classification: story
       route: "/dashboard"
-      action: "nav: settings menu"
+      action: "Student Dashboard"
+      story_ids: [IA-1]
+    - classification: story
+      route: "/dashboard"
+      action: "Consistent top nav and page-specific left rail"
+      story_ids: [IA-3]
     - classification: non-story
       route: "/"
       action: "Landing Page"
-    - classification: non-story
-      route: "/dashboard"
-      action: "Student Dashboard"

@@ -1,0 +1,23 @@
+# New: docs/backlog/reconciliation.md section 2 (➕). Product behaviour with no existing
+# story — see issue #63, section 3.
+id: SAFE-3
+title: "Admin review of tutor listing and document changes"
+description: "As an admin, I want to review tutor listing and document changes before they go live so that public tutor quality and trust stay high."
+epic: "Admin, Trust & Safety"
+role: "Admin"
+lifecycle: backlog
+story_points: 5
+dependencies: ["PROF-2", "AUTH-4"]
+acceptance_criteria:
+  - given: "a Tutor submits listing or document changes,"
+    when: "an admin approves them,"
+    then: "the live listing updates."
+  - given: "an admin rejects the changes,"
+    when: "review completes,"
+    then: "the existing live listing stays unchanged and the Tutor sees the rejection reason and can revise and resubmit."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "User Profile & Settings / US2-4; Admin, Trust & Safety / US9-2"
+journey:
+  - route: "/admin/tutor-requests"
+    action: "Review listing/document changes"

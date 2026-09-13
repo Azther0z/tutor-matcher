@@ -390,8 +390,8 @@
         "product": [
           {
             "id": "AUTH-1",
-            "title": "Create a Student or Tutor account",
-            "description": "As a new member, I want to sign up as either a Student or a Tutor so that I get an account tailored to my role.",
+            "title": "Create an account",
+            "description": "As a new member, I want to sign up with email and password so that I get a Student account. (Becoming a Tutor is a separate, later application — see AUTH-4.)",
             "epic": "Account Registration & Authentication",
             "role": "new member",
             "status": "backlog",
@@ -399,8 +399,8 @@
             "criteria": [
               {
                 "given": "a visitor is on the sign-up page,",
-                "when": "they submit a valid email, password, AND select a role (Student/Tutor),",
-                "then": "an account is created and a verification email is sent."
+                "when": "they submit a valid email AND password,",
+                "then": "a Student account is created and a verification email is sent."
               },
               {
                 "given": "the email is already registered,",
@@ -453,22 +453,22 @@
           },
           {
             "id": "AUTH-4",
-            "title": "Verify identity and teaching credentials",
-            "description": "As a Tutor, I want to verify my identity and teaching credentials so that students can trust my profile.",
+            "title": "Apply to become a Tutor with identity and teaching credentials",
+            "description": "As a logged-in Student, I want to apply to become a Tutor by submitting a government ID, a teaching certification, and a bio, so that I can be reviewed and, once approved, teach on the platform.",
             "epic": "Account Registration & Authentication",
-            "role": "Tutor",
+            "role": "Student",
             "status": "backlog",
             "points": 5,
             "criteria": [
               {
-                "given": "a Tutor uploads an ID and certificates,",
-                "when": "submitted,",
-                "then": "the status shows 'Pending Verification' until an admin reviews it."
+                "given": "a logged-in Student opens the tutor application and submits a government ID, a teaching certification, AND a bio,",
+                "when": "the application is submitted,",
+                "then": "it is marked 'Pending Verification' until an admin reviews it, and the Student's account keeps its Student role in the meantime."
               },
               {
-                "given": "the admin approves the documents,",
+                "given": "the admin approves the application,",
                 "when": "review completes,",
-                "then": "the Tutor profile displays a 'Verified' badge."
+                "then": "the account is granted the Tutor capability and the profile displays a 'Verified' badge."
               }
             ]
           },
@@ -495,43 +495,85 @@
           },
           {
             "id": "AUTH-6",
-            "title": "Consent to privacy and data processing",
-            "description": "As a Tutor, I want to review and accept the Privacy Policy and Terms of Service, including how my identity documents, teaching credentials, and payout information will be processed, during sign-up so that I understand and control how my sensitive data is used before an account is created.",
+            "title": "Consent to privacy and data processing when applying to become a Tutor",
+            "description": "As a Student applying to become a Tutor, I want to review and accept the Privacy Policy and Terms of Service, including how my identity documents, teaching credentials, and payout information will be processed, so that I understand and control how my sensitive data is used before I submit my application.",
             "epic": "Account Registration & Authentication",
-            "role": "Tutor",
+            "role": "Student",
             "status": "backlog",
             "points": 3,
             "criteria": [
               {
-                "given": "a Tutor visitor has checked the consent checkbox,",
-                "when": "they submit the sign-up form,",
-                "then": "the account is created and the consent timestamp is recorded."
+                "given": "a Student on the tutor application page has checked the consent checkbox,",
+                "when": "they submit the application,",
+                "then": "the application is submitted and the consent timestamp is recorded."
               },
               {
-                "given": "a Tutor visitor reaches the final sign-up step,",
+                "given": "a Student reaches the final step of the tutor application,",
                 "when": "they have not checked the consent checkbox covering identity, credential, AND payout data processing,",
-                "then": "account creation is blocked and the requirement is highlighted."
+                "then": "the application cannot be submitted and the requirement is highlighted."
+              }
+            ]
+          },
+          {
+            "id": "AUTH-7",
+            "title": "Route and role guards",
+            "description": "As a user, I want route access to match my login state and role so that I only see pages I am allowed to use.",
+            "epic": "Account Registration & Authentication",
+            "role": "user",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              {
+                "given": "a logged-out user opens a protected page,",
+                "when": "access is checked,",
+                "then": "they are sent to login and returned to that page after logging in."
+              },
+              {
+                "given": "a non-tutor opens a tutor-only page,",
+                "when": "access is checked,",
+                "then": "they are routed to tutor enrollment instead of the tutor-only page."
+              }
+            ]
+          },
+          {
+            "id": "AUTH-8",
+            "title": "Tutor application lifecycle",
+            "description": "As a Student who applied to become a Tutor, I want to see and manage my application status so that I know whether I am pending, can cancel and re-submit, or am already approved.",
+            "epic": "Account Registration & Authentication",
+            "role": "Student",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              {
+                "given": "a Student has a pending tutor application,",
+                "when": "they open the application page,",
+                "then": "they see the submitted documents, the bio state, and 'Awaiting approval', with an option to cancel and re-submit."
+              },
+              {
+                "given": "a user is already an approved Tutor,",
+                "when": "they open the tutor application page,",
+                "then": "they are routed to the Tutor dashboard instead."
               }
             ]
           },
           {
             "id": "BOOK-1",
-            "title": "To book a trial lesson with a Tutor",
-            "description": "As a Student, I want to book a trial lesson with a Tutor so that I can evaluate fit before committing to a package.",
+            "title": "To book a lesson with a Tutor",
+            "description": "As a Student, I want to book a lesson from a Tutor's published subject availability so that I can pay for a continuous block of time and have it confirmed immediately.",
             "epic": "Lesson Booking & Scheduling",
             "role": "Student",
             "status": "backlog",
             "points": 5,
             "criteria": [
               {
-                "given": "a Student selects an open slot and confirms,",
-                "when": "payment (if required) succeeds,",
-                "then": "the trial lesson is booked and both parties are notified."
+                "given": "a Student selects an open slot and pays from wallet balance,",
+                "when": "payment succeeds,",
+                "then": "the lesson is booked and confirmed immediately, and both parties are notified."
               },
               {
-                "given": "the selected slot becomes unavailable before confirmation,",
-                "when": "the Student tries to book,",
-                "then": "the system shows an error and refreshes available slots."
+                "given": "the selected slot becomes unavailable before payment completes,",
+                "when": "the Student tries to pay,",
+                "then": "the booking is blocked and the system refreshes available slots."
               }
             ]
           },
@@ -541,7 +583,7 @@
             "description": "As a Student, I want to book recurring lessons with a Tutor so that I can maintain a consistent learning schedule.",
             "epic": "Lesson Booking & Scheduling",
             "role": "Student",
-            "status": "backlog",
+            "status": "cancelled",
             "points": 5,
             "criteria": [
               {
@@ -558,43 +600,43 @@
           },
           {
             "id": "BOOK-3",
-            "title": "To reschedule or cancel a lesson within the allowed policy window",
-            "description": "As a Student, I want to reschedule or cancel a lesson within the allowed policy window so that I can handle changes in my schedule fairly.",
+            "title": "To cancel a lesson within the allowed policy window",
+            "description": "As a Student, I want to cancel a lesson within the allowed policy window so that I can handle changes in my schedule fairly and get an eligible refund.",
             "epic": "Lesson Booking & Scheduling",
             "role": "Student",
             "status": "backlog",
             "points": 3,
             "criteria": [
               {
-                "given": "a lesson is more than 24 hours away,",
-                "when": "a Student requests to reschedule/cancel,",
-                "then": "the change is applied without penalty."
+                "given": "a lesson is more than 12 hours away,",
+                "when": "a Student cancels it,",
+                "then": "the cancellation is applied without penalty and the full amount is refunded to the Student's wallet balance."
               },
               {
-                "given": "a lesson is within 24 hours,",
-                "when": "a Student cancels,",
-                "then": "the lesson credit is refunded to the Student's balance minus the cancellation fee per policy, and both parties are notified."
+                "given": "a lesson is within the 12-hour penalty window,",
+                "when": "a Student cancels it,",
+                "then": "the applicable policy is shown before confirmation, and any eligible refund is credited to the Student's wallet balance."
               }
             ]
           },
           {
             "id": "BOOK-4",
-            "title": "To reschedule or cancel a lesson within the allowed policy window",
-            "description": "As a Tutor, I want to reschedule or cancel a lesson within the allowed policy window so that I can handle changes in my schedule while maintaining the Student's trust in the platform.",
+            "title": "To cancel a lesson within the allowed policy window (Tutor)",
+            "description": "As a Tutor, I want to cancel a lesson within the allowed policy window so that I can handle changes in my schedule while maintaining the Student's trust in the platform.",
             "epic": "Lesson Booking & Scheduling",
             "role": "Tutor",
             "status": "backlog",
             "points": 3,
             "criteria": [
               {
-                "given": "a lesson is more than 24 hours away,",
-                "when": "a Tutor requests to reschedule/cancel,",
-                "then": "the change is applied without penalty."
+                "given": "a lesson is more than 12 hours away,",
+                "when": "a Tutor cancels it,",
+                "then": "the cancellation is applied without penalty and the Student is refunded to their wallet balance."
               },
               {
-                "given": "a lesson is within 24 hours,",
-                "when": "a Tutor cancels,",
-                "then": "the lesson credit is fully refunded to the Student's balance with no fee, and both parties are notified."
+                "given": "a lesson is within the 12-hour penalty window,",
+                "when": "a Tutor cancels it,",
+                "then": "the applicable policy is shown before confirmation, and any eligible refund is credited to the Student's wallet balance."
               }
             ]
           },
@@ -604,7 +646,7 @@
             "description": "As a Student, I want to invite a classmate to a lesson so that we can learn together.",
             "epic": "Lesson Booking & Scheduling",
             "role": "Student",
-            "status": "backlog",
+            "status": "cancelled",
             "points": 3,
             "criteria": [
               {
@@ -625,7 +667,7 @@
             "description": "As an invited Student, I want to accept a lesson invitation so that I can join the scheduled lesson.",
             "epic": "Lesson Booking & Scheduling",
             "role": "Student",
-            "status": "backlog",
+            "status": "cancelled",
             "points": 3,
             "criteria": [
               {
@@ -637,6 +679,89 @@
                 "given": "a lesson invitation is expired or invalid,",
                 "when": "the Student tries to accept it,",
                 "then": "the system rejects it and explains that it is no longer available."
+              }
+            ]
+          },
+          {
+            "id": "BOOK-7",
+            "title": "Subject-locked booking: choose a continuous block",
+            "description": "As a Student, I want booking to start from a selected tutor subject and let me choose one continuous block of 30-minute slots, so that I do not pick the subject twice and my lesson has a clear start and end time.",
+            "epic": "Lesson Booking & Scheduling",
+            "role": "Student",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              {
+                "given": "a booking starts from /tutors/:id/:subjectId,",
+                "when": "/bookings/s/:subjectId opens,",
+                "then": "the subject and rate are locked into the flow and no booking record exists yet."
+              },
+              {
+                "given": "the booking calendar is open and a day is selected,",
+                "when": "time slots from 00:00 to 23:30 render,",
+                "then": "the Student can select any of them, but selecting non-adjacent slots is prevented so the lesson stays continuous, and there is no add-friend or group invite step."
+              },
+              {
+                "given": "slots are selected,",
+                "when": "the summary updates,",
+                "then": "duration and price are calculated from the subject rate."
+              },
+              {
+                "given": "the Student chooses a date and time on /bookings/s/:subjectId,",
+                "when": "they continue,",
+                "then": "/bookings/:id opens with the booking ID, date, time, subject, and price locked."
+              }
+            ]
+          },
+          {
+            "id": "BOOK-8",
+            "title": "Pay from wallet and auto-confirm the booking",
+            "description": "As a Student, I want to pay for my selected slots on /bookings/:id from my wallet balance so the booking confirms immediately from the tutor's published availability, with no tutor approval step, and to be routed to top up if my balance is short.",
+            "epic": "Lesson Booking & Scheduling",
+            "role": "Student",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              {
+                "given": "/bookings/:id is in payment-due state and the Student has enough wallet balance,",
+                "when": "they pay,",
+                "then": "the amount is deducted, the slot is locked to this booking, and the booking is confirmed immediately without a tutor approval step."
+              },
+              {
+                "given": "the Student's wallet balance is short of the price,",
+                "when": "they try to pay,",
+                "then": "they are routed to top up the shortfall and returned to this booking afterwards."
+              },
+              {
+                "given": "the slot is already booked by another student,",
+                "when": "this Student tries to pay for it,",
+                "then": "the booking is blocked before payment is captured, and no confirmed booking is created."
+              }
+            ]
+          },
+          {
+            "id": "BOOK-9",
+            "title": "Bookings list and tutor detail view",
+            "description": "As a user, I want /bookings grouped into All, Upcoming, Payment due, and Past tabs, and, as a Tutor, I want a confirmed booking's detail page to show the student, lesson description, format, payout, and meeting link, so that either role can find and act on the right booking.",
+            "epic": "Lesson Booking & Scheduling",
+            "role": "user",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              {
+                "given": "bookings exist in multiple states,",
+                "when": "/bookings opens,",
+                "then": "tabs filter to All, Upcoming, Payment due, and Past."
+              },
+              {
+                "given": "a booking row is clicked,",
+                "when": "it opens,",
+                "then": "/bookings/:id shows the correct state for that booking."
+              },
+              {
+                "given": "a Tutor opens /bookings/:id for an upcoming class,",
+                "when": "the page loads,",
+                "then": "the student name, subject, time, format, payout, Zoom link, and description are visible."
               }
             ]
           },
@@ -690,16 +815,16 @@
           {
             "id": "DISC-1",
             "title": "Search tutors with filters",
-            "description": "As a Student, I want to search tutors by subject, price, availability, rating, and language so that I can find a tutor that fits my needs.",
+            "description": "As a Student, I want to search tutors by keyword, subject, maximum price, minimum rating, and format, and sort the results, so that I can find a tutor that fits my needs.",
             "epic": "Tutor Search & Discovery",
             "role": "Student",
             "status": "backlog",
             "points": 5,
             "criteria": [
               {
-                "given": "a Student applies filters,",
+                "given": "a Student applies filters (keyword, subject, maximum price, minimum rating, format) or a sort order,",
                 "when": "they run a search,",
-                "then": "results match all selected filters and are paginated."
+                "then": "results match all selected filters and the chosen sort order, and are paginated."
               },
               {
                 "given": "no tutors match the filters,",
@@ -751,6 +876,100 @@
             ]
           },
           {
+            "id": "DISC-4",
+            "title": "Subject detail page with full-day availability and booking button",
+            "description": "As a Student, I want each tutor subject to have its own detail page, showing that subject's description, rate, format, reviews, and every 30-minute slot from 00:00 to 23:30 marked Available or Not available, with a booking button below the table, so that I can evaluate the offering and start booking without aiming at a small time slot.",
+            "epic": "Tutor Search & Discovery",
+            "role": "Student",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              {
+                "given": "a tutor teaches multiple subjects,",
+                "when": "a Student opens /tutors/:id/:subjectId,",
+                "then": "only that subject's description, rate, format, availability, and reviews are shown."
+              },
+              {
+                "given": "a Student is on a subject detail page,",
+                "when": "they navigate back to /tutors/:id,",
+                "then": "they see the tutor's overall profile and subject list."
+              },
+              {
+                "given": "a subject detail page is open and a day is selected,",
+                "when": "slots render,",
+                "then": "all 48 half-hour slots are shown, each marked Available or Not available, and unavailable slots are not clickable."
+              },
+              {
+                "given": "a date is selected on the subject detail page,",
+                "when": "the page renders,",
+                "then": "a 'Book this subject' button below the availability table starts a subject-locked booking carrying the tutor, subject, rate, and date."
+              }
+            ]
+          },
+          {
+            "id": "IA-1",
+            "title": "Student dashboard focused on current lessons and wallet",
+            "description": "As a Student, I want my dashboard to focus on current lessons and wallet state so that I see the most important information first.",
+            "epic": "Information Architecture & Navigation",
+            "role": "Student",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              {
+                "given": "the Student dashboard opens,",
+                "when": "content loads,",
+                "then": "upcoming lessons, wallet balance, and learning progress are visible without large quick-action blocks."
+              }
+            ]
+          },
+          {
+            "id": "IA-2",
+            "title": "Tutor dashboard ordered by operational priority",
+            "description": "As a Tutor, I want my dashboard ordered by operational priority, with subjects linking to the canonical settings page, so that I can act on confirmed classes and new paid bookings quickly.",
+            "epic": "Information Architecture & Navigation",
+            "role": "Tutor",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              {
+                "given": "/dashboard/tutor opens,",
+                "when": "content loads,",
+                "then": "compact stat cards appear first, followed by earnings preview, upcoming classes, new paid bookings, and subjects."
+              },
+              {
+                "given": "upcoming classes, new paid bookings, or subjects are long,",
+                "when": "content overflows,",
+                "then": "each section scrolls internally instead of pushing the whole page."
+              },
+              {
+                "given": "the tutor dashboard subject list is visible,",
+                "when": "'Update' is clicked,",
+                "then": "the user goes to /settings/tutor."
+              }
+            ]
+          },
+          {
+            "id": "IA-3",
+            "title": "Consistent top navigation with page-specific left rails",
+            "description": "As a user, I want top navigation to stay in the same place while page-specific menus sit on the left so that the app feels predictable as I move between pages.",
+            "epic": "Information Architecture & Navigation",
+            "role": "user",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              {
+                "given": "a settings or discovery page opens,",
+                "when": "the user scrolls,",
+                "then": "the left page menu or filter rail stays fixed where appropriate."
+              },
+              {
+                "given": "the top navbar is present,",
+                "when": "page-specific menus are added to a page,",
+                "then": "the navbar stays in its original location."
+              }
+            ]
+          },
+          {
             "id": "MSG-1",
             "title": "To message a Tutor before booking",
             "description": "As a Student, I want to message a Tutor before booking so that I can ask questions about their teaching style.",
@@ -774,63 +993,63 @@
           {
             "id": "MSG-2",
             "title": "To receive notifications for bookings, messages, and payments",
-            "description": "As a member, I want to receive notifications for bookings, messages, and payments so that I stay informed of important account activity.",
+            "description": "As a member, I want to control notifications per event group (booking updates, lesson reminders, new messages, wallet and payments, product news) and per channel (email, push) so that I stay informed of important account activity in the way I prefer.",
             "epic": "Messaging & Notifications",
             "role": "member",
             "status": "backlog",
             "points": 3,
             "criteria": [
               {
-                "given": "a triggering event occurs (new booking, new message, payment processed),",
+                "given": "a triggering event occurs (booking update, lesson reminder, new message, wallet activity, product news),",
                 "when": "the event fires,",
-                "then": "an email notification is sent based on member preferences."
+                "then": "a notification is sent on each channel (email, push) the member has enabled for that event group."
               },
               {
-                "given": "a member has disabled notifications for a specific event type,",
+                "given": "a member has disabled a channel for a specific event group,",
                 "when": "that event occurs,",
-                "then": "no notification is sent for that event type."
+                "then": "no notification is sent on that channel for that event group."
               }
             ]
           },
           {
             "id": "PAY-1",
-            "title": "Purchase lesson credits",
-            "description": "As a Student, I want to purchase lesson credits/packages via PromptPay QR (mobile banking) so that I can pay for lessons in advance and use recurring bookings without paying each time.",
+            "title": "Top up wallet balance",
+            "description": "As a Student, I want to top up my wallet balance via PromptPay QR (mobile banking) so that I have enough balance to pay for a lesson.",
             "epic": "Payments & Billing",
             "role": "Student",
             "status": "backlog",
             "points": 5,
             "criteria": [
               {
-                "given": "a Student selects a package and scans the generated PromptPay QR,",
+                "given": "a Student enters a top-up amount and scans the generated PromptPay QR,",
                 "when": "the transfer is confirmed,",
-                "then": "credits are added to their balance and a transfer confirmation is emailed."
+                "then": "the amount is added to their wallet balance and a transaction is recorded."
               },
               {
                 "given": "payment fails or isn't confirmed,",
-                "when": "checkout is attempted,",
-                "then": "an error is shown and no credits are added."
+                "when": "the top-up flow ends,",
+                "then": "an error is shown and no balance is added."
               }
             ]
           },
           {
             "id": "PAY-2",
             "title": "To view my earnings and request a payout",
-            "description": "As a Tutor, I want to view my earnings and request a payout so that I get paid for completed lessons.",
+            "description": "As a Tutor, I want to see my cleared earnings in my wallet and request a payout from my available balance so that I get paid for completed lessons.",
             "epic": "Payments & Billing",
             "role": "Tutor",
-            "status": "backlog",
+            "status": "cancelled",
             "points": 5,
             "criteria": [
               {
-                "given": "a Tutor has completed lessons with settled payments,",
+                "given": "a Tutor has cleared earnings in their available wallet balance,",
                 "when": "they request a payout,",
-                "then": "funds (minus platform fee) are transferred to their linked payout account."
+                "then": "the requested amount is deducted from the wallet and recorded as a payout transaction to their linked payout account."
               },
               {
-                "given": "the requested payout amount is below the platform's minimum payout amount (e.g., THB 500),",
-                "when": "a Tutor requests payout,",
-                "then": "the system blocks the request and shows the minimum payout amount required."
+                "given": "the requested payout amount exceeds the available wallet balance,",
+                "when": "a Tutor requests a payout,",
+                "then": "the system blocks the request."
               }
             ]
           },
@@ -866,7 +1085,7 @@
             "description": "As a Student, I want to update my payment method so that future lesson payments use my preferred account.",
             "epic": "Payments & Billing",
             "role": "Student",
-            "status": "backlog",
+            "status": "cancelled",
             "points": 3,
             "criteria": [
               {
@@ -882,12 +1101,95 @@
             ]
           },
           {
+            "id": "PAY-5",
+            "title": "/wallet: one balance, filterable ledger, and transaction detail",
+            "description": "As a user, I want one wallet balance for top-ups, lesson payments, tutor earnings, refunds, and payouts, a filterable transaction list showing them all in one place, and a read-only detail page for each transaction, so that money is easy to understand and I never need separate Payments and Earnings pages.",
+            "epic": "Payments & Billing",
+            "role": "user",
+            "status": "backlog",
+            "points": 8,
+            "criteria": [
+              {
+                "given": "any wallet-affecting event occurs,",
+                "when": "the ledger updates,",
+                "then": "the available balance reflects the same state everywhere it is shown."
+              },
+              {
+                "given": "a user is both a Student and a Tutor,",
+                "when": "they view their wallet,",
+                "then": "top-up funds and cleared tutor earnings are shown in one available balance, not two."
+              },
+              {
+                "given": "transactions of different types exist,",
+                "when": "/wallet opens,",
+                "then": "top-ups, lesson payments, class earnings, refunds, and payouts all appear in one filterable list."
+              },
+              {
+                "given": "a transaction is opened,",
+                "when": "/wallet/transactions/:id loads,",
+                "then": "type, amount, direction, status, date, and the related booking (if any) are shown, read-only."
+              },
+              {
+                "given": "the transaction is an unfinished lesson payment,",
+                "when": "/wallet/transactions/:id loads,",
+                "then": "it tells the user to pay from /bookings/:id instead of accepting payment here."
+              }
+            ]
+          },
+          {
+            "id": "PAY-6",
+            "title": "Completed-lesson earnings clear into available balance",
+            "description": "As a Tutor, I want a completed lesson's earnings to clear into my available wallet balance after a hold period so that I can use or withdraw them, while still seeing them as pending until then.",
+            "epic": "Payments & Billing",
+            "role": "Tutor",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              {
+                "given": "a paid lesson is completed,",
+                "when": "settlement runs and the clearing period ends,",
+                "then": "the net earning (after the platform fee) is added to the available wallet balance."
+              },
+              {
+                "given": "an earning has not finished clearing,",
+                "when": "the wallet is viewed,",
+                "then": "it appears as pending and is excluded from the available balance."
+              }
+            ]
+          },
+          {
+            "id": "PAY-7",
+            "title": "Request a payout from available balance (any user)",
+            "description": "As any user, I want to request a payout from my available wallet balance so that I can withdraw money to my bank account, whether or not I have ever taught a lesson.",
+            "epic": "Payments & Billing",
+            "role": "user",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              {
+                "given": "a user has available wallet balance,",
+                "when": "they request a payout,",
+                "then": "the amount is deducted from the wallet and recorded as a payout transaction to their payout account."
+              },
+              {
+                "given": "the user is only a Student who topped up and never taught a lesson,",
+                "when": "they request a payout,",
+                "then": "the payout flow is still available to them."
+              },
+              {
+                "given": "the requested amount exceeds the available balance,",
+                "when": "submitted,",
+                "then": "the request is blocked."
+              }
+            ]
+          },
+          {
             "id": "PROF-1",
             "title": "To build a student profile (subjects of interest, level, goals)",
             "description": "As a Student, I want to build a student profile (subjects of interest, level, goals) so that I get better tutor recommendations.",
             "epic": "User Profile Management",
             "role": "Student",
-            "status": "backlog",
+            "status": "cancelled",
             "points": 2,
             "criteria": [
               {
@@ -905,40 +1207,45 @@
           {
             "id": "PROF-2",
             "title": "Create a public tutor profile",
-            "description": "As a Tutor, I want to create a public profile with bio, video intro, subjects, and hourly rate so that students can evaluate me before booking.",
+            "description": "As a Tutor, I want to create a public profile with bio, video intro, subjects, and hourly rate, and submit it for admin review, so that students can evaluate me before booking once it is approved.",
             "epic": "User Profile Management",
             "role": "Tutor",
             "status": "backlog",
             "points": 5,
             "criteria": [
               {
-                "given": "a Tutor fills in bio, subjects, rate, AND uploads an intro video,",
-                "when": "they publish the profile,",
-                "then": "it becomes visible in search results."
+                "given": "a Tutor fills in bio, subjects, rate, AND uploads an intro video, then submits for review,",
+                "when": "an admin approves the changes,",
+                "then": "the live profile updates and becomes visible in search results."
+              },
+              {
+                "given": "an admin rejects the submitted changes,",
+                "when": "review completes,",
+                "then": "the existing live profile is unchanged and the Tutor sees the rejection reason."
               },
               {
                 "given": "required fields are missing,",
-                "when": "the Tutor tries to publish,",
-                "then": "the system blocks publishing and highlights missing fields."
+                "when": "the Tutor tries to submit for review,",
+                "then": "the system blocks submission and highlights missing fields."
               }
             ]
           },
           {
             "id": "PROF-3",
-            "title": "To set my weekly availability",
-            "description": "As a Tutor, I want to set my weekly availability so that students only see bookable slots.",
+            "title": "To set my availability",
+            "description": "As a Tutor, I want to open 30-minute slots on specific dates and assign subjects to each one so that students only see bookable, subject-specific slots.",
             "epic": "User Profile Management",
             "role": "Tutor",
             "status": "backlog",
             "points": 3,
             "criteria": [
               {
-                "given": "a Tutor updates their availability calendar,",
+                "given": "a Tutor opens a 30-minute slot on a specific date and assigns one or more subjects to it,",
                 "when": "saved,",
-                "then": "only open slots appear to students."
+                "then": "only that open, subject-assigned slot appears to students on that date."
               },
               {
-                "given": "a Tutor enters an availability slot that overlaps an existing slot,",
+                "given": "a Tutor enters an availability slot that overlaps an existing slot on the same date,",
                 "when": "they save the availability calendar,",
                 "then": "the overlapping slot is rejected and an error is shown."
               }
@@ -987,21 +1294,73 @@
             ]
           },
           {
+            "id": "PROF-6",
+            "title": "Manage subjects and assign them to availability slots",
+            "description": "As a Tutor, I want to manage each subject I teach as its own offering (name, description, rate, format) and assign one or more of them to each open availability slot with compact toggles, so that students can evaluate each subject independently and schedule setup stays fast and accurate.",
+            "epic": "User Profile Management",
+            "role": "Tutor",
+            "status": "backlog",
+            "points": 8,
+            "criteria": [
+              {
+                "given": "a Tutor clicks 'Add subject' and fills in valid name, description, rate, AND format,",
+                "when": "they save,",
+                "then": "the subject is added as a separate offering."
+              },
+              {
+                "given": "a Tutor clicks 'Edit' on one subject,",
+                "when": "the inline editor opens and they save changes,",
+                "then": "the changes are saved only for that subject, leaving other subjects unchanged."
+              },
+              {
+                "given": "a Tutor edits availability and a time slot has multiple possible subjects,",
+                "when": "the slot editor renders,",
+                "then": "subjects appear as compact toggle boxes, and the selected state is visually clear."
+              },
+              {
+                "given": "many subjects are available for a slot,",
+                "when": "the subject picker grows,",
+                "then": "it scrolls inside its own box instead of pushing the full page."
+              }
+            ]
+          },
+          {
+            "id": "PROF-7",
+            "title": "Wallet and payout account settings",
+            "description": "As any user, I want wallet and payout account settings so that I can withdraw my wallet balance to the correct bank account, whether or not I am a Tutor.",
+            "epic": "User Profile Management",
+            "role": "user",
+            "status": "backlog",
+            "points": 3,
+            "criteria": [
+              {
+                "given": "a user saves their payout account details,",
+                "when": "saved,",
+                "then": "future payout requests use the selected account."
+              },
+              {
+                "given": "a user is not a Tutor,",
+                "when": "they open payout account settings,",
+                "then": "the settings are still available, because wallet withdrawals are not tutor-only."
+              }
+            ]
+          },
+          {
             "id": "REV-1",
             "title": "To rate and review a Tutor after a completed lesson",
-            "description": "As a Student, I want to rate and review a Tutor after a completed lesson so that other students benefit from my comment.",
+            "description": "As a Student, I want to rate and review a Tutor for the subject of my own completed lesson so that other students see feedback for that exact tutor-subject combination.",
             "epic": "Reviews & Ratings",
             "role": "Student",
             "status": "backlog",
             "points": 2,
             "criteria": [
               {
-                "given": "a lesson is marked 'Completed',",
+                "given": "the Student has their own lesson marked 'Completed' for a tutor and subject,",
                 "when": "the Student submits a rating (1-5) and optional comment,",
-                "then": "it is published on the Tutor's profile within moderation guidelines."
+                "then": "the review is published, scoped to that tutor AND that subject."
               },
               {
-                "given": "a lesson is not completed or the rating value is outside the allowed range,",
+                "given": "the lesson is not the Student's own completed booking, or the rating value is outside the allowed range,",
                 "when": "the Student submits a review,",
                 "then": "the review is rejected and an error is shown."
               }
@@ -1111,6 +1470,43 @@
                 "then": "approval is rejected and the unsupported file format is identified."
               }
             ]
+          },
+          {
+            "id": "SAFE-3",
+            "title": "Admin review of tutor listing and document changes",
+            "description": "As an admin, I want to review tutor listing and document changes before they go live so that public tutor quality and trust stay high.",
+            "epic": "Admin, Trust & Safety",
+            "role": "Admin",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              {
+                "given": "a Tutor submits listing or document changes,",
+                "when": "an admin approves them,",
+                "then": "the live listing updates."
+              },
+              {
+                "given": "an admin rejects the changes,",
+                "when": "review completes,",
+                "then": "the existing live listing stays unchanged and the Tutor sees the rejection reason and can revise and resubmit."
+              }
+            ]
+          },
+          {
+            "id": "SAFE-4",
+            "title": "Admin handling of payment disputes and refunds",
+            "description": "As an admin, I want to handle payment disputes and refund cases so that money movement stays fair and traceable in the wallet ledger.",
+            "epic": "Admin, Trust & Safety",
+            "role": "Admin",
+            "status": "backlog",
+            "points": 5,
+            "criteria": [
+              {
+                "given": "a dispute is submitted for a payment,",
+                "when": "an admin resolves it,",
+                "then": "the wallet ledger entries reflect the admin's decision."
+              }
+            ]
           }
         ],
         "dependencies": {
@@ -1119,35 +1515,51 @@
           "AUTH-3": ["AUTH-1"],
           "AUTH-4": ["AUTH-1"],
           "AUTH-5": ["AUTH-1"],
-          "AUTH-6": ["AUTH-1"],
+          "AUTH-6": ["AUTH-4"],
+          "AUTH-7": ["AUTH-2"],
+          "AUTH-8": ["AUTH-4"],
           "BOOK-1": ["AUTH-2", "PROF-2", "PROF-3", "DISC-3"],
           "BOOK-2": ["BOOK-1", "PROF-3"],
           "BOOK-3": ["BOOK-1"],
           "BOOK-4": ["BOOK-1"],
           "BOOK-5": [],
           "BOOK-6": [],
+          "BOOK-7": ["DISC-4"],
+          "BOOK-8": ["BOOK-7", "PAY-5", "PROF-6"],
+          "BOOK-9": ["BOOK-8", "CLASS-1"],
           "CLASS-1": ["BOOK-1"],
           "CLASS-2": ["CLASS-1"],
           "DISC-1": ["PROF-2", "PROF-3"],
           "DISC-2": ["PROF-1", "DISC-1"],
           "DISC-3": ["DISC-1"],
+          "DISC-4": ["DISC-3"],
+          "IA-1": ["BOOK-9", "PAY-5", "IA-3"],
+          "IA-2": ["PROF-5", "BOOK-9", "IA-3"],
+          "IA-3": ["AUTH-2"],
           "MSG-1": ["DISC-3"],
           "MSG-2": ["AUTH-2"],
           "PAY-1": ["AUTH-2"],
           "PAY-2": ["PAY-1", "CLASS-2"],
           "PAY-3": ["BOOK-1", "PAY-1", "CLASS-2"],
           "PAY-4": [],
+          "PAY-5": [],
+          "PAY-6": ["PAY-5", "CLASS-2"],
+          "PAY-7": ["PAY-5", "PROF-7"],
           "PROF-1": ["AUTH-1"],
-          "PROF-2": ["AUTH-1"],
-          "PROF-3": ["AUTH-1", "PROF-2"],
+          "PROF-2": ["AUTH-4"],
+          "PROF-3": ["PROF-2"],
           "PROF-4": ["AUTH-1"],
           "PROF-5": [],
+          "PROF-6": ["PROF-2", "PROF-3"],
+          "PROF-7": [],
           "REV-1": ["CLASS-2"],
           "REV-2": ["REV-1"],
           "REV-3": ["REV-1"],
           "REV-4": ["REV-3"],
           "SAFE-1": ["AUTH-2"],
-          "SAFE-2": ["AUTH-4"]
+          "SAFE-2": ["AUTH-4"],
+          "SAFE-3": ["PROF-2", "AUTH-4"],
+          "SAFE-4": ["PAY-3"]
         },
         "sprint": {
           "id": "sprint-1",
@@ -1156,13 +1568,13 @@
           "start": "2026-08-25",
           "end": "2026-09-14",
           "status": "planned",
-          "hours": 272,
+          "hours": 244,
           "stories": [
             {
               "id": "AUTH-1",
               "productPath": "product-backlog/AUTH-1-create-a-student-or-tutor-account.yaml",
               "status": "todo",
-              "order": 15,
+              "order": 1,
               "hours": 20,
               "tasks": [
                 {
@@ -1175,7 +1587,7 @@
                 },
                 {
                   "id": "AUTH-1-T2",
-                  "title": "Build the sign-up form inputs and role-based page routing",
+                  "title": "Build the sign-up form inputs and post-sign-up routing to the Student dashboard",
                   "role": "Frontend",
                   "status": "todo",
                   "hours": 4,
@@ -1191,7 +1603,7 @@
                 },
                 {
                   "id": "AUTH-1-T4",
-                  "title": "Create the member account database schema (Student/Tutor)",
+                  "title": "Create the member account database schema (Student by default; Tutor capability granted later)",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 2,
@@ -1222,8 +1634,8 @@
                   "assignees": ["Nesta", "Washi"]
                 }
               ],
-              "title": "Create a Student or Tutor account",
-              "description": "As a new member, I want to sign up as either a Student or a Tutor so that I get an account tailored to my role.",
+              "title": "Create an account",
+              "description": "As a new member, I want to sign up with email and password so that I get a Student account. (Becoming a Tutor is a separate, later application — see AUTH-4.)",
               "epic": "Account Registration & Authentication",
               "assignees": ["Nesta", "Washi"]
             },
@@ -1231,7 +1643,7 @@
               "id": "AUTH-2",
               "productPath": "product-backlog/AUTH-2-to-log-in-with-my-email-and-password.yaml",
               "status": "todo",
-              "order": 1,
+              "order": 2,
               "hours": 8,
               "tasks": [
                 {
@@ -1292,7 +1704,7 @@
               "id": "AUTH-3",
               "productPath": "product-backlog/AUTH-3-to-reset-my-password.yaml",
               "status": "todo",
-              "order": 2,
+              "order": 3,
               "hours": 12,
               "tasks": [
                 {
@@ -1345,12 +1757,12 @@
               "id": "AUTH-4",
               "productPath": "product-backlog/AUTH-4-verify-identity-and-teaching-credentials.yaml",
               "status": "todo",
-              "order": 3,
+              "order": 4,
               "hours": 20,
               "tasks": [
                 {
                   "id": "AUTH-4-T1",
-                  "title": "Design the document-upload and verification-status UI",
+                  "title": "Design the tutor-application form and verification-status UI",
                   "role": "UXUI",
                   "status": "todo",
                   "hours": 3,
@@ -1358,7 +1770,7 @@
                 },
                 {
                   "id": "AUTH-4-T2",
-                  "title": "Build the ID/certificate upload form",
+                  "title": "Build the ID/certification/bio upload form",
                   "role": "Frontend",
                   "status": "todo",
                   "hours": 4,
@@ -1374,7 +1786,7 @@
                 },
                 {
                   "id": "AUTH-4-T4",
-                  "title": "Implement the admin approval workflow and 'Verified' badge",
+                  "title": "Implement the admin approval workflow that grants the Tutor capability and 'Verified' badge",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 5,
@@ -1382,15 +1794,15 @@
                 },
                 {
                   "id": "AUTH-4-T5",
-                  "title": "Write acceptance tests for the Tutor verification flow",
+                  "title": "Write acceptance tests for the tutor application flow",
                   "role": "QA",
                   "status": "todo",
                   "hours": 2,
                   "assignees": ["Ideal", "Pooh"]
                 }
               ],
-              "title": "Verify identity and teaching credentials",
-              "description": "As a Tutor, I want to verify my identity and teaching credentials so that students can trust my profile.",
+              "title": "Apply to become a Tutor with identity and teaching credentials",
+              "description": "As a logged-in Student, I want to apply to become a Tutor by submitting a government ID, a teaching certification, and a bio, so that I can be reviewed and, once approved, teach on the platform.",
               "epic": "Account Registration & Authentication",
               "assignees": ["Ideal", "Pooh"]
             },
@@ -1398,7 +1810,7 @@
               "id": "AUTH-5",
               "productPath": "product-backlog/AUTH-5-accept-privacy-policy-and-terms.yaml",
               "status": "todo",
-              "order": 4,
+              "order": 5,
               "hours": 8,
               "tasks": [
                 {
@@ -1443,12 +1855,12 @@
               "id": "AUTH-6",
               "productPath": "product-backlog/AUTH-6-consent-to-privacy-and-data-processing.yaml",
               "status": "todo",
-              "order": 5,
+              "order": 7,
               "hours": 12,
               "tasks": [
                 {
                   "id": "AUTH-6-T1",
-                  "title": "Design the extended consent copy covering ID/payout data",
+                  "title": "Design the consent copy covering ID/payout data on the tutor application",
                   "role": "UXUI",
                   "status": "todo",
                   "hours": 3,
@@ -1456,7 +1868,7 @@
                 },
                 {
                   "id": "AUTH-6-T2",
-                  "title": "Implement the Tutor consent-checkbox gate on sign-up",
+                  "title": "Implement the consent-checkbox gate on the tutor application",
                   "role": "Frontend",
                   "status": "todo",
                   "hours": 3,
@@ -1464,7 +1876,7 @@
                 },
                 {
                   "id": "AUTH-6-T3",
-                  "title": "Record the extended consent (ID, credentials, payout) with timestamp",
+                  "title": "Record the consent (ID, credentials, payout) with timestamp",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 4,
@@ -1472,15 +1884,15 @@
                 },
                 {
                   "id": "AUTH-6-T4",
-                  "title": "Write acceptance tests for the Tutor consent gate",
+                  "title": "Write acceptance tests for the tutor-application consent gate",
                   "role": "QA",
                   "status": "todo",
                   "hours": 2,
                   "assignees": ["Ideal", "Pooh"]
                 }
               ],
-              "title": "Consent to privacy and data processing",
-              "description": "As a Tutor, I want to review and accept the Privacy Policy and Terms of Service, including how my identity documents, teaching credentials, and payout information will be processed, during sign-up so that I understand and control how my sensitive data is used before an account is created.",
+              "title": "Consent to privacy and data processing when applying to become a Tutor",
+              "description": "As a Student applying to become a Tutor, I want to review and accept the Privacy Policy and Terms of Service, including how my identity documents, teaching credentials, and payout information will be processed, so that I understand and control how my sensitive data is used before I submit my application.",
               "epic": "Account Registration & Authentication",
               "assignees": ["Ideal", "Pooh"]
             },
@@ -1488,7 +1900,7 @@
               "id": "BOOK-1",
               "productPath": "product-backlog/BOOK-1-to-book-a-trial-lesson-with-a-tutor.yaml",
               "status": "todo",
-              "order": 18,
+              "order": 15,
               "hours": 20,
               "tasks": [
                 {
@@ -1517,7 +1929,7 @@
                 },
                 {
                   "id": "BOOK-1-T4",
-                  "title": "Integrate payment confirmation (if required) and notifications",
+                  "title": "Integrate wallet payment and notifications",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 5,
@@ -1525,73 +1937,28 @@
                 },
                 {
                   "id": "BOOK-1-T5",
-                  "title": "Write acceptance tests for trial booking (success, slot-taken)",
+                  "title": "Write acceptance tests for booking a lesson (success, slot-taken)",
                   "role": "QA",
                   "status": "todo",
                   "hours": 2,
                   "assignees": ["Saint", "Yongfu"]
                 }
               ],
-              "title": "To book a trial lesson with a Tutor",
-              "description": "As a Student, I want to book a trial lesson with a Tutor so that I can evaluate fit before committing to a package.",
+              "title": "To book a lesson with a Tutor",
+              "description": "As a Student, I want to book a lesson from a Tutor's published subject availability so that I can pay for a continuous block of time and have it confirmed immediately.",
               "epic": "Lesson Booking & Scheduling",
               "assignees": ["Saint", "Yongfu"]
-            },
-            {
-              "id": "BOOK-2",
-              "productPath": "product-backlog/BOOK-2-to-book-recurring-lessons-with-a-tutor.yaml",
-              "status": "todo",
-              "order": 11,
-              "hours": 20,
-              "tasks": [
-                {
-                  "id": "BOOK-2-T1",
-                  "title": "Design the recurrence-pattern selection UI",
-                  "role": "UXUI",
-                  "status": "todo",
-                  "hours": 4,
-                  "assignees": ["Santa", "Plai"]
-                },
-                {
-                  "id": "BOOK-2-T2",
-                  "title": "Build the recurrence-pattern picker",
-                  "role": "Frontend",
-                  "status": "todo",
-                  "hours": 5,
-                  "assignees": ["Santa", "Plai"]
-                },
-                {
-                  "id": "BOOK-2-T3",
-                  "title": "Implement recurring-lesson creation and conflict detection",
-                  "role": "Backend",
-                  "status": "todo",
-                  "hours": 8,
-                  "assignees": ["Santa", "Plai"]
-                },
-                {
-                  "id": "BOOK-2-T4",
-                  "title": "Write acceptance tests for recurring booking (success, conflict)",
-                  "role": "QA",
-                  "status": "todo",
-                  "hours": 3,
-                  "assignees": ["Santa", "Plai"]
-                }
-              ],
-              "title": "To book recurring lessons with a Tutor",
-              "description": "As a Student, I want to book recurring lessons with a Tutor so that I can maintain a consistent learning schedule.",
-              "epic": "Lesson Booking & Scheduling",
-              "assignees": ["Santa", "Plai"]
             },
             {
               "id": "BOOK-3",
               "productPath": "product-backlog/BOOK-3-to-reschedule-or-cancel-a-lesson-within-the-allowed-policy-window.yaml",
               "status": "todo",
-              "order": 12,
+              "order": 16,
               "hours": 12,
               "tasks": [
                 {
                   "id": "BOOK-3-T1",
-                  "title": "Build the cancel/reschedule action and policy-window messaging",
+                  "title": "Build the cancel action and policy-window messaging",
                   "role": "Frontend",
                   "status": "todo",
                   "hours": 4,
@@ -1599,7 +1966,7 @@
                 },
                 {
                   "id": "BOOK-3-T2",
-                  "title": "Implement the &gt;24h no-penalty and &lt;24h refund-minus-fee logic",
+                  "title": "Implement the 12-hour free-cancellation window and wallet refund logic",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 6,
@@ -1614,8 +1981,8 @@
                   "assignees": ["Saint", "Yongfu"]
                 }
               ],
-              "title": "To reschedule or cancel a lesson within the allowed policy window",
-              "description": "As a Student, I want to reschedule or cancel a lesson within the allowed policy window so that I can handle changes in my schedule fairly.",
+              "title": "To cancel a lesson within the allowed policy window",
+              "description": "As a Student, I want to cancel a lesson within the allowed policy window so that I can handle changes in my schedule fairly and get an eligible refund.",
               "epic": "Lesson Booking & Scheduling",
               "assignees": ["Saint", "Yongfu"]
             },
@@ -1623,12 +1990,12 @@
               "id": "BOOK-4",
               "productPath": "product-backlog/BOOK-4-to-reschedule-or-cancel-a-lesson-within-the-allowed-policy-window.yaml",
               "status": "todo",
-              "order": 13,
+              "order": 17,
               "hours": 12,
               "tasks": [
                 {
                   "id": "BOOK-4-T1",
-                  "title": "Build the Tutor cancel/reschedule action",
+                  "title": "Build the Tutor cancel action",
                   "role": "Frontend",
                   "status": "todo",
                   "hours": 4,
@@ -1636,7 +2003,7 @@
                 },
                 {
                   "id": "BOOK-4-T2",
-                  "title": "Implement the &gt;24h no-penalty and &lt;24h full-refund + reliability-log logic",
+                  "title": "Implement the 12-hour free-cancellation window and wallet refund logic for Tutor-initiated cancellation",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 5,
@@ -1651,8 +2018,8 @@
                   "assignees": ["Santa", "Plai"]
                 }
               ],
-              "title": "To reschedule or cancel a lesson within the allowed policy window",
-              "description": "As a Tutor, I want to reschedule or cancel a lesson within the allowed policy window so that I can handle changes in my schedule while maintaining the Student's trust in the platform.",
+              "title": "To cancel a lesson within the allowed policy window (Tutor)",
+              "description": "As a Tutor, I want to cancel a lesson within the allowed policy window so that I can handle changes in my schedule while maintaining the Student's trust in the platform.",
               "epic": "Lesson Booking & Scheduling",
               "assignees": ["Santa", "Plai"]
             },
@@ -1660,7 +2027,7 @@
               "id": "DISC-1",
               "productPath": "product-backlog/DISC-1-search-tutors-with-filters.yaml",
               "status": "todo",
-              "order": 17,
+              "order": 11,
               "hours": 20,
               "tasks": [
                 {
@@ -1673,7 +2040,7 @@
                 },
                 {
                   "id": "DISC-1-T2",
-                  "title": "Build the filter UI (subject, price, availability, rating, language)",
+                  "title": "Build the filter UI (keyword, subject, max price, min rating, format) and sorting",
                   "role": "Frontend",
                   "status": "todo",
                   "hours": 6,
@@ -1705,7 +2072,7 @@
                 }
               ],
               "title": "Search tutors with filters",
-              "description": "As a Student, I want to search tutors by subject, price, availability, rating, and language so that I can find a tutor that fits my needs.",
+              "description": "As a Student, I want to search tutors by keyword, subject, maximum price, minimum rating, and format, and sort the results, so that I can find a tutor that fits my needs.",
               "epic": "Tutor Search & Discovery",
               "assignees": ["Poom", "Pee"]
             },
@@ -1713,7 +2080,7 @@
               "id": "DISC-2",
               "productPath": "product-backlog/DISC-2-to-view-a-ranked-list-of-recommended-tutors.yaml",
               "status": "todo",
-              "order": 9,
+              "order": 12,
               "hours": 20,
               "tasks": [
                 {
@@ -1766,7 +2133,7 @@
               "id": "DISC-3",
               "productPath": "product-backlog/DISC-3-to-view-a-tutor-s-detailed-profile-page.yaml",
               "status": "todo",
-              "order": 10,
+              "order": 13,
               "hours": 8,
               "tasks": [
                 {
@@ -1811,7 +2178,7 @@
               "id": "MSG-1",
               "productPath": "product-backlog/MSG-1-to-message-a-tutor-before-booking.yaml",
               "status": "todo",
-              "order": 19,
+              "order": 14,
               "hours": 20,
               "tasks": [
                 {
@@ -1856,12 +2223,12 @@
               "id": "MSG-2",
               "productPath": "product-backlog/MSG-2-to-receive-notifications-for-bookings-messages-and-payments.yaml",
               "status": "todo",
-              "order": 14,
+              "order": 9,
               "hours": 12,
               "tasks": [
                 {
                   "id": "MSG-2-T1",
-                  "title": "Build the notification preferences settings UI",
+                  "title": "Build the notification preferences settings UI (event group x channel)",
                   "role": "Frontend",
                   "status": "todo",
                   "hours": 3,
@@ -1869,7 +2236,7 @@
                 },
                 {
                   "id": "MSG-2-T2",
-                  "title": "Implement the event-based notification service (booking, message, payment)",
+                  "title": "Implement the event-based notification service (booking, message, wallet, product news)",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 4,
@@ -1877,7 +2244,7 @@
                 },
                 {
                   "id": "MSG-2-T3",
-                  "title": "Implement per-member preference filtering (respect disabled types)",
+                  "title": "Implement per-member, per-channel preference filtering (respect disabled event group x channel pairs)",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 3,
@@ -1893,60 +2260,15 @@
                 }
               ],
               "title": "To receive notifications for bookings, messages, and payments",
-              "description": "As a member, I want to receive notifications for bookings, messages, and payments so that I stay informed of important account activity.",
+              "description": "As a member, I want to control notifications per event group (booking updates, lesson reminders, new messages, wallet and payments, product news) and per channel (email, push) so that I stay informed of important account activity in the way I prefer.",
               "epic": "Messaging & Notifications",
               "assignees": ["Ideal", "Pooh"]
-            },
-            {
-              "id": "PROF-1",
-              "productPath": "product-backlog/PROF-1-to-build-a-learner-profile-subjects-of-interest-level-goals.yaml",
-              "status": "todo",
-              "order": 16,
-              "hours": 8,
-              "tasks": [
-                {
-                  "id": "PROF-1-T1",
-                  "title": "Design the student profile setup page",
-                  "role": "UXUI",
-                  "status": "todo",
-                  "hours": 2,
-                  "assignees": ["Poom", "Pee"]
-                },
-                {
-                  "id": "PROF-1-T2",
-                  "title": "Build the subjects/level/goals form and validation",
-                  "role": "Frontend",
-                  "status": "todo",
-                  "hours": 3,
-                  "assignees": ["Poom", "Pee"]
-                },
-                {
-                  "id": "PROF-1-T3",
-                  "title": "Implement profile storage and expose data for search ranking",
-                  "role": "Backend",
-                  "status": "todo",
-                  "hours": 2,
-                  "assignees": ["Poom", "Pee"]
-                },
-                {
-                  "id": "PROF-1-T4",
-                  "title": "Write acceptance tests for the student profile (complete, missing fields)",
-                  "role": "QA",
-                  "status": "todo",
-                  "hours": 1,
-                  "assignees": ["Poom", "Pee"]
-                }
-              ],
-              "title": "To build a student profile (subjects of interest, level, goals)",
-              "description": "As a Student, I want to build a student profile (subjects of interest, level, goals) so that I get better tutor recommendations.",
-              "epic": "User Profile Management",
-              "assignees": ["Poom", "Pee"]
             },
             {
               "id": "PROF-2",
               "productPath": "product-backlog/PROF-2-create-a-public-tutor-profile.yaml",
               "status": "todo",
-              "order": 6,
+              "order": 8,
               "hours": 20,
               "tasks": [
                 {
@@ -1967,7 +2289,7 @@
                 },
                 {
                   "id": "PROF-2-T3",
-                  "title": "Implement the publish gate for required fields",
+                  "title": "Implement the submit-for-review gate for required fields",
                   "role": "Frontend",
                   "status": "todo",
                   "hours": 3,
@@ -1975,7 +2297,7 @@
                 },
                 {
                   "id": "PROF-2-T4",
-                  "title": "Implement profile storage and publish-to-search-index logic",
+                  "title": "Implement draft storage, the admin-review queue, and publish-on-approval logic",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 5,
@@ -1991,7 +2313,7 @@
                 }
               ],
               "title": "Create a public tutor profile",
-              "description": "As a Tutor, I want to create a public profile with bio, video intro, subjects, and hourly rate so that students can evaluate me before booking.",
+              "description": "As a Tutor, I want to create a public profile with bio, video intro, subjects, and hourly rate, and submit it for admin review, so that students can evaluate me before booking once it is approved.",
               "epic": "User Profile Management",
               "assignees": ["Nesta", "Washi"]
             },
@@ -1999,12 +2321,12 @@
               "id": "PROF-3",
               "productPath": "product-backlog/PROF-3-to-set-my-weekly-availability.yaml",
               "status": "todo",
-              "order": 7,
+              "order": 10,
               "hours": 12,
               "tasks": [
                 {
                   "id": "PROF-3-T1",
-                  "title": "Design the weekly availability calendar UI",
+                  "title": "Design the per-date availability calendar UI",
                   "role": "UXUI",
                   "status": "todo",
                   "hours": 2,
@@ -2012,7 +2334,7 @@
                 },
                 {
                   "id": "PROF-3-T2",
-                  "title": "Build the availability calendar with slot selection",
+                  "title": "Build the per-date, 30-minute slot calendar with slot selection",
                   "role": "Frontend",
                   "status": "todo",
                   "hours": 3,
@@ -2043,8 +2365,8 @@
                   "assignees": ["Poom", "Pee"]
                 }
               ],
-              "title": "To set my weekly availability",
-              "description": "As a Tutor, I want to set my weekly availability so that students only see bookable slots.",
+              "title": "To set my availability",
+              "description": "As a Tutor, I want to open 30-minute slots on specific dates and assign subjects to each one so that students only see bookable, subject-specific slots.",
               "epic": "User Profile Management",
               "assignees": ["Poom", "Pee"]
             },
@@ -2052,7 +2374,7 @@
               "id": "PROF-4",
               "productPath": "product-backlog/PROF-4-to-edit-my-profile-and-account-settings.yaml",
               "status": "todo",
-              "order": 8,
+              "order": 6,
               "hours": 8,
               "tasks": [
                 {
@@ -2094,7 +2416,7 @@
               "assignees": ["Poom", "Pee"]
             }
           ],
-          "tasks": 86
+          "tasks": 78
         }
       }
     </script>

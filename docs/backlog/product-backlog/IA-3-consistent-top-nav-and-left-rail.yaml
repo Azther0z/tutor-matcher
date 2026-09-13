@@ -1,0 +1,23 @@
+# New: docs/backlog/reconciliation.md section 2 (➕, US10-x). See IA-1 for why this uses
+# the new EPIC-10 "Information Architecture & Navigation" instead of an existing epic.
+id: IA-3
+title: "Consistent top navigation with page-specific left rails"
+description: "As a user, I want top navigation to stay in the same place while page-specific menus sit on the left so that the app feels predictable as I move between pages."
+epic: "Information Architecture & Navigation"
+role: "user"
+lifecycle: backlog
+story_points: 3
+dependencies: ["AUTH-2"]
+acceptance_criteria:
+  - given: "a settings or discovery page opens,"
+    when: "the user scrolls,"
+    then: "the left page menu or filter rail stays fixed where appropriate."
+  - given: "the top navbar is present,"
+    when: "page-specific menus are added to a page,"
+    then: "the navbar stays in its original location."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "Dashboard, Navigation & Information Architecture / US10-4, US10-5"
+journey:
+  - route: "/dashboard"
+    action: "Consistent top nav and page-specific left rail"

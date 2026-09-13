@@ -1,3 +1,8 @@
+# Unresolved (docs/backlog/reconciliation.md; issue #63, PROF-1 row): this story depends
+# on the now-cancelled PROF-1 for its personalization input ("profile with
+# subjects/goals") and part of its "recommended" ranking basis. Left unchanged here —
+# choosing a replacement input, or dropping personalization from the ranking, is a
+# product decision this reconciliation pass does not make.
 id: DISC-2
 title: "To view a ranked list of recommended tutors"
 description: "As a Student, I want to view a ranked list of recommended tutors so that I can quickly find a good match without extensive searching."
@@ -16,7 +21,7 @@ acceptance_criteria:
 sprint: sprint-1
 assignees: ["Saint", "Yongfu"]
 status: todo
-order: 9
+order: 12
 estimate_hours: 20
 tasks:
   - id: DISC-2-T1

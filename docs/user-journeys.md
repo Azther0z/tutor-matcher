@@ -2,8 +2,64 @@
 
 This is the canonical description of what the product does, expressed as the journeys
 a user walks and the rules those journeys enforce. It is the requirement-level
-companion to [`project-schema.md`](project-schema.md) (what is stored) and
+companion to [`database-schema.md`](database-schema.md) (what is stored) and
 [`CONTEXT.md`](../CONTEXT.md) (what things are called).
+
+## Overview and scope
+
+Tutor Matcher connects tutors and students who match on subject, schedule, and price. A
+student opens one of a tutor's subjects, picks a continuous block of that tutor's
+published 30-minute slots, and pays from a single wallet balance. Paying confirms the
+lesson immediately — there is no tutor approval step, because the tutor already
+published the slot.
+
+**Problem.** Finding a tutor who matches a student's subject, schedule, and budget is
+usually fragmented and manual, and paying for lessons usually means bank transfers and
+screenshots. Tutor Matcher centralises discovery, slot-level booking, and money in one
+place.
+
+**Goals.**
+
+1. Let tutors publish a verified public listing, run each teaching offering as its own
+   subject with its own rate, and open 30-minute availability slots per subject.
+2. Let students search and filter tutors, evaluate a specific subject, book one
+   continuous 1-1 block from published availability, and pay from wallet balance.
+3. Confirm lessons instantly on payment, deliver them through an attached online meeting
+   link, and complete them automatically so settlement and reviewing can start.
+4. Hold all money in one wallet per user — top-ups in, lesson payments out, cleared
+   earnings in, refunds in, payouts out — with the transaction ledger as the source of
+   truth for every balance.
+5. Give admins the queues that keep the marketplace trustworthy: tutor applications,
+   listing and document changes, flagged content, payment disputes, and account
+   suspension.
+
+**Roles.** Every account is created as a student. Tutor and admin are capabilities
+layered onto the same account, not separate account types.
+
+| Role        | What the capability adds                                                                                                               |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **Student** | Default for every account: search, message a tutor, book and pay for lessons, attend, review completed lessons, top up and withdraw    |
+| **Tutor**   | Granted on approved application: public listing, subjects, per-date availability, teaching confirmed classes, earnings into the wallet |
+| **Admin**   | Tutor applications, listing and document review, content moderation, disputes and refunds, suspension and bans                         |
+
+**In scope:** account sign-up and login; tutor application with identity and
+certification documents; admin-reviewed public listings; per-tutor subjects; per-date
+30-minute availability with subject assignment; tutor and subject discovery with
+filters; subject-locked 1-1 booking of a continuous block; wallet top-up by PromptPay,
+wallet-funded lesson payment, earnings, refunds, and payouts for any user; online lesson
+delivery by meeting link and automatic completion; student ⇄ tutor messaging and
+notification preferences; reviews scoped to a tutor and a subject, with tutor replies
+and flagging; admin queues for applications, moderation, disputes, and account safety.
+
+**Out of scope:** native mobile apps in the initial release, plus the features listed in
+[Explicitly out of scope](#explicitly-out-of-scope) below — role selection at sign-up,
+recurring bookings, group lessons, lesson credits, saved payment methods, transfer-proof
+upload, and tutor promotional posts.
+
+**Team.** Group 2 — G2: ซานต้า. Computer Engineering, Year 2. Kritarat Moonmanee,
+Natdanai Hirunsirikul, Teerachot Kerdlapanan, Nontakorn Krairaveeroj, Nonthapat
+Sriboonruang, Passatorn Jindawong, Phantakan Thepnakorn, Puntawit Masun, Piranat Wadlom,
+Nathawat Wattanarapeepong.
 
 **Evidence.** The behaviour below was taken from the clickable product prototype
 (<https://idealkritarat.github.io/tutormatcher-prototype>) and verified by walking it
@@ -16,6 +72,17 @@ end to end. The prototype material is preserved under `sources/`:
 Where this page and the product backlog disagree, the disagreement is listed in
 [`backlog/reconciliation.md`](backlog/reconciliation.md); this page describes the
 product, the backlog describes committed work.
+
+**Contents:** [Overview and scope](#overview-and-scope) · [Route Model](#route-model) ·
+[1 · Account and access](#1--account-and-access) ·
+[2 · Discovery](#2--discovery) · [3 · Booking a lesson](#3--booking-a-lesson) ·
+[4 · Money](#4--money) · [5 · Lesson delivery](#5--lesson-delivery) ·
+[6 · Becoming a tutor](#6--becoming-a-tutor) ·
+[7 · Tutor operations](#7--tutor-operations) ·
+[8 · Messaging and notifications](#8--messaging-and-notifications) ·
+[9 · Reviews](#9--reviews) ·
+[10 · Admin, trust, and safety](#10--admin-trust-and-safety) ·
+[Invariants](#invariants) · [Explicitly out of scope](#explicitly-out-of-scope)
 
 ---
 
@@ -41,7 +108,7 @@ Guards run before render, not after.
 | `/bookings/:id`            | One booking — payment, confirmation, meeting link, review             | Requires login |
 | `/messages/:id`            | Conversation thread with student ⇄ tutor context switch               | Requires login |
 | `/wallet`                  | Combined ledger: top-ups, lesson payments, earnings, refunds, payouts | Requires login |
-| `/wallet/topup`            | Add money by PromptPay QR                                             | Requires login |
+| `/wallet/topup`            | Add money by PromptPay QR (Thai mobile-banking QR payment)            | Requires login |
 | `/wallet/transactions/:id` | Read-only transaction detail                                          | Requires login |
 | `/settings/account`        | Email, password, deactivate account                                   | Requires login |
 | `/settings/notifications`  | Per-event email and push preferences                                  | Requires login |
@@ -181,8 +248,9 @@ Related stories: US4-1 … US4-8, US11-1, US11-2.
 
 ## 4 · Money
 
-One wallet per user holds topped-up money and cleared tutor earnings **in the same
-available balance**. A user who both learns and teaches has one balance, not two.
+All amounts are Thai baht (**฿**). One wallet per user holds topped-up money and cleared
+tutor earnings **in the same available balance**. A user who both learns and teaches has
+one balance, not two.
 
 | Movement           | Direction | Where it starts                      |
 | ------------------ | --------- | ------------------------------------ |

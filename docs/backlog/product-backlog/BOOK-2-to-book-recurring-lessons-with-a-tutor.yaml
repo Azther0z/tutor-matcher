@@ -1,9 +1,12 @@
+# Cancelled: docs/backlog/reconciliation.md marks this ⛔. The product has no recurring
+# lessons — one booking is always one continuous block (docs/user-journeys.md). Removed
+# from sprint-1's story_ids and execution fields; the file stays per the backlog contract.
 id: BOOK-2
 title: "To book recurring lessons with a Tutor"
 description: "As a Student, I want to book recurring lessons with a Tutor so that I can maintain a consistent learning schedule."
 epic: "Lesson Booking & Scheduling"
 role: "Student"
-lifecycle: backlog
+lifecycle: cancelled
 story_points: 5
 dependencies: ["BOOK-1", "PROF-3"]
 acceptance_criteria:
@@ -13,36 +16,6 @@ acceptance_criteria:
   - given: "a Student selects a recurrence pattern that conflicts with an existing lesson,"
     when: "they confirm the recurring booking,"
     then: "the booking is rejected and the conflicting slots are identified."
-sprint: sprint-1
-assignees: ["Santa", "Plai"]
-status: todo
-order: 11
-estimate_hours: 20
-tasks:
-  - id: BOOK-2-T1
-    title: "Design the recurrence-pattern selection UI"
-    assignees: ["Santa", "Plai"]
-    role: "UXUI"
-    status: todo
-    estimate_hours: 4
-  - id: BOOK-2-T2
-    title: "Build the recurrence-pattern picker"
-    assignees: ["Santa", "Plai"]
-    role: "Frontend"
-    status: todo
-    estimate_hours: 5
-  - id: BOOK-2-T3
-    title: "Implement recurring-lesson creation and conflict detection"
-    assignees: ["Santa", "Plai"]
-    role: "Backend"
-    status: todo
-    estimate_hours: 8
-  - id: BOOK-2-T4
-    title: "Write acceptance tests for recurring booking (success, conflict)"
-    assignees: ["Santa", "Plai"]
-    role: "QA"
-    status: todo
-    estimate_hours: 3
 
 sources:
   - file: ../../sources/Product Backlog v1.2.html
