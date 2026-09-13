@@ -70,7 +70,12 @@ just logs backend     # ...or just one service
 just status           # show Compose service status
 just restart          # restart all services
 just down             # stop and remove the local stack
+just reset-db         # recreate, seed, and restart the disposable database
 ```
+
+Use `just reset-db` after a schema change that the existing database cannot accept. It
+deletes all local PostgreSQL data, recreates the disposable database, and reseeds it;
+unlike `just down`, this command is destructive.
 
 The detached Compose stack uses production-style images and does not hot-reload
 source changes; rerun `just up` after changing application code. To run both dev
@@ -128,21 +133,22 @@ Run `just` in the repo root or in `apps/backend` to list every recipe. Docker
 Compose orchestration is implemented in the justfile and has no `npm run`
 equivalent; the remaining recipes wrap an npm script shown in the last column.
 
-| `just`                   | Location       | Description                                       | `npm run` equivalent      |
-| ------------------------ | -------------- | ------------------------------------------------- | ------------------------- |
-| `just setup`             | repo root      | First-run: env, Postgres, deps, schema sync, seed | `npm run setup` (partial) |
-| `just install`           | repo root      | Install root + backend + frontend dependencies    | `npm run install:all`     |
-| `just env`               | repo root      | Copy missing `.env` files from templates          | `npm run setup:env`       |
-| `just up` / `down`       | repo root      | Start / stop the local Compose stack              | —                         |
-| `just logs` / `status`   | repo root      | Stream logs / show Compose service status         | —                         |
-| `just restart`           | repo root      | Restart the local Compose services                | —                         |
-| `just db-up` / `db-down` | repo root      | Start (wait for healthy) / stop Postgres          | —                         |
-| `just dev`               | repo root      | Run backend + frontend attached to the terminal   | `npm run dev`             |
-| `just gen`               | `apps/backend` | Regenerate the typed Prisma client                | `npm run gen`             |
-| `just gen-mock-data`     | `apps/backend` | Seed fake data (`@faker-js/faker`)                | `npm run gen-mock-data`   |
-| `just migrate`           | `apps/backend` | Create and apply a new migration                  | `npm run db:migrate:dev`  |
-| `just reset`             | `apps/backend` | Drop, re-migrate, and re-seed the database        | `npm run db:reset`        |
-| `just studio`            | `apps/backend` | Open Prisma Studio                                | `npm run db:studio`       |
+| `just`                   | Location       | Description                                         | `npm run` equivalent      |
+| ------------------------ | -------------- | --------------------------------------------------- | ------------------------- |
+| `just setup`             | repo root      | First-run: env, Postgres, deps, schema sync, seed   | `npm run setup` (partial) |
+| `just install`           | repo root      | Install root + backend + frontend dependencies      | `npm run install:all`     |
+| `just env`               | repo root      | Copy missing `.env` files from templates            | `npm run setup:env`       |
+| `just up` / `down`       | repo root      | Start / stop the local Compose stack                | —                         |
+| `just reset-db`          | repo root      | Recreate, seed, and restart the disposable database | —                         |
+| `just logs` / `status`   | repo root      | Stream logs / show Compose service status           | —                         |
+| `just restart`           | repo root      | Restart the local Compose services                  | —                         |
+| `just db-up` / `db-down` | repo root      | Start (wait for healthy) / stop Postgres            | —                         |
+| `just dev`               | repo root      | Run backend + frontend attached to the terminal     | `npm run dev`             |
+| `just gen`               | `apps/backend` | Regenerate the typed Prisma client                  | `npm run gen`             |
+| `just gen-mock-data`     | `apps/backend` | Seed fake data (`@faker-js/faker`)                  | `npm run gen-mock-data`   |
+| `just migrate`           | `apps/backend` | Create and apply a new migration                    | `npm run db:migrate:dev`  |
+| `just reset`             | `apps/backend` | Drop, re-migrate, and re-seed the database          | `npm run db:reset`        |
+| `just studio`            | `apps/backend` | Open Prisma Studio                                  | `npm run db:studio`       |
 
 ### More recipes
 
