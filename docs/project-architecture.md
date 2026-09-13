@@ -126,12 +126,13 @@ also work without `just`. See the task reference in [`README.md`](../README.md)
 for the full list.
 
 ```bash
-# First-run only: env files, Postgres, deps, migrate, seed
+# First-run only: env files, Postgres, deps, schema sync, seed
 just setup
 
 # Start Postgres + backend (8000) + frontend (3000) in the background (Compose;
 # rebuild after source changes)
 just up                 # containers survive closing the terminal
+just reset-db           # discard, recreate, seed, and restart the local database
 just logs               # stream output
 just down               # stop them
 

@@ -10,6 +10,7 @@
 #   just            list recipes
 #   just setup      prepare a fresh checkout (env, Postgres, deps, schema, seed)
 #   just up         start the Postgres + backend + frontend Compose stack
+#   just reset-db   recreate, synchronize, and seed the disposable database
 # Use the Windows PowerShell that ships with Windows. The npm command below
 # selects npm.cmd on Windows so recipes are not blocked by npm.ps1 execution
 # policy settings.
@@ -41,6 +42,12 @@ up: env
 # Stop and remove the local Compose stack.
 down:
     docker compose down
+
+# Recreate, reseed, and restart the disposable database (deletes all local PostgreSQL data).
+reset-db:
+    docker compose down --volumes --remove-orphans
+    just setup
+    just up
 
 # Restart the local Compose services.
 restart:
