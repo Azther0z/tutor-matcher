@@ -4,6 +4,10 @@
 - Do not use `AGENTS.md` as a task log or changelog. Do not add completed-work histories,
   changed-file summaries, progress reports, or a `Current Work Log` section after finishing tasks.
 
+## DevOps Ownership
+
+- `@azther0z` is the sole owner of DevOps, deployment, CI/CD, container, and environment configuration. Other developers and agents must not edit these files unless `@azther0z` explicitly delegates the work. Please check `.github/CODEOWNERS` to filter out files under `@azther0z`'s responsbilities.
+
 ## Code Style
 
 - **Strings use double quotes** in TypeScript, JavaScript, JSON, and JSX (`"foo"`, not `'foo'`). Use single quotes only to avoid escaping an embedded double quote; prefer template literals for interpolation.

@@ -1,1 +1,18 @@
 * @piranatw @kormuyang
+
+# DevOps and deployment files are solely owned by @azther0z.
+# Keep these rules below the repository-wide fallback rule.
+/.github/** @azther0z
+/deploy/** @azther0z
+/.doco-cd.yaml @azther0z
+/.sops.yaml @azther0z
+/docker-compose.yml @azther0z
+/apps/backend/Dockerfile @azther0z
+/apps/backend/.dockerignore @azther0z
+/apps/frontend/Dockerfile @azther0z
+/apps/frontend/.dockerignore @azther0z
+/.env.example @azther0z
+/apps/backend/.env.example @azther0z
+
+/justfile @azther0z @piranatw
+/apps/backend/justfile @azther0z @piranatw
