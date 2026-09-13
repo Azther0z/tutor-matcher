@@ -6,10 +6,12 @@ const learningAreaFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const studentFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 const studentUpsert = jest.fn<(args: unknown) => Promise<unknown>>();
 const userFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
+const userUpdate = jest.fn<(args: unknown) => Promise<unknown>>();
 const transaction = jest.fn<(callback: (tx: unknown) => Promise<unknown>) => Promise<unknown>>();
 
 const tx = {
   student: { upsert: studentUpsert },
+  user: { update: userUpdate },
 };
 
 learningAreaCount.mockResolvedValue(2);
@@ -42,6 +44,7 @@ const savedStudent = {
   preferredLearningPeriod: profile.preferredLearningPeriod,
   preferredDurationMinutes: profile.preferredDurationMinutes,
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+  user: { firstName: "Ada", lastName: "Lovelace" },
   learningAreas: [
     { learningArea: { id: "11111111-1111-4111-8111-111111111111", name: "Mathematics" } },
     { learningArea: { id: "22222222-2222-4222-8222-222222222222", name: "English" } },
@@ -59,6 +62,7 @@ describe("Student profile API", () => {
     studentFindUnique.mockReset();
     studentUpsert.mockReset();
     userFindUnique.mockReset();
+    userUpdate.mockReset();
     transaction.mockReset();
     transaction.mockImplementation(async (callback) => callback(tx));
     learningAreaCount.mockResolvedValue(2);
@@ -155,6 +159,55 @@ describe("Student profile API", () => {
     });
   });
 
+  it("updates the user's name when provided", async () => {
+    learningAreaCount.mockResolvedValue(2);
+    learningAreaFindMany.mockResolvedValue(profile.learningAreaIds.map((id) => ({ id })));
+    studentUpsert.mockResolvedValue(savedStudent);
+    userUpdate.mockResolvedValue({});
+    transaction.mockImplementation(async (callback) => callback(tx));
+
+    const response = await request(app)
+      .put("/api/profiles/me/student")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .send({ ...profile, user: { firstName: "New", lastName: "Name" } })
+      .expect(200);
+
+    expect(userUpdate).toHaveBeenCalledWith({
+      where: { id: "11111111-1111-4111-8111-111111111111" },
+      data: { firstName: "New", lastName: "Name" },
+    });
+    // Regression guard: the upsert's `include.user` is read before this
+    // transaction's user.update runs, so the response must be patched with
+    // the freshly-submitted name rather than echoing back stale data.
+    expect(response.body).toMatchObject({ firstName: "New", lastName: "Name" });
+  });
+
+  it("does not touch the user's name when omitted", async () => {
+    learningAreaCount.mockResolvedValue(2);
+    learningAreaFindMany.mockResolvedValue(profile.learningAreaIds.map((id) => ({ id })));
+    studentUpsert.mockResolvedValue(savedStudent);
+    transaction.mockImplementation(async (callback) => callback(tx));
+
+    await request(app)
+      .put("/api/profiles/me/student")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .send(profile)
+      .expect(200);
+
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rejects an incomplete user block", async () => {
+    await request(app)
+      .put("/api/profiles/me/student")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .send({ ...profile, user: { firstName: "New" } })
+      .expect(400);
+
+    expect(learningAreaCount).not.toHaveBeenCalled();
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
   it("returns learning-area suggestions", async () => {
     learningAreaFindMany.mockResolvedValue([
       { id: "11111111-1111-4111-8111-111111111111", name: "Mathematics" },
@@ -184,5 +237,21 @@ describe("Student profile API", () => {
       .get("/api/profiles/me/student")
       .set("Authorization", `Bearer ${tokenFor()}`)
       .expect(404);
+  });
+
+  it("returns the student's profile including the user's name", async () => {
+    studentFindUnique.mockResolvedValue(savedStudent);
+
+    const response = await request(app)
+      .get("/api/profiles/me/student")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      id: savedStudent.id,
+      userId: savedStudent.userId,
+      firstName: "Ada",
+      lastName: "Lovelace",
+    });
   });
 });
