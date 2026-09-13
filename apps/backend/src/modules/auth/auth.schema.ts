@@ -16,3 +16,20 @@ export const loginSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+
+export const passwordResetRequestSchema = z.object({
+  email: z.email(),
+});
+
+export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
+
+export const passwordResetValidateSchema = z.object({
+  token: z.string().min(1),
+});
+
+export const passwordResetConfirmSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(8).max(100),
+});
+
+export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>;

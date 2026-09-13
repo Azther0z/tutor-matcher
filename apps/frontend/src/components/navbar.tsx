@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -33,10 +34,6 @@ function displayName(user: AuthUser | null) {
 
   if (firstName && lastName) return `${firstName} ${lastName.charAt(0)}.`;
   return firstName || user?.email || "User";
-}
-
-function avatarInitial(user: AuthUser | null) {
-  return user?.firstName?.trim().charAt(0).toUpperCase() || "U";
 }
 
 export function Navbar() {
@@ -138,9 +135,9 @@ export function Navbar() {
                 aria-label="Open account menu"
                 aria-expanded={menuOpen}
                 onClick={() => setMenuOpen((open) => !open)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-950 ring-4 ring-emerald-100/20 transition-colors hover:bg-emerald-200"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 ring-4 ring-emerald-100/20 transition-colors hover:bg-emerald-200"
               >
-                {avatarInitial(user)}
+                <Image src="/profile-circle.svg" alt="" width={22} height={22} />
               </button>
 
               {menuOpen && (

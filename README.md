@@ -29,7 +29,8 @@ just setup
 ```
 
 `just setup` creates missing `.env` files from their `.env.example` templates,
-starts Postgres and waits for it, installs all dependencies, applies migrations,
+starts Postgres and waits for it, installs all dependencies, syncs `schema.prisma`
+with the disposable database using `prisma db push`,
 and seeds mock data. It is safe to re-run. Start the complete local Compose stack
 with `just up` (see [Development](#development)).
 
@@ -76,8 +77,37 @@ source changes; rerun `just up` after changing application code. To run both dev
 servers with hot reload attached to the current terminal instead (Ctrl+C stops
 both), use `just dev` (`npm run dev`); this assumes Postgres is already running.
 
-The root `.env` file is created from `.env.example` automatically. Edit
-`FRONTEND_PORT` or `BACKEND_PORT` there to avoid port conflicts on your device.
+The root `.env` file is created from `.env.example` automatically and is read by Docker
+Compose. Edit `FRONTEND_PORT` or `BACKEND_PORT` there to avoid port conflicts on your device;
+the same file also holds the Compose password-reset delivery mode and Resend settings.
+The backend `.env` is a separate file for host development with `just dev`; it uses the local
+database URL and defaults to logging reset links.
+
+### Password reset email delivery
+
+The backend uses `EMAIL_DELIVERY_MODE` to make reset-email delivery explicit:
+
+- `log` prints the reset URL in the backend terminal. This is the default in
+  development and test environments.
+- `resend` sends a real email through Resend. It requires `RESEND_API_KEY`,
+  `RESEND_FROM_EMAIL`, and `FRONTEND_URL`.
+
+For the host development flow, `just dev` reads `apps/backend/.env`. Keep the
+default `EMAIL_DELIVERY_MODE="log"` for local development, or opt in deliberately:
+
+```ini
+EMAIL_DELIVERY_MODE="resend"
+RESEND_API_KEY="re_..."
+RESEND_FROM_EMAIL="Tutor Matcher <onboarding@resend.dev>"
+FRONTEND_URL="http://localhost:3000"
+```
+
+Use `onboarding@resend.dev` only for testing and send to the email address that
+owns the Resend account. Never commit an API key; `*.env` files are ignored by Git.
+The `just up` Compose flow remains production-style and defaults to `resend`, so
+configure its Resend credentials explicitly when password-reset email is needed.
+Do not add `apps/backend/.env` as a Compose `env_file`: its `DATABASE_URL` points to
+`localhost`, while the backend container must connect to the `postgres` service.
 
 <details>
 <summary>Run each server in its own terminal</summary>

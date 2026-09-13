@@ -7,3 +7,4 @@ deploy/secrets/*
 !deploy/secrets/*.enc.env
 dist/
 .next/
+.agents/scratch/

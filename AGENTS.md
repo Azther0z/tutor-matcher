@@ -1,3 +1,9 @@
+## Agent Contract
+
+- Keep `AGENTS.md` focused on high-signal, non-obvious repository guidance that changes agent behavior.
+- Do not use `AGENTS.md` as a task log or changelog. Do not add completed-work histories,
+  changed-file summaries, progress reports, or a `Current Work Log` section after finishing tasks.
+
 ## Code Style
 
 - **Strings use double quotes** in TypeScript, JavaScript, JSON, and JSX (`"foo"`, not `'foo'`). Use single quotes only to avoid escaping an embedded double quote; prefer template literals for interpolation.
@@ -59,14 +65,3 @@ Open threads use this format:
   Status: open
   Next step: <next action>
 ```
-
-## Current Work Log
-
-### 2026-09-08 — Issue #73 Windows justfile workflows
-
-- Files changed: `justfile`, `apps/backend/justfile`, and `README.md`.
-- `justfile` and `apps/backend/justfile` now select Windows PowerShell and use `npm.cmd` on Windows while retaining `npm` on Unix-like systems.
-- `README.md` documents PowerShell/Command Prompt usage without Git Bash or WSL.
-- The temporary Ubuntu/Windows justfile smoke workflow was removed at the user's request.
-- Progress: implementation and local Windows verification complete; root and backend justfiles pass formatting checks, `just env`/`status` work, and backend `just validate` passes.
-- Remaining: full Docker lifecycle testing remains dependent on a local Docker Desktop environment; no dedicated justfile CI workflow is currently configured.
