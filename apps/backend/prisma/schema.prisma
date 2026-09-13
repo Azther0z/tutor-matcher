@@ -119,6 +119,7 @@ model Tutor {
   introVideoUrl String?     @map("intro_video_url")
   governmentId  String      @map("government_id")
   enrolledAt    DateTime    @default(now()) @map("enrolled_at")
+  consentedAt   DateTime    @map("consented_at")
   status        TutorStatus @default(PENDING)
 
   user           User?

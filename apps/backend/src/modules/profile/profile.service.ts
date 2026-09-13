@@ -107,6 +107,7 @@ export async function enrollTutor(userId: string, input: TutorEnrollmentRequest)
       bio: input.bio,
       introVideoUrl: input.introVideoUrl,
       governmentId: input.governmentId,
+      consentedAt: new Date(),
       status: "PENDING" as const,
     };
 

@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
 
-type FieldName = "avatarUrl" | "tutorBio" | "introVideoUrl" | "governmentId" | "certificationUrl";
+type FieldName =
+  | "avatarUrl"
+  | "tutorBio"
+  | "introVideoUrl"
+  | "governmentId"
+  | "certificationUrl"
+  | "consentAccepted";
 type FieldErrors = Partial<Record<FieldName, string>>;
 
 type TutorApplication = {
@@ -48,6 +54,7 @@ function EnrollTutorForm() {
   const [introVideoUrl, setIntroVideoUrl] = useState("");
   const [governmentId, setGovernmentId] = useState("");
   const [certificationUrl, setCertificationUrl] = useState("");
+  const [consentAccepted, setConsentAccepted] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -132,6 +139,9 @@ function EnrollTutorForm() {
       errors.certificationUrl = "A teaching certification document is required.";
     else if (!isValidUrl(certificationUrl))
       errors.certificationUrl = "Enter a valid certification document URL.";
+    if (!consentAccepted)
+      errors.consentAccepted =
+        "You must consent to the processing of your ID, teaching credentials, and payout information.";
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -167,6 +177,7 @@ function EnrollTutorForm() {
           introVideoUrl: introVideoUrl.trim(),
           governmentId: governmentId.trim(),
           certificationUrl: certificationUrl.trim(),
+          consentAccepted,
         }),
       });
 
@@ -371,6 +382,36 @@ function EnrollTutorForm() {
               )}
             </label>
           </div>
+        </section>
+
+        <section className="rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
+          <div className="mb-5">
+            <h2 className="text-xl font-semibold">Consent to data processing</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Review how your application documents will be used before submitting.
+            </p>
+          </div>
+
+          <label className="flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300">
+            <input
+              type="checkbox"
+              name="consentAccepted"
+              checked={consentAccepted}
+              onChange={(event) => setConsentAccepted(event.target.checked)}
+              aria-invalid={!!fieldErrors.consentAccepted}
+              aria-describedby="tutor-consent-description"
+              className="mt-0.5 h-4 w-4 rounded border-black/[.25] dark:border-white/[.3]"
+            />
+            <span id="tutor-consent-description">
+              I consent to Tutor Matcher collecting and processing my government ID, teaching
+              certification documents, and payout information to verify my identity, confirm my
+              teaching credentials, and enable payouts, as described in the Privacy Policy and Terms
+              of Service.
+            </span>
+          </label>
+          {fieldErrors.consentAccepted && (
+            <p className="mt-2 text-sm text-red-600">{fieldErrors.consentAccepted}</p>
+          )}
         </section>
 
         {message && (

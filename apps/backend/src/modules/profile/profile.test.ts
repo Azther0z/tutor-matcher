@@ -208,6 +208,7 @@ describe("PUT /api/profiles/me/tutor", () => {
   const enrollmentInput = {
     ...profile.tutor,
     certificationUrl: "https://example.com/certification.pdf",
+    consentAccepted: true,
   };
 
   beforeEach(() => {
@@ -246,6 +247,16 @@ describe("PUT /api/profiles/me/tutor", () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
+  it("rejects an application that has not accepted the consent checkbox", async () => {
+    await request(app)
+      .put("/api/profiles/me/tutor")
+      .set("Authorization", `Bearer ${tokenFor(userId)}`)
+      .send({ ...enrollmentInput, consentAccepted: false })
+      .expect(400);
+
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
   it("returns 404 when the account no longer exists", async () => {
     findUnique.mockResolvedValue(null);
 
@@ -275,7 +286,11 @@ describe("PUT /api/profiles/me/tutor", () => {
       .expect(200);
 
     expect(tutorCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({ ...tutorFields, status: "PENDING" }),
+      data: expect.objectContaining({
+        ...tutorFields,
+        status: "PENDING",
+        consentedAt: expect.any(Date),
+      }),
     });
     expect(userUpdate).toHaveBeenCalledWith({
       where: { id: userId },
@@ -311,7 +326,7 @@ describe("PUT /api/profiles/me/tutor", () => {
 
     expect(tutorUpdate).toHaveBeenCalledWith({
       where: { id: tutorId },
-      data: { ...tutorFields, status: "PENDING" },
+      data: { ...tutorFields, status: "PENDING", consentedAt: expect.any(Date) },
     });
     expect(certificationUpdate).toHaveBeenCalledWith({
       where: { id: certificationId },
