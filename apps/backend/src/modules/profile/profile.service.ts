@@ -400,6 +400,8 @@ export async function getAccount(userId: string) {
 
 export async function updateAccount(userId: string, input: AccountUpdateRequest) {
   const user = await authenticateAccount(userId, input.currentPassword);
+  const firstName = input.firstName?.trim();
+  const lastName = input.lastName?.trim();
   const email = input.email?.trim();
 
   if (email && email !== user.email) {
@@ -414,10 +416,10 @@ export async function updateAccount(userId: string, input: AccountUpdateRequest)
     return await prisma.user.update({
       where: { id: userId },
       data: {
+        firstName: firstName ?? undefined,
+        lastName: lastName ?? undefined,
         email: email ?? undefined,
         password: input.newPassword ?? undefined,
-        firstName: input.firstName ?? undefined,
-        lastName: input.lastName ?? undefined,
       },
       select: accountSelect,
     });

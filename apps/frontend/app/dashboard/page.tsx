@@ -74,20 +74,28 @@ export default function DashboardPage() {
               </p>
             </div>
             <Link
-              href="/onboarding/student"
+              href="/settings/student"
               className="flex h-11 w-fit items-center justify-center rounded-full bg-foreground px-5 font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
             >
-              Continue onboarding
+              Set up your profile
             </Link>
           </section>
         )}
 
         {status === "complete" && (
-          <section className="rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
-            <h2 className="text-2xl font-semibold">Your Student profile is ready</h2>
-            <p className="mt-2 leading-7 text-zinc-600 dark:text-zinc-400">
-              You can now explore Tutors matched to your learning preferences.
-            </p>
+          <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
+            <div>
+              <h2 className="text-2xl font-semibold">Your Student profile is ready</h2>
+              <p className="mt-2 leading-7 text-zinc-600 dark:text-zinc-400">
+                You can now explore Tutors matched to your learning preferences.
+              </p>
+            </div>
+            <Link
+              href="/settings/account"
+              className="flex h-11 w-fit items-center justify-center rounded-full bg-foreground px-5 font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+            >
+              Edit your profile
+            </Link>
           </section>
         )}
       </main>

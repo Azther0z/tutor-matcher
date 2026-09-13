@@ -2,14 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { SettingsSidebar } from "@/src/components/settings-sidebar";
 
 type LearningArea = { id: string; name: string };
-
-type FieldName = "firstName" | "lastName";
-type FieldErrors = Partial<Record<FieldName, string>>;
-
-const inputClassName =
-  "h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18]";
 
 const educationLevels = [
   ["PRIMARY_SCHOOL", "Primary School"],
@@ -40,8 +35,6 @@ const durationOptions = [30, 60, 90] as const;
 
 export default function StudentSettingsPage() {
   const learningAreaPickerRef = useRef<HTMLDivElement>(null);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [search, setSearch] = useState("");
   const [areaInputFocused, setAreaInputFocused] = useState(false);
   const [suggestions, setSuggestions] = useState<LearningArea[]>([]);
@@ -50,7 +43,6 @@ export default function StudentSettingsPage() {
   const [goals, setGoals] = useState<string[]>([]);
   const [period, setPeriod] = useState("");
   const [duration, setDuration] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -74,8 +66,6 @@ export default function StudentSettingsPage() {
         }
 
         const data = (await response.json()) as {
-          firstName?: string;
-          lastName?: string;
           educationLevel?: string;
           goals?: string[];
           preferredLearningPeriod?: string;
@@ -83,8 +73,6 @@ export default function StudentSettingsPage() {
           learningAreas?: LearningArea[];
         };
 
-        setFirstName(data.firstName ?? "");
-        setLastName(data.lastName ?? "");
         setEducationLevel(data.educationLevel ?? "");
         setGoals(data.goals ?? []);
         setPeriod(data.preferredLearningPeriod ?? "");
@@ -169,35 +157,14 @@ export default function StudentSettingsPage() {
   }
 
   function validate() {
-    const errors: FieldErrors = {};
-    if (!firstName.trim()) errors.firstName = "First name is required.";
-    if (!lastName.trim()) errors.lastName = "Last name is required.";
-    setFieldErrors(errors);
-
-    const sectionsComplete = Boolean(
-      selectedAreas.length && educationLevel && goals.length && period && duration
-    );
-
-    return { fieldsValid: Object.keys(errors).length === 0, sectionsComplete };
+    return Boolean(selectedAreas.length && educationLevel && goals.length && period && duration);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
 
-    const { fieldsValid, sectionsComplete } = validate();
-
-    if (!fieldsValid && !sectionsComplete) {
-      setMessage(
-        "Complete the highlighted fields and finish every section before saving your profile."
-      );
-      return;
-    }
-    if (!fieldsValid) {
-      setMessage("Complete the highlighted fields before saving your profile.");
-      return;
-    }
-    if (!sectionsComplete) {
+    if (!validate()) {
       setMessage("Please complete every section before saving your profile.");
       return;
     }
@@ -218,7 +185,6 @@ export default function StudentSettingsPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          user: { firstName: firstName.trim(), lastName: lastName.trim() },
           educationLevel,
           learningAreaIds: selectedAreas.map((area) => area.id),
           goals,
@@ -233,7 +199,6 @@ export default function StudentSettingsPage() {
         return;
       }
 
-      setFieldErrors({});
       setMessage("Student profile saved successfully.");
     } catch {
       setMessage("Could not reach the server. Please try again.");
@@ -243,194 +208,165 @@ export default function StudentSettingsPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-16">
-      <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Tutor Matcher</p>
-        <h1 className="text-4xl font-semibold tracking-tight">Edit your Student profile</h1>
-        <p className="max-w-2xl text-base leading-7 text-zinc-600 dark:text-zinc-400">
-          Update your name and your learning preferences. Tutors matched to you use these details.
-        </p>
-      </div>
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row">
+      <SettingsSidebar activeSection="student" />
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-8" noValidate>
-        <section className="rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold">Personal details</h2>
-            <p className="mt-1 text-sm text-zinc-500">Information connected to your account.</p>
-          </div>
+      <div className="flex flex-1 flex-col gap-8">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">
+            Tutor Matcher
+          </p>
+          <h1 className="text-4xl font-semibold tracking-tight">Student profile settings</h1>
+          <p className="max-w-2xl text-base leading-7 text-zinc-600 dark:text-zinc-400">
+            Update your learning preferences. Tutors matched to you use these details.
+          </p>
+        </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              First name
+        <form onSubmit={handleSubmit} className="flex flex-col gap-8" noValidate>
+          <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
+            <div>
+              <h2 className="text-xl font-semibold">Learning areas</h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Type to search, then select one or more areas.
+              </p>
+            </div>
+            <div ref={learningAreaPickerRef} className="relative">
               <input
-                name="firstName"
-                value={firstName}
-                onChange={(event) => setFirstName(event.target.value)}
-                aria-invalid={!!fieldErrors.firstName}
-                className={inputClassName}
+                aria-label="Search learning areas"
+                value={search}
+                onFocus={() => setAreaInputFocused(true)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setSearch(value);
+                }}
+                placeholder="Search learning areas"
+                className="h-11 w-full rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
               />
-              {fieldErrors.firstName && (
-                <span className="text-red-600">{fieldErrors.firstName}</span>
+              {suggestions.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full rounded-lg border border-black/[.12] bg-background p-1 shadow-lg dark:border-white/[.18]">
+                  {suggestions.map((area) => (
+                    <button
+                      type="button"
+                      key={area.id}
+                      onClick={() => selectArea(area)}
+                      className="block w-full rounded-md px-3 py-2 text-left hover:bg-black/[.06] dark:hover:bg-white/[.08]"
+                    >
+                      {area.name}
+                    </button>
+                  ))}
+                </div>
               )}
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Last name
-              <input
-                name="lastName"
-                value={lastName}
-                onChange={(event) => setLastName(event.target.value)}
-                aria-invalid={!!fieldErrors.lastName}
-                className={inputClassName}
-              />
-              {fieldErrors.lastName && <span className="text-red-600">{fieldErrors.lastName}</span>}
-            </label>
-          </div>
-        </section>
-
-        <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
-          <div>
-            <h2 className="text-xl font-semibold">Learning areas</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Type to search, then select one or more areas.
-            </p>
-          </div>
-          <div ref={learningAreaPickerRef} className="relative">
-            <input
-              aria-label="Search learning areas"
-              value={search}
-              onFocus={() => setAreaInputFocused(true)}
-              onChange={(event) => {
-                const value = event.target.value;
-                setSearch(value);
-              }}
-              placeholder="Search learning areas"
-              className="h-11 w-full rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
-            />
-            {suggestions.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full rounded-lg border border-black/[.12] bg-background p-1 shadow-lg dark:border-white/[.18]">
-                {suggestions.map((area) => (
+            </div>
+            <div className="flex flex-wrap gap-2" aria-label="Selected learning areas">
+              {selectedAreas.map((area) => (
+                <span
+                  key={area.id}
+                  className="inline-flex items-center gap-2 rounded-full bg-black/[.06] px-3 py-1.5 text-sm dark:bg-white/[.12]"
+                >
+                  {area.name}
                   <button
                     type="button"
-                    key={area.id}
-                    onClick={() => selectArea(area)}
-                    className="block w-full rounded-md px-3 py-2 text-left hover:bg-black/[.06] dark:hover:bg-white/[.08]"
+                    onClick={() => removeArea(area.id)}
+                    aria-label={`Remove ${area.name}`}
                   >
-                    {area.name}
+                    ×
                   </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2" aria-label="Selected learning areas">
-            {selectedAreas.map((area) => (
-              <span
-                key={area.id}
-                className="inline-flex items-center gap-2 rounded-full bg-black/[.06] px-3 py-1.5 text-sm dark:bg-white/[.12]"
-              >
-                {area.name}
-                <button
-                  type="button"
-                  onClick={() => removeArea(area.id)}
-                  aria-label={`Remove ${area.name}`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        </section>
+                </span>
+              ))}
+            </div>
+          </section>
 
-        <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
-          <h2 className="text-xl font-semibold">Education level</h2>
-          <select
-            aria-label="Education level"
-            value={educationLevel}
-            onChange={(event) => setEducationLevel(event.target.value)}
-            className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base dark:border-white/[.18]"
-          >
-            <option value="">Select your education level</option>
-            {educationLevels.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </section>
-
-        <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
-          <h2 className="text-xl font-semibold">Learning goals</h2>
-          <div className="flex flex-col gap-3">
-            {goalOptions.map(([value, label]) => (
-              <label key={value} className="flex items-center gap-3 text-sm">
-                <input
-                  type="checkbox"
-                  checked={goals.includes(value)}
-                  onChange={() => toggleGoal(value)}
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-        </section>
-
-        <section className="grid gap-4 rounded-2xl border border-black/[.12] p-6 sm:grid-cols-2 dark:border-white/[.18]">
-          <label className="flex flex-col gap-1.5 text-sm font-medium">
-            Preferred learning period
+          <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
+            <h2 className="text-xl font-semibold">Education level</h2>
             <select
-              aria-label="Preferred learning period"
-              value={period}
-              onChange={(event) => setPeriod(event.target.value)}
+              aria-label="Education level"
+              value={educationLevel}
+              onChange={(event) => setEducationLevel(event.target.value)}
               className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base dark:border-white/[.18]"
             >
-              <option value="">Select a period</option>
-              {periodOptions.map(([value, label]) => (
+              <option value="">Select your education level</option>
+              {educationLevels.map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
               ))}
             </select>
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium">
-            Preferred lesson duration
-            <select
-              aria-label="Preferred lesson duration"
-              value={duration}
-              onChange={(event) => setDuration(event.target.value)}
-              className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base dark:border-white/[.18]"
-            >
-              <option value="">Select a duration</option>
-              {durationOptions.map((minutes) => (
-                <option key={minutes} value={minutes}>
-                  {minutes} minutes
-                </option>
+          </section>
+
+          <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
+            <h2 className="text-xl font-semibold">Learning goals</h2>
+            <div className="flex flex-col gap-3">
+              {goalOptions.map(([value, label]) => (
+                <label key={value} className="flex items-center gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={goals.includes(value)}
+                    onChange={() => toggleGoal(value)}
+                  />
+                  {label}
+                </label>
               ))}
-            </select>
-          </label>
-        </section>
+            </div>
+          </section>
 
-        {message && (
-          <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
-            {message}
-          </p>
-        )}
+          <section className="grid gap-4 rounded-2xl border border-black/[.12] p-6 sm:grid-cols-2 dark:border-white/[.18]">
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Preferred learning period
+              <select
+                aria-label="Preferred learning period"
+                value={period}
+                onChange={(event) => setPeriod(event.target.value)}
+                className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base dark:border-white/[.18]"
+              >
+                <option value="">Select a period</option>
+                {periodOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Preferred lesson duration
+              <select
+                aria-label="Preferred lesson duration"
+                value={duration}
+                onChange={(event) => setDuration(event.target.value)}
+                className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base dark:border-white/[.18]"
+              >
+                <option value="">Select a duration</option>
+                {durationOptions.map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {minutes} minutes
+                  </option>
+                ))}
+              </select>
+            </label>
+          </section>
 
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <Link
-            href="/dashboard"
-            className="flex h-12 items-center justify-center rounded-full border border-black/[.12] px-6 text-base font-medium hover:bg-black/[.04] dark:border-white/[.18] dark:hover:bg-white/[.08]"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="flex h-12 items-center justify-center rounded-full bg-foreground px-6 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
-          >
-            {submitting ? "Saving…" : "Save profile"}
-          </button>
-        </div>
-      </form>
+          {message && (
+            <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
+              {message}
+            </p>
+          )}
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Link
+              href="/dashboard"
+              className="flex h-12 items-center justify-center rounded-full border border-black/[.12] px-6 text-base font-medium hover:bg-black/[.04] dark:border-white/[.18] dark:hover:bg-white/[.08]"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex h-12 items-center justify-center rounded-full bg-foreground px-6 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
+            >
+              {submitting ? "Saving…" : "Save profile"}
+            </button>
+          </div>
+        </form>
+      </div>
     </main>
   );
 }

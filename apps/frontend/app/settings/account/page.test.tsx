@@ -17,8 +17,12 @@ beforeEach(() => {
   localStorage.setItem("authToken", "member-token");
 });
 
-function mockAccountLoad(email = "member@example.com") {
-  fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ id: 1, email }) });
+function mockAccountLoad(email = "member@example.com", firstName = "Ada", lastName = "Lovelace") {
+  fetchMock.mockResolvedValueOnce({
+    ok: true,
+    status: 200,
+    json: async () => ({ id: 1, email, firstName, lastName }),
+  });
 }
 
 async function renderLoadedPage() {
@@ -27,13 +31,17 @@ async function renderLoadedPage() {
 }
 
 describe("AccountSettingsPage", () => {
-  it("shows a sidebar with the active Account link", async () => {
+  it("shows a sidebar with Account active and Student profile available", async () => {
     mockAccountLoad();
     await renderLoadedPage();
 
     const link = screen.getByRole("link", { name: "Account" });
     expect(link).toHaveAttribute("href", "/settings/account");
     expect(link).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Student profile" })).toHaveAttribute(
+      "href",
+      "/settings/student"
+    );
   });
 
   it("loads the current email address", async () => {
@@ -44,6 +52,115 @@ describe("AccountSettingsPage", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/profiles/me/account", {
       headers: { Authorization: "Bearer member-token" },
       signal: expect.any(AbortSignal),
+    });
+  });
+
+  describe("name block", () => {
+    it("prefills the current first and last name", async () => {
+      mockAccountLoad();
+      await renderLoadedPage();
+
+      expect(screen.getByLabelText("First name")).toHaveValue("Ada");
+      expect(screen.getByLabelText("Last name")).toHaveValue("Lovelace");
+    });
+
+    it("does not send a request when the name is unchanged", async () => {
+      mockAccountLoad();
+      await renderLoadedPage();
+
+      fireEvent.click(screen.getByRole("button", { name: "Save name" }));
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(await screen.findByText("Change your name before saving.")).toBeInTheDocument();
+    });
+
+    it("requires both first and last name when only one is provided", async () => {
+      mockAccountLoad();
+      await renderLoadedPage();
+
+      fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Grace" } });
+      fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save name" }));
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByText("Last name is required.")).toBeInTheDocument();
+      expect(screen.getByLabelText("Last name")).toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("requires the current password before saving", async () => {
+      mockAccountLoad();
+      await renderLoadedPage();
+
+      fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Grace" } });
+      fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "Hopper" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save name" }));
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByText("Enter your current password to save changes.")).toBeInTheDocument();
+    });
+
+    it("saves a new name and stores the reissued token", async () => {
+      mockAccountLoad();
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          account: { id: 1, firstName: "Grace", lastName: "Hopper" },
+          token: "fresh-token",
+        }),
+      });
+      await renderLoadedPage();
+
+      const nameSection = screen.getByRole("heading", { name: "Name" }).closest("form")!;
+
+      fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Grace" } });
+      fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "Hopper" } });
+      fireEvent.change(within(nameSection).getByLabelText("Current password"), {
+        target: { value: "current-password" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save name" }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/profiles/me/account", {
+        method: "PUT",
+        headers: {
+          Authorization: "Bearer member-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: "Grace",
+          lastName: "Hopper",
+          currentPassword: "current-password",
+        }),
+      });
+      expect(await screen.findByText("Name saved.")).toBeInTheDocument();
+      expect(localStorage.getItem("authToken")).toBe("fresh-token");
+    });
+
+    it("highlights an incorrect current password reported by the server", async () => {
+      mockAccountLoad();
+      fetchMock.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: async () => ({ message: "Current password is incorrect" }),
+      });
+      await renderLoadedPage();
+
+      const nameSection = screen.getByRole("heading", { name: "Name" }).closest("form")!;
+
+      fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Grace" } });
+      fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "Hopper" } });
+      fireEvent.change(within(nameSection).getByLabelText("Current password"), {
+        target: { value: "wrong" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save name" }));
+
+      await waitFor(() =>
+        expect(within(nameSection).getByLabelText("Current password")).toHaveAttribute(
+          "aria-invalid",
+          "true"
+        )
+      );
     });
   });
 

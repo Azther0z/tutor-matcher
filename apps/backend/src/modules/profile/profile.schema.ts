@@ -75,9 +75,9 @@ export const learningAreaSearchSchema = z.object({
 // email, and password. Public listing fields live on the Tutor profile above.
 export const accountUpdateSchema = z
   .object({
-    email: z.email().optional(),
     firstName: z.string().trim().min(1).max(100).optional(),
     lastName: z.string().trim().min(1).max(100).optional(),
+    email: z.email().optional(),
     // Re-authentication: changing sign-in credentials always costs the current
     // password, even though the request is already authenticated.
     currentPassword: z.string().min(1),

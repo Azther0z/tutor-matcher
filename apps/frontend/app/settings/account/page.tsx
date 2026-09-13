@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
+import { SettingsSidebar } from "@/src/components/settings-sidebar";
 import { getAuthToken, setAuthToken } from "@/src/lib/auth";
 
 type FieldErrors = Partial<Record<string, string>>;
@@ -20,7 +20,7 @@ function isValidEmail(value: string) {
 type AccountUpdateResponse = {
   message?: string;
   token?: string;
-  account?: { email?: string };
+  account?: { email?: string; firstName?: string; lastName?: string };
 };
 
 type AccountUpdateResult =
@@ -95,26 +95,6 @@ function Field({ name, label, type, autoComplete, value, error, onChange }: Fiel
   );
 }
 
-// The settings section has only one destination today. This local nav mirrors
-// the shape of Ideal's prototype without inventing a shared settings layout
-// before a second real settings page exists to justify one.
-function SettingsSidebar() {
-  return (
-    <nav
-      aria-label="Settings"
-      className="flex w-full flex-none flex-col gap-1 rounded-2xl border border-black/[.12] p-3 sm:w-56 dark:border-white/[.18]"
-    >
-      <Link
-        href="/settings/account"
-        aria-current="page"
-        className="rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background"
-      >
-        Account
-      </Link>
-    </nav>
-  );
-}
-
 export default function AccountSettingsPage() {
   return (
     <RequireAuth>
@@ -127,7 +107,16 @@ function AccountSettingsForm() {
   const router = useRouter();
 
   const [savedEmail, setSavedEmail] = useState("");
+  const [savedFirstName, setSavedFirstName] = useState("");
+  const [savedLastName, setSavedLastName] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [nameCurrentPassword, setNameCurrentPassword] = useState("");
+  const [nameErrors, setNameErrors] = useState<FieldErrors>({});
+  const [nameMessage, setNameMessage] = useState<string | null>(null);
+  const [nameSubmitting, setNameSubmitting] = useState(false);
 
   const [email, setEmail] = useState("");
   const [emailCurrentPassword, setEmailCurrentPassword] = useState("");
@@ -155,9 +144,17 @@ function AccountSettingsForm() {
       .then(async (response) => {
         if (!response.ok) throw new Error("Could not load the account");
 
-        const data = (await response.json()) as { email?: string };
+        const data = (await response.json()) as {
+          email?: string;
+          firstName?: string;
+          lastName?: string;
+        };
         setSavedEmail(data.email ?? "");
         setEmail(data.email ?? "");
+        setSavedFirstName(data.firstName ?? "");
+        setFirstName(data.firstName ?? "");
+        setSavedLastName(data.lastName ?? "");
+        setLastName(data.lastName ?? "");
       })
       .catch((error: unknown) => {
         if ((error as DOMException)?.name === "AbortError") return;
@@ -167,8 +164,23 @@ function AccountSettingsForm() {
     return () => controller.abort();
   }, []);
 
+  const nameChanged = firstName.trim() !== savedFirstName || lastName.trim() !== savedLastName;
   const emailChanged = email.trim() !== savedEmail;
   const passwordChanged = newPassword.length > 0 || confirmPassword.length > 0;
+
+  function validateNameForm() {
+    const errors: FieldErrors = {};
+
+    if (!firstName.trim()) errors.firstName = "First name is required.";
+    if (!lastName.trim()) errors.lastName = "Last name is required.";
+
+    if (!nameCurrentPassword) {
+      errors.currentPassword = "Enter your current password to save changes.";
+    }
+
+    setNameErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
 
   function validateEmailForm() {
     const errors: FieldErrors = {};
@@ -200,6 +212,63 @@ function AccountSettingsForm() {
 
     setPasswordErrors(errors);
     return Object.keys(errors).length === 0;
+  }
+
+  async function handleNameSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNameMessage(null);
+
+    if (!nameChanged) {
+      setNameErrors({});
+      setNameMessage("Change your name before saving.");
+      return;
+    }
+
+    if (!validateNameForm()) {
+      setNameMessage("Correct the highlighted fields before saving.");
+      return;
+    }
+
+    const token = getAuthToken();
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    setNameSubmitting(true);
+
+    try {
+      const result = await submitAccountUpdate(token, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        currentPassword: nameCurrentPassword,
+      });
+
+      if (!result.ok) {
+        if (result.status === 403) {
+          setNameErrors({
+            currentPassword: result.data?.message ?? "Current password is incorrect.",
+          });
+        }
+
+        setNameMessage(result.data?.message ?? "Could not save your name.");
+        return;
+      }
+
+      const savedFirst = result.data?.account?.firstName ?? firstName.trim();
+      const savedLast = result.data?.account?.lastName ?? lastName.trim();
+      setSavedFirstName(savedFirst);
+      setFirstName(savedFirst);
+      setSavedLastName(savedLast);
+      setLastName(savedLast);
+      setNameCurrentPassword("");
+      setNameErrors({});
+      setNameMessage("Name saved.");
+    } catch {
+      setNameMessage("Could not reach the server. Please try again.");
+    } finally {
+      setNameSubmitting(false);
+    }
   }
 
   async function handleEmailSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -314,7 +383,7 @@ function AccountSettingsForm() {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row">
-      <SettingsSidebar />
+      <SettingsSidebar activeSection="account" />
 
       <div className="flex flex-1 flex-col gap-8">
         <div className="flex flex-col gap-2">
@@ -323,7 +392,7 @@ function AccountSettingsForm() {
           </p>
           <h1 className="text-4xl font-semibold tracking-tight">Account settings</h1>
           <p className="max-w-2xl text-base leading-7 text-zinc-600 dark:text-zinc-400">
-            Update the email address and password you sign in with.
+            Update your name, email address, and password you sign in with.
           </p>
         </div>
 
@@ -332,6 +401,66 @@ function AccountSettingsForm() {
             {loadError}
           </p>
         )}
+
+        <form
+          onSubmit={handleNameSubmit}
+          className="flex flex-col gap-5 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]"
+          noValidate
+        >
+          <div>
+            <h2 className="text-xl font-semibold">Name</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              How you&apos;re addressed on Tutor Matcher.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              name="firstName"
+              label="First name"
+              type="text"
+              autoComplete="given-name"
+              value={firstName}
+              error={nameErrors.firstName}
+              onChange={setFirstName}
+            />
+            <Field
+              name="lastName"
+              label="Last name"
+              type="text"
+              autoComplete="family-name"
+              value={lastName}
+              error={nameErrors.lastName}
+              onChange={setLastName}
+            />
+          </div>
+
+          <Field
+            name="name-currentPassword"
+            label="Current password"
+            type="password"
+            autoComplete="current-password"
+            value={nameCurrentPassword}
+            error={nameErrors.currentPassword}
+            onChange={setNameCurrentPassword}
+          />
+
+          {nameMessage && (
+            <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
+              {nameMessage}
+            </p>
+          )}
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={nameSubmitting}
+              className="flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
+            >
+              {nameSubmitting ? "Saving…" : "Save name"}
+            </button>
+          </div>
+        </form>
 
         <form
           onSubmit={handleEmailSubmit}

@@ -24,9 +24,9 @@ describe("DashboardPage", () => {
     render(<DashboardPage />);
 
     expect(await screen.findByText("Complete your Student profile")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Continue onboarding" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Set up your profile" })).toHaveAttribute(
       "href",
-      "/onboarding/student"
+      "/settings/student"
     );
   });
 
@@ -40,5 +40,9 @@ describe("DashboardPage", () => {
       expect(screen.getByText("Your Student profile is ready")).toBeInTheDocument()
     );
     expect(screen.queryByText("Complete your Student profile")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Edit your profile" })).toHaveAttribute(
+      "href",
+      "/settings/account"
+    );
   });
 });
