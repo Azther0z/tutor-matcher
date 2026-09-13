@@ -5,7 +5,7 @@ const mockReplace = jest.fn();
 const fetchMock = jest.fn();
 
 jest.mock("next/navigation", () => ({
-  usePathname: () => "/settings/notification",
+  usePathname: () => "/settings/notifications",
   useRouter: () => ({ push: mockReplace, replace: mockReplace }),
 }));
 
@@ -26,10 +26,8 @@ describe("NotificationSettingsPage", () => {
     mockPreferences({ notifyOnBooking: true, notifyOnMessage: false, notifyOnPayment: true });
     render(<NotificationSettingsPage />);
 
-    expect(
-      await screen.findByRole("heading", { name: "Notification settings" })
-    ).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: /Bookings/ })).toBeChecked();
+    expect(await screen.findByRole("checkbox", { name: /Bookings/ })).toBeChecked();
+    expect(screen.getByRole("heading", { name: "Notification settings" })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: /Messages/ })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: /Payments/ })).toBeChecked();
   });
@@ -53,7 +51,7 @@ describe("NotificationSettingsPage", () => {
     });
     render(<NotificationSettingsPage />);
 
-    await screen.findByRole("heading", { name: "Notification settings" });
+    await screen.findByRole("checkbox", { name: /Bookings/ });
     fireEvent.click(screen.getByRole("checkbox", { name: /Bookings/ }));
     fireEvent.click(screen.getByRole("button", { name: "Save preferences" }));
 
@@ -81,7 +79,7 @@ describe("NotificationSettingsPage", () => {
     });
     render(<NotificationSettingsPage />);
 
-    await screen.findByRole("heading", { name: "Notification settings" });
+    await screen.findByRole("checkbox", { name: /Bookings/ });
     fireEvent.click(screen.getByRole("button", { name: "Save preferences" }));
 
     expect(
