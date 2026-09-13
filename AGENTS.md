@@ -37,7 +37,7 @@
 - The database-course Final Report describes an earlier, different design. It is historical evidence, not the product schema.
 
 ### Goals
-- Keep `docs/user-journeys.md`, `docs/project-schema.md`, and `CONTEXT.md` in sync with the prototype whenever product behaviour changes.
+- Keep `docs/user-journeys.md`, `docs/database-schema.md`, and `CONTEXT.md` in sync with the prototype whenever product behaviour changes.
 
 ### Preferences
 - For AI-assisted Sprint delivery, assign the entire story, including design integration and automated testing, to one fixed two-person pair.
@@ -58,7 +58,7 @@
   Next step: The prototype implements cancel only, while BOOK-3, BOOK-4, and US4-8 mention reschedule. Decide before building the booking slice.
 - Question: When do the schema gaps that block documented journeys get closed?
   Status: open
-  Next step: `bookings` has no status column and a booking can hold only one 30-minute slot; see gaps G1-G7 in `docs/project-schema.md`.
+  Next step: `bookings` has no status column and a booking can hold only one 30-minute slot; see gaps G1-G7 in `docs/database-schema.md`.
 - Question: Which backlog integrity fixes from action item 8 should be applied?
   Status: open
   Next step: Review the proposed dependency ordering, story-boundary correction, entity cleanup, and status semantics.

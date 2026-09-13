@@ -1,0 +1,23 @@
+# New: docs/backlog/reconciliation.md section 2 (➕, US10-x). These stories had no epic in
+# backlog.yaml, so this reconciliation pass adds EPIC-10 "Information Architecture &
+# Navigation" (acronym IA) rather than distributing them into existing epics — see issue
+# #63, section 4, option A. Depends on IA-3 because the dashboard renders inside the
+# shared top-nav/left-rail shell, not the other way around.
+id: IA-1
+title: "Student dashboard focused on current lessons and wallet"
+description: "As a Student, I want my dashboard to focus on current lessons and wallet state so that I see the most important information first."
+epic: "Information Architecture & Navigation"
+role: "Student"
+lifecycle: backlog
+story_points: 3
+dependencies: ["BOOK-9", "PAY-5", "IA-3"]
+acceptance_criteria:
+  - given: "the Student dashboard opens,"
+    when: "content loads,"
+    then: "upcoming lessons, wallet balance, and learning progress are visible without large quick-action blocks."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "Dashboard, Navigation & Information Architecture / US10-1"
+journey:
+  - route: "/dashboard"
+    action: "Student Dashboard"

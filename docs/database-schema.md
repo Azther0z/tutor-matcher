@@ -11,9 +11,8 @@ plainly which is authoritative for what:
 
 The Final Report's schema (`Person`, `Class`, `AvailableTime`, `Payment` with transfer
 proof, `Post`) described a different product and is **not** the product schema. It is
-kept as immutable course evidence and summarised in
-[`final-report-database-design.md`](final-report-database-design.md). Do not use it to
-build application features.
+kept as immutable course evidence; see "Historical: the Final Report" below. Do not use
+it to build application features.
 
 Terms below follow [`CONTEXT.md`](../CONTEXT.md).
 
@@ -305,6 +304,36 @@ Access patterns from the journeys that are not covered yet:
 | A user's wallet ledger, newest first       | `payments(from_user_id, created_at DESC)` / `payments(to_user_id, created_at DESC)` |
 | `/bookings` tabs by status                 | `bookings(user_id, status)` once G2 is closed                                       |
 | Search by rating and price                 | aggregate rating on the tutor or subject, plus `subjects(hourly_rate)`              |
+
+---
+
+## Historical: The Final Report
+
+> **Not the product schema.** The database-course Final Report used a different design
+> (`Person`, `Class`, `AvailableTime`, transfer-proof `Payment`, `Post`). Read this only
+> for design reasoning, never for the product's data model — that's everything above.
+
+Its SQL runs against that old schema, not this one, so it will not run here. The
+reasoning still holds up and is worth a skim before writing similar logic today:
+
+- **Booking state changes belong in one transaction.** Its `sp_confirm_booking` and
+  `sp_cancel_booking` update status, write the related payment or message row, and
+  release time slots together, not as separate calls.
+- **Keep an availability flag in sync with a trigger**, not scattered application code —
+  its `trg_sync_slot_availability` derives "is this slot free" from whether a booking is
+  attached to it.
+- **Gate reviews with a database check**, not just a UI check — its
+  `trg_validate_review_eligibility` only allows a review when a completed booking exists.
+- **Index for the query shape you actually run** — it picks unclustered indexes because
+  it expects frequent inserts, and justifies that trade-off explicitly rather than
+  indexing by default.
+- **A document design can embed for the read path it serves** — its MongoDB sketch embeds
+  reviews inside a class document because a class and its reviews are always displayed
+  together.
+
+For the full detail — exact procedure bodies, index definitions, execution-plan
+comparisons, and the embedded-document schema — read the immutable source directly:
+[Final Report](sources/tutor-matcher-final-report.md).
 
 ---
 

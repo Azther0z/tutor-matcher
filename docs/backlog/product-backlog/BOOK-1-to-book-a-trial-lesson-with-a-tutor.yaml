@@ -1,22 +1,25 @@
+# Reworded: docs/backlog/reconciliation.md marks this ✏️. There are no packages and no
+# separate trial flow. Every booking is one subject, one continuous block, paid from the
+# wallet (docs/user-journeys.md, "3 · Booking a lesson").
 id: BOOK-1
-title: "To book a trial lesson with a Tutor"
-description: "As a Student, I want to book a trial lesson with a Tutor so that I can evaluate fit before committing to a package."
+title: "To book a lesson with a Tutor"
+description: "As a Student, I want to book a lesson from a Tutor's published subject availability so that I can pay for a continuous block of time and have it confirmed immediately."
 epic: "Lesson Booking & Scheduling"
 role: "Student"
 lifecycle: backlog
 story_points: 5
 dependencies: ["AUTH-2", "PROF-2", "PROF-3", "DISC-3"]
 acceptance_criteria:
-  - given: "a Student selects an open slot and confirms,"
-    when: "payment (if required) succeeds,"
-    then: "the trial lesson is booked and both parties are notified."
-  - given: "the selected slot becomes unavailable before confirmation,"
-    when: "the Student tries to book,"
-    then: "the system shows an error and refreshes available slots."
+  - given: "a Student selects an open slot and pays from wallet balance,"
+    when: "payment succeeds,"
+    then: "the lesson is booked and confirmed immediately, and both parties are notified."
+  - given: "the selected slot becomes unavailable before payment completes,"
+    when: "the Student tries to pay,"
+    then: "the booking is blocked and the system refreshes available slots."
 sprint: sprint-1
 assignees: ["Saint", "Yongfu"]
 status: todo
-order: 18
+order: 15
 estimate_hours: 20
 tasks:
   - id: BOOK-1-T1
@@ -38,13 +41,13 @@ tasks:
     status: todo
     estimate_hours: 5
   - id: BOOK-1-T4
-    title: "Integrate payment confirmation (if required) and notifications"
+    title: "Integrate wallet payment and notifications"
     assignees: ["Saint", "Yongfu"]
     role: Backend
     status: todo
     estimate_hours: 5
   - id: BOOK-1-T5
-    title: "Write acceptance tests for trial booking (success, slot-taken)"
+    title: "Write acceptance tests for booking a lesson (success, slot-taken)"
     assignees: ["Saint", "Yongfu"]
     role: QA
     status: todo

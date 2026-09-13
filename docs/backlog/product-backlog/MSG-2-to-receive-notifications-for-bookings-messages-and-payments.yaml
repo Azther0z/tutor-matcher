@@ -1,38 +1,42 @@
+# Reworded: docs/backlog/reconciliation.md marks this ✏️. Preferences are per event group
+# (booking updates, lesson reminders, new messages, wallet and payments, product news) AND
+# per channel (email, push), not a single on/off toggle per event
+# (docs/user-journeys.md).
 id: MSG-2
 title: "To receive notifications for bookings, messages, and payments"
-description: "As a member, I want to receive notifications for bookings, messages, and payments so that I stay informed of important account activity."
+description: "As a member, I want to control notifications per event group (booking updates, lesson reminders, new messages, wallet and payments, product news) and per channel (email, push) so that I stay informed of important account activity in the way I prefer."
 epic: "Messaging & Notifications"
 role: "member"
 lifecycle: backlog
 story_points: 3
 dependencies: ["AUTH-2"]
 acceptance_criteria:
-  - given: "a triggering event occurs (new booking, new message, payment processed),"
+  - given: "a triggering event occurs (booking update, lesson reminder, new message, wallet activity, product news),"
     when: "the event fires,"
-    then: "an email notification is sent based on member preferences."
-  - given: "a member has disabled notifications for a specific event type,"
+    then: "a notification is sent on each channel (email, push) the member has enabled for that event group."
+  - given: "a member has disabled a channel for a specific event group,"
     when: "that event occurs,"
-    then: "no notification is sent for that event type."
+    then: "no notification is sent on that channel for that event group."
 sprint: sprint-1
 assignees: ["Ideal", "Pooh"]
 status: todo
-order: 14
+order: 9
 estimate_hours: 12
 tasks:
   - id: MSG-2-T1
-    title: "Build the notification preferences settings UI"
+    title: "Build the notification preferences settings UI (event group x channel)"
     assignees: ["Ideal", "Pooh"]
     role: "Frontend"
     status: todo
     estimate_hours: 3
   - id: MSG-2-T2
-    title: "Implement the event-based notification service (booking, message, payment)"
+    title: "Implement the event-based notification service (booking, message, wallet, product news)"
     assignees: ["Ideal", "Pooh"]
     role: "Backend"
     status: todo
     estimate_hours: 4
   - id: MSG-2-T3
-    title: "Implement per-member preference filtering (respect disabled types)"
+    title: "Implement per-member, per-channel preference filtering (respect disabled event group x channel pairs)"
     assignees: ["Ideal", "Pooh"]
     role: "Backend"
     status: todo

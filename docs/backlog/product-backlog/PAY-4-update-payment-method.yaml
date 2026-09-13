@@ -1,9 +1,12 @@
+# Cancelled: docs/backlog/reconciliation.md marks this ⛔. There is no stored payment
+# method — top-up is a PromptPay QR paid each time (docs/user-journeys.md). The real need,
+# a payout account, is covered by the new story PROF-7.
 id: PAY-4
 title: "Update payment method"
 description: "As a Student, I want to update my payment method so that future lesson payments use my preferred account."
 epic: "Payments & Billing"
 role: "Student"
-lifecycle: backlog
+lifecycle: cancelled
 story_points: 3
 dependencies: []
 acceptance_criteria:

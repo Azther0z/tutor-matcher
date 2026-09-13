@@ -1,0 +1,23 @@
+# New: docs/backlog/reconciliation.md section 2 (➕). Product behaviour with no existing
+# story — see issue #63, section 3.
+id: AUTH-8
+title: "Tutor application lifecycle"
+description: "As a Student who applied to become a Tutor, I want to see and manage my application status so that I know whether I am pending, can cancel and re-submit, or am already approved."
+epic: "Account Registration & Authentication"
+role: "Student"
+lifecycle: backlog
+story_points: 3
+dependencies: ["AUTH-4"]
+acceptance_criteria:
+  - given: "a Student has a pending tutor application,"
+    when: "they open the application page,"
+    then: "they see the submitted documents, the bio state, and 'Awaiting approval', with an option to cancel and re-submit."
+  - given: "a user is already an approved Tutor,"
+    when: "they open the tutor application page,"
+    then: "they are routed to the Tutor dashboard instead."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "Account Registration & Authentication / US1-4"
+journey:
+  - route: "(auth)/enroll-tutor"
+    action: "Track application status"

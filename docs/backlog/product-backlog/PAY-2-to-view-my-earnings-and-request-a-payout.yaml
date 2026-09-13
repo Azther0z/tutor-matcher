@@ -1,23 +1,30 @@
+# Cancelled: superseded by this same reconciliation pass. This story was reworded (✏️) to
+# drop the separate-earnings-page and tutor-only-payout wording, but everything it now
+# describes is fully covered elsewhere: viewing cleared earnings is part of PAY-5 (the
+# /wallet page), the clearing rule itself is PAY-6, and the generalized payout request is
+# PAY-7. Keeping this story too would mean the same "request a payout, blocked over
+# balance" behaviour is specified in two places. Cancelled rather than reworded further, as
+# BOOK-2/BOOK-5/BOOK-6/PAY-4/PROF-1 were.
 id: PAY-2
 title: "To view my earnings and request a payout"
-description: "As a Tutor, I want to view my earnings and request a payout so that I get paid for completed lessons."
+description: "As a Tutor, I want to see my cleared earnings in my wallet and request a payout from my available balance so that I get paid for completed lessons."
 epic: "Payments & Billing"
 role: "Tutor"
-lifecycle: backlog
+lifecycle: cancelled
 story_points: 5
 dependencies: ["PAY-1", "CLASS-2"]
 acceptance_criteria:
-  - given: "a Tutor has completed lessons with settled payments,"
+  - given: "a Tutor has cleared earnings in their available wallet balance,"
     when: "they request a payout,"
-    then: "funds (minus platform fee) are transferred to their linked payout account."
-  - given: "the requested payout amount is below the platform's minimum payout amount (e.g., THB 500),"
-    when: "a Tutor requests payout,"
-    then: "the system blocks the request and shows the minimum payout amount required."
+    then: "the requested amount is deducted from the wallet and recorded as a payout transaction to their linked payout account."
+  - given: "the requested payout amount exceeds the available wallet balance,"
+    when: "a Tutor requests a payout,"
+    then: "the system blocks the request."
 sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: "Payments & Billing / US5-2"
 journey:
-  - route: "/payments"
-    action: "View earning"
-  - route: "/payments"
+  - route: "/wallet"
+    action: "View one wallet balance, top-ups, and earnings"
+  - route: "/wallet"
     action: "Request payout"

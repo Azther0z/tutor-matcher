@@ -15,7 +15,7 @@ Behavioural authority for these terms is the clickable prototype captured in
 [`docs/sources/tutormatcher-prototype-readme.md`](docs/sources/tutormatcher-prototype-readme.md)
 and [`docs/sources/tutormatcher-prototype-user-stories.md`](docs/sources/tutormatcher-prototype-user-stories.md).
 See [`docs/user-journeys.md`](docs/user-journeys.md) for the flows and
-[`docs/project-schema.md`](docs/project-schema.md) for the data model.
+[`docs/database-schema.md`](docs/database-schema.md) for the data model.
 
 ## Language
 

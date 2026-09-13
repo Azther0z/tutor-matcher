@@ -199,23 +199,90 @@ Pull requests run formatting, linting, Jest tests, backend Gherkin tests, applic
 production image builds. A push to `main` runs the production Compose build from
 [`deploy/compose.yaml`](deploy/compose.yaml), then publishes both images with immutable commit
 tags and the `latest` tag. Doco-CD polls this repository and deploys the same manifest after
-validation succeeds.
+validation succeeds. Full deployment shape and reasoning:
+[ADR 0003](docs/adr/decisions.md#0003--docker-compose-deployment-shapes).
 
-## Project Structure
+## Architecture
+
+| Layer              | Technology                                          | Version |
+| ------------------ | --------------------------------------------------- | ------- |
+| Frontend           | Next.js (TypeScript, Tailwind CSS)                  | 16.x    |
+| Backend            | Express (TypeScript)                                | 5.x     |
+| Database           | PostgreSQL                                          | 16      |
+| ORM                | Prisma                                              | 7.x     |
+| Testing — Frontend | Jest, React Testing Library, jest-environment-jsdom | —       |
+| Testing — Backend  | Jest, Supertest, @swc/jest, Cucumber.js             | —       |
+| Formatter          | Prettier                                            | 3.x     |
+| Container          | Docker Compose                                      | —       |
 
 ```
 apps/
   backend/        Express API (TypeScript, Prisma, PostgreSQL)
+    src/
+      lib/        db.ts (Prisma + pg adapter), env.ts, jwt.ts
+      middleware/ auth, validate, error-handler
+      modules/    one folder per domain area (see "Backend modules" below)
+      routes.ts   aggregates module routers, mounted at /api by app.ts
     features/     Cucumber.js features, support code, and step definitions
+    prisma/       schema.prisma, seed.ts
   frontend/       Next.js app (TypeScript, Tailwind CSS)
-docs/             Journeys, schema, architecture, testing, charter, backlog, ADRs
-deploy/           Doco-CD deployment Compose manifest
-docker-compose.yml
+    app/          App Router pages and layouts
+docs/             User journeys, schema, testing guide, backlog, ADRs, sources
+deploy/           Doco-CD production Compose manifest and secrets
+docker-compose.yml  Full local Postgres + backend + frontend stack
 ```
 
-See [`docs/index.md`](docs/index.md) for the documentation index. Before working on a
-product change, read [`docs/user-journeys.md`](docs/user-journeys.md) for what the product
-does, [`docs/project-schema.md`](docs/project-schema.md) for what it stores, and
-[`CONTEXT.md`](CONTEXT.md) for what to call things. See
-[`docs/project-architecture.md`](docs/project-architecture.md) for the architecture overview
-and [`docs/testing.md`](docs/testing.md) for the testing guide.
+**Decisions:** see [`docs/adr/decisions.md`](docs/adr/decisions.md) — a separate Express
+backend instead of Next.js API routes (0001), this frontend/backend monorepo layout
+(0002), and the local vs. production Compose deployment shapes (0003).
+
+**Data flow:**
+
+```
+Browser
+  └── Next.js (port 3000)
+        └── /api/* rewrite → Express API  ── mounted at /api
+                               └── PostgreSQL (port 5432)
+```
+
+Next.js is CSR-first: components fetch from `/api/*` on their own origin.
+`next.config.ts` rewrites `/api/:path*` to `${BACKEND_URL}/api/:path*`, so the browser
+never needs a cross-origin base URL. `BACKEND_URL` defaults to `http://localhost:8000`
+for running both apps on the host; container builds use `http://backend:8000` instead.
+No Next.js server-side data fetching is used for authenticated flows yet (rendering mode
+is deferred — see below).
+
+**Route model:** the product's routes and access levels are defined in
+[`docs/user-journeys.md`](docs/user-journeys.md#route-model). Guards run before render: a
+logged-out user on a protected route goes to `/(auth)/login?next=…`, and a non-tutor on a
+tutor route goes to `/(auth)/enroll-tutor`. `apps/frontend/app/` still has some
+placeholder route folders named after an older backlog export; the mapping to current
+routes is in
+[`docs/backlog/reconciliation.md`](docs/backlog/reconciliation.md#3--route-drift).
+
+**Backend modules:** each folder under `apps/backend/src/modules/` owns its HTTP routes,
+controllers, business services, and Zod schemas — `auth`, `booking`, `classroom`,
+`dashboard`, `discovery`, `health`, `messaging`, `profile`, `review`, `wallet`. They map
+onto the journeys in [`docs/user-journeys.md`](docs/user-journeys.md).
+
+**Deferred decisions:**
+
+- **Auth mechanism** — JWT (recommended) vs. session vs. third-party; not yet settled.
+  The product also offers Continue with Google, so the choice has to accommodate a
+  federated identity alongside email and password.
+- **Rendering mode** — CSR vs. SSR vs. hybrid for the public `/search`, `/tutors/:id`,
+  and `/tutors/:id/:subjectId` pages, the only routes a logged-out visitor reaches.
+- **File storage for tutor verification documents** — local Docker volume vs. MinIO vs.
+  URL field. Applies to the government ID and teaching certification uploaded at
+  `/(auth)/enroll-tutor`, and to listing photos and intro videos.
+- **Slot locking strategy** — the booking flow must block a second student before
+  payment capture, not compensate afterwards. See gaps G1 and G2 in
+  [`docs/database-schema.md`](docs/database-schema.md#reconciliation-requirement-vs-implementation).
+
+## Documentation
+
+See [`docs/index.md`](docs/index.md) for the full documentation index. Before working on
+a product change, read [`docs/user-journeys.md`](docs/user-journeys.md) for what the
+product does, [`docs/database-schema.md`](docs/database-schema.md) for what it stores, and
+[`CONTEXT.md`](CONTEXT.md) for what to call things. See [`docs/testing.md`](docs/testing.md)
+for the testing guide.
