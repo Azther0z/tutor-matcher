@@ -64,7 +64,7 @@ describe("Navbar", () => {
     fireEvent.click(accountButton);
 
     expect(screen.getByText("Mina K.")).toBeInTheDocument();
-    expect(accountButton).toHaveTextContent("M");
+    expect(accountButton.querySelector('img[src="/profile-circle.svg"]')).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
   });
