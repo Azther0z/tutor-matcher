@@ -68,7 +68,7 @@ export function Navbar() {
     return () => {
       cancelled = true;
     };
-  }, [status]);
+  }, [pathname, status]);
 
   useEffect(() => {
     if (!menuOpen) return;

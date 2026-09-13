@@ -29,7 +29,7 @@ const FIXED_USERS = [
 ];
 
 const GENERATED_USERS = 20;
-const FIXTURE_TUTOR_GOVERNMENT_ID = "development-tutor-001";
+const FIXTURE_TUTOR_GOVERNMENT_ID = "https://example.com/development-government-id.pdf";
 const FIXTURE_SUBJECT_NAME = "Mathematics";
 const FIXTURE_AVAILABILITY = new Date("2026-09-01T10:00:00.000Z");
 const FIXTURE_BOOKING_DESCRIPTION = "Development booking fixture";

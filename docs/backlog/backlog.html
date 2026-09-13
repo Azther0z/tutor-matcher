@@ -453,22 +453,22 @@
           },
           {
             "id": "AUTH-4",
-            "title": "Verify identity and teaching credentials",
-            "description": "As a Tutor, I want to verify my identity and teaching credentials so that students can trust my profile.",
+            "title": "Submit identity and teaching credentials",
+            "description": "As a Student, I want to submit my identity and teaching credentials so that I can become a Tutor.",
             "epic": "Account Registration & Authentication",
-            "role": "Tutor",
+            "role": "Student",
             "status": "backlog",
             "points": 5,
             "criteria": [
               {
-                "given": "a Tutor uploads an ID and certificates,",
+                "given": "a logged-in Student provides an ID URL, certification URL, and Tutor bio,",
                 "when": "submitted,",
-                "then": "the status shows 'Pending Verification' until an admin reviews it."
+                "then": "the Tutor capability is granted immediately and the Tutor status starts as 'Unpublished'."
               },
               {
-                "given": "the admin approves the documents,",
-                "when": "review completes,",
-                "then": "the Tutor profile displays a 'Verified' badge."
+                "given": "the application contains the submitted identity and certification URLs,",
+                "when": "the Tutor profile is saved,",
+                "then": "the URLs are retained as document references without requiring file storage."
               }
             ]
           },
@@ -1350,7 +1350,7 @@
               "tasks": [
                 {
                   "id": "AUTH-4-T1",
-                  "title": "Design the document-upload and verification-status UI",
+                  "title": "Design the document-reference form and approved Tutor state",
                   "role": "UXUI",
                   "status": "todo",
                   "hours": 3,
@@ -1358,7 +1358,7 @@
                 },
                 {
                   "id": "AUTH-4-T2",
-                  "title": "Build the ID/certificate upload form",
+                  "title": "Build the ID/certificate URL form",
                   "role": "Frontend",
                   "status": "todo",
                   "hours": 4,
@@ -1366,7 +1366,7 @@
                 },
                 {
                   "id": "AUTH-4-T3",
-                  "title": "Implement document storage and 'Pending Verification' status",
+                  "title": "Store document URLs and grant the Tutor capability immediately",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 6,
@@ -1374,7 +1374,7 @@
                 },
                 {
                   "id": "AUTH-4-T4",
-                  "title": "Implement the admin approval workflow and 'Verified' badge",
+                  "title": "Keep future PENDING and REJECTED statuses available for SAFE-2",
                   "role": "Backend",
                   "status": "todo",
                   "hours": 5,
@@ -1389,8 +1389,8 @@
                   "assignees": ["Ideal", "Pooh"]
                 }
               ],
-              "title": "Verify identity and teaching credentials",
-              "description": "As a Tutor, I want to verify my identity and teaching credentials so that students can trust my profile.",
+              "title": "Submit identity and teaching credentials",
+              "description": "As a Student, I want to submit my identity and teaching credentials so that I can become a Tutor.",
               "epic": "Account Registration & Authentication",
               "assignees": ["Ideal", "Pooh"]
             },

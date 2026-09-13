@@ -84,16 +84,16 @@ The Gherkin setup currently proves the test wiring through the backend root endp
 product's domain flows have Gherkin scenarios yet. Add them as their API contracts and application
 behavior are implemented, following the journeys in [User Journeys](user-journeys.md):
 
-| Flow                      | What a first scenario should prove                                              |
-| ------------------------- | ------------------------------------------------------------------------------- |
-| Account and access        | Guards send a logged-out user to login and return them to the requested route   |
-| Tutor application         | Documents plus bio are required, and approval grants the tutor capability       |
-| Subjects and availability | A slot advertises only the subjects the tutor assigned to it                    |
-| Booking                   | Slots must be back-to-back, and price is slot count x hourly rate / 2           |
-| Payment                   | Paying from wallet balance confirms the booking and locks the slots to it       |
-| Wallet                    | Every movement writes a transaction, and balances follow the ledger             |
-| Payout                    | Any user with available balance can withdraw; over-balance requests are blocked |
-| Reviews                   | A review is accepted only from the reviewer's own completed booking             |
+| Flow                      | What a first scenario should prove                                               |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| Account and access        | Guards send a logged-out user to login and return them to the requested route    |
+| Tutor application         | Document URLs plus bio are required, and the current sprint approves immediately |
+| Subjects and availability | A slot advertises only the subjects the tutor assigned to it                     |
+| Booking                   | Slots must be back-to-back, and price is slot count x hourly rate / 2            |
+| Payment                   | Paying from wallet balance confirms the booking and locks the slots to it        |
+| Wallet                    | Every movement writes a transaction, and balances follow the ledger              |
+| Payout                    | Any user with available balance can withdraw; over-balance requests are blocked  |
+| Reviews                   | A review is accepted only from the reviewer's own completed booking              |
 
 The product invariants in [User Journeys](user-journeys.md#invariants) are the shortlist of
 behaviours worth a scenario each.

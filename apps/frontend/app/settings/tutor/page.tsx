@@ -2,56 +2,38 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import {
+  TutorDetailsFields,
+  tutorDetailsInputClassName,
+} from "@/src/components/tutor-details-fields";
+import {
+  type TutorDetails,
+  type TutorDetailsFieldErrors,
+  validateTutorDetails,
+} from "@/src/lib/tutor-details";
 
-type FieldName =
-  | "firstName"
-  | "lastName"
-  | "avatarUrl"
-  | "tutorBio"
-  | "introVideoUrl"
-  | "governmentId"
-  | "certificationUrl";
-type FieldErrors = Partial<Record<FieldName, string>>;
-
-const inputClassName =
-  "h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18]";
+type FieldErrors = Partial<Record<"firstName" | "lastName", string>> & TutorDetailsFieldErrors;
 
 export default function TutorSettingsPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [userBio, setUserBio] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [tutorBio, setTutorBio] = useState("");
-  const [introVideoUrl, setIntroVideoUrl] = useState("");
-  const [governmentId, setGovernmentId] = useState("");
-  const [certificationUrl, setCertificationUrl] = useState("");
+  const [details, setDetails] = useState<TutorDetails>({
+    avatarUrl: "",
+    bio: "",
+    introVideoUrl: "",
+    governmentId: "",
+    certificationUrl: "",
+  });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   function validate() {
-    const errors: FieldErrors = {};
-
-    const isValidUrl = (value: string) => {
-      try {
-        new URL(value);
-        return true;
-      } catch {
-        return false;
-      }
-    };
+    const errors: FieldErrors = validateTutorDetails(details);
 
     if (!firstName.trim()) errors.firstName = "First name is required.";
     if (!lastName.trim()) errors.lastName = "Last name is required.";
-    if (avatarUrl.trim() && !isValidUrl(avatarUrl)) errors.avatarUrl = "Enter a valid avatar URL.";
-    if (!tutorBio.trim()) errors.tutorBio = "Tutor bio is required.";
-    if (!introVideoUrl.trim()) errors.introVideoUrl = "Intro video URL is required.";
-    else if (!isValidUrl(introVideoUrl)) errors.introVideoUrl = "Enter a valid intro video URL.";
-    if (!governmentId.trim()) errors.governmentId = "Government ID is required.";
-    if (!certificationUrl.trim())
-      errors.certificationUrl = "A teaching certification document is required.";
-    else if (!isValidUrl(certificationUrl))
-      errors.certificationUrl = "Enter a valid certification document URL.";
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -88,11 +70,11 @@ export default function TutorSettingsPage() {
             bio: userBio.trim() || null,
           },
           tutor: {
-            avatarUrl: avatarUrl.trim() || null,
-            bio: tutorBio.trim(),
-            introVideoUrl: introVideoUrl.trim(),
-            governmentId: governmentId.trim(),
-            certificationUrl: certificationUrl.trim(),
+            avatarUrl: details.avatarUrl.trim() || null,
+            bio: details.bio.trim(),
+            introVideoUrl: details.introVideoUrl.trim(),
+            governmentId: details.governmentId.trim(),
+            certificationUrl: details.certificationUrl.trim(),
           },
         }),
       });
@@ -138,7 +120,7 @@ export default function TutorSettingsPage() {
                 value={firstName}
                 onChange={(event) => setFirstName(event.target.value)}
                 aria-invalid={!!fieldErrors.firstName}
-                className={inputClassName}
+                className={tutorDetailsInputClassName}
               />
               {fieldErrors.firstName && (
                 <span className="text-red-600">{fieldErrors.firstName}</span>
@@ -152,7 +134,7 @@ export default function TutorSettingsPage() {
                 value={lastName}
                 onChange={(event) => setLastName(event.target.value)}
                 aria-invalid={!!fieldErrors.lastName}
-                className={inputClassName}
+                className={tutorDetailsInputClassName}
               />
               {fieldErrors.lastName && <span className="text-red-600">{fieldErrors.lastName}</span>}
             </label>
@@ -171,97 +153,11 @@ export default function TutorSettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold">Public Tutor details</h2>
-            <p className="mt-1 text-sm text-zinc-500">Information shown on your Tutor profile.</p>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Avatar URL <span className="font-normal text-zinc-500">(optional)</span>
-              <input
-                type="url"
-                name="avatarUrl"
-                placeholder="https://example.com/avatar.jpg"
-                value={avatarUrl}
-                onChange={(event) => setAvatarUrl(event.target.value)}
-                aria-invalid={!!fieldErrors.avatarUrl}
-                className={inputClassName}
-              />
-              {fieldErrors.avatarUrl && (
-                <span className="text-red-600">{fieldErrors.avatarUrl}</span>
-              )}
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Tutor bio
-              <textarea
-                name="tutorBio"
-                rows={5}
-                maxLength={2000}
-                value={tutorBio}
-                onChange={(event) => setTutorBio(event.target.value)}
-                aria-invalid={!!fieldErrors.tutorBio}
-                className="rounded-lg border border-black/[.12] bg-transparent px-3 py-2 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18]"
-              />
-              {fieldErrors.tutorBio && <span className="text-red-600">{fieldErrors.tutorBio}</span>}
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Intro video URL
-              <input
-                type="url"
-                name="introVideoUrl"
-                placeholder="https://example.com/intro-video.mp4"
-                value={introVideoUrl}
-                onChange={(event) => setIntroVideoUrl(event.target.value)}
-                aria-invalid={!!fieldErrors.introVideoUrl}
-                className={inputClassName}
-              />
-              {fieldErrors.introVideoUrl && (
-                <span className="text-red-600">{fieldErrors.introVideoUrl}</span>
-              )}
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Government ID
-              <input
-                name="governmentId"
-                maxLength={255}
-                value={governmentId}
-                onChange={(event) => setGovernmentId(event.target.value)}
-                aria-invalid={!!fieldErrors.governmentId}
-                className={inputClassName}
-              />
-              <span className="font-normal text-zinc-500">
-                Used for Tutor verification and not displayed publicly.
-              </span>
-              {fieldErrors.governmentId && (
-                <span className="text-red-600">{fieldErrors.governmentId}</span>
-              )}
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Teaching certification document URL
-              <input
-                type="url"
-                name="certificationUrl"
-                placeholder="https://example.com/certification.pdf"
-                value={certificationUrl}
-                onChange={(event) => setCertificationUrl(event.target.value)}
-                aria-invalid={!!fieldErrors.certificationUrl}
-                className={inputClassName}
-              />
-              <span className="font-normal text-zinc-500">
-                Used for Tutor verification and not displayed publicly.
-              </span>
-              {fieldErrors.certificationUrl && (
-                <span className="text-red-600">{fieldErrors.certificationUrl}</span>
-              )}
-            </label>
-          </div>
-        </section>
+        <TutorDetailsFields
+          values={details}
+          errors={fieldErrors}
+          onChange={(name, value) => setDetails((current) => ({ ...current, [name]: value }))}
+        />
 
         {message && (
           <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">

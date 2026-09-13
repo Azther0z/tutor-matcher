@@ -30,7 +30,7 @@ const profile = {
     avatarUrl: "https://example.com/avatar.jpg",
     bio: "I teach calculus.",
     introVideoUrl: "https://example.com/intro.mp4",
-    governmentId: "ID-123",
+    governmentId: "https://example.com/government-id.pdf",
     certificationUrl: "https://example.com/certification.pdf",
   },
 };
@@ -83,6 +83,16 @@ describe("PUT /api/profiles/me", () => {
       .put("/api/profiles/me")
       .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
       .send({ ...profile, tutor: { ...profile.tutor, bio: "" } })
+      .expect(400);
+
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a government ID that is not a URL", async () => {
+    await request(app)
+      .put("/api/profiles/me")
+      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
+      .send({ ...profile, tutor: { ...profile.tutor, governmentId: "ID-123" } })
       .expect(400);
 
     expect(transaction).not.toHaveBeenCalled();
@@ -257,6 +267,16 @@ describe("PUT /api/profiles/me/tutor", () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
+  it("rejects an application with a government ID that is not a URL", async () => {
+    await request(app)
+      .put("/api/profiles/me/tutor")
+      .set("Authorization", `Bearer ${tokenFor(userId)}`)
+      .send({ ...enrollmentInput, governmentId: "ID-123" })
+      .expect(400);
+
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
   it("returns 404 when the account no longer exists", async () => {
     findUnique.mockResolvedValue(null);
 
@@ -271,7 +291,7 @@ describe("PUT /api/profiles/me/tutor", () => {
 
   it("creates a Tutor record and its certification for a first-time applicant", async () => {
     findUnique.mockResolvedValue({ tutorId: null, tutor: null });
-    tutorCreate.mockResolvedValue({ id: tutorId, status: "PENDING", ...profile.tutor });
+    tutorCreate.mockResolvedValue({ id: tutorId, status: "UNPUBLISHED", ...profile.tutor });
     userUpdate.mockResolvedValue({ id: userId });
     certificationCreate.mockResolvedValue({
       id: certificationId,
@@ -286,7 +306,7 @@ describe("PUT /api/profiles/me/tutor", () => {
       .expect(200);
 
     expect(tutorCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({ ...tutorFields, status: "PENDING" }),
+      data: expect.objectContaining({ ...tutorFields, status: "UNPUBLISHED" }),
     });
     expect(userUpdate).toHaveBeenCalledWith({
       where: { id: userId },
@@ -296,6 +316,8 @@ describe("PUT /api/profiles/me/tutor", () => {
       data: { fileUrl: enrollmentInput.certificationUrl, tutorId },
     });
     expect(certificationUpdate).not.toHaveBeenCalled();
+    expect(res.body.status).toBe("APPROVED");
+    expect(res.body.tutor.status).toBe("UNPUBLISHED");
     expect(res.body.tutor).toMatchObject({
       ...profile.tutor,
       certificationUrl: enrollmentInput.certificationUrl,
@@ -307,14 +329,14 @@ describe("PUT /api/profiles/me/tutor", () => {
       tutorId,
       tutor: { status: "REJECTED", certifications: [{ id: certificationId }] },
     });
-    tutorUpdate.mockResolvedValue({ id: tutorId, status: "PENDING", ...profile.tutor });
+    tutorUpdate.mockResolvedValue({ id: tutorId, status: "UNPUBLISHED", ...profile.tutor });
     certificationUpdate.mockResolvedValue({
       id: certificationId,
       fileUrl: enrollmentInput.certificationUrl,
       tutorId,
     });
 
-    await request(app)
+    const res = await request(app)
       .put("/api/profiles/me/tutor")
       .set("Authorization", `Bearer ${tokenFor(userId)}`)
       .send(enrollmentInput)
@@ -322,7 +344,7 @@ describe("PUT /api/profiles/me/tutor", () => {
 
     expect(tutorUpdate).toHaveBeenCalledWith({
       where: { id: tutorId },
-      data: { ...tutorFields, status: "PENDING" },
+      data: { ...tutorFields, status: "UNPUBLISHED" },
     });
     expect(certificationUpdate).toHaveBeenCalledWith({
       where: { id: certificationId },
@@ -331,6 +353,8 @@ describe("PUT /api/profiles/me/tutor", () => {
     expect(tutorCreate).not.toHaveBeenCalled();
     expect(certificationCreate).not.toHaveBeenCalled();
     expect(userUpdate).not.toHaveBeenCalled();
+    expect(res.body.status).toBe("APPROVED");
+    expect(res.body.tutor.status).toBe("UNPUBLISHED");
   });
 
   it("returns 409 when the account is already an approved Tutor", async () => {
@@ -356,7 +380,7 @@ describe("GET /api/profiles/me/tutor", () => {
     avatarUrl: null,
     bio: "I teach calculus.",
     introVideoUrl: "https://example.com/intro.mp4",
-    governmentId: "ID-123",
+    governmentId: "https://example.com/government-id.pdf",
     status: "PENDING",
     enrolledAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
     certifications: [

@@ -25,7 +25,7 @@ export const profileRequestSchema = z.object({
     avatarUrl: optionalUrl,
     bio: z.string().trim().min(1).max(2000),
     introVideoUrl: optionalUrl,
-    governmentId: z.string().trim().min(1).max(255),
+    governmentId: z.url(),
     certificationUrl: z.url(),
   }),
 });
@@ -44,7 +44,7 @@ export const tutorEnrollmentRequestSchema = z.object({
   avatarUrl: optionalUrl,
   bio: z.string().trim().min(1).max(2000),
   introVideoUrl: z.url(),
-  governmentId: z.string().trim().min(1).max(255),
+  governmentId: z.url(),
   certificationUrl: z.url(),
   consentAccepted: z.literal(true),
 });
