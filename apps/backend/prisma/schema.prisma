@@ -27,6 +27,13 @@ enum TutorStatus {
   REJECTED
 }
 
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
 enum StudentEducationLevel {
   PRIMARY_SCHOOL
   LOWER_SECONDARY_SCHOOL
@@ -148,11 +155,12 @@ model Availability {
   id        String   @id @default(uuid()) @map("availability_id") @db.Uuid
   startedAt DateTime @map("started_at")
 
-  bookingId String?  @unique @map("booking_id") @db.Uuid
+  bookingId String?  @map("booking_id") @db.Uuid
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   availabilitySubjects AvailabilitySubject[]
 
+  @@index([bookingId])
   @@map("availabilities")
 }
 
@@ -167,10 +175,18 @@ model AvailabilitySubject {
 }
 
 model Booking {
-  id             String   @id @default(uuid()) @map("booking_id") @db.Uuid
-  description    String?
-  zoomMeetingUrl String   @map("zoom_meeting_url")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id                 String        @id @default(uuid()) @map("booking_id") @db.Uuid
+  description        String?
+  zoomMeetingUrl     String?       @map("zoom_meeting_url")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  status             BookingStatus @default(PENDING_PAYMENT)
+  isTrial            Boolean       @default(true) @map("is_trial")
+  totalAmount        Decimal       @map("total_amount") @db.Decimal(12, 2)
+  startedAt          DateTime      @map("started_at")
+  endedAt            DateTime      @map("ended_at")
+  paymentExpiresAt   DateTime?     @map("payment_expires_at")
+  cancelledAt        DateTime?     @map("cancelled_at")
+  cancellationReason String?       @map("cancellation_reason")
 
   userId String @map("user_id") @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -178,12 +194,14 @@ model Booking {
   subjectId String  @map("subject_id") @db.Uuid
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
-  availability Availability?
-  payment      Payment?
-  reviews      Review[]
+  availabilities Availability[]
+  payments       Payment[]
+  reviews        Review[]
 
   @@index([userId])
   @@index([subjectId])
+  @@index([userId, status])
+  @@index([status, paymentExpiresAt])
   @@map("bookings")
 }
 
@@ -195,17 +213,20 @@ model Payment {
   createdAt   DateTime      @default(now()) @map("created_at")
   completedAt DateTime?     @map("completed_at")
 
-  fromUserId String @map("from_user_id") @db.Uuid
-  fromUser   User   @relation("PaymentsFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
+  // BOOK-1/3 uses a null party as Platform: Student -> Platform, then Platform -> Student refund.
+  // Tutor earning settlement is a separate future movement after lesson completion.
+  fromUserId String? @map("from_user_id") @db.Uuid
+  fromUser   User?   @relation("PaymentsFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
 
-  toUserId String @map("to_user_id") @db.Uuid
-  toUser   User   @relation("PaymentsTo", fields: [toUserId], references: [id], onDelete: Restrict)
+  toUserId String? @map("to_user_id") @db.Uuid
+  toUser   User?   @relation("PaymentsTo", fields: [toUserId], references: [id], onDelete: Restrict)
 
-  bookingId String?  @unique @map("booking_id") @db.Uuid
+  bookingId String?  @map("booking_id") @db.Uuid
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   @@index([fromUserId])
   @@index([toUserId])
+  @@index([bookingId])
   @@map("payments")
 }
 
