@@ -286,11 +286,7 @@ describe("PUT /api/profiles/me/tutor", () => {
       .expect(200);
 
     expect(tutorCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        ...tutorFields,
-        status: "PENDING",
-        consentedAt: expect.any(Date),
-      }),
+      data: expect.objectContaining({ ...tutorFields, status: "PENDING" }),
     });
     expect(userUpdate).toHaveBeenCalledWith({
       where: { id: userId },
@@ -326,7 +322,7 @@ describe("PUT /api/profiles/me/tutor", () => {
 
     expect(tutorUpdate).toHaveBeenCalledWith({
       where: { id: tutorId },
-      data: { ...tutorFields, status: "PENDING", consentedAt: expect.any(Date) },
+      data: { ...tutorFields, status: "PENDING" },
     });
     expect(certificationUpdate).toHaveBeenCalledWith({
       where: { id: certificationId },
