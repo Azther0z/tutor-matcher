@@ -208,6 +208,7 @@ describe("PUT /api/profiles/me/tutor", () => {
   const enrollmentInput = {
     ...profile.tutor,
     certificationUrl: "https://example.com/certification.pdf",
+    consentAccepted: true,
   };
 
   beforeEach(() => {
@@ -241,6 +242,16 @@ describe("PUT /api/profiles/me/tutor", () => {
       .put("/api/profiles/me/tutor")
       .set("Authorization", `Bearer ${tokenFor(userId)}`)
       .send({ ...enrollmentInput, certificationUrl: "" })
+      .expect(400);
+
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects an application that has not accepted the consent checkbox", async () => {
+    await request(app)
+      .put("/api/profiles/me/tutor")
+      .set("Authorization", `Bearer ${tokenFor(userId)}`)
+      .send({ ...enrollmentInput, consentAccepted: false })
       .expect(400);
 
     expect(transaction).not.toHaveBeenCalled();

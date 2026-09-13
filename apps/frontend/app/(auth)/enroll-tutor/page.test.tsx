@@ -43,6 +43,7 @@ function completeRequiredFields() {
   fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
     target: { value: "https://example.com/certification.pdf" },
   });
+  fireEvent.click(screen.getByRole("checkbox"));
 }
 
 describe("EnrollTutorPage", () => {
@@ -66,6 +67,36 @@ describe("EnrollTutorPage", () => {
     expect(screen.getByText("Intro video URL is required.")).toBeInTheDocument();
     expect(screen.getByText("Government ID is required.")).toBeInTheDocument();
     expect(screen.getByText("A teaching certification document is required.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "You must consent to the processing of your ID, teaching credentials, and payout information."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("blocks submitting and highlights the requirement when consent has not been accepted", async () => {
+    mockApplication({ status: "NONE", tutor: null });
+    render(<EnrollTutorPage />);
+    await screen.findByRole("button", { name: "Submit application" });
+
+    fireEvent.change(screen.getByLabelText("Tutor bio"), {
+      target: { value: "I teach mathematics." },
+    });
+    fireEvent.change(screen.getByLabelText("Intro video URL"), {
+      target: { value: "https://example.com/intro.mp4" },
+    });
+    fireEvent.change(screen.getByLabelText(/Government ID/), { target: { value: "ID-123" } });
+    fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
+      target: { value: "https://example.com/certification.pdf" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Submit application" }));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1); // only the initial GET
+    expect(
+      screen.getByText(
+        "You must consent to the processing of your ID, teaching credentials, and payout information."
+      )
+    ).toBeInTheDocument();
   });
 
   it("submits the public Tutor details and then shows the awaiting-approval panel", async () => {
@@ -90,6 +121,7 @@ describe("EnrollTutorPage", () => {
         introVideoUrl: "https://example.com/intro.mp4",
         governmentId: "ID-123",
         certificationUrl: "https://example.com/certification.pdf",
+        consentAccepted: true,
       }),
     });
     expect(await screen.findByText("Awaiting approval")).toBeInTheDocument();

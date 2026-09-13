@@ -37,12 +37,16 @@ export type ProfileRequest = z.infer<typeof profileRequestSchema>;
 // elsewhere (signup / settings). All three application requirements
 // (government ID, teaching-certification document, bio) are required here and
 // validated server-side; avatar and intro video are additional listing details.
+// `consentAccepted` must be explicitly `true` on every (re-)submission — it
+// gates creation of the Tutor application on consenting to identity,
+// credential, and payout data processing (AUTH-6).
 export const tutorEnrollmentRequestSchema = z.object({
   avatarUrl: optionalUrl,
   bio: z.string().trim().min(1).max(2000),
   introVideoUrl: z.url(),
   governmentId: z.string().trim().min(1).max(255),
   certificationUrl: z.url(),
+  consentAccepted: z.literal(true),
 });
 
 export type TutorEnrollmentRequest = z.infer<typeof tutorEnrollmentRequestSchema>;
