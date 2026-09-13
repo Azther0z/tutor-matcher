@@ -1,0 +1,77 @@
+name: Convention
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+concurrency:
+  group: tutor-matcher-convention-${{ github.event_name }}-${{ github.event.issue.number || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check naming convention
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const epic = "(?:AUTH|PROF|DISC|BOOK|PAY|CLASS|MSG|REV|SAFE)";
+            const storyNumber = "(?:0|[1-9][0-9]*)";
+            const workItemId = `(?:${epic}-${storyNumber}|OPS-0)`;
+            const issueTitlePattern = new RegExp(
+              `^\\[${workItemId}\\] [A-Z][^\\r\\n]*\\S$`,
+            );
+            const slug = "[a-z0-9]+(?:-[a-z0-9]+)*";
+            const titleType =
+              "build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test";
+            const branchType =
+              "build|chore|ci|docs|feat|fix|hotfix|perf|refactor|release|revert|style|test";
+            const pullRequestTitlePattern = new RegExp(
+              `^(${titleType})\\[(${workItemId})\\]: ${slug}$`,
+            );
+            const branchPattern = new RegExp(
+              `^(${branchType})\\/(${workItemId})-${slug}$`,
+            );
+            const errors = [];
+
+            if (context.eventName === "issues") {
+              const title = context.payload.issue.title;
+              if (!issueTitlePattern.test(title)) {
+                errors.push("Issue titles must use [<EPIC>-N] Sentence or [OPS-0] Sentence.");
+              }
+            }
+
+            if (context.eventName === "pull_request") {
+              const pullRequest = context.payload.pull_request;
+              const titleMatch = pullRequest.title.match(pullRequestTitlePattern);
+              const branchMatch = pullRequest.head.ref.match(branchPattern);
+
+              if (!titleMatch) {
+                errors.push(
+                  "PR titles must use <type>[<EPIC>-N]: slug or <type>[OPS-0]: slug.",
+                );
+              }
+
+              if (!branchMatch) {
+                errors.push(
+                  "PR branches must use <type>/<EPIC>-N-slug or <type>/OPS-0-slug.",
+                );
+              }
+
+              const titleId = titleMatch && titleMatch[2];
+              const branchId = branchMatch && branchMatch[2];
+              if (titleId && branchId && titleId !== branchId) {
+                errors.push(
+                  `PR title uses ${titleId}, but the branch uses ${branchId}.`,
+                );
+              }
+            }
+
+            if (errors.length > 0) {
+              core.setFailed(errors.join("\n"));
+            }
