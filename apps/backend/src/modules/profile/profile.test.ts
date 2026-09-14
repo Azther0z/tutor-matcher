@@ -277,6 +277,50 @@ describe("PUT /api/profiles/me/tutor", () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
+  it("normalizes URLs without a protocol before saving an application", async () => {
+    findUnique.mockResolvedValue({ tutorId: null, tutor: null });
+    tutorCreate.mockResolvedValue({ id: tutorId, status: "UNPUBLISHED", ...profile.tutor });
+    userUpdate.mockResolvedValue({ id: userId });
+    certificationCreate.mockResolvedValue({
+      id: certificationId,
+      fileUrl: "https://example.com/certification.pdf",
+      tutorId,
+    });
+
+    await request(app)
+      .put("/api/profiles/me/tutor")
+      .set("Authorization", `Bearer ${tokenFor(userId)}`)
+      .send({
+        ...enrollmentInput,
+        avatarUrl: "example.com/avatar.jpg",
+        introVideoUrl: "example.com/intro.mp4",
+        identificationCardUrl: "example.com/government-id.pdf",
+        certificationUrl: "example.com/certification.pdf",
+      })
+      .expect(200);
+
+    expect(tutorCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        avatarUrl: "https://example.com/avatar.jpg",
+        introVideoUrl: "https://example.com/intro.mp4",
+        identificationCardUrl: "https://example.com/government-id.pdf",
+      }),
+    });
+    expect(certificationCreate).toHaveBeenCalledWith({
+      data: { fileUrl: "https://example.com/certification.pdf", tutorId },
+    });
+  });
+
+  it("rejects non-HTTPS URLs", async () => {
+    await request(app)
+      .put("/api/profiles/me/tutor")
+      .set("Authorization", `Bearer ${tokenFor(userId)}`)
+      .send({ ...enrollmentInput, introVideoUrl: "http://example.com/intro.mp4" })
+      .expect(400);
+
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
   it("returns 404 when the account no longer exists", async () => {
     findUnique.mockResolvedValue(null);
 

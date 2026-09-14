@@ -12,6 +12,18 @@ export function validate(schema: z.ZodType, part: RequestPart = "body"): Request
       return;
     }
 
+    if (part === "query") {
+      Object.defineProperty(req, part, {
+        configurable: true,
+        enumerable: true,
+        value: result.data,
+        writable: true,
+      });
+    } else if (part === "body") {
+      req.body = result.data;
+    } else {
+      req.params = result.data;
+    }
     next();
   };
 }
