@@ -32,6 +32,47 @@ When merge behavior is unknown or mixed, optimize both durable units: make indiv
 
 When a change fits multiple types or branch categories, decide based on intent and durable user-facing meaning, not just file paths. Split unrelated work into separate commits or PRs when feasible. If ambiguity would materially affect release impact, explain the choice briefly.
 
+## Tutor Matcher Convention
+
+This repository overrides the generic header and branch formats above. Use one uppercase epic
+acronym and numeric story number consistently across the issue, branch, PR, and commits:
+
+- Issue title: `[<EPIC>-N] Sentence`, with a single space after the closing bracket and a
+  sentence-case description. `<EPIC>` is a registered backlog acronym such as `AUTH` or `DISC`.
+- Commit and PR title: `<type>[<EPIC>-N]: slug`. The required scope is the epic-story ID, and
+  no additional scope is used.
+- Branch name: `<type>/<EPIC>-N-slug`.
+- Use `OPS-0` for non-story work: `[OPS-0] Sentence`, `<type>[OPS-0]: slug`, and
+  `<type>/OPS-0-slug`.
+- Use `<EPIC>-0` when the work is a story that does not yet belong to a backlog entry. Do not use
+  `OPS-0` for a product story.
+- `slug` is lowercase kebab-case: lowercase letters and numbers separated by single hyphens,
+  with no leading, trailing, or consecutive hyphens.
+- Commit and PR types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`,
+  `revert`, `style`, or `test`. Branch types may additionally be `hotfix` or `release`.
+- Protected branches such as `main` and `develop` are not story branches.
+
+Examples:
+
+```text
+[AUTH-1] Student can create an account
+feat[AUTH-1]: create-student-account
+feat/AUTH-1-create-student-account
+```
+
+For non-story work, use `OPS-0`:
+
+```text
+[OPS-0] Update CI configuration
+chore[OPS-0]: update-ci-configuration
+chore/OPS-0-update-ci-configuration
+```
+
+The repository templates live at `.github/ISSUE_TEMPLATE/story.md` and
+`.github/ISSUE_TEMPLATE/non-story.md`, plus `.github/pull_request_template.md`.
+`.github/workflows/convention.yml` enforces PR titles and PR branches. Issue titles and commit
+headers remain documented but are not checked by this workflow.
+
 ## Safety
 
 - Inspect status and relevant diffs before staging or committing.
@@ -55,7 +96,9 @@ Record AI involvement with the trailer `Assisted by: <agent> (<model name>)` for
 
 ## Validation
 
-Validation is advisory in this skill. Generate good names and messages; do not make enforcement the core job unless the user asks.
+Validation is advisory outside this repository. In Tutor Matcher, follow the enforced convention
+in `.github/workflows/convention.yml` and use the templates before opening an issue or PR.
+Generate good names and messages; do not rewrite existing history to make old artifacts conform.
 
 Mention validation options when the user asks for hooks, CI checks, enforcement, commitlint, branch naming rules, release automation, or contributor onboarding. Prefer existing repo tooling when present. Keep regexes and hook scripts out of normal answers unless the user asks for implementation. If asked to implement validation, inspect the repo first and make the smallest change that fits existing tooling.
 
