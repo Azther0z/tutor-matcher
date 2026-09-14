@@ -97,6 +97,9 @@ describe("TutorSettingsPage", () => {
     fireEvent.change(screen.getByLabelText("Tutor bio"), {
       target: { value: "I teach mathematics." },
     });
+    fireEvent.change(screen.getByLabelText(/Avatar URL/), {
+      target: { value: "example.com/avatar.jpg" },
+    });
     fireEvent.change(screen.getByLabelText("Intro video URL"), {
       target: { value: "example.com/intro.mp4" },
     });
@@ -113,7 +116,24 @@ describe("TutorSettingsPage", () => {
     expect(screen.queryByText("Enter a valid intro video URL.")).not.toBeInTheDocument();
     expect(fetchMock.mock.calls[0][1]).toEqual(
       expect.objectContaining({
-        body: expect.stringContaining('"introVideoUrl":"example.com/intro.mp4"'),
+        body: expect.stringContaining('"avatarUrl":"https://example.com/avatar.jpg"'),
+      })
+    );
+    expect(fetchMock.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        body: expect.stringContaining('"introVideoUrl":"https://example.com/intro.mp4"'),
+      })
+    );
+    expect(fetchMock.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        body: expect.stringContaining(
+          '"identificationCardUrl":"https://example.com/government-id.pdf"'
+        ),
+      })
+    );
+    expect(fetchMock.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        body: expect.stringContaining('"certificationUrl":"https://example.com/certification.pdf"'),
       })
     );
   });

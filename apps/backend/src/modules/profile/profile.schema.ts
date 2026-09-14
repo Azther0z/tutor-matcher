@@ -12,24 +12,7 @@ const studentEducationLevels = [
 
 const preferredLearningPeriods = ["MORNING", "AFTERNOON", "EVENING", "FLEXIBLE"] as const;
 
-const normalizeHttpsUrl = (value: unknown) => {
-  if (typeof value !== "string") return value;
-
-  const trimmed = value.trim();
-  if (!trimmed || /^[a-z][a-z\d+.-]*:/i.test(trimmed)) return trimmed;
-
-  return `https://${trimmed}`;
-};
-
-const httpsUrl = z.preprocess(
-  normalizeHttpsUrl,
-  z.url().refine((value) => {
-    const hostname = value.match(/^https:\/\/([^/?#]+)/i)?.[1] ?? "";
-    return hostname.includes(".");
-  }, "URL must use HTTPS and have a valid hostname")
-);
-
-const optionalUrl = httpsUrl.nullable().optional();
+const optionalUrl = z.url().nullable().optional();
 const optionalText = z.string().trim().max(2000).nullable().optional();
 
 export const profileRequestSchema = z.object({
@@ -42,8 +25,8 @@ export const profileRequestSchema = z.object({
     avatarUrl: optionalUrl,
     bio: z.string().trim().min(1).max(2000),
     introVideoUrl: optionalUrl,
-    identificationCardUrl: httpsUrl,
-    certificationUrl: httpsUrl,
+    identificationCardUrl: z.url(),
+    certificationUrl: z.url(),
   }),
 });
 
@@ -60,9 +43,9 @@ export type ProfileRequest = z.infer<typeof profileRequestSchema>;
 export const tutorEnrollmentRequestSchema = z.object({
   avatarUrl: optionalUrl,
   bio: z.string().trim().min(1).max(2000),
-  introVideoUrl: httpsUrl,
-  identificationCardUrl: httpsUrl,
-  certificationUrl: httpsUrl,
+  introVideoUrl: z.url(),
+  identificationCardUrl: z.url(),
+  certificationUrl: z.url(),
   consentAccepted: z.literal(true),
 });
 
