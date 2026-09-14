@@ -117,13 +117,13 @@ model StudentLearningArea {
 }
 
 model Tutor {
-  id            String      @id @default(uuid()) @map("tutor_id") @db.Uuid
-  avatarUrl     String?     @map("avatar_url")
-  bio           String?
-  introVideoUrl String?     @map("intro_video_url")
-  governmentId  String      @map("government_id")
-  enrolledAt    DateTime    @default(now()) @map("enrolled_at")
-  status        TutorStatus @default(PENDING)
+  id                    String      @id @default(uuid()) @map("tutor_id") @db.Uuid
+  avatarUrl             String?     @map("avatar_url")
+  bio                   String?
+  introVideoUrl         String?     @map("intro_video_url")
+  identificationCardUrl String      @map("government_id")
+  enrolledAt            DateTime    @default(now()) @map("enrolled_at")
+  status                TutorStatus @default(PENDING)
 
   user           User?
   subjects       Subject[]

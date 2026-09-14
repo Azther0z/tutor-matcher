@@ -28,15 +28,20 @@ export class TutorAlreadyApprovedError extends Error {
 }
 
 // The enroll page only cares about three application phases; PUBLISHED and
-// UNPUBLISHED both mean "an admin approved this account as a Tutor".
+// UNPUBLISHED both mean "this account can use the Tutor capability".
 export type TutorApplicationStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
+
+// Tutor application review is not implemented yet, so a complete application
+// grants the Tutor capability immediately. UNPUBLISHED keeps the public listing
+// hidden until the Tutor finishes configuring it.
+const AUTO_APPROVED_TUTOR_STATUS = "UNPUBLISHED" as const;
 
 const tutorApplicationSelect = {
   id: true,
   avatarUrl: true,
   bio: true,
   introVideoUrl: true,
-  governmentId: true,
+  identificationCardUrl: true,
   status: true,
   enrolledAt: true,
   // The enrollment application manages exactly one certification document —
@@ -50,8 +55,8 @@ function applicationStatusFor(status: string): Exclude<TutorApplicationStatus, "
   return "APPROVED";
 }
 
-// A linked Tutor record does not by itself mean "approved" — enrollTutor()
-// links one immediately on first submission, while it is still PENDING.
+// A linked Tutor record does not by itself mean "approved". This distinction
+// still matters for records created by the future admin-review workflow.
 function isApprovedTutorStatus(status: string): boolean {
   return status === "PUBLISHED" || status === "UNPUBLISHED";
 }
@@ -92,8 +97,9 @@ export async function enrollTutor(userId: string, input: TutorEnrollmentRequest)
       throw new UserNotFoundError();
     }
 
-    // A new applicant, a pending applicant, or a rejected applicant may (re-)submit.
-    // Once an admin has approved the account, the application is closed.
+    // A new applicant, a pending applicant, or a rejected applicant may
+    // (re-)submit. Once the account has the Tutor capability, the application
+    // is closed.
     if (
       existingUser.tutor &&
       existingUser.tutor.status !== "PENDING" &&
@@ -106,8 +112,8 @@ export async function enrollTutor(userId: string, input: TutorEnrollmentRequest)
       avatarUrl: input.avatarUrl,
       bio: input.bio,
       introVideoUrl: input.introVideoUrl,
-      governmentId: input.governmentId,
-      status: "PENDING" as const,
+      identificationCardUrl: input.identificationCardUrl,
+      status: AUTO_APPROVED_TUTOR_STATUS,
     };
 
     const tutor = existingUser.tutorId
@@ -133,7 +139,10 @@ export async function enrollTutor(userId: string, input: TutorEnrollmentRequest)
           data: { fileUrl: input.certificationUrl, tutorId: tutor.id },
         });
 
-    return { tutor: { ...tutor, certificationUrl: certification.fileUrl } };
+    return {
+      status: applicationStatusFor(tutor.status),
+      tutor: { ...tutor, certificationUrl: certification.fileUrl },
+    };
   });
 }
 
@@ -169,10 +178,9 @@ export async function updateTutorProfile(userId: string, input: ProfileRequest) 
     });
 
     // A linked Tutor record is not by itself "approved" — enrollTutor() links
-    // one immediately on first submission, while it is still PENDING (and it
-    // may since have been REJECTED). This endpoint edits an already-published
-    // listing, so only an account an admin has actually approved may use it;
-    // everyone else belongs in the enroll-tutor application instead.
+    // one immediately on first submission as UNPUBLISHED. This endpoint edits
+    // an approved listing, so only an account with the Tutor capability may use
+    // it; everyone else belongs in the enroll-tutor application instead.
     if (
       !existingUser ||
       !existingUser.tutorId ||
@@ -186,7 +194,7 @@ export async function updateTutorProfile(userId: string, input: ProfileRequest) 
       avatarUrl: input.tutor.avatarUrl,
       bio: input.tutor.bio,
       introVideoUrl: input.tutor.introVideoUrl,
-      governmentId: input.tutor.governmentId,
+      identificationCardUrl: input.tutor.identificationCardUrl,
     };
 
     const tutor = await tx.tutor.update({ where: { id: existingUser.tutorId }, data: tutorData });

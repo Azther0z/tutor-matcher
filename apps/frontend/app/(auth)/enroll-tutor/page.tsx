@@ -4,37 +4,28 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
-
-type FieldName =
-  | "avatarUrl"
-  | "tutorBio"
-  | "introVideoUrl"
-  | "governmentId"
-  | "certificationUrl"
-  | "consentAccepted";
-type FieldErrors = Partial<Record<FieldName, string>>;
+import { TutorDetailsFields } from "@/src/components/tutor-details-fields";
+import {
+  tutorDetailsFromApplication,
+  type TutorApplication,
+  type TutorApplicationResponse,
+  type TutorEnrollmentResponse,
+} from "@/src/lib/tutor-application";
+import {
+  emptyTutorDetails,
+  type TutorDetails,
+  type TutorDetailsFieldErrors,
+  validateTutorDetails,
+} from "@/src/lib/tutor-details";
 
 type PolicyDocument = "privacy" | "terms";
-
-type TutorApplication = {
-  id: string;
-  avatarUrl: string | null;
-  bio: string | null;
-  introVideoUrl: string | null;
-  governmentId: string;
-  certificationUrl: string | null;
-  status: string;
-  enrolledAt: string;
-};
+type EnrollmentFieldErrors = TutorDetailsFieldErrors & { consentAccepted?: string };
 
 type Phase =
   | { name: "loading" }
   | { name: "error" }
   | { name: "form"; application: TutorApplication | null }
   | { name: "pending"; application: TutorApplication };
-
-const inputClassName =
-  "h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18]";
 
 const pageShellClassName = "mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-16";
 
@@ -51,24 +42,20 @@ function PageHeading({ subtitle }: { subtitle: string }) {
 function EnrollTutorForm() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>({ name: "loading" });
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [tutorBio, setTutorBio] = useState("");
-  const [introVideoUrl, setIntroVideoUrl] = useState("");
-  const [governmentId, setGovernmentId] = useState("");
-  const [certificationUrl, setCertificationUrl] = useState("");
+  const [details, setDetails] = useState<TutorDetails>(emptyTutorDetails);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [openDocument, setOpenDocument] = useState<PolicyDocument | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [fieldErrors, setFieldErrors] = useState<EnrollmentFieldErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const loadedRef = useRef(false);
 
   const prefill = useCallback((application: TutorApplication | null) => {
-    setAvatarUrl(application?.avatarUrl ?? "");
-    setTutorBio(application?.bio ?? "");
-    setIntroVideoUrl(application?.introVideoUrl ?? "");
-    setGovernmentId(application?.governmentId ?? "");
-    setCertificationUrl(application?.certificationUrl ?? "");
+    setDetails(tutorDetailsFromApplication(application));
+  }, []);
+
+  const updateDetails = useCallback((name: keyof TutorDetails, value: string) => {
+    setDetails((current) => ({ ...current, [name]: value }));
   }, []);
 
   useEffect(() => {
@@ -92,10 +79,7 @@ function EnrollTutorForm() {
           return;
         }
 
-        const data = (await response.json()) as {
-          status: string;
-          tutor: TutorApplication | null;
-        };
+        const data = (await response.json()) as TutorApplicationResponse;
         if (cancelled) return;
 
         if (data.status === "APPROVED") {
@@ -122,26 +106,8 @@ function EnrollTutorForm() {
   }, [router, prefill]);
 
   function validate() {
-    const errors: FieldErrors = {};
+    const errors: EnrollmentFieldErrors = validateTutorDetails(details);
 
-    const isValidUrl = (value: string) => {
-      try {
-        new URL(value);
-        return true;
-      } catch {
-        return false;
-      }
-    };
-
-    if (avatarUrl.trim() && !isValidUrl(avatarUrl)) errors.avatarUrl = "Enter a valid avatar URL.";
-    if (!tutorBio.trim()) errors.tutorBio = "Tutor bio is required.";
-    if (!introVideoUrl.trim()) errors.introVideoUrl = "Intro video URL is required.";
-    else if (!isValidUrl(introVideoUrl)) errors.introVideoUrl = "Enter a valid intro video URL.";
-    if (!governmentId.trim()) errors.governmentId = "Government ID is required.";
-    if (!certificationUrl.trim())
-      errors.certificationUrl = "A teaching certification document is required.";
-    else if (!isValidUrl(certificationUrl))
-      errors.certificationUrl = "Enter a valid certification document URL.";
     if (!consentAccepted)
       errors.consentAccepted =
         "You must consent to the processing of your ID, teaching credentials, and payout information.";
@@ -175,19 +141,17 @@ function EnrollTutorForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          avatarUrl: avatarUrl.trim() || null,
-          bio: tutorBio.trim(),
-          introVideoUrl: introVideoUrl.trim(),
-          governmentId: governmentId.trim(),
-          certificationUrl: certificationUrl.trim(),
+          avatarUrl: details.avatarUrl.trim() || null,
+          bio: details.bio.trim(),
+          introVideoUrl: details.introVideoUrl.trim(),
+          identificationCardUrl: details.identificationCardUrl.trim(),
+          certificationUrl: details.certificationUrl.trim(),
           consentAccepted,
         }),
       });
 
-      const data = (await response.json().catch(() => null)) as {
-        message?: string;
-        tutor?: TutorApplication;
-      } | null;
+      const data = (await response.json().catch(() => null)) as
+        (Partial<TutorEnrollmentResponse> & { message?: string }) | null;
 
       if (!response.ok) {
         setMessage(data?.message ?? "Could not submit your Tutor application.");
@@ -197,7 +161,9 @@ function EnrollTutorForm() {
       setFieldErrors({});
       setMessage(null);
 
-      if (data?.tutor) {
+      if (data?.status === "APPROVED") {
+        router.replace("/dashboard/tutor");
+      } else if (data?.tutor && data.status === "PENDING") {
         setPhase({ name: "pending", application: data.tutor });
       } else {
         setMessage("Tutor application submitted. It is now awaiting approval.");
@@ -248,8 +214,8 @@ function EnrollTutorForm() {
             <dd className="whitespace-pre-wrap">{application.bio}</dd>
             <dt className="font-medium text-zinc-500">Intro video URL</dt>
             <dd className="break-all">{application.introVideoUrl}</dd>
-            <dt className="font-medium text-zinc-500">Government ID</dt>
-            <dd className="break-all">{application.governmentId}</dd>
+            <dt className="font-medium text-zinc-500">Identification card</dt>
+            <dd className="break-all">{application.identificationCardUrl}</dd>
             <dt className="font-medium text-zinc-500">Certification document</dt>
             <dd className="break-all">{application.certificationUrl}</dd>
             {application.avatarUrl && (
@@ -295,97 +261,7 @@ function EnrollTutorForm() {
           </p>
         )}
 
-        <section className="rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold">Public Tutor details</h2>
-            <p className="mt-1 text-sm text-zinc-500">Information shown on your Tutor profile.</p>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Avatar URL <span className="font-normal text-zinc-500">(optional)</span>
-              <input
-                type="url"
-                name="avatarUrl"
-                placeholder="https://example.com/avatar.jpg"
-                value={avatarUrl}
-                onChange={(event) => setAvatarUrl(event.target.value)}
-                aria-invalid={!!fieldErrors.avatarUrl}
-                className={inputClassName}
-              />
-              {fieldErrors.avatarUrl && (
-                <span className="text-red-600">{fieldErrors.avatarUrl}</span>
-              )}
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Tutor bio
-              <textarea
-                name="tutorBio"
-                rows={5}
-                maxLength={2000}
-                value={tutorBio}
-                onChange={(event) => setTutorBio(event.target.value)}
-                aria-invalid={!!fieldErrors.tutorBio}
-                className="rounded-lg border border-black/[.12] bg-transparent px-3 py-2 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18]"
-              />
-              {fieldErrors.tutorBio && <span className="text-red-600">{fieldErrors.tutorBio}</span>}
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Intro video URL
-              <input
-                type="url"
-                name="introVideoUrl"
-                placeholder="https://example.com/intro-video.mp4"
-                value={introVideoUrl}
-                onChange={(event) => setIntroVideoUrl(event.target.value)}
-                aria-invalid={!!fieldErrors.introVideoUrl}
-                className={inputClassName}
-              />
-              {fieldErrors.introVideoUrl && (
-                <span className="text-red-600">{fieldErrors.introVideoUrl}</span>
-              )}
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Government ID
-              <input
-                name="governmentId"
-                maxLength={255}
-                value={governmentId}
-                onChange={(event) => setGovernmentId(event.target.value)}
-                aria-invalid={!!fieldErrors.governmentId}
-                className={inputClassName}
-              />
-              <span className="font-normal text-zinc-500">
-                Used for Tutor verification and not displayed publicly.
-              </span>
-              {fieldErrors.governmentId && (
-                <span className="text-red-600">{fieldErrors.governmentId}</span>
-              )}
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Teaching certification document URL
-              <input
-                type="url"
-                name="certificationUrl"
-                placeholder="https://example.com/certification.pdf"
-                value={certificationUrl}
-                onChange={(event) => setCertificationUrl(event.target.value)}
-                aria-invalid={!!fieldErrors.certificationUrl}
-                className={inputClassName}
-              />
-              <span className="font-normal text-zinc-500">
-                Used for Tutor verification and not displayed publicly.
-              </span>
-              {fieldErrors.certificationUrl && (
-                <span className="text-red-600">{fieldErrors.certificationUrl}</span>
-              )}
-            </label>
-          </div>
-        </section>
+        <TutorDetailsFields values={details} errors={fieldErrors} onChange={updateDetails} />
 
         <section className="rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
           <div className="mb-5">

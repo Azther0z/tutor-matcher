@@ -22,7 +22,7 @@ const pendingTutor = {
   avatarUrl: null,
   bio: "I teach mathematics.",
   introVideoUrl: "https://example.com/intro.mp4",
-  governmentId: "ID-123",
+  identificationCardUrl: "https://example.com/government-id.pdf",
   certificationUrl: "https://example.com/certification.pdf",
   status: "PENDING",
   enrolledAt: "2026-01-01T00:00:00.000Z",
@@ -39,7 +39,9 @@ function completeRequiredFields() {
   fireEvent.change(screen.getByLabelText("Intro video URL"), {
     target: { value: "https://example.com/intro.mp4" },
   });
-  fireEvent.change(screen.getByLabelText(/Government ID/), { target: { value: "ID-123" } });
+  fireEvent.change(screen.getByLabelText(/Identification card/), {
+    target: { value: "https://example.com/government-id.pdf" },
+  });
   fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
     target: { value: "https://example.com/certification.pdf" },
   });
@@ -65,7 +67,7 @@ describe("EnrollTutorPage", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1); // only the initial GET
     expect(screen.getByText("Tutor bio is required.")).toBeInTheDocument();
     expect(screen.getByText("Intro video URL is required.")).toBeInTheDocument();
-    expect(screen.getByText("Government ID is required.")).toBeInTheDocument();
+    expect(screen.getByText("Identification card URL is required.")).toBeInTheDocument();
     expect(screen.getByText("A teaching certification document is required.")).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -85,7 +87,9 @@ describe("EnrollTutorPage", () => {
     fireEvent.change(screen.getByLabelText("Intro video URL"), {
       target: { value: "https://example.com/intro.mp4" },
     });
-    fireEvent.change(screen.getByLabelText(/Government ID/), { target: { value: "ID-123" } });
+    fireEvent.change(screen.getByLabelText(/Identification card/), {
+      target: { value: "https://example.com/identification-card.pdf" },
+    });
     fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
       target: { value: "https://example.com/certification.pdf" },
     });
@@ -99,9 +103,28 @@ describe("EnrollTutorPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("submits the public Tutor details and then shows the awaiting-approval panel", async () => {
+  it("validates the identification card as a URL before submitting", async () => {
     mockApplication({ status: "NONE", tutor: null });
-    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ tutor: pendingTutor }) });
+    render(<EnrollTutorPage />);
+    await screen.findByRole("button", { name: "Submit application" });
+
+    completeRequiredFields();
+    fireEvent.change(screen.getByLabelText(/Identification card/), { target: { value: "ID-123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit application" }));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Enter a valid identification card URL.")).toBeInTheDocument();
+  });
+
+  it("submits the Tutor details and redirects after immediate approval", async () => {
+    mockApplication({ status: "NONE", tutor: null });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        status: "APPROVED",
+        tutor: { ...pendingTutor, status: "UNPUBLISHED" },
+      }),
+    });
     render(<EnrollTutorPage />);
     await screen.findByRole("button", { name: "Submit application" });
 
@@ -119,12 +142,13 @@ describe("EnrollTutorPage", () => {
         avatarUrl: null,
         bio: "I teach mathematics.",
         introVideoUrl: "https://example.com/intro.mp4",
-        governmentId: "ID-123",
+        identificationCardUrl: "https://example.com/government-id.pdf",
         certificationUrl: "https://example.com/certification.pdf",
         consentAccepted: true,
       }),
     });
-    expect(await screen.findByText("Awaiting approval")).toBeInTheDocument();
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard/tutor"));
+    expect(screen.queryByText("Awaiting approval")).not.toBeInTheDocument();
   });
 
   it("shows the awaiting-approval panel for a pending applicant and can reopen the form", async () => {
@@ -138,7 +162,9 @@ describe("EnrollTutorPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel & re-submit" }));
 
     expect(screen.getByRole("button", { name: "Submit application" })).toBeInTheDocument();
-    expect(screen.getByLabelText(/Government ID/)).toHaveValue("ID-123");
+    expect(screen.getByLabelText(/Identification card/)).toHaveValue(
+      "https://example.com/government-id.pdf"
+    );
     expect(screen.getByLabelText(/Teaching certification document URL/)).toHaveValue(
       pendingTutor.certificationUrl
     );

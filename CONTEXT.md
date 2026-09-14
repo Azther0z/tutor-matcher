@@ -31,9 +31,10 @@ from sign-up; nothing has to be granted.
 _Avoid_: Learner, client, buyer
 
 **Tutor**:
-A user whose tutor application has been approved. A tutor additionally publishes a
-public listing, manages subjects and availability, teaches confirmed lessons, and
-receives earnings into the same wallet.
+A user whose tutor application has been approved. In the current sprint, a complete
+application is approved immediately; the stored Tutor status starts as `UNPUBLISHED`
+until the public listing is configured. A tutor manages subjects and availability,
+teaches confirmed lessons, and receives earnings into the same wallet.
 _Avoid_: Teacher, instructor, provider
 
 **Admin**:
@@ -43,14 +44,16 @@ accounts.
 _Avoid_: Moderator, staff, superuser
 
 **Tutor Application**:
-A student's request to gain the tutor capability, carrying a government ID document,
-a teaching certification document, and a bio. It is `pending` until an admin approves
-or rejects it; a pending application can be cancelled and re-submitted.
+A student's request to gain the tutor capability, carrying a government ID URL, a
+teaching certification URL, and a bio. The current sprint approves a complete
+submission immediately; `pending` and `rejected` remain available for the future admin
+review workflow, where a pending application can be cancelled and re-submitted.
 _Avoid_: Tutor signup, tutor registration, enrolment
 
 **Verification Document**:
-The government ID or teaching certification file attached to a tutor application and
-checked by an admin. Replacing a document re-enters admin review.
+The URL reference for the government ID or teaching certification file attached to a
+tutor application and checked by an admin. Replacing a document re-enters admin review
+once that workflow is enabled.
 _Avoid_: Transfer proof, attachment, credential
 
 **Listing**:

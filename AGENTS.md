@@ -47,6 +47,7 @@
 - Treat `docs/backlog/backlog.html` as generated output from backlog YAML and `scripts/templates/backlog.html`; update it with `npm run backlog:build` rather than editing it directly.
 - Treat the prototype as behavioural authority and `apps/backend/prisma/schema.prisma` as the authority for what the database currently contains.
 - While Tutor Matcher has no real production database, do not maintain Prisma migration history; synchronize disposable databases from `schema.prisma` with `prisma db push`.
+- Until the admin tutor-application review workflow is implemented, represent the government ID and teaching certification as URLs and auto-approve a complete submission by storing the Tutor as `UNPUBLISHED`; once that workflow is available, restore new submissions to `PENDING`. Defer normal file upload and document storage to the next Sprint.
 
 ### Open Threads
 - Question: Which backlog stories that contradict the product get cancelled, and which get reworded?
