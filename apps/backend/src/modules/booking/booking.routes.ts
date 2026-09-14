@@ -14,6 +14,7 @@ import {
   bookingIdParamsSchema,
   cancelBookingSchema,
   createBookingSchema,
+  listBookingsQuerySchema,
   rescheduleBookingSchema,
   subjectIdParamsSchema,
 } from "./booking.schema.ts";
@@ -25,7 +26,8 @@ bookingRouter.get(
   validate(subjectIdParamsSchema, "params"),
   subjectAvailability
 );
-bookingRouter.get("/", list);
+// BOOK-4: ?role=tutor lists lessons booked against the caller's own subjects.
+bookingRouter.get("/", validate(listBookingsQuerySchema, "query"), list);
 bookingRouter.post("/", validate(createBookingSchema), create);
 bookingRouter.get("/:id", validate(bookingIdParamsSchema, "params"), detail);
 bookingRouter.get(

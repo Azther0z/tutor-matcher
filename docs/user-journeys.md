@@ -145,8 +145,8 @@ locked to this booking while payment is outstanding.
 ### Step 3 — Confirmed
 
 The booking shows the lesson, when, where (Online · Zoom), and the **meeting link**,
-plus what was paid and the payment reference. Actions are Join, Message the tutor, and
-Cancel.
+plus what was paid and the payment reference. Actions are Join, Message the tutor,
+Reschedule, and Cancel.
 
 **There is no tutor accept step.** The tutor published the slot as available, so a paid
 booking is auto-confirmed onto the tutor's schedule. If the slot was taken first, the
@@ -157,12 +157,20 @@ booking is blocked _before_ payment is captured.
 After delivery the booking becomes `completed`, which starts settlement and unlocks
 reviewing.
 
-### Cancellation
+### Cancellation and rescheduling
 
 Cancelling removes the lesson from the schedule; an eligible refund is credited back to
 the student's wallet. The applicable policy is shown before confirmation when the
 cancellation falls inside the penalty window. The product's stated default is free
-cancellation up to 12 hours before the lesson.
+cancellation up to 12 hours before the lesson. Rescheduling replaces the lesson's slots
+with a different open time for the same subject, without cancelling the booking.
+
+**Either side can act, on different terms.** A student's cancellation or reschedule is
+subject to the policy window above. A tutor cancelling their own confirmed lesson always
+returns the full amount to the student with no fee, regardless of how close the lesson
+is — a tutor is never better off waiting out the window before cancelling. A tutor can
+reschedule under the same window as a student. Whoever cancelled is recorded against the
+booking.
 
 ### `/bookings`
 
@@ -278,6 +286,12 @@ subjects and a student browsing a subject sees only slots that carry it. Slots a
 attached to a paid booking are **locked** and cannot be closed. Subject assignment uses
 compact toggle boxes that scroll inside their own area. Availability is per date, not a
 recurring weekly pattern.
+
+**Managing a booked lesson.** From `/bookings` switched to the tutor's own lessons, a
+tutor can open a lesson they are teaching and Cancel or Reschedule it, the same way a
+student can from their side — see [Cancellation and rescheduling](#cancellation-and-rescheduling)
+for the policy, which is not symmetric: a tutor's cancellation is always a full refund to
+the student, with no fee.
 
 Related stories: US2-3, US2-4, US2-5, US2-7, US10-2, US10-3.
 

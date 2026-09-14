@@ -198,6 +198,8 @@ its data at `/srv/platform/tutor-matcher/postgres` on the deployment host.
   `/(auth)/enroll-tutor`, and to listing photos and intro videos. (This decision was
   previously recorded as "file storage for transfer proof"; the product has no
   transfer-proof upload — money moves through the wallet.)
-- **Slot locking strategy** — the booking flow must block a second student before
-  payment capture, not compensate afterwards. See gaps G1 and G2 in
-  [`project-schema.md`](project-schema.md#reconciliation-requirement-vs-implementation).
+
+Settled: **slot locking strategy** — `createBooking` claims slots inside a Serializable
+transaction and verifies the claimed count before creating the payment, so a second
+student is blocked before payment capture rather than compensated afterwards. See
+[`project-schema.md`](project-schema.md#reconciliation-requirement-vs-implementation).

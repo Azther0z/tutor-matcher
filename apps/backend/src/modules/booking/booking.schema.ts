@@ -9,6 +9,10 @@ const availabilityIds = z
 
 export const subjectIdParamsSchema = z.object({ subjectId: z.uuid() });
 export const bookingIdParamsSchema = z.object({ id: z.uuid() });
+// BOOK-4 lets a tutor list lessons booked against their own subjects.
+export const listBookingsQuerySchema = z.object({
+  role: z.enum(["student", "tutor"]).optional(),
+});
 // BOOK-1 accepts the chosen subject, slots, and an optional learning goal.
 export const createBookingSchema = z.object({
   subjectId: z.uuid(),

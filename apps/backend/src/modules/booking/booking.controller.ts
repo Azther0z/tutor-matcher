@@ -65,7 +65,9 @@ export async function detail(req: Request, res: Response) {
 
 export async function list(req: Request, res: Response) {
   try {
-    res.json({ bookings: await listBookings(req.user!.sub) });
+    // validate() only checks req.query; it never writes the parsed value back, so read the raw string.
+    const role = req.query.role === "tutor" ? "TUTOR" : "STUDENT";
+    res.json({ bookings: await listBookings(req.user!.sub, role) });
   } catch (error) {
     await sendError(error, res);
   }
