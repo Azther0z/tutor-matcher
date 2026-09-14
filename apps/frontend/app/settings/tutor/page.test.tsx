@@ -86,4 +86,35 @@ describe("TutorSettingsPage", () => {
     });
     expect(await screen.findByText("Tutor profile saved successfully.")).toBeInTheDocument();
   });
+
+  it("accepts URLs without an explicit protocol", async () => {
+    localStorage.setItem("authToken", "test-token");
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+    render(<TutorSettingsPage />);
+
+    fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Ada" } });
+    fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "Lovelace" } });
+    fireEvent.change(screen.getByLabelText("Tutor bio"), {
+      target: { value: "I teach mathematics." },
+    });
+    fireEvent.change(screen.getByLabelText("Intro video URL"), {
+      target: { value: "example.com/intro.mp4" },
+    });
+    fireEvent.change(screen.getByLabelText(/Identification card/), {
+      target: { value: "example.com/government-id.pdf" },
+    });
+    fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
+      target: { value: "example.com/certification.pdf" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText("Enter a valid intro video URL.")).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        body: expect.stringContaining('"introVideoUrl":"example.com/intro.mp4"'),
+      })
+    );
+  });
 });

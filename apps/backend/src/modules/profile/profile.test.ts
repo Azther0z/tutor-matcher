@@ -177,6 +177,69 @@ describe("PUT /api/profiles/me", () => {
     }
   );
 
+  it("normalizes URLs without a protocol before updating an approved Tutor", async () => {
+    findUnique.mockResolvedValue({
+      tutorId,
+      tutor: { status: "PUBLISHED", certifications: [{ id: certificationId }] },
+    });
+    tutorUpdate.mockResolvedValue({ id: tutorId, ...tutorFields });
+    userUpdate.mockResolvedValue({
+      id: "11111111-1111-4111-8111-111111111111",
+      email: "tutor@example.com",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      bio: "Mathematics tutor",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    certificationUpdate.mockResolvedValue({
+      id: certificationId,
+      fileUrl: "https://example.com/certification.pdf",
+      tutorId,
+    });
+
+    await request(app)
+      .put("/api/profiles/me")
+      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
+      .send({
+        ...profile,
+        tutor: {
+          ...profile.tutor,
+          avatarUrl: "example.com/avatar.jpg",
+          introVideoUrl: "example.com/intro.mp4",
+          identificationCardUrl: "example.com/government-id.pdf",
+          certificationUrl: "example.com/certification.pdf",
+        },
+      })
+      .expect(200);
+
+    expect(tutorUpdate).toHaveBeenCalledWith({
+      where: { id: tutorId },
+      data: {
+        avatarUrl: "https://example.com/avatar.jpg",
+        bio: profile.tutor.bio,
+        introVideoUrl: "https://example.com/intro.mp4",
+        identificationCardUrl: "https://example.com/government-id.pdf",
+      },
+    });
+    expect(certificationUpdate).toHaveBeenCalledWith({
+      where: { id: certificationId },
+      data: { fileUrl: "https://example.com/certification.pdf" },
+    });
+  });
+
+  it("rejects non-HTTPS URLs when updating an approved Tutor", async () => {
+    await request(app)
+      .put("/api/profiles/me")
+      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
+      .send({
+        ...profile,
+        tutor: { ...profile.tutor, introVideoUrl: "http://example.com/intro.mp4" },
+      })
+      .expect(400);
+
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
   it("creates the certification document the first time an approved Tutor submits one", async () => {
     findUnique.mockResolvedValue({
       tutorId,
@@ -311,7 +374,7 @@ describe("PUT /api/profiles/me/tutor", () => {
     });
   });
 
-  it("rejects non-HTTPS URLs", async () => {
+  it("rejects non-HTTPS URLs when submitting an application", async () => {
     await request(app)
       .put("/api/profiles/me/tutor")
       .set("Authorization", `Bearer ${tokenFor(userId)}`)

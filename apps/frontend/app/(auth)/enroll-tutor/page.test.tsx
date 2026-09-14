@@ -151,6 +151,39 @@ describe("EnrollTutorPage", () => {
     expect(screen.queryByText("Awaiting approval")).not.toBeInTheDocument();
   });
 
+  it("accepts URLs without an explicit protocol during enrollment", async () => {
+    mockApplication({ status: "NONE", tutor: null });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        status: "APPROVED",
+        tutor: { ...pendingTutor, status: "UNPUBLISHED" },
+      }),
+    });
+    render(<EnrollTutorPage />);
+    await screen.findByRole("button", { name: "Submit application" });
+
+    completeRequiredFields();
+    fireEvent.change(screen.getByLabelText("Intro video URL"), {
+      target: { value: "example.com/intro.mp4" },
+    });
+    fireEvent.change(screen.getByLabelText(/Identification card/), {
+      target: { value: "example.com/government-id.pdf" },
+    });
+    fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
+      target: { value: "example.com/certification.pdf" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Submit application" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(fetchMock.mock.calls[1][1]).toEqual(
+      expect.objectContaining({
+        body: expect.stringContaining('"introVideoUrl":"example.com/intro.mp4"'),
+      })
+    );
+    expect(screen.queryByText("Enter a valid intro video URL.")).not.toBeInTheDocument();
+  });
+
   it("shows the awaiting-approval panel for a pending applicant and can reopen the form", async () => {
     mockApplication({ status: "PENDING", tutor: pendingTutor });
     render(<EnrollTutorPage />);
