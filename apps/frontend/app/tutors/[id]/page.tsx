@@ -6,8 +6,8 @@ import { RequireAuth } from "@/src/components/require-auth";
 import { getAuthToken } from "@/src/lib/auth";
 
 type TutorSummary = {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   firstName: string;
   lastName: string;
 };

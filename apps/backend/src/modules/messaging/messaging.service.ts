@@ -8,7 +8,7 @@ export class RecipientNotFoundError extends Error {
   }
 }
 
-export async function sendMessage(fromUserId: number, input: SendMessageRequest) {
+export async function sendMessage(fromUserId: string, input: SendMessageRequest) {
   // Any existing user may be messaged here — a Tutor replying to a Student is
   // just as valid as the Student who started the conversation. Restricting a
   // *new* conversation to Students messaging Tutors is enforced by the
@@ -32,7 +32,7 @@ export async function sendMessage(fromUserId: number, input: SendMessageRequest)
   });
 }
 
-export async function getInbox(userId: number) {
+export async function getInbox(userId: string) {
   return prisma.message.findMany({
     where: { toUserId: userId },
     orderBy: { createdAt: "desc" },
@@ -42,7 +42,7 @@ export async function getInbox(userId: number) {
   });
 }
 
-export async function getThread(userId: number, otherUserId: number) {
+export async function getThread(userId: string, otherUserId: string) {
   return prisma.message.findMany({
     where: {
       OR: [

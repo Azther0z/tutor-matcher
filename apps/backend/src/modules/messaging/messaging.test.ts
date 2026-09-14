@@ -15,7 +15,10 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
 const { app } = await import("../../app.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");
 
-function tokenFor(userId = 1) {
+const USER_ID = "00000000-0000-4000-8000-000000000001";
+const OTHER_USER_ID = "00000000-0000-4000-8000-000000000002";
+
+function tokenFor(userId = USER_ID) {
   return signAuthToken({ sub: userId, email: "student@example.com", isAdmin: false });
 }
 
@@ -27,7 +30,10 @@ describe("Messaging API", () => {
   });
 
   it("requires authentication to send a message", async () => {
-    await request(app).post("/api/messages").send({ toUserId: 2, message: "Hi!" }).expect(401);
+    await request(app)
+      .post("/api/messages")
+      .send({ toUserId: OTHER_USER_ID, message: "Hi!" })
+      .expect(401);
 
     expect(messageCreate).not.toHaveBeenCalled();
   });
@@ -36,7 +42,7 @@ describe("Messaging API", () => {
     await request(app)
       .post("/api/messages")
       .set("Authorization", `Bearer ${tokenFor()}`)
-      .send({ toUserId: 2, message: "" })
+      .send({ toUserId: OTHER_USER_ID, message: "" })
       .expect(400);
 
     expect(userFindUnique).not.toHaveBeenCalled();
@@ -49,18 +55,18 @@ describe("Messaging API", () => {
     await request(app)
       .post("/api/messages")
       .set("Authorization", `Bearer ${tokenFor()}`)
-      .send({ toUserId: 2, message: "Hi!" })
+      .send({ toUserId: OTHER_USER_ID, message: "Hi!" })
       .expect(404);
 
     expect(messageCreate).not.toHaveBeenCalled();
   });
 
   it("allows a Tutor to reply to a Student who is not a Tutor", async () => {
-    userFindUnique.mockResolvedValue({ id: 2 });
+    userFindUnique.mockResolvedValue({ id: OTHER_USER_ID });
     messageCreate.mockResolvedValue({
       id: 11,
-      fromUserId: 1,
-      toUserId: 2,
+      fromUserId: USER_ID,
+      toUserId: OTHER_USER_ID,
       message: "Sure, Saturday works!",
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
@@ -68,20 +74,23 @@ describe("Messaging API", () => {
     await request(app)
       .post("/api/messages")
       .set("Authorization", `Bearer ${tokenFor()}`)
-      .send({ toUserId: 2, message: "Sure, Saturday works!" })
+      .send({ toUserId: OTHER_USER_ID, message: "Sure, Saturday works!" })
       .expect(201);
 
     expect(messageCreate).toHaveBeenCalledWith({
-      data: { fromUserId: 1, toUserId: 2, message: "Sure, Saturday works!" },
+      data: { fromUserId: USER_ID, toUserId: OTHER_USER_ID, message: "Sure, Saturday works!" },
     });
   });
 
   it("delivers a valid message to the Tutor's inbox", async () => {
-    userFindUnique.mockResolvedValue({ id: 2, tutorId: 5 });
+    userFindUnique.mockResolvedValue({
+      id: OTHER_USER_ID,
+      tutorId: "00000000-0000-4000-8000-000000000005",
+    });
     messageCreate.mockResolvedValue({
       id: 10,
-      fromUserId: 1,
-      toUserId: 2,
+      fromUserId: USER_ID,
+      toUserId: OTHER_USER_ID,
       message: "Hi, are you free on weekends?",
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
@@ -89,11 +98,15 @@ describe("Messaging API", () => {
     const response = await request(app)
       .post("/api/messages")
       .set("Authorization", `Bearer ${tokenFor()}`)
-      .send({ toUserId: 2, message: "Hi, are you free on weekends?" })
+      .send({ toUserId: OTHER_USER_ID, message: "Hi, are you free on weekends?" })
       .expect(201);
 
     expect(messageCreate).toHaveBeenCalledWith({
-      data: { fromUserId: 1, toUserId: 2, message: "Hi, are you free on weekends?" },
+      data: {
+        fromUserId: USER_ID,
+        toUserId: OTHER_USER_ID,
+        message: "Hi, are you free on weekends?",
+      },
     });
     expect(response.body).toMatchObject({ id: 10, fromUserId: 1, toUserId: 2 });
   });
@@ -105,17 +118,23 @@ describe("Messaging API", () => {
 
   it("returns the current user's received messages, newest first", async () => {
     messageFindMany.mockResolvedValue([
-      { id: 10, fromUserId: 1, toUserId: 2, message: "Hi!", createdAt: new Date() },
+      {
+        id: "00000000-0000-4000-8000-000000000010",
+        fromUserId: USER_ID,
+        toUserId: OTHER_USER_ID,
+        message: "Hi!",
+        createdAt: new Date(),
+      },
     ]);
 
     const response = await request(app)
       .get("/api/messages/inbox")
-      .set("Authorization", `Bearer ${tokenFor(2)}`)
+      .set("Authorization", `Bearer ${tokenFor(OTHER_USER_ID)}`)
       .expect(200);
 
     expect(messageFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { toUserId: 2 },
+        where: { toUserId: OTHER_USER_ID },
         orderBy: { createdAt: "desc" },
       })
     );
@@ -123,13 +142,13 @@ describe("Messaging API", () => {
   });
 
   it("requires authentication to read a thread", async () => {
-    await request(app).get("/api/messages/thread/2").expect(401);
+    await request(app).get(`/api/messages/thread/${OTHER_USER_ID}`).expect(401);
     expect(messageFindMany).not.toHaveBeenCalled();
   });
 
   it("rejects a non-numeric thread user id", async () => {
     await request(app)
-      .get("/api/messages/thread/not-a-number")
+      .get("/api/messages/thread/not-a-uuid")
       .set("Authorization", `Bearer ${tokenFor()}`)
       .expect(400);
 
@@ -138,21 +157,33 @@ describe("Messaging API", () => {
 
   it("returns the two-way thread with another user, oldest first", async () => {
     messageFindMany.mockResolvedValue([
-      { id: 1, fromUserId: 1, toUserId: 2, message: "Hi!", createdAt: new Date() },
-      { id: 2, fromUserId: 2, toUserId: 1, message: "Hey there", createdAt: new Date() },
+      {
+        id: "00000000-0000-4000-8000-000000000001",
+        fromUserId: USER_ID,
+        toUserId: OTHER_USER_ID,
+        message: "Hi!",
+        createdAt: new Date(),
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000002",
+        fromUserId: OTHER_USER_ID,
+        toUserId: USER_ID,
+        message: "Hey there",
+        createdAt: new Date(),
+      },
     ]);
 
     const response = await request(app)
-      .get("/api/messages/thread/2")
-      .set("Authorization", `Bearer ${tokenFor(1)}`)
+      .get(`/api/messages/thread/${OTHER_USER_ID}`)
+      .set("Authorization", `Bearer ${tokenFor(USER_ID)}`)
       .expect(200);
 
     expect(messageFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           OR: [
-            { fromUserId: 1, toUserId: 2 },
-            { fromUserId: 2, toUserId: 1 },
+            { fromUserId: USER_ID, toUserId: OTHER_USER_ID },
+            { fromUserId: OTHER_USER_ID, toUserId: USER_ID },
           ],
         },
         orderBy: { createdAt: "asc" },

@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { z } from "zod";
 import { getInbox, getThread, RecipientNotFoundError, sendMessage } from "./messaging.service.ts";
 import type { SendMessageRequest } from "./messaging.schema.ts";
 
@@ -22,13 +23,13 @@ export async function getMessagingInbox(req: Request, res: Response) {
 }
 
 export async function getMessagingThread(req: Request, res: Response) {
-  const otherUserId = Number(req.params.userId);
+  const parsedUserId = z.string().uuid().safeParse(req.params.userId);
 
-  if (!Number.isInteger(otherUserId)) {
+  if (!parsedUserId.success) {
     res.status(400).json({ message: "Invalid user id" });
     return;
   }
 
-  const thread = await getThread(req.user!.sub, otherUserId);
+  const thread = await getThread(req.user!.sub, parsedUserId.data);
   res.status(200).json(thread);
 }

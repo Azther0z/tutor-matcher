@@ -12,7 +12,10 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
 const { app } = await import("../../app.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");
 
-function tokenFor(userId = 1) {
+const TUTOR_ID = "00000000-0000-4000-8000-000000000002";
+const USER_ID = "00000000-0000-4000-8000-000000000020";
+
+function tokenFor(userId = USER_ID) {
   return signAuthToken({ sub: userId, email: "student@example.com", isAdmin: false });
 }
 
@@ -22,13 +25,13 @@ describe("Discovery API", () => {
   });
 
   it("requires authentication", async () => {
-    await request(app).get("/api/discovery/tutors/2").expect(401);
+    await request(app).get(`/api/discovery/tutors/${TUTOR_ID}`).expect(401);
     expect(tutorFindUnique).not.toHaveBeenCalled();
   });
 
-  it("returns 404 for a non-numeric tutor id", async () => {
+  it("returns 404 for an invalid tutor id", async () => {
     await request(app)
-      .get("/api/discovery/tutors/not-a-number")
+      .get("/api/discovery/tutors/not-a-uuid")
       .set("Authorization", `Bearer ${tokenFor()}`)
       .expect(404);
 
@@ -39,26 +42,30 @@ describe("Discovery API", () => {
     tutorFindUnique.mockResolvedValue(null);
 
     await request(app)
-      .get("/api/discovery/tutors/2")
+      .get(`/api/discovery/tutors/${TUTOR_ID}`)
       .set("Authorization", `Bearer ${tokenFor()}`)
       .expect(404);
   });
 
   it("returns the tutor's public identity", async () => {
     tutorFindUnique.mockResolvedValue({
-      id: 2,
-      user: { id: 20, firstName: "Anong", lastName: "P." },
+      id: TUTOR_ID,
+      firstName: "Anong",
+      lastName: "P.",
+      tutor: { id: TUTOR_ID },
     });
 
     const response = await request(app)
-      .get("/api/discovery/tutors/2")
+      .get(`/api/discovery/tutors/${TUTOR_ID}`)
       .set("Authorization", `Bearer ${tokenFor()}`)
       .expect(200);
 
-    expect(tutorFindUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 2 } }));
+    expect(tutorFindUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { tutorId: TUTOR_ID } })
+    );
     expect(response.body).toEqual({
-      id: 2,
-      userId: 20,
+      id: TUTOR_ID,
+      userId: USER_ID,
       firstName: "Anong",
       lastName: "P.",
     });

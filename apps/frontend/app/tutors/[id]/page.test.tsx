@@ -5,12 +5,17 @@ const mockPush = jest.fn();
 const fetchMock = jest.fn();
 
 jest.mock("next/navigation", () => ({
-  usePathname: () => "/tutors/2",
+  usePathname: () => "/tutors/00000000-0000-4000-8000-000000000002",
   useRouter: () => ({ push: mockPush, replace: mockPush }),
-  useParams: () => ({ id: "2" }),
+  useParams: () => ({ id: "00000000-0000-4000-8000-000000000002" }),
 }));
 
-const tutor = { id: 2, userId: 20, firstName: "Anong", lastName: "P." };
+const tutor = {
+  id: "00000000-0000-4000-8000-000000000002",
+  userId: "00000000-0000-4000-8000-000000000020",
+  firstName: "Anong",
+  lastName: "P.",
+};
 
 beforeEach(() => {
   mockPush.mockReset();
@@ -23,7 +28,11 @@ describe("TutorDetailPage", () => {
   it("redirects to login when not authenticated", async () => {
     render(<TutorDetailPage />);
 
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/login?next=%2Ftutors%2F2"));
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith(
+        "/login?next=%2Ftutors%2F00000000-0000-4000-8000-000000000002"
+      )
+    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -66,11 +75,18 @@ describe("TutorDetailPage", () => {
         "/api/messages",
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ toUserId: 20, message: "Are you free this weekend?" }),
+          body: JSON.stringify({
+            toUserId: "00000000-0000-4000-8000-000000000020",
+            message: "Are you free this weekend?",
+          }),
         })
       )
     );
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/messages?with=20&name=Anong%20P."));
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith(
+        "/messages?with=00000000-0000-4000-8000-000000000020&name=Anong%20P."
+      )
+    );
   });
 
   it("sends on Enter but not on Shift+Enter", async () => {

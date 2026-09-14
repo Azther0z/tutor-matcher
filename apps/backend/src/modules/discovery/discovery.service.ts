@@ -7,23 +7,25 @@ export class TutorNotFoundError extends Error {
   }
 }
 
-export async function getTutorSummary(tutorId: number) {
-  const tutor = await prisma.tutor.findUnique({
-    where: { id: tutorId },
+export async function getTutorSummary(tutorId: string) {
+  const tutor = await prisma.user.findUnique({
+    where: { tutorId },
     select: {
       id: true,
-      user: { select: { id: true, firstName: true, lastName: true } },
+      firstName: true,
+      lastName: true,
+      tutor: { select: { id: true } },
     },
   });
 
-  if (!tutor?.user) {
+  if (!tutor?.tutor) {
     throw new TutorNotFoundError();
   }
 
   return {
-    id: tutor.id,
-    userId: tutor.user.id,
-    firstName: tutor.user.firstName,
-    lastName: tutor.user.lastName,
+    id: tutor.tutor.id,
+    userId: tutor.id,
+    firstName: tutor.firstName,
+    lastName: tutor.lastName,
   };
 }

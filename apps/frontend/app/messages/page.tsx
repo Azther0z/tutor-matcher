@@ -6,24 +6,24 @@ import { RequireAuth } from "@/src/components/require-auth";
 import { getAuthToken } from "@/src/lib/auth";
 
 type InboxMessage = {
-  id: number;
-  fromUserId: number;
-  toUserId: number;
+  id: string;
+  fromUserId: string;
+  toUserId: string;
   message: string;
   createdAt: string;
-  fromUser: { id: number; firstName: string; lastName: string };
+  fromUser: { id: string; firstName: string; lastName: string };
 };
 
 type ThreadMessage = {
-  id: number;
-  fromUserId: number;
-  toUserId: number;
+  id: string;
+  fromUserId: string;
+  toUserId: string;
   message: string;
   createdAt: string;
 };
 
 type Conversation = {
-  userId: number;
+  userId: string;
   name: string;
   preview: string;
   timestamp: string;
@@ -65,8 +65,8 @@ function MessagesView() {
   const [inbox, setInbox] = useState<InboxMessage[] | null>(null);
   const [inboxError, setInboxError] = useState<string | null>(null);
 
-  const [selected, setSelected] = useState<{ userId: number; name: string } | null>(
-    withUserId ? { userId: Number(withUserId), name: withName ?? "Tutor" } : null
+  const [selected, setSelected] = useState<{ userId: string; name: string } | null>(
+    withUserId ? { userId: withUserId, name: withName ?? "Tutor" } : null
   );
 
   const [thread, setThread] = useState<ThreadMessage[] | null>(null);
@@ -167,7 +167,7 @@ function MessagesView() {
 
   const conversations: Conversation[] = [];
   if (inbox) {
-    const seen = new Set<number>();
+    const seen = new Set<string>();
     for (const item of inbox) {
       if (seen.has(item.fromUserId)) continue;
       seen.add(item.fromUserId);

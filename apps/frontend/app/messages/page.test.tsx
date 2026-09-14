@@ -11,13 +11,16 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => searchParams,
 }));
 
+const USER_ID = "00000000-0000-4000-8000-000000000001";
+const OTHER_USER_ID = "00000000-0000-4000-8000-000000000002";
+
 const anong = {
-  id: 10,
-  fromUserId: 2,
-  toUserId: 1,
+  id: "00000000-0000-4000-8000-000000000010",
+  fromUserId: OTHER_USER_ID,
+  toUserId: USER_ID,
   message: "See you tomorrow at 9!",
   createdAt: "2026-01-01T09:14:00.000Z",
-  fromUser: { id: 2, firstName: "Anong", lastName: "P." },
+  fromUser: { id: OTHER_USER_ID, firstName: "Anong", lastName: "P." },
 };
 
 beforeEach(() => {
@@ -51,7 +54,7 @@ describe("MessagesPage", () => {
     localStorage.setItem("authToken", "token");
     mockFetchRoutes({
       "/api/messages/inbox": [anong],
-      "/api/messages/thread/2": [anong],
+      [`/api/messages/thread/${OTHER_USER_ID}`]: [anong],
     });
 
     render(<MessagesPage />);
@@ -71,10 +74,10 @@ describe("MessagesPage", () => {
 
   it("starts a fresh conversation from a ?with= deep link", async () => {
     localStorage.setItem("authToken", "token");
-    searchParams = new URLSearchParams({ with: "5", name: "Daniel K." });
+    searchParams = new URLSearchParams({ with: OTHER_USER_ID, name: "Daniel K." });
     mockFetchRoutes({
       "/api/messages/inbox": [],
-      "/api/messages/thread/5": [],
+      [`/api/messages/thread/${OTHER_USER_ID}`]: [],
     });
 
     render(<MessagesPage />);
@@ -85,7 +88,7 @@ describe("MessagesPage", () => {
 
   it("sends a message and refreshes the thread", async () => {
     localStorage.setItem("authToken", "token");
-    searchParams = new URLSearchParams({ with: "5", name: "Daniel K." });
+    searchParams = new URLSearchParams({ with: OTHER_USER_ID, name: "Daniel K." });
 
     fetchMock.mockImplementation((url: string, init?: RequestInit) => {
       if (url.includes("/api/messages/inbox")) {
@@ -94,7 +97,7 @@ describe("MessagesPage", () => {
       if (init?.method === "POST" && url.includes("/api/messages")) {
         return Promise.resolve({ ok: true, json: async () => ({ id: 1 }) });
       }
-      if (url.includes("/api/messages/thread/5")) {
+      if (url.includes(`/api/messages/thread/${OTHER_USER_ID}`)) {
         return Promise.resolve({ ok: true, json: async () => [] });
       }
       return Promise.resolve({ ok: false, json: async () => ({}) });
@@ -111,7 +114,7 @@ describe("MessagesPage", () => {
         "/api/messages",
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ toUserId: 5, message: "Hi Daniel!" }),
+          body: JSON.stringify({ toUserId: OTHER_USER_ID, message: "Hi Daniel!" }),
         })
       )
     );
@@ -120,7 +123,7 @@ describe("MessagesPage", () => {
 
   it("sends the message on Enter without a newline", async () => {
     localStorage.setItem("authToken", "token");
-    searchParams = new URLSearchParams({ with: "5", name: "Daniel K." });
+    searchParams = new URLSearchParams({ with: OTHER_USER_ID, name: "Daniel K." });
 
     fetchMock.mockImplementation((url: string, init?: RequestInit) => {
       if (init?.method === "POST" && url.includes("/api/messages")) {
@@ -140,7 +143,7 @@ describe("MessagesPage", () => {
         "/api/messages",
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ toUserId: 5, message: "Hi Daniel!" }),
+          body: JSON.stringify({ toUserId: OTHER_USER_ID, message: "Hi Daniel!" }),
         })
       )
     );
@@ -148,8 +151,8 @@ describe("MessagesPage", () => {
 
   it("does not send on Shift+Enter, leaving room for a newline", async () => {
     localStorage.setItem("authToken", "token");
-    searchParams = new URLSearchParams({ with: "5", name: "Daniel K." });
-    mockFetchRoutes({ "/api/messages/inbox": [], "/api/messages/thread/5": [] });
+    searchParams = new URLSearchParams({ with: OTHER_USER_ID, name: "Daniel K." });
+    mockFetchRoutes({ "/api/messages/inbox": [], [`/api/messages/thread/${OTHER_USER_ID}`]: [] });
 
     render(<MessagesPage />);
 

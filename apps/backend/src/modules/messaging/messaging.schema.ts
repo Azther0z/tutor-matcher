@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const sendMessageSchema = z.object({
-  toUserId: z.number().int().positive(),
+  toUserId: z.string().uuid(),
   message: z.string().trim().min(1).max(2000),
 });
 
