@@ -53,16 +53,10 @@ export function Navbar() {
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
 
   useEffect(() => {
-    if (status !== "authenticated") {
-      setHasUnreadMessages(false);
-      return;
-    }
+    if (status !== "authenticated") return;
 
     const token = getAuthToken();
-    if (!token) {
-      setHasUnreadMessages(false);
-      return;
-    }
+    if (!token) return;
 
     fetch("/api/messages/inbox", { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => (res.ok ? res.json() : []))

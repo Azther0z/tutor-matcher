@@ -5,7 +5,7 @@ const tutorFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
-    tutor: { findUnique: tutorFindUnique },
+    user: { findUnique: tutorFindUnique },
   },
 }));
 
@@ -49,7 +49,7 @@ describe("Discovery API", () => {
 
   it("returns the tutor's public identity", async () => {
     tutorFindUnique.mockResolvedValue({
-      id: TUTOR_ID,
+      id: USER_ID,
       firstName: "Anong",
       lastName: "P.",
       tutor: { id: TUTOR_ID },

@@ -17,6 +17,7 @@ const { signAuthToken } = await import("../../lib/jwt.ts");
 
 const USER_ID = "00000000-0000-4000-8000-000000000001";
 const OTHER_USER_ID = "00000000-0000-4000-8000-000000000002";
+const MESSAGE_ID = "00000000-0000-4000-8000-000000000010";
 
 function tokenFor(userId = USER_ID) {
   return signAuthToken({ sub: userId, email: "student@example.com", isAdmin: false });
@@ -88,7 +89,7 @@ describe("Messaging API", () => {
       tutorId: "00000000-0000-4000-8000-000000000005",
     });
     messageCreate.mockResolvedValue({
-      id: 10,
+      id: MESSAGE_ID,
       fromUserId: USER_ID,
       toUserId: OTHER_USER_ID,
       message: "Hi, are you free on weekends?",
@@ -108,7 +109,11 @@ describe("Messaging API", () => {
         message: "Hi, are you free on weekends?",
       },
     });
-    expect(response.body).toMatchObject({ id: 10, fromUserId: 1, toUserId: 2 });
+    expect(response.body).toMatchObject({
+      id: MESSAGE_ID,
+      fromUserId: USER_ID,
+      toUserId: OTHER_USER_ID,
+    });
   });
 
   it("requires authentication to read the inbox", async () => {
