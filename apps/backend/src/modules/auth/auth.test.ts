@@ -50,6 +50,11 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
 jest.unstable_mockModule("../../lib/email.ts", () => ({
   buildPasswordResetUrl: (token: string) => `http://localhost:3000/reset-password?token=${token}`,
   sendPasswordResetEmail,
+  // The notification module also imports from this file; stand ins keep the
+  // app's module graph loadable even though no test here sends one.
+  sendBookingNotificationEmail: jest.fn(),
+  sendMessageNotificationEmail: jest.fn(),
+  sendPaymentNotificationEmail: jest.fn(),
 }));
 
 const { app } = await import("../../app.ts");
