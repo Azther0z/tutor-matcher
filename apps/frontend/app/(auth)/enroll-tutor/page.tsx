@@ -13,6 +13,7 @@ import {
 } from "@/src/lib/tutor-application";
 import {
   emptyTutorDetails,
+  normalizeHttpsUrl,
   type TutorDetails,
   type TutorDetailsFieldErrors,
   validateTutorDetails,
@@ -141,11 +142,11 @@ function EnrollTutorForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          avatarUrl: details.avatarUrl.trim() || null,
+          avatarUrl: normalizeHttpsUrl(details.avatarUrl) || null,
           bio: details.bio.trim(),
-          introVideoUrl: details.introVideoUrl.trim(),
-          identificationCardUrl: details.identificationCardUrl.trim(),
-          certificationUrl: details.certificationUrl.trim(),
+          introVideoUrl: normalizeHttpsUrl(details.introVideoUrl),
+          identificationCardUrl: normalizeHttpsUrl(details.identificationCardUrl),
+          certificationUrl: normalizeHttpsUrl(details.certificationUrl),
           consentAccepted,
         }),
       });

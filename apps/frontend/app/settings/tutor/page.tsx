@@ -7,6 +7,7 @@ import {
   tutorDetailsInputClassName,
 } from "@/src/components/tutor-details-fields";
 import {
+  normalizeHttpsUrl,
   type TutorDetails,
   type TutorDetailsFieldErrors,
   validateTutorDetails,
@@ -70,11 +71,11 @@ export default function TutorSettingsPage() {
             bio: userBio.trim() || null,
           },
           tutor: {
-            avatarUrl: details.avatarUrl.trim() || null,
+            avatarUrl: normalizeHttpsUrl(details.avatarUrl) || null,
             bio: details.bio.trim(),
-            introVideoUrl: details.introVideoUrl.trim(),
-            identificationCardUrl: details.identificationCardUrl.trim(),
-            certificationUrl: details.certificationUrl.trim(),
+            introVideoUrl: normalizeHttpsUrl(details.introVideoUrl),
+            identificationCardUrl: normalizeHttpsUrl(details.identificationCardUrl),
+            certificationUrl: normalizeHttpsUrl(details.certificationUrl),
           },
         }),
       });

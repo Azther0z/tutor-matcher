@@ -19,11 +19,19 @@ export const emptyTutorDetails: TutorDetails = {
 
 function isValidUrl(value: string) {
   try {
-    new URL(value);
-    return true;
+    const url = new URL(normalizeHttpsUrl(value));
+    return url.protocol === "https:" && url.hostname.includes(".");
   } catch {
     return false;
   }
+}
+
+export function normalizeHttpsUrl(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed || /^[a-z][a-z\d+.-]*:/i.test(trimmed)) return trimmed;
+
+  return `https://${trimmed}`;
 }
 
 export function validateTutorDetails(values: TutorDetails): TutorDetailsFieldErrors {
