@@ -87,7 +87,9 @@ describe("EnrollTutorPage", () => {
     fireEvent.change(screen.getByLabelText("Intro video URL"), {
       target: { value: "https://example.com/intro.mp4" },
     });
-    fireEvent.change(screen.getByLabelText(/Government ID/), { target: { value: "ID-123" } });
+    fireEvent.change(screen.getByLabelText(/Identification card/), {
+      target: { value: "https://example.com/identification-card.pdf" },
+    });
     fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
       target: { value: "https://example.com/certification.pdf" },
     });
