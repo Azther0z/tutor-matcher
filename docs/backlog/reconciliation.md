@@ -131,7 +131,11 @@ PROF-1) as `non-story`.
 | `/payments/:id`                            | `/wallet/transactions/:id`                    | PAY-5                  |
 | `/topup`                                   | `/wallet/topup`                               | PAY-1                  |
 | `/settings`                                | `/settings/account`                           | PROF-4                 |
-| `/settings/notification`                   | `/settings/notifications`                     | MSG-2                  |
+
+`/settings/notification` (singular) was also a historical SVG route mapping to MSG-2
+at `/settings/notifications` (plural). PR review pointed out that keeping both was
+just a duplicate entry pointing at the same story once pluralized, so it was removed
+from `journey_coverage` rather than kept as an identical duplicate.
 
 Routes that had no `journey_coverage` entry at all now have one:
 

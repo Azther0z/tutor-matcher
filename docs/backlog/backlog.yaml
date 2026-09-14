@@ -131,9 +131,6 @@ journey_coverage:
       route: "/settings/notifications"
       action: "Notification settings"
       story_ids: [MSG-2]
-    - classification: non-story
-      route: "/settings/notification"
-      action: "Notification settings (historical SVG route)"
 
     # --- Wallet (historical SVG route, kept per the additive policy) ---
     - classification: story
