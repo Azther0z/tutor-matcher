@@ -53,6 +53,7 @@ services:
     image: docker.io/azther0z/tutor-matcher-backend:latest
     build:
       context: ../apps/backend
+    command: ["sh", "-c", "npm run db:push -- --force-reset && npm start"]
     hostname: tutor-matcher-backend
     env_file:
       - ./secrets/backend.enc.env
