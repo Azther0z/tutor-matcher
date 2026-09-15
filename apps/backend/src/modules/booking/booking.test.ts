@@ -115,7 +115,7 @@ describe("trial booking rules", () => {
             avatarUrl: null,
             bio: null,
             introVideoUrl: null,
-            governmentId: "fixture",
+            identificationCardUrl: "fixture",
             enrolledAt: now,
             status: "PUBLISHED",
             user: {
@@ -157,7 +157,7 @@ describe("trial booking rules", () => {
     });
     expect(booking.actions.canPay).toBe(true);
     expect(JSON.stringify(booking)).not.toContain("email");
-    expect(JSON.stringify(booking)).not.toContain("governmentId");
+    expect(JSON.stringify(booking)).not.toContain("identificationCardUrl");
   });
 
   it("refunds the full credit more than 24 hours before the lesson", () => {

@@ -42,7 +42,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
   beforeAll(async () => {
     await cleanFixtures();
     await prisma.tutor.create({
-      data: { id: TUTOR_ID, governmentId: "integration-fixture", status: "PUBLISHED" },
+      data: { id: TUTOR_ID, identificationCardUrl: "integration-fixture", status: "PUBLISHED" },
     });
     await prisma.user.createMany({
       data: [
@@ -112,7 +112,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
       name: "Test Tutor",
       avatarUrl: null,
     });
-    expect(JSON.stringify(created.body)).not.toContain("governmentId");
+    expect(JSON.stringify(created.body)).not.toContain("identificationCardUrl");
     const bookingId = created.body.booking.id as string;
 
     const cancelled = await authorize(
