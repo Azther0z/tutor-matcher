@@ -1,0 +1,30 @@
+# New: docs/backlog/reconciliation.md section 2 (➕). Product behaviour with no existing
+# story — see issue #63, section 3. Merged what were originally two stories (paying from
+# wallet, and auto-confirming from the tutor's published availability) into one: they are
+# the same payment-capture transaction on /bookings/:id and would ship together — the
+# slot must be locked to the booking in the same step that captures payment, or the
+# double-booking guard (invariant #7 in docs/user-journeys.md) has no atomic home.
+id: BOOK-8
+title: "Pay from wallet and auto-confirm the booking"
+description: "As a Student, I want to pay for my selected slots on /bookings/:id from my wallet balance so the booking confirms immediately from the tutor's published availability, with no tutor approval step, and to be routed to top up if my balance is short."
+epic: "Lesson Booking & Scheduling"
+role: "Student"
+lifecycle: backlog
+story_points: 5
+dependencies: ["BOOK-7", "PAY-5", "PROF-6"]
+acceptance_criteria:
+  - given: "/bookings/:id is in payment-due state and the Student has enough wallet balance,"
+    when: "they pay,"
+    then: "the amount is deducted, the slot is locked to this booking, and the booking is confirmed immediately without a tutor approval step."
+  - given: "the Student's wallet balance is short of the price,"
+    when: "they try to pay,"
+    then: "they are routed to top up the shortfall and returned to this booking afterwards."
+  - given: "the slot is already booked by another student,"
+    when: "this Student tries to pay for it,"
+    then: "the booking is blocked before payment is captured, and no confirmed booking is created."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "Lesson Booking & Scheduling / US4-4, US4-5"
+journey:
+  - route: "/bookings/:id"
+    action: "Pay from wallet and auto-confirm"

@@ -16,7 +16,7 @@ acceptance_criteria:
 sprint: sprint-1
 assignees: ["Poom", "Pee"]
 status: todo
-order: 10
+order: 13
 estimate_hours: 8
 tasks:
   - id: DISC-3-T1

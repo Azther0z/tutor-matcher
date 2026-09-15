@@ -1,0 +1,31 @@
+# New: docs/backlog/reconciliation.md section 2 (➕). Product behaviour with no existing
+# story — see issue #63, section 3. Merged what were originally two stories (starting the
+# flow from a subject, and picking the continuous block within it) into one: they are the
+# same /bookings/s/:subjectId step and would ship together.
+id: BOOK-7
+title: "Subject-locked booking: choose a continuous block"
+description: "As a Student, I want booking to start from a selected tutor subject and let me choose one continuous block of 30-minute slots, so that I do not pick the subject twice and my lesson has a clear start and end time."
+epic: "Lesson Booking & Scheduling"
+role: "Student"
+lifecycle: backlog
+story_points: 5
+dependencies: ["DISC-4"]
+acceptance_criteria:
+  - given: "a booking starts from /tutors/:id/:subjectId,"
+    when: "/bookings/s/:subjectId opens,"
+    then: "the subject and rate are locked into the flow and no booking record exists yet."
+  - given: "the booking calendar is open and a day is selected,"
+    when: "time slots from 00:00 to 23:30 render,"
+    then: "the Student can select any of them, but selecting non-adjacent slots is prevented so the lesson stays continuous, and there is no add-friend or group invite step."
+  - given: "slots are selected,"
+    when: "the summary updates,"
+    then: "duration and price are calculated from the subject rate."
+  - given: "the Student chooses a date and time on /bookings/s/:subjectId,"
+    when: "they continue,"
+    then: "/bookings/:id opens with the booking ID, date, time, subject, and price locked."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "Lesson Booking & Scheduling / US4-1, US4-2, US4-3"
+journey:
+  - route: "/bookings/s/:subjectId"
+    action: "Start a subject-locked booking and select a continuous time block"

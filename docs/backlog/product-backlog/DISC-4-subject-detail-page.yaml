@@ -1,0 +1,33 @@
+# New: docs/backlog/reconciliation.md section 2 (➕, "DISC-new"). Product behaviour with
+# no existing story — see issue #63, section 3. DISC-3 is correct for the tutor's overall
+# profile at /tutors/:id, but that page does not start booking; this sibling story covers
+# the subject-scoped page that does. Merged what were originally two stories (the page
+# itself, and its 48-slot availability table with the booking button) into one, since
+# they are the same page and would ship in the same change.
+id: DISC-4
+title: "Subject detail page with full-day availability and booking button"
+description: "As a Student, I want each tutor subject to have its own detail page, showing that subject's description, rate, format, reviews, and every 30-minute slot from 00:00 to 23:30 marked Available or Not available, with a booking button below the table, so that I can evaluate the offering and start booking without aiming at a small time slot."
+epic: "Tutor Search & Discovery"
+role: "Student"
+lifecycle: backlog
+story_points: 5
+dependencies: ["DISC-3"]
+acceptance_criteria:
+  - given: "a tutor teaches multiple subjects,"
+    when: "a Student opens /tutors/:id/:subjectId,"
+    then: "only that subject's description, rate, format, availability, and reviews are shown."
+  - given: "a Student is on a subject detail page,"
+    when: "they navigate back to /tutors/:id,"
+    then: "they see the tutor's overall profile and subject list."
+  - given: "a subject detail page is open and a day is selected,"
+    when: "slots render,"
+    then: "all 48 half-hour slots are shown, each marked Available or Not available, and unavailable slots are not clickable."
+  - given: "a date is selected on the subject detail page,"
+    when: "the page renders,"
+    then: "a 'Book this subject' button below the availability table starts a subject-locked booking carrying the tutor, subject, rate, and date."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "Tutor Search & Discovery / US3-4, US3-5, US3-6"
+journey:
+  - route: "/tutors/:id/:subjectId"
+    action: "View subject detail and 48-slot availability"

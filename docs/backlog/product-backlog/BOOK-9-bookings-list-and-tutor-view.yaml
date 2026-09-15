@@ -1,0 +1,30 @@
+# New: docs/backlog/reconciliation.md section 2 (➕). Product behaviour with no existing
+# story — see issue #63, section 3. Merged what were originally two stories (the /bookings
+# status tabs, and the tutor's confirmed-booking detail view) into one: both are read
+# views over the same booking data and would ship together as the "view your bookings"
+# slice, for both roles. Depends on CLASS-1 too, since the meeting link this page displays
+# is created there, not here.
+id: BOOK-9
+title: "Bookings list and tutor detail view"
+description: "As a user, I want /bookings grouped into All, Upcoming, Payment due, and Past tabs, and, as a Tutor, I want a confirmed booking's detail page to show the student, lesson description, format, payout, and meeting link, so that either role can find and act on the right booking."
+epic: "Lesson Booking & Scheduling"
+role: "user"
+lifecycle: backlog
+story_points: 5
+dependencies: ["BOOK-8", "CLASS-1"]
+acceptance_criteria:
+  - given: "bookings exist in multiple states,"
+    when: "/bookings opens,"
+    then: "tabs filter to All, Upcoming, Payment due, and Past."
+  - given: "a booking row is clicked,"
+    when: "it opens,"
+    then: "/bookings/:id shows the correct state for that booking."
+  - given: "a Tutor opens /bookings/:id for an upcoming class,"
+    when: "the page loads,"
+    then: "the student name, subject, time, format, payout, Zoom link, and description are visible."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "Lesson Booking & Scheduling / US4-6, US4-7"
+journey:
+  - route: "/bookings"
+    action: "Filter by status tabs and view tutor booking detail"

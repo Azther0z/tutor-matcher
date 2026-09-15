@@ -16,7 +16,7 @@ acceptance_criteria:
 sprint: sprint-1
 assignees: ["Santa", "Plai"]
 status: todo
-order: 19
+order: 14
 estimate_hours: 20
 tasks:
   - id: MSG-1-T1

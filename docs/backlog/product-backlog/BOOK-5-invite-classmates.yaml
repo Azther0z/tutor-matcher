@@ -1,9 +1,11 @@
+# Cancelled: docs/backlog/reconciliation.md marks this ⛔. Bookings are strictly 1-1 in the
+# product — there is no add-friend or group invite flow (docs/user-journeys.md).
 id: BOOK-5
 title: "Invite a classmate"
 description: "As a Student, I want to invite a classmate to a lesson so that we can learn together."
 epic: "Lesson Booking & Scheduling"
 role: "Student"
-lifecycle: backlog
+lifecycle: cancelled
 story_points: 3
 dependencies: []
 acceptance_criteria:

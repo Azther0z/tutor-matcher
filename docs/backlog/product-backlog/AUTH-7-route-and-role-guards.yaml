@@ -1,0 +1,23 @@
+# New: docs/backlog/reconciliation.md section 2 (➕). Product behaviour with no existing
+# story — see issue #63, section 3.
+id: AUTH-7
+title: "Route and role guards"
+description: "As a user, I want route access to match my login state and role so that I only see pages I am allowed to use."
+epic: "Account Registration & Authentication"
+role: "user"
+lifecycle: backlog
+story_points: 3
+dependencies: ["AUTH-2"]
+acceptance_criteria:
+  - given: "a logged-out user opens a protected page,"
+    when: "access is checked,"
+    then: "they are sent to login and returned to that page after logging in."
+  - given: "a non-tutor opens a tutor-only page,"
+    when: "access is checked,"
+    then: "they are routed to tutor enrollment instead of the tutor-only page."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "Account Registration & Authentication / US1-5"
+journey:
+  - route: "*"
+    action: "Enforce route access by login state and role"

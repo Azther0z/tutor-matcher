@@ -1,32 +1,43 @@
+# Reworded: docs/backlog/reconciliation.md marks this ✏️. Cancel-within-policy with a
+# wallet refund is real; the prototype has no reschedule flow. The window is 12 hours, not
+# 24, and the refund goes to wallet balance, not "lesson credit" (docs/user-journeys.md,
+# "Cancellation"). "The 12-hour window is read off prototype copy and still needs product
+# sign-off" per the same page — treat the number as provisional, not final policy.
+#
+# Unresolved: whether reschedule should be built at all is a separate, open product
+# decision (docs/backlog/reconciliation.md; issue #63 also flags this). This story does not
+# decide it — it only removes reschedule from the acceptance criteria because no such flow
+# exists today. BOOK-4 duplicates this story with the Tutor as actor; whether to merge them
+# is also left open (see BOOK-4).
 id: BOOK-3
-title: "To reschedule or cancel a lesson within the allowed policy window"
-description: "As a Student, I want to reschedule or cancel a lesson within the allowed policy window so that I can handle changes in my schedule fairly."
+title: "To cancel a lesson within the allowed policy window"
+description: "As a Student, I want to cancel a lesson within the allowed policy window so that I can handle changes in my schedule fairly and get an eligible refund."
 epic: "Lesson Booking & Scheduling"
 role: "Student"
 lifecycle: backlog
 story_points: 3
 dependencies: ["BOOK-1"]
 acceptance_criteria:
-  - given: "a lesson is more than 24 hours away,"
-    when: "a Student requests to reschedule/cancel,"
-    then: "the change is applied without penalty."
-  - given: "a lesson is within 24 hours,"
-    when: "a Student cancels,"
-    then: "the lesson credit is refunded to the Student's balance minus the cancellation fee per policy, and both parties are notified."
+  - given: "a lesson is more than 12 hours away,"
+    when: "a Student cancels it,"
+    then: "the cancellation is applied without penalty and the full amount is refunded to the Student's wallet balance."
+  - given: "a lesson is within the 12-hour penalty window,"
+    when: "a Student cancels it,"
+    then: "the applicable policy is shown before confirmation, and any eligible refund is credited to the Student's wallet balance."
 sprint: sprint-1
 assignees: ["Saint", "Yongfu"]
 status: todo
-order: 12
+order: 16
 estimate_hours: 12
 tasks:
   - id: BOOK-3-T1
-    title: "Build the cancel/reschedule action and policy-window messaging"
+    title: "Build the cancel action and policy-window messaging"
     assignees: ["Saint", "Yongfu"]
     role: "Frontend"
     status: todo
     estimate_hours: 4
   - id: BOOK-3-T2
-    title: "Implement the &gt;24h no-penalty and &lt;24h refund-minus-fee logic"
+    title: "Implement the 12-hour free-cancellation window and wallet refund logic"
     assignees: ["Saint", "Yongfu"]
     role: "Backend"
     status: todo

@@ -1,0 +1,20 @@
+# New: docs/backlog/reconciliation.md section 2 (➕). Product behaviour with no existing
+# story — see issue #63, section 3.
+id: SAFE-4
+title: "Admin handling of payment disputes and refunds"
+description: "As an admin, I want to handle payment disputes and refund cases so that money movement stays fair and traceable in the wallet ledger."
+epic: "Admin, Trust & Safety"
+role: "Admin"
+lifecycle: backlog
+story_points: 5
+dependencies: ["PAY-3"]
+acceptance_criteria:
+  - given: "a dispute is submitted for a payment,"
+    when: "an admin resolves it,"
+    then: "the wallet ledger entries reflect the admin's decision."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "Admin, Trust & Safety / US9-4"
+journey:
+  - route: "/admin/tutor-requests"
+    action: "Resolve payment disputes and refunds"

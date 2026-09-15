@@ -1,0 +1,26 @@
+# New: docs/backlog/reconciliation.md section 2 (➕). Product behaviour with no existing
+# story — see issue #63, section 3.
+id: PAY-7
+title: "Request a payout from available balance (any user)"
+description: "As any user, I want to request a payout from my available wallet balance so that I can withdraw money to my bank account, whether or not I have ever taught a lesson."
+epic: "Payments & Billing"
+role: "user"
+lifecycle: backlog
+story_points: 3
+dependencies: ["PAY-5", "PROF-7"]
+acceptance_criteria:
+  - given: "a user has available wallet balance,"
+    when: "they request a payout,"
+    then: "the amount is deducted from the wallet and recorded as a payout transaction to their payout account."
+  - given: "the user is only a Student who topped up and never taught a lesson,"
+    when: "they request a payout,"
+    then: "the payout flow is still available to them."
+  - given: "the requested amount exceeds the available balance,"
+    when: "submitted,"
+    then: "the request is blocked."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "Wallet, Payments & Payouts / US5-5"
+journey:
+  - route: "/wallet"
+    action: "Request payout"
