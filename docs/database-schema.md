@@ -84,15 +84,15 @@ Indexes: unique `token_hash`, unique `user_id`, and `expires_at`.
 
 ### tutors
 
-| Column          | Type        | Constraints                 | Notes                                             |
-| --------------- | ----------- | --------------------------- | ------------------------------------------------- |
-| tutor_id        | SERIAL      | PK                          |                                                   |
-| avatar_url      | TEXT        | NULL                        |                                                   |
-| bio             | TEXT        | NULL                        | Listing bio                                       |
-| intro_video_url | TEXT        | NULL                        |                                                   |
-| government_id   | TEXT        | NOT NULL                    | Identity reference supplied when applying         |
-| enrolled_at     | TIMESTAMP   | NOT NULL, DEFAULT now()     |                                                   |
-| status          | TutorStatus | NOT NULL, DEFAULT `PENDING` | `PENDING`, `UNPUBLISHED`, `PUBLISHED`, `REJECTED` |
+| Column                  | Type        | Constraints                 | Notes                                                                           |
+| ----------------------- | ----------- | --------------------------- | ------------------------------------------------------------------------------- |
+| tutor_id                | SERIAL      | PK                          |                                                                                 |
+| avatar_url              | TEXT        | NULL                        |                                                                                 |
+| bio                     | TEXT        | NULL                        | Listing bio                                                                     |
+| intro_video_url         | TEXT        | NULL                        |                                                                                 |
+| identification_card_url | TEXT        | NOT NULL                    | URL of the government ID image uploaded when applying (`identificationCardUrl`) |
+| enrolled_at             | TIMESTAMP   | NOT NULL, DEFAULT now()     |                                                                                 |
+| status                  | TutorStatus | NOT NULL, DEFAULT `PENDING` | `PENDING`, `UNPUBLISHED`, `PUBLISHED`, `REJECTED`                               |
 
 `status` currently carries both the application decision and the listing's published
 state — see [Reconciliation](#reconciliation-requirement-vs-implementation).
@@ -278,7 +278,7 @@ that the current schema is wrong to have shipped.
 | G13 | **Account suspension / ban** state on `users`                                                                                                                                              | §10 Admin                      |
 | G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                                                                              | §2 Search filters, §7 Subjects |
 | G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up                                                       | §10 Admin queues               |
-| G17 | **Document type** on `certifications` (government ID vs teaching certification); the government ID is a bare string on `tutors` rather than an uploaded document                           | §6 Application, §10 Admin      |
+| G17 | **Document type** on `certifications` (government ID vs teaching certification); the government ID image URL (`identification_card_url`) sits on `tutors`, not in a document table         | §6 Application, §10 Admin      |
 | G18 | **Audit log** for admin decisions on content and money                                                                                                                                     | §10 Admin                      |
 
 ---
