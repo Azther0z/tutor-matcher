@@ -19,7 +19,7 @@ function completeRequiredFields() {
     target: { value: "https://example.com/intro.mp4" },
   });
   fireEvent.change(screen.getByLabelText(/Identification card/), {
-    target: { value: "https://example.com/government-id.pdf" },
+    target: { value: "https://example.com/identification-card.pdf" },
   });
   fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
     target: { value: "https://example.com/certification.pdf" },
@@ -79,7 +79,7 @@ describe("TutorSettingsPage", () => {
           avatarUrl: "https://example.com/avatar.jpg",
           bio: "I teach mathematics.",
           introVideoUrl: "https://example.com/intro.mp4",
-          identificationCardUrl: "https://example.com/government-id.pdf",
+          identificationCardUrl: "https://example.com/identification-card.pdf",
           certificationUrl: "https://example.com/certification.pdf",
         },
       }),
@@ -104,7 +104,7 @@ describe("TutorSettingsPage", () => {
       target: { value: "example.com/intro.mp4" },
     });
     fireEvent.change(screen.getByLabelText(/Identification card/), {
-      target: { value: "example.com/government-id.pdf" },
+      target: { value: "example.com/identification-card.pdf" },
     });
     fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
       target: { value: "example.com/certification.pdf" },
@@ -127,7 +127,7 @@ describe("TutorSettingsPage", () => {
     expect(fetchMock.mock.calls[0][1]).toEqual(
       expect.objectContaining({
         body: expect.stringContaining(
-          '"identificationCardUrl":"https://example.com/government-id.pdf"'
+          '"identificationCardUrl":"https://example.com/identification-card.pdf"'
         ),
       })
     );

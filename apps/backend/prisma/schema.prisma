@@ -128,7 +128,7 @@ model Tutor {
   avatarUrl             String?     @map("avatar_url")
   bio                   String?
   introVideoUrl         String?     @map("intro_video_url")
-  identificationCardUrl String      @map("government_id")
+  identificationCardUrl String      @map("identification_card_url")
   enrolledAt            DateTime    @default(now()) @map("enrolled_at")
   status                TutorStatus @default(PENDING)
 

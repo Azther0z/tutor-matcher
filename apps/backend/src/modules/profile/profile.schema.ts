@@ -35,7 +35,7 @@ export type ProfileRequest = z.infer<typeof profileRequestSchema>;
 // Tutor enrollment collects the public Tutor details plus the application's
 // required documents — the account's name and personal bio are already set
 // elsewhere (signup / settings). All three application requirements
-// (government ID, teaching-certification document, bio) are required here and
+// (identification card, teaching-certification document, bio) are required here and
 // validated server-side; avatar and intro video are additional listing details.
 // `consentAccepted` must be explicitly `true` on every (re-)submission — it
 // gates creation of the Tutor application on consenting to identity,
