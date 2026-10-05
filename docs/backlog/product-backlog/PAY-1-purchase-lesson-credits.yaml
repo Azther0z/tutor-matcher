@@ -1,21 +1,24 @@
+# Reworded: docs/backlog/reconciliation.md marks this ⛔/✏️. The PromptPay QR mechanism is
+# right, but there are no lesson credits or packages — money is a single baht wallet
+# balance, and every booking is paid individually (docs/user-journeys.md).
 id: PAY-1
-title: "Purchase lesson credits"
-description: "As a Student, I want to purchase lesson credits/packages via PromptPay QR (mobile banking) so that I can pay for lessons in advance and use recurring bookings without paying each time."
+title: "Top up wallet balance"
+description: "As a Student, I want to top up my wallet balance via PromptPay QR (mobile banking) so that I have enough balance to pay for a lesson."
 epic: "Payments & Billing"
 role: "Student"
 lifecycle: backlog
 story_points: 5
 dependencies: ["AUTH-2"]
 acceptance_criteria:
-  - given: "a Student selects a package and scans the generated PromptPay QR,"
+  - given: "a Student enters a top-up amount and scans the generated PromptPay QR,"
     when: "the transfer is confirmed,"
-    then: "credits are added to their balance and a transfer confirmation is emailed."
+    then: "the amount is added to their wallet balance and a transaction is recorded."
   - given: "payment fails or isn't confirmed,"
-    when: "checkout is attempted,"
-    then: "an error is shown and no credits are added."
+    when: "the top-up flow ends,"
+    then: "an error is shown and no balance is added."
 sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: "Payments & Billing / US5-1"
 journey:
-  - route: "/topup"
-    action: "Topup"
+  - route: "/wallet/topup"
+    action: "Top up wallet balance"

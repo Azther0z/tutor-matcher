@@ -1,44 +1,48 @@
+# Reworded: docs/backlog/reconciliation.md marks this ✏️. Consent for identity documents,
+# credentials, and payout data is given at the tutor **application** step
+# (`/(auth)/enroll-tutor`), not at sign-up — sign-up itself only creates a Student account
+# (docs/user-journeys.md).
 id: AUTH-6
-title: "Consent to privacy and data processing"
-description: "As a Tutor, I want to review and accept the Privacy Policy and Terms of Service, including how my identity documents, teaching credentials, and payout information will be processed, during sign-up so that I understand and control how my sensitive data is used before an account is created."
+title: "Consent to privacy and data processing when applying to become a Tutor"
+description: "As a Student applying to become a Tutor, I want to review and accept the Privacy Policy and Terms of Service, including how my identity documents, teaching credentials, and payout information will be processed, so that I understand and control how my sensitive data is used before I submit my application."
 epic: "Account Registration & Authentication"
-role: "Tutor"
+role: "Student"
 lifecycle: backlog
 story_points: 3
-dependencies: ["AUTH-1"]
+dependencies: ["AUTH-4"]
 acceptance_criteria:
-  - given: "a Tutor visitor has checked the consent checkbox,"
-    when: "they submit the sign-up form,"
-    then: "the account is created and the consent timestamp is recorded."
-  - given: "a Tutor visitor reaches the final sign-up step,"
+  - given: "a Student on the tutor application page has checked the consent checkbox,"
+    when: "they submit the application,"
+    then: "the application is submitted and the consent timestamp is recorded."
+  - given: "a Student reaches the final step of the tutor application,"
     when: "they have not checked the consent checkbox covering identity, credential, AND payout data processing,"
-    then: "account creation is blocked and the requirement is highlighted."
+    then: "the application cannot be submitted and the requirement is highlighted."
 sprint: sprint-1
 assignees: ["Ideal", "Pooh"]
 status: todo
-order: 5
+order: 7
 estimate_hours: 12
 tasks:
   - id: AUTH-6-T1
-    title: "Design the extended consent copy covering ID/payout data"
+    title: "Design the consent copy covering ID/payout data on the tutor application"
     assignees: ["Ideal", "Pooh"]
     role: "UXUI"
     status: todo
     estimate_hours: 3
   - id: AUTH-6-T2
-    title: "Implement the Tutor consent-checkbox gate on sign-up"
+    title: "Implement the consent-checkbox gate on the tutor application"
     assignees: ["Ideal", "Pooh"]
     role: "Frontend"
     status: todo
     estimate_hours: 3
   - id: AUTH-6-T3
-    title: "Record the extended consent (ID, credentials, payout) with timestamp"
+    title: "Record the consent (ID, credentials, payout) with timestamp"
     assignees: ["Ideal", "Pooh"]
     role: "Backend"
     status: todo
     estimate_hours: 4
   - id: AUTH-6-T4
-    title: "Write acceptance tests for the Tutor consent gate"
+    title: "Write acceptance tests for the tutor-application consent gate"
     assignees: ["Ideal", "Pooh"]
     role: "QA"
     status: todo
@@ -48,5 +52,5 @@ sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: "Account Registration & Authentication / US1-6"
 journey:
-  - route: "(auth)/signup"
-    action: "Sign up"
+  - route: "(auth)/enroll-tutor"
+    action: "Upload ID, certification"

@@ -1,16 +1,19 @@
+# Reworded: docs/backlog/reconciliation.md marks this ✏️. A review can be written only
+# from the reviewer's own completed booking, and it is scoped to the tutor AND the subject
+# of that booking (docs/user-journeys.md).
 id: REV-1
 title: "To rate and review a Tutor after a completed lesson"
-description: "As a Student, I want to rate and review a Tutor after a completed lesson so that other students benefit from my comment."
+description: "As a Student, I want to rate and review a Tutor for the subject of my own completed lesson so that other students see feedback for that exact tutor-subject combination."
 epic: "Reviews & Ratings"
 role: "Student"
 lifecycle: backlog
 story_points: 2
 dependencies: ["CLASS-2"]
 acceptance_criteria:
-  - given: "a lesson is marked 'Completed',"
+  - given: "the Student has their own lesson marked 'Completed' for a tutor and subject,"
     when: "the Student submits a rating (1-5) and optional comment,"
-    then: "it is published on the Tutor's profile within moderation guidelines."
-  - given: "a lesson is not completed or the rating value is outside the allowed range,"
+    then: "the review is published, scoped to that tutor AND that subject."
+  - given: "the lesson is not the Student's own completed booking, or the rating value is outside the allowed range,"
     when: "the Student submits a review,"
     then: "the review is rejected and an error is shown."
 sources:

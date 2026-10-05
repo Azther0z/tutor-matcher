@@ -1,32 +1,41 @@
+# Reworded: docs/backlog/reconciliation.md marks this ✏️, the same way as BOOK-3, which
+# this story duplicates with the Tutor as actor. Cancel-within-policy with a wallet refund
+# is real; the prototype has no reschedule flow (docs/user-journeys.md, "Cancellation").
+#
+# Unresolved: docs/backlog/reconciliation.md flags BOOK-3 and BOOK-4 as duplicates by
+# title and acceptance criteria and asks the team to merge or differentiate them. This
+# reconciliation pass does not make that call — it only fixes the wording both stories
+# share (no reschedule, 12-hour window, wallet refund) so neither one states a feature the
+# product does not have. Whether reschedule is in scope at all is also still open.
 id: BOOK-4
-title: "To reschedule or cancel a lesson within the allowed policy window"
-description: "As a Tutor, I want to reschedule or cancel a lesson within the allowed policy window so that I can handle changes in my schedule while maintaining the Student's trust in the platform."
+title: "To cancel a lesson within the allowed policy window (Tutor)"
+description: "As a Tutor, I want to cancel a lesson within the allowed policy window so that I can handle changes in my schedule while maintaining the Student's trust in the platform."
 epic: "Lesson Booking & Scheduling"
 role: "Tutor"
 lifecycle: backlog
 story_points: 3
 dependencies: ["BOOK-1"]
 acceptance_criteria:
-  - given: "a lesson is more than 24 hours away,"
-    when: "a Tutor requests to reschedule/cancel,"
-    then: "the change is applied without penalty."
-  - given: "a lesson is within 24 hours,"
-    when: "a Tutor cancels,"
-    then: "the lesson credit is fully refunded to the Student's balance with no fee, and both parties are notified."
+  - given: "a lesson is more than 12 hours away,"
+    when: "a Tutor cancels it,"
+    then: "the cancellation is applied without penalty and the Student is refunded to their wallet balance."
+  - given: "a lesson is within the 12-hour penalty window,"
+    when: "a Tutor cancels it,"
+    then: "the applicable policy is shown before confirmation, and any eligible refund is credited to the Student's wallet balance."
 sprint: sprint-1
 assignees: ["Santa", "Plai"]
 status: todo
-order: 13
+order: 17
 estimate_hours: 12
 tasks:
   - id: BOOK-4-T1
-    title: "Build the Tutor cancel/reschedule action"
+    title: "Build the Tutor cancel action"
     assignees: ["Santa", "Plai"]
     role: "Frontend"
     status: todo
     estimate_hours: 4
   - id: BOOK-4-T2
-    title: "Implement the &gt;24h no-penalty and &lt;24h full-refund + reliability-log logic"
+    title: "Implement the 12-hour free-cancellation window and wallet refund logic for Tutor-initiated cancellation"
     assignees: ["Santa", "Plai"]
     role: "Backend"
     status: todo

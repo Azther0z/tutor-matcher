@@ -1,6 +1,11 @@
+# Reworded: docs/backlog/reconciliation.md marks this ⛔, and issue #63 resolves it as a
+# rewrite, not a cancellation, because AUTH-2, AUTH-3, AUTH-4, AUTH-5, AUTH-6, PROF-1,
+# PROF-2, PROF-3, and PROF-4 depend on this story's ID. There is no role choice at
+# sign-up — every account is created as a Student; the Tutor capability is granted later
+# through an approved application (see AUTH-4), not chosen here (docs/user-journeys.md).
 id: AUTH-1
-title: "Create a Student or Tutor account"
-description: "As a new member, I want to sign up as either a Student or a Tutor so that I get an account tailored to my role."
+title: "Create an account"
+description: "As a new member, I want to sign up with my first name, last name, email, and password, plus an optional bio, so that I get a Student account. (Becoming a Tutor is a separate, later application — see AUTH-4.)"
 epic: "Account Registration & Authentication"
 role: "new member"
 lifecycle: backlog
@@ -8,15 +13,18 @@ story_points: 5
 dependencies: []
 acceptance_criteria:
   - given: "a visitor is on the sign-up page,"
-    when: "they submit a valid email, password, AND select a role (Student/Tutor),"
-    then: "an account is created and a verification email is sent."
+    when: "they submit a valid first name, last name, email, AND password (bio is optional),"
+    then: "a Student account is created and a verification email is sent."
+  - given: "a visitor leaves a required field (first name, last name, email, or password) empty,"
+    when: "they submit the sign-up form,"
+    then: "the system shows a field-level error for each missing field and no account is created."
   - given: "the email is already registered,"
     when: "the visitor tries to sign up,"
     then: "the system shows an error and suggests logging in instead."
 sprint: sprint-1
 assignees: ["Nesta", "Washi"]
 status: todo
-order: 15
+order: 1
 estimate_hours: 20
 tasks:
   - id: AUTH-1-T1
@@ -26,19 +34,19 @@ tasks:
     status: todo
     estimate_hours: 2
   - id: AUTH-1-T2
-    title: "Build the sign-up form inputs and role-based page routing"
+    title: "Build the sign-up form (first name, last name, email, password, optional bio) and post-sign-up routing to the Student dashboard"
     assignees: ["Nesta", "Washi"]
     role: Frontend
     status: todo
     estimate_hours: 4
   - id: AUTH-1-T3
-    title: "Implement client-side validation and duplicate-email error message"
+    title: "Implement required-field validation and the duplicate-email error message"
     assignees: ["Nesta", "Washi"]
     role: Frontend
     status: todo
     estimate_hours: 3
   - id: AUTH-1-T4
-    title: "Create the member account database schema (Student/Tutor)"
+    title: "Create the member account database schema (Student by default; Tutor capability granted later)"
     assignees: ["Nesta", "Washi"]
     role: Backend
     status: todo
@@ -56,7 +64,7 @@ tasks:
     status: todo
     estimate_hours: 3
   - id: AUTH-1-T7
-    title: "Write acceptance tests for sign-up (valid, duplicate email)"
+    title: "Write acceptance tests for sign-up (valid, missing required field, duplicate email)"
     assignees: ["Nesta", "Washi"]
     role: QA
     status: todo

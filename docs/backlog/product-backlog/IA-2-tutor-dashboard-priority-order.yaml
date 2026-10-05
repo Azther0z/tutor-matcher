@@ -1,0 +1,27 @@
+# New: docs/backlog/reconciliation.md section 2 (➕, US10-x). See IA-1 for why this uses
+# the new EPIC-10 "Information Architecture & Navigation" instead of an existing epic, and
+# for why it depends on IA-3.
+id: IA-2
+title: "Tutor dashboard ordered by operational priority"
+description: "As a Tutor, I want my dashboard ordered by operational priority, with subjects linking to the canonical settings page, so that I can act on confirmed classes and new paid bookings quickly."
+epic: "Information Architecture & Navigation"
+role: "Tutor"
+lifecycle: backlog
+story_points: 5
+dependencies: ["PROF-5", "BOOK-9", "IA-3"]
+acceptance_criteria:
+  - given: "/dashboard/tutor opens,"
+    when: "content loads,"
+    then: "compact stat cards appear first, followed by earnings preview, upcoming classes, new paid bookings, and subjects."
+  - given: "upcoming classes, new paid bookings, or subjects are long,"
+    when: "content overflows,"
+    then: "each section scrolls internally instead of pushing the whole page."
+  - given: "the tutor dashboard subject list is visible,"
+    when: "'Update' is clicked,"
+    then: "the user goes to /settings/tutor."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "Dashboard, Navigation & Information Architecture / US10-2, US10-3"
+journey:
+  - route: "/dashboard/tutor"
+    action: "engagement"

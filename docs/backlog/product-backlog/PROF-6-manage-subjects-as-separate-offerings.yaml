@@ -1,0 +1,32 @@
+# New: docs/backlog/reconciliation.md section 2 (➕). Product behaviour with no existing
+# story — see issue #63, section 3. Merged what were originally two stories (creating
+# subjects, and assigning them to availability slots) into one: assigning a subject to a
+# slot needs the subject to exist first, both live on /settings/tutor, and they would ship
+# as one slice.
+id: PROF-6
+title: "Manage subjects and assign them to availability slots"
+description: "As a Tutor, I want to manage each subject I teach as its own offering (name, description, rate, format) and assign one or more of them to each open availability slot with compact toggles, so that students can evaluate each subject independently and schedule setup stays fast and accurate."
+epic: "User Profile Management"
+role: "Tutor"
+lifecycle: backlog
+story_points: 8
+dependencies: ["PROF-2", "PROF-3"]
+acceptance_criteria:
+  - given: "a Tutor clicks 'Add subject' and fills in valid name, description, rate, AND format,"
+    when: "they save,"
+    then: "the subject is added as a separate offering."
+  - given: "a Tutor clicks 'Edit' on one subject,"
+    when: "the inline editor opens and they save changes,"
+    then: "the changes are saved only for that subject, leaving other subjects unchanged."
+  - given: "a Tutor edits availability and a time slot has multiple possible subjects,"
+    when: "the slot editor renders,"
+    then: "subjects appear as compact toggle boxes, and the selected state is visually clear."
+  - given: "many subjects are available for a slot,"
+    when: "the subject picker grows,"
+    then: "it scrolls inside its own box instead of pushing the full page."
+sources:
+  - file: ../../sources/tutormatcher-prototype-user-stories.md
+    locator: "User Profile & Settings / US2-5, US2-7"
+journey:
+  - route: "/settings/tutor"
+    action: "Manage subjects and assign them to availability slots"

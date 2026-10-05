@@ -16,7 +16,7 @@ acceptance_criteria:
 sprint: sprint-1
 assignees: ["Poom", "Pee"]
 status: todo
-order: 8
+order: 6
 estimate_hours: 8
 tasks:
   - id: PROF-4-T1
