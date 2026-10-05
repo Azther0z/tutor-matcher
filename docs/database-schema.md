@@ -84,15 +84,15 @@ Indexes: unique `token_hash`, unique `user_id`, and `expires_at`.
 
 ### tutors
 
-| Column                  | Type        | Constraints                 | Notes                                                                           |
-| ----------------------- | ----------- | --------------------------- | ------------------------------------------------------------------------------- |
-| tutor_id                | SERIAL      | PK                          |                                                                                 |
-| avatar_url              | TEXT        | NULL                        |                                                                                 |
-| bio                     | TEXT        | NULL                        | Listing bio                                                                     |
-| intro_video_url         | TEXT        | NULL                        |                                                                                 |
-| identification_card_url | TEXT        | NOT NULL                    | URL of the government ID image uploaded when applying (`identificationCardUrl`) |
-| enrolled_at             | TIMESTAMP   | NOT NULL, DEFAULT now()     |                                                                                 |
-| status                  | TutorStatus | NOT NULL, DEFAULT `PENDING` | `PENDING`, `UNPUBLISHED`, `PUBLISHED`, `REJECTED`                               |
+| Column                  | Type        | Constraints                 | Notes                                                                                 |
+| ----------------------- | ----------- | --------------------------- | ------------------------------------------------------------------------------------- |
+| tutor_id                | SERIAL      | PK                          |                                                                                       |
+| avatar_url              | TEXT        | NULL                        |                                                                                       |
+| bio                     | TEXT        | NULL                        | Listing bio                                                                           |
+| intro_video_url         | TEXT        | NULL                        |                                                                                       |
+| identification_card_url | TEXT        | NOT NULL                    | URL of the identification card image uploaded when applying (`identificationCardUrl`) |
+| enrolled_at             | TIMESTAMP   | NOT NULL, DEFAULT now()     |                                                                                       |
+| status                  | TutorStatus | NOT NULL, DEFAULT `PENDING` | `PENDING`, `UNPUBLISHED`, `PUBLISHED`, `REJECTED`                                     |
 
 `status` currently carries both the application decision and the listing's published
 state — see [Reconciliation](#reconciliation-requirement-vs-implementation).
@@ -268,18 +268,18 @@ that the current schema is wrong to have shipped.
 
 ### Entities the product needs that do not exist yet
 
-| ID  | Missing                                                                                                                                                                                    | Journey                        |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
-| G8  | **Tutor application** as its own record — submitted at, reviewed at, reviewing admin, rejection reason. Today `tutors.status` conflates the application decision with listing publication. | §6 Becoming a tutor, §10 Admin |
-| G9  | **Listing revision + admin review** of listing and document changes before they go live                                                                                                    | §7 Listing, §10 Admin          |
-| G10 | **Payout account** (bank details, default flag)                                                                                                                                            | §4 Payouts, `/settings/wallet` |
-| G11 | **Notification preference** per user and event type, with email and push flags                                                                                                             | §8 Notifications               |
-| G12 | **Review reply** from the tutor, and a moderation status on reviews and messages                                                                                                           | §9 Reviews, §10 Admin          |
-| G13 | **Account suspension / ban** state on `users`                                                                                                                                              | §10 Admin                      |
-| G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                                                                              | §2 Search filters, §7 Subjects |
-| G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up                                                       | §10 Admin queues               |
-| G17 | **Document type** on `certifications` (government ID vs teaching certification); the government ID image URL (`identification_card_url`) sits on `tutors`, not in a document table         | §6 Application, §10 Admin      |
-| G18 | **Audit log** for admin decisions on content and money                                                                                                                                     | §10 Admin                      |
+| ID  | Missing                                                                                                                                                                                        | Journey                        |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| G8  | **Tutor application** as its own record — submitted at, reviewed at, reviewing admin, rejection reason. Today `tutors.status` conflates the application decision with listing publication.     | §6 Becoming a tutor, §10 Admin |
+| G9  | **Listing revision + admin review** of listing and document changes before they go live                                                                                                        | §7 Listing, §10 Admin          |
+| G10 | **Payout account** (bank details, default flag)                                                                                                                                                | §4 Payouts, `/settings/wallet` |
+| G11 | **Notification preference** per user and event type, with email and push flags                                                                                                                 | §8 Notifications               |
+| G12 | **Review reply** from the tutor, and a moderation status on reviews and messages                                                                                                               | §9 Reviews, §10 Admin          |
+| G13 | **Account suspension / ban** state on `users`                                                                                                                                                  | §10 Admin                      |
+| G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                                                                                  | §2 Search filters, §7 Subjects |
+| G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up                                                           | §10 Admin queues               |
+| G17 | **Document type** on `certifications` (identification card vs teaching certification); the identification card image URL (`identification_card_url`) sits on `tutors`, not in a document table | §6 Application, §10 Admin      |
+| G18 | **Audit log** for admin decisions on content and money                                                                                                                                         | §10 Admin                      |
 
 ---
 

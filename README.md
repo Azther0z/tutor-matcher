@@ -273,7 +273,7 @@ onto the journeys in [`docs/user-journeys.md`](docs/user-journeys.md).
 - **Rendering mode** — CSR vs. SSR vs. hybrid for the public `/search`, `/tutors/:id`,
   and `/tutors/:id/:subjectId` pages, the only routes a logged-out visitor reaches.
 - **File storage for tutor verification documents** — local Docker volume vs. MinIO vs.
-  URL field. Applies to the government ID and teaching certification uploaded at
+  URL field. Applies to the identification card and teaching certification uploaded at
   `/(auth)/enroll-tutor`, and to listing photos and intro videos.
 - **Slot locking strategy** — the booking flow must block a second student before
   payment capture, not compensate afterwards. See gaps G1 and G2 in

@@ -44,14 +44,14 @@ accounts.
 _Avoid_: Moderator, staff, superuser
 
 **Tutor Application**:
-A student's request to gain the tutor capability, carrying a government ID URL, a
+A student's request to gain the tutor capability, carrying an identification card URL, a
 teaching certification URL, and a bio. The current sprint approves a complete
 submission immediately; `pending` and `rejected` remain available for the future admin
 review workflow, where a pending application can be cancelled and re-submitted.
 _Avoid_: Tutor signup, tutor registration, enrolment
 
 **Verification Document**:
-The URL reference for the government ID or teaching certification file attached to a
+The URL reference for the identification card or teaching certification file attached to a
 tutor application and checked by an admin. Replacing a document re-enters admin review
 once that workflow is enabled.
 _Avoid_: Transfer proof, attachment, credential
