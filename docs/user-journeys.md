@@ -308,7 +308,7 @@ Related stories: US6-1 … US6-3.
 ## 6 · Becoming a tutor
 
 1. A logged-in student opens **Become a tutor** → `/(auth)/enroll-tutor`.
-2. The application requires **all three**: a identification card document, a teaching
+2. The application requires **all three**: an identification card document, a teaching
    certification document, and an introduction video. Submit stays disabled until all three are
    present. Subjects are not part of the application — they are added afterwards in
    `/settings/tutor`.
