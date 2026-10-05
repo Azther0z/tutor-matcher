@@ -91,31 +91,31 @@ product, the backlog describes committed work.
 Every page in the product maps to one route, and every route carries an access level.
 Guards run before render, not after.
 
-| Route                      | Purpose                                                               | Access         |
-| -------------------------- | --------------------------------------------------------------------- | -------------- |
-| `/`                        | Landing page — search box, Find a tutor, Become a tutor               | Public         |
-| `/search`                  | Tutor search with filters and sorting                                 | Public         |
-| `/tutors/:id`              | Tutor profile — bio, experience, subject list, recent reviews         | Public         |
-| `/tutors/:id/:subjectId`   | One subject — description, rate, format, availability, its reviews    | Public         |
-| `/(auth)/login`            | Log in and sign up                                                    | Public         |
-| `/forgot-password`         | Request a password reset link                                         | Public         |
-| `/reset-password?token=…`  | Validate a reset link and choose a new password                       | Public         |
-| `/(auth)/enroll-tutor`     | Tutor application: documents, bio, submit, pending state              | Requires login |
-| `/dashboard`               | Student dashboard                                                     | Requires login |
-| `/dashboard/tutor`         | Tutor dashboard — classes, earnings, bookings, subjects, availability | Role: tutor    |
-| `/bookings`                | All bookings, tabbed by status                                        | Requires login |
-| `/bookings/s/:subjectId`   | Subject booking — pick a date and a block of slots (no booking yet)   | Requires login |
-| `/bookings/:id`            | One booking — payment, confirmation, meeting link, review             | Requires login |
-| `/messages/:id`            | Conversation thread with student ⇄ tutor context switch               | Requires login |
-| `/wallet`                  | Combined ledger: top-ups, lesson payments, earnings, refunds, payouts | Requires login |
-| `/wallet/topup`            | Add money by PromptPay QR (Thai mobile-banking QR payment)            | Requires login |
-| `/wallet/transactions/:id` | Read-only transaction detail                                          | Requires login |
-| `/settings/account`        | Email, password, deactivate account                                   | Requires login |
-| `/settings/notifications`  | Per-event email and push preferences                                  | Requires login |
-| `/settings/wallet`         | Balance shortcut and payout account details                           | Requires login |
-| `/settings/tutor`          | Public listing, verification, subjects                                | Role: tutor    |
-| `/reviews/:tutorId`        | Read-only review list for a tutor                                     | Requires login |
-| `/admin/tutor-requests`    | Tutor application queue — approve or reject                           | Role: admin    |
+| Route                      | Purpose                                                                 | Access         |
+| -------------------------- | ----------------------------------------------------------------------- | -------------- |
+| `/`                        | Landing page — search box, Find a tutor, Become a tutor                 | Public         |
+| `/search`                  | Tutor search with filters and sorting                                   | Public         |
+| `/tutors/:id`              | Tutor profile — bio, experience, subject list, recent reviews           | Public         |
+| `/tutors/:id/:subjectId`   | One subject — description, rate, format, availability, its reviews      | Public         |
+| `/(auth)/login`            | Log in and sign up                                                      | Public         |
+| `/forgot-password`         | Request a password reset link                                           | Public         |
+| `/reset-password?token=…`  | Validate a reset link and choose a new password                         | Public         |
+| `/(auth)/enroll-tutor`     | Tutor application: documents, introduction video, submit, pending state | Requires login |
+| `/dashboard`               | Student dashboard                                                       | Requires login |
+| `/dashboard/tutor`         | Tutor dashboard — classes, earnings, bookings, subjects, availability   | Role: tutor    |
+| `/bookings`                | All bookings, tabbed by status                                          | Requires login |
+| `/bookings/s/:subjectId`   | Subject booking — pick a date and a block of slots (no booking yet)     | Requires login |
+| `/bookings/:id`            | One booking — payment, confirmation, meeting link, review               | Requires login |
+| `/messages/:id`            | Conversation thread with student ⇄ tutor context switch                 | Requires login |
+| `/wallet`                  | Combined ledger: top-ups, lesson payments, earnings, refunds, payouts   | Requires login |
+| `/wallet/topup`            | Add money by PromptPay QR (Thai mobile-banking QR payment)              | Requires login |
+| `/wallet/transactions/:id` | Read-only transaction detail                                            | Requires login |
+| `/settings/account`        | Email, password, deactivate account                                     | Requires login |
+| `/settings/notifications`  | Per-event email and push preferences                                    | Requires login |
+| `/settings/wallet`         | Balance shortcut and payout account details                             | Requires login |
+| `/settings/tutor`          | Public listing, verification, subjects                                  | Role: tutor    |
+| `/reviews/:tutorId`        | Read-only review list for a tutor                                       | Requires login |
+| `/admin/tutor-requests`    | Tutor application queue — approve or reject                             | Role: admin    |
 
 ### Access rules
 
@@ -309,11 +309,11 @@ Related stories: US6-1 … US6-3.
 
 1. A logged-in student opens **Become a tutor** → `/(auth)/enroll-tutor`.
 2. The application requires **all three**: a government ID document, a teaching
-   certification document, and a bio. Submit stays disabled until all three are
+   certification document, and an introduction video. Submit stays disabled until all three are
    present. Subjects are not part of the application — they are added afterwards in
    `/settings/tutor`.
 3. Submitting sets the application to **pending**. The page then shows the uploaded
-   documents, the bio state, and _Awaiting approval_, with **Cancel & re-submit**.
+   documents, the introduction video, and _Awaiting approval_, with **Cancel & re-submit**.
 4. While pending the user is still a student: `/dashboard/tutor` and `/settings/tutor`
    bounce back to the application.
 5. An admin approves or rejects at `/admin/tutor-requests`. Approval grants the tutor

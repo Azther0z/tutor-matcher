@@ -52,5 +52,5 @@ sources:
   - file: ../../sources/Product Backlog v1.2.html
     locator: "Messaging & Notifications / US7-2"
 journey:
-  - route: "/settings/notification"
+  - route: "/settings/notifications"
     action: "Notification settings"

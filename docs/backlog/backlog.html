@@ -459,21 +459,21 @@
           {
             "id": "AUTH-4",
             "title": "Apply to become a Tutor with identity and teaching credentials",
-            "description": "As a logged-in Student, I want to apply to become a Tutor by submitting a government ID, a teaching certification, and a bio, so that I can be reviewed and, once approved, teach on the platform.",
+            "description": "As a logged-in Student, I want to apply to become a Tutor by submitting a government ID, a teaching certification, and an introduction video, so that I can be reviewed and, once approved, teach on the platform.",
             "epic": "Account Registration & Authentication",
             "role": "Student",
             "status": "backlog",
             "points": 5,
             "criteria": [
               {
-                "given": "a logged-in Student opens the tutor application and submits a government ID, a teaching certification, AND a bio,",
+                "given": "a logged-in Student opens the tutor application and submits a government ID, a teaching certification, AND an introduction video,",
                 "when": "the application is submitted,",
-                "then": "it is marked 'Pending Verification' until an admin reviews it, and the Tutor capability is not granted yet — no separate account is created or removed."
+                "then": "it is marked 'Pending Verification' until an admin reviews it, and the account's isTutor flag stays false (it is still a Student account); no separate account is created or removed."
               },
               {
                 "given": "the admin approves the application,",
                 "when": "review completes,",
-                "then": "the account is granted the Tutor capability and the profile displays a 'Verified' badge."
+                "then": "the account's isTutor flag is set to true and the profile displays a 'Verified' badge."
               }
             ]
           },
@@ -552,7 +552,7 @@
               {
                 "given": "a Student has a pending tutor application,",
                 "when": "they open the application page,",
-                "then": "they see the submitted documents, the bio state, and 'Awaiting approval', with an option to cancel and re-submit."
+                "then": "they see the submitted documents, the introduction video, and 'Awaiting approval', with an option to cancel and re-submit."
               },
               {
                 "given": "a user is already an approved Tutor,",
@@ -1775,7 +1775,7 @@
                 },
                 {
                   "id": "AUTH-4-T2",
-                  "title": "Build the ID/certification/bio upload form",
+                  "title": "Build the ID/certification/introduction-video upload form",
                   "role": "Frontend",
                   "status": "todo",
                   "hours": 4,
@@ -1807,7 +1807,7 @@
                 }
               ],
               "title": "Apply to become a Tutor with identity and teaching credentials",
-              "description": "As a logged-in Student, I want to apply to become a Tutor by submitting a government ID, a teaching certification, and a bio, so that I can be reviewed and, once approved, teach on the platform.",
+              "description": "As a logged-in Student, I want to apply to become a Tutor by submitting a government ID, a teaching certification, and an introduction video, so that I can be reviewed and, once approved, teach on the platform.",
               "epic": "Account Registration & Authentication",
               "assignees": ["Ideal", "Pooh"]
             },

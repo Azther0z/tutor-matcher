@@ -21,7 +21,7 @@ disagree.
 | The database schema and its known gaps   | [`database-schema.md`](database-schema.md)                                   |
 | Tech stack, repo layout, deployment      | [`../README.md`](../README.md#architecture)                                  |
 | How to run and write tests               | [`testing.md`](testing.md)                                                   |
-| Why a technical decision was made        | [`adr/decisions.md`](adr/decisions.md)                                       |
+| Why a technical decision was made        | [`adr/`](adr/)                                                               |
 | Setup and common commands                | [`../README.md`](../README.md)                                               |
 | Domain vocabulary                        | [`CONTEXT.md`](../CONTEXT.md)                                                |
 | Raw evidence a doc above was built from  | [`sources/`](sources/) — read-only, see below                                |

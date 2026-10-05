@@ -200,7 +200,7 @@ production image builds. A push to `main` runs the production Compose build from
 [`deploy/compose.yaml`](deploy/compose.yaml), then publishes both images with immutable commit
 tags and the `latest` tag. Doco-CD polls this repository and deploys the same manifest after
 validation succeeds. Full deployment shape and reasoning:
-[ADR 0003](docs/adr/decisions.md#0003--docker-compose-deployment-shapes).
+[ADR 0003](docs/adr/0003-docker-compose-deployment.md).
 
 ## Architecture
 
@@ -232,7 +232,7 @@ deploy/           Doco-CD production Compose manifest and secrets
 docker-compose.yml  Full local Postgres + backend + frontend stack
 ```
 
-**Decisions:** see [`docs/adr/decisions.md`](docs/adr/decisions.md) — a separate Express
+**Decisions:** see [`docs/adr/`](docs/adr/) — a separate Express
 backend instead of Next.js API routes (0001), this frontend/backend monorepo layout
 (0002), and the local vs. production Compose deployment shapes (0003).
 
