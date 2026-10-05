@@ -268,8 +268,8 @@ function EnrollTutorForm() {
           <div className="mb-5">
             <h2 className="text-xl font-semibold">Consent to data processing</h2>
             <p id="tutor-consent-summary" className="mt-1 text-sm text-zinc-500">
-              Your government ID, teaching credentials, and payout details will be processed as
-              described below.
+              Your identification card, teaching credentials, and payout details will be processed
+              as described below.
             </p>
           </div>
 

@@ -22,7 +22,7 @@ const pendingTutor = {
   avatarUrl: null,
   bio: "I teach mathematics.",
   introVideoUrl: "https://example.com/intro.mp4",
-  identificationCardUrl: "https://example.com/government-id.pdf",
+  identificationCardUrl: "https://example.com/identification-card.pdf",
   certificationUrl: "https://example.com/certification.pdf",
   status: "PENDING",
   enrolledAt: "2026-01-01T00:00:00.000Z",
@@ -40,7 +40,7 @@ function completeRequiredFields() {
     target: { value: "https://example.com/intro.mp4" },
   });
   fireEvent.change(screen.getByLabelText(/Identification card/), {
-    target: { value: "https://example.com/government-id.pdf" },
+    target: { value: "https://example.com/identification-card.pdf" },
   });
   fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
     target: { value: "https://example.com/certification.pdf" },
@@ -142,7 +142,7 @@ describe("EnrollTutorPage", () => {
         avatarUrl: null,
         bio: "I teach mathematics.",
         introVideoUrl: "https://example.com/intro.mp4",
-        identificationCardUrl: "https://example.com/government-id.pdf",
+        identificationCardUrl: "https://example.com/identification-card.pdf",
         certificationUrl: "https://example.com/certification.pdf",
         consentAccepted: true,
       }),
@@ -171,7 +171,7 @@ describe("EnrollTutorPage", () => {
       target: { value: "example.com/intro.mp4" },
     });
     fireEvent.change(screen.getByLabelText(/Identification card/), {
-      target: { value: "example.com/government-id.pdf" },
+      target: { value: "example.com/identification-card.pdf" },
     });
     fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
       target: { value: "example.com/certification.pdf" },
@@ -192,7 +192,7 @@ describe("EnrollTutorPage", () => {
     expect(fetchMock.mock.calls[1][1]).toEqual(
       expect.objectContaining({
         body: expect.stringContaining(
-          '"identificationCardUrl":"https://example.com/government-id.pdf"'
+          '"identificationCardUrl":"https://example.com/identification-card.pdf"'
         ),
       })
     );
@@ -216,7 +216,7 @@ describe("EnrollTutorPage", () => {
 
     expect(screen.getByRole("button", { name: "Submit application" })).toBeInTheDocument();
     expect(screen.getByLabelText(/Identification card/)).toHaveValue(
-      "https://example.com/government-id.pdf"
+      "https://example.com/identification-card.pdf"
     );
     expect(screen.getByLabelText(/Teaching certification document URL/)).toHaveValue(
       pendingTutor.certificationUrl

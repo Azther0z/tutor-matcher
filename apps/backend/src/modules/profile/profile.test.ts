@@ -30,7 +30,7 @@ const profile = {
     avatarUrl: "https://example.com/avatar.jpg",
     bio: "I teach calculus.",
     introVideoUrl: "https://example.com/intro.mp4",
-    identificationCardUrl: "https://example.com/government-id.pdf",
+    identificationCardUrl: "https://example.com/identification-card.pdf",
     certificationUrl: "https://example.com/certification.pdf",
   },
 };
@@ -88,7 +88,7 @@ describe("PUT /api/profiles/me", () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
-  it("rejects a government ID that is not a URL", async () => {
+  it("rejects an identification card that is not a URL", async () => {
     await request(app)
       .put("/api/profiles/me")
       .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
@@ -237,7 +237,7 @@ describe("PUT /api/profiles/me/tutor", () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
-  it("rejects an application with a missing government ID", async () => {
+  it("rejects an application with a missing identification card", async () => {
     await request(app)
       .put("/api/profiles/me/tutor")
       .set("Authorization", `Bearer ${tokenFor(userId)}`)
@@ -267,7 +267,7 @@ describe("PUT /api/profiles/me/tutor", () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
-  it("rejects an application with a government ID that is not a URL", async () => {
+  it("rejects an application with an identification card that is not a URL", async () => {
     await request(app)
       .put("/api/profiles/me/tutor")
       .set("Authorization", `Bearer ${tokenFor(userId)}`)
@@ -380,7 +380,7 @@ describe("GET /api/profiles/me/tutor", () => {
     avatarUrl: null,
     bio: "I teach calculus.",
     introVideoUrl: "https://example.com/intro.mp4",
-    identificationCardUrl: "https://example.com/government-id.pdf",
+    identificationCardUrl: "https://example.com/identification-card.pdf",
     status: "PENDING",
     enrolledAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
     certifications: [
