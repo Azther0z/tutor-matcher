@@ -1,8 +1,37 @@
 # Commit Messages
 
+## Tutor Matcher Format
+
+Use this exact header format in this repository:
+
+```text
+<type>: slug
+```
+
+`<type>` is one of `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`,
+`style`, or `test`, and `slug` is lowercase kebab-case. Do not require a ticket ID or scope in
+the header. Keep the body and trailer format from Conventional Commits below when more context
+is needed.
+
+Examples:
+
+```text
+feat: create-student-account
+feat: search-tutors
+```
+
+Non-story example:
+
+```text
+chore: update-ci-configuration
+```
+
+For a breaking change, add `!` after the type and a `BREAKING CHANGE:` footer. Optionally reference
+the epic-story with `Refs: <EPIC>-N` when useful; ticket references are not required.
+
 Use official Conventional Commits v1.0.0 as the baseline.
 
-## Format
+## Generic Format
 
 ```text
 <type>[optional scope][optional !]: <description>
@@ -36,9 +65,9 @@ These are allowed but do not imply SemVer impact unless breaking:
 
 ## Scope
 
-Use a scope only when a clear codebase section exists, e.g. `fix(parser): handle empty input`. Omit scope rather than inventing a noisy one.
-
-Do not use issue IDs as scopes. Put issue IDs in branch names and footers.
+Use a scope only when a clear codebase section exists, e.g. `fix(parser): handle empty input`. Omit
+scope rather than inventing a noisy one. In Tutor Matcher, use the unscoped `<type>: slug` header
+above; ticket IDs belong in optional footers, not the header.
 
 ## Breaking Changes
 
@@ -62,7 +91,8 @@ Good body content explains why the change exists and what changed from the previ
 
 Use trailer-style footers.
 
-- `Refs: ABC-123` for issue references by default.
+- Optionally use `Refs: <EPIC>-N` for epic-story references in Tutor Matcher or `Refs: ABC-123`
+  outside this repository. Non-story work does not need a placeholder ticket reference.
 - `Closes:` or `Fixes:` only when the commit intentionally closes an issue in the target platform.
 - `Assisted by: <agent> (<model name>)` when there is no PR and the commit is the durable artifact for agent-touched work.
 
