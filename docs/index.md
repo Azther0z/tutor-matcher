@@ -13,18 +13,18 @@ disagree.
 
 ## Where to find things
 
-| You need...                              | Go to                                                                        |
-| ---------------------------------------- | ---------------------------------------------------------------------------- |
-| Product behaviour (routes, rules, flows) | [`user-journeys.md`](user-journeys.md) — the source of truth                 |
-| Product goals, roles, and scope          | [`user-journeys.md`](user-journeys.md#overview-and-scope)                    |
-| What work is planned or in progress      | [`backlog/`](backlog/) — start with [`backlog/README.md`](backlog/README.md) |
-| The database schema and its known gaps   | [`database-schema.md`](database-schema.md)                                   |
-| Tech stack, repo layout, deployment      | [`../README.md`](../README.md#architecture)                                  |
-| How to run and write tests               | [`testing.md`](testing.md)                                                   |
-| Why a technical decision was made        | [`adr/`](adr/)                                                               |
-| Setup and common commands                | [`../README.md`](../README.md)                                               |
-| Domain vocabulary                        | [`CONTEXT.md`](../CONTEXT.md)                                                |
-| Raw evidence a doc above was built from  | [`sources/`](sources/) — read-only, see below                                |
+| You need...                              | Go to                                                        |
+| ---------------------------------------- | ------------------------------------------------------------ |
+| Product behaviour (routes, rules, flows) | [`user-journeys.md`](user-journeys.md) — the source of truth |
+| Product goals, roles, and scope          | [`user-journeys.md`](user-journeys.md#overview-and-scope)    |
+| What work is planned or in progress      | The GitHub issues and Project board                          |
+| The database schema and its known gaps   | [`database-schema.md`](database-schema.md)                   |
+| Tech stack, repo layout, deployment      | [`../README.md`](../README.md#architecture)                  |
+| How to run and write tests               | [`testing.md`](testing.md)                                   |
+| Why a technical decision was made        | [`adr/`](adr/)                                               |
+| Setup and common commands                | [`../README.md`](../README.md)                               |
+| Domain vocabulary                        | [`CONTEXT.md`](../CONTEXT.md)                                |
+| Raw evidence a doc above was built from  | [`sources/`](sources/) — read-only, see below                |
 
 ## What is authoritative
 
@@ -33,9 +33,7 @@ disagree.
 - [`../apps/backend/prisma/schema.prisma`](../apps/backend/prisma/schema.prisma) is the
   source of truth for **what the database contains today**. [`database-schema.md`](database-schema.md)
   documents it and tracks the gap between it and `user-journeys.md`.
-- The Git-managed backlog under [`backlog/`](backlog/) is the source of truth for
-  **committed work** — see [`backlog/README.md`](backlog/README.md) for how it is
-  structured and checked.
+- GitHub issues and the Project board are the source of truth for **committed work**.
 
 ## What is historical, not current
 
@@ -65,8 +63,7 @@ Things the product needs but does not yet have an answer for:
 - The cancellation penalty window, the earnings clearing period, and the platform fee are
   read off prototype copy and still need product sign-off — see
   [`user-journeys.md`](user-journeys.md#4--money).
-- Whether lesson rescheduling is in scope at all is still open — see
-  [`backlog/reconciliation.md`](backlog/reconciliation.md).
+- Whether lesson rescheduling is in scope at all is still open.
 - File storage for tutor verification documents is not chosen yet.
 - Most product flows have no automated behaviour-test coverage yet — see
   [`testing.md`](testing.md#current-coverage-boundary).
