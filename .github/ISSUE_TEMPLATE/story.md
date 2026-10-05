@@ -29,11 +29,6 @@ As a **[role]**, I want **[capability]**, so that **[outcome]**.
 
 - [What this story explicitly does not include]
 
-## Dependencies
-
-- `AUTH-1` - [dependency and why it is needed]
-- None
-
 ## References
 
 - Backlog or product source: [link]

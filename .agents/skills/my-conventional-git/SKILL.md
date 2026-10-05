@@ -35,11 +35,14 @@ When a change fits multiple types or branch categories, decide based on intent a
 ## Tutor Matcher Convention
 
 This repository overrides the generic header and branch formats above. Use one uppercase epic
-acronym and numeric story number consistently across the issue, branch, PR, and commits:
+acronym and numeric story number consistently across the issue, branch, and PR. Commit headers
+do not require a ticket ID:
 
 - Issue title: `[<EPIC>-N] Sentence`, with a single space after the closing bracket and a
   sentence-case description. `<EPIC>` is a registered backlog acronym such as `AUTH` or `DISC`.
-- Commit and PR title: `<type>[<EPIC>-N]: slug`. The required scope is the epic-story ID, and
+- Commit header: `<type>: slug`, without a ticket ID or scope. Ticket references in footers
+  are optional.
+- PR title: `<type>[<EPIC>-N]: slug`. The required scope is the epic-story ID, and
   no additional scope is used.
 - Branch name: `<type>/<EPIC>-N-slug`.
 - Use `OPS-0` for non-story work: `[OPS-0] Sentence`, `<type>[OPS-0]: slug`, and
@@ -56,6 +59,7 @@ Examples:
 
 ```text
 [AUTH-1] Student can create an account
+feat: create-student-account
 feat[AUTH-1]: create-student-account
 feat/AUTH-1-create-student-account
 ```
@@ -64,6 +68,7 @@ For non-story work, use `OPS-0`:
 
 ```text
 [OPS-0] Update CI configuration
+chore: update-ci-configuration
 chore[OPS-0]: update-ci-configuration
 chore/OPS-0-update-ci-configuration
 ```
