@@ -8,3 +8,4 @@ deploy/secrets/*
 dist/
 .next/
 .agents/scratch/
+.DS_Store
