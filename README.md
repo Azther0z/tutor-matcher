@@ -227,7 +227,7 @@ apps/
     prisma/       schema.prisma, seed.ts
   frontend/       Next.js app (TypeScript, Tailwind CSS)
     app/          App Router pages and layouts
-docs/             User journeys, schema, testing guide, backlog, ADRs, sources
+docs/             User journeys, schema, testing guide, ADRs, sources
 deploy/           Doco-CD production Compose manifest and secrets
 docker-compose.yml  Full local Postgres + backend + frontend stack
 ```
@@ -256,9 +256,7 @@ is deferred — see below).
 [`docs/user-journeys.md`](docs/user-journeys.md#route-model). Guards run before render: a
 logged-out user on a protected route goes to `/(auth)/login?next=…`, and a non-tutor on a
 tutor route goes to `/(auth)/enroll-tutor`. `apps/frontend/app/` still has some
-placeholder route folders named after an older backlog export; the mapping to current
-routes is in
-[`docs/backlog/reconciliation.md`](docs/backlog/reconciliation.md#3--route-drift).
+placeholder route folders named after an older backlog export; `docs/user-journeys.md` defines the current routes.
 
 **Backend modules:** each folder under `apps/backend/src/modules/` owns its HTTP routes,
 controllers, business services, and Zod schemas — `auth`, `booking`, `classroom`,

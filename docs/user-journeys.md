@@ -69,9 +69,7 @@ end to end. The prototype material is preserved under `sources/`:
 - [`tutormatcher-prototype-user-stories.md`](sources/tutormatcher-prototype-user-stories.md) — the product's own epics and acceptance criteria (US1-1 … US11-3)
 - [`tutormatcher-prototype.dbml`](sources/tutormatcher-prototype.dbml) — the data model the prototype's scope implies
 
-Where this page and the product backlog disagree, the disagreement is listed in
-[`backlog/reconciliation.md`](backlog/reconciliation.md); this page describes the
-product, the backlog describes committed work.
+This page describes the product; GitHub issues describe committed work.
 
 **Contents:** [Overview and scope](#overview-and-scope) · [Route Model](#route-model) ·
 [1 · Account and access](#1--account-and-access) ·

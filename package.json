@@ -8,9 +8,6 @@
   "scripts": {
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,md,yaml,yml,html}\" \"docs/**/*.{md,yaml,yml,html}\" \"deploy/**/*.{md,yaml,yml,json}\" \".github/**/*.{md,yaml,yml,json}\" \"scripts/**/*.{mjs,cjs,js,html}\" \"README.md\" \"package.json\" \".doco-cd.yaml\" \".prettierrc\" \".sops.yaml\"",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,md,yaml,yml,html}\" \"docs/**/*.{md,yaml,yml,html}\" \"deploy/**/*.{md,yaml,yml,json}\" \".github/**/*.{md,yaml,yml,json}\" \"scripts/**/*.{mjs,cjs,js,html}\" \"README.md\" \"package.json\" \".doco-cd.yaml\" \".prettierrc\" \".sops.yaml\"",
-    "backlog:build": "npm run backlog:validate && node scripts/generate-backlog.mjs",
-    "backlog:validate": "node scripts/validate-backlog.mjs",
-    "backlog:check": "npm run backlog:validate && node scripts/generate-backlog.mjs --check",
     "prepare": "husky",
     "install:all": "npm install && npm --prefix apps/backend install && npm --prefix apps/frontend install",
     "setup:env": "node scripts/setup-env.mjs",
