@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/src/components/auth-provider";
 import { clearAuthToken, getAuthToken, type AuthUser } from "@/src/lib/auth";
+import { getWallet, subscribeToWalletBalance } from "@/src/lib/wallet-api";
 
 type NavLink = {
   label: string;
@@ -19,6 +20,11 @@ const NAV_LINKS: NavLink[] = [
   { label: "Bookings", href: "/bookings" },
   { label: "Messages", href: "/messages" },
 ];
+
+const walletFormat = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 function navItemClass(active: boolean) {
   return `rounded-lg border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
@@ -48,6 +54,34 @@ export function Navbar() {
   const [tutorStatus, setTutorStatus] = useState<string | null>(null);
   const isApprovedTutor = status === "authenticated" && tutorStatus === "APPROVED";
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [walletSummary, setWalletSummary] = useState<{
+    owner: string;
+    balance: string;
+  } | null>(null);
+  const walletOwner = `${user?.email ?? ""}:${user?.firstName ?? ""}:${user?.lastName ?? ""}`;
+  const walletBalance = walletSummary?.owner === walletOwner ? walletSummary.balance : null;
+
+  useEffect(() => {
+    if (status !== "authenticated" || !user) return;
+
+    let cancelled = false;
+    const unsubscribe = subscribeToWalletBalance((balance) => {
+      if (!cancelled) setWalletSummary({ owner: walletOwner, balance });
+    });
+
+    getWallet()
+      .then((wallet) => {
+        if (!cancelled) setWalletSummary({ owner: walletOwner, balance: wallet.balance });
+      })
+      .catch(() => {
+        if (!cancelled) setWalletSummary(null);
+      });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [pathname, status, user, walletOwner]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -110,6 +144,7 @@ export function Navbar() {
 
   function handleLogout() {
     clearAuthToken();
+    setWalletSummary(null);
     setMenuOpen(false);
     router.push("/");
   }
@@ -148,7 +183,9 @@ export function Navbar() {
                 aria-label="Wallet balance"
                 className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200"
               >
-                ฿ 0
+                {walletBalance === null
+                  ? "฿ —"
+                  : `฿ ${walletFormat.format(Number(walletBalance))}`}
               </span>
               <button
                 type="button"

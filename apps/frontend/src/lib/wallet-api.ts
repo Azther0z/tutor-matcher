@@ -13,6 +13,18 @@ export type ConfirmedTopup = WalletSummary & {
   };
 };
 
+const WALLET_BALANCE_CHANGED_EVENT = "tutor-matcher-wallet-balance-changed";
+
+export function subscribeToWalletBalance(callback: (balance: string) => void) {
+  function handleBalanceChanged(event: Event) {
+    const balance = (event as CustomEvent<{ balance?: string }>).detail?.balance;
+    if (balance) callback(balance);
+  }
+
+  window.addEventListener(WALLET_BALANCE_CHANGED_EVENT, handleBalanceChanged);
+  return () => window.removeEventListener(WALLET_BALANCE_CHANGED_EVENT, handleBalanceChanged);
+}
+
 async function walletRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getAuthToken();
   const response = await fetch(`/api/wallet${path}`, {
@@ -32,9 +44,14 @@ export function getWallet() {
   return walletRequest<WalletSummary>("");
 }
 
-export function confirmTopup(amount: number, reference: string) {
-  return walletRequest<ConfirmedTopup>("/topups/confirm", {
+export async function confirmTopup(amount: number, reference: string) {
+  const confirmed = await walletRequest<ConfirmedTopup>("/topups/confirm", {
     method: "POST",
     body: JSON.stringify({ amount, reference }),
   });
+
+  window.dispatchEvent(
+    new CustomEvent(WALLET_BALANCE_CHANGED_EVENT, { detail: { balance: confirmed.balance } })
+  );
+  return confirmed;
 }
