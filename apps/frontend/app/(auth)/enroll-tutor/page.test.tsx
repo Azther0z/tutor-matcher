@@ -86,6 +86,7 @@ it("saves an incomplete draft without requiring consent or submitting", async ()
         introVideoUrl: null,
         identificationCardUrl: null,
         certificationUrl: null,
+        certificationUrls: [],
       },
     })
   );
@@ -105,6 +106,7 @@ it("saves an incomplete draft without requiring consent or submitting", async ()
         introVideoUrl: null,
         identificationCardUrl: null,
         certificationUrl: null,
+        certificationUrls: [],
       }),
     })
   );
@@ -130,7 +132,12 @@ it("submits a normalized draft and remains pending with no Tutor or dashboard re
   expect(screen.getByText(/You remain a student until it is approved/)).toBeInTheDocument();
   expect(fetchMock.mock.calls[1]).toEqual([
     "/api/profiles/me/tutor/draft",
-    expect.objectContaining({ body: JSON.stringify(profileFields) }),
+    expect.objectContaining({
+      body: JSON.stringify({
+        ...profileFields,
+        certificationUrls: [profileFields.certificationUrl],
+      }),
+    }),
   ]);
   expect(fetchMock).toHaveBeenLastCalledWith(
     "/api/profiles/me/tutor/submit",
@@ -180,6 +187,18 @@ it("keeps a pending request locked if withdrawal fails", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Withdraw request" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Already reviewed");
   expect(screen.queryByLabelText("Tutor bio")).not.toBeInTheDocument();
+});
+
+it("shows all private certificates in a pending application without a Tutor", async () => {
+  const urls = [profileVersion.certificationUrl!, "https://example.com/extra-certificate.pdf"];
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse({ ...pending, version: { ...profileVersion, certificationUrls: urls } })
+  );
+  render(<EnrollTutorPage />);
+  await screen.findByText("Pending Verification");
+  for (const url of urls) {
+    expect(screen.getByRole("link", { name: url })).toHaveAttribute("href", url);
+  }
 });
 
 it("shows the rejection reason and lets the applicant revise and resubmit", async () => {

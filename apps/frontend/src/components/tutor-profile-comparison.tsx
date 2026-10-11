@@ -1,6 +1,9 @@
-import type { TutorProfileFields } from "@/src/lib/tutor-application";
+import { getTutorCertificationUrls, type TutorProfileFields } from "@/src/lib/tutor-application";
+import { TutorCertificationLinks } from "@/src/components/tutor-certification-links";
 
-const fields: { name: keyof TutorProfileFields; label: string; private?: boolean }[] = [
+type ProfileFieldName = Exclude<keyof TutorProfileFields, "certificationUrls">;
+
+const fields: { name: ProfileFieldName; label: string; private?: boolean }[] = [
   { name: "avatarUrl", label: "Avatar URL" },
   { name: "bio", label: "Bio" },
   { name: "introVideoUrl", label: "Introduction video URL" },
@@ -8,7 +11,7 @@ const fields: { name: keyof TutorProfileFields; label: string; private?: boolean
   { name: "certificationUrl", label: "Teaching certification URL", private: true },
 ];
 
-function ProfileValue({ name, value }: { name: keyof TutorProfileFields; value: string | null }) {
+function ProfileValue({ name, value }: { name: ProfileFieldName; value: string | null }) {
   if (!value) return <span className="text-zinc-500">Not provided</span>;
   if (name !== "bio" && /^https?:\/\//i.test(value)) {
     return (
@@ -44,7 +47,11 @@ export function TutorProfileComparison({
         </thead>
         <tbody>
           {fields.map((field) => {
-            const changed = (current?.[field.name] ?? null) !== (proposed[field.name] ?? null);
+            const certificationField = field.name === "certificationUrl";
+            const changed = certificationField
+              ? JSON.stringify([...getTutorCertificationUrls(current)].sort()) !==
+                JSON.stringify([...getTutorCertificationUrls(proposed)].sort())
+              : (current?.[field.name] ?? null) !== (proposed[field.name] ?? null);
             return (
               <tr
                 key={field.name}
@@ -68,10 +75,18 @@ export function TutorProfileComparison({
                   )}
                 </th>
                 <td className="p-3 align-top">
-                  <ProfileValue name={field.name} value={current?.[field.name] ?? null} />
+                  {certificationField ? (
+                    <TutorCertificationLinks urls={getTutorCertificationUrls(current)} />
+                  ) : (
+                    <ProfileValue name={field.name} value={current?.[field.name] ?? null} />
+                  )}
                 </td>
                 <td className="p-3 align-top">
-                  <ProfileValue name={field.name} value={proposed[field.name]} />
+                  {certificationField ? (
+                    <TutorCertificationLinks urls={getTutorCertificationUrls(proposed)} />
+                  ) : (
+                    <ProfileValue name={field.name} value={proposed[field.name]} />
+                  )}
                 </td>
               </tr>
             );

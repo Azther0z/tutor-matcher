@@ -44,6 +44,70 @@ it("highlights changed fields and shows current and submitted content", async ()
   expect(screen.getAllByText("Changed")).toHaveLength(1);
 });
 
+it.each([
+  ["replaced", ["https://example.com/replacement-certificate.pdf"]],
+  ["removed", []],
+])(
+  "highlights an extra certificate %s even when the singular URL is unchanged",
+  async (_, extras) => {
+    const primary = reviewRequest.certificationUrl!;
+    const previousExtra = "https://example.com/extra-certificate.pdf";
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse([
+        {
+          ...reviewRequest,
+          certificationUrls: [primary, ...extras],
+          currentProfile: {
+            ...reviewRequest.currentProfile,
+            certificationUrls: [primary, previousExtra],
+          },
+        },
+      ])
+    );
+    render(<TutorRequestsPage />);
+    await screen.findByRole("button", { name: "Approve request" });
+    const row = screen
+      .getByRole("rowheader", {
+        name: "Teaching certification URL Private verification document Changed",
+      })
+      .closest("tr")!;
+    expect(row).toHaveClass("bg-amber-500/10");
+    const [current, submitted] = within(row).getAllByRole("cell");
+    expect(within(current).getByRole("link", { name: previousExtra })).toHaveAttribute(
+      "href",
+      previousExtra
+    );
+    expect(within(submitted).getByRole("link", { name: primary })).toHaveAttribute("href", primary);
+    expect(within(submitted).queryByRole("link", { name: previousExtra })).not.toBeInTheDocument();
+    for (const url of extras) {
+      expect(within(submitted).getByRole("link", { name: url })).toHaveAttribute("href", url);
+    }
+  }
+);
+
+it("does not highlight certificate collections that differ only in order", async () => {
+  const primary = reviewRequest.certificationUrl!;
+  const extra = "https://example.com/extra-certificate.pdf";
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse([
+      {
+        ...reviewRequest,
+        certificationUrls: [extra, primary],
+        currentProfile: { ...reviewRequest.currentProfile, certificationUrls: [primary, extra] },
+      },
+    ])
+  );
+  render(<TutorRequestsPage />);
+  await screen.findByRole("button", { name: "Approve request" });
+  const row = screen
+    .getByRole("rowheader", {
+      name: "Teaching certification URL Private verification document",
+    })
+    .closest("tr")!;
+  expect(row).not.toHaveClass("bg-amber-500/10");
+  expect(within(row).getAllByRole("link", { name: extra })).toHaveLength(2);
+});
+
 it("shows initial applications with no current profile and approves via the review endpoint", async () => {
   fetchMock
     .mockResolvedValueOnce(jsonResponse([{ ...reviewRequest, currentProfile: null }]))

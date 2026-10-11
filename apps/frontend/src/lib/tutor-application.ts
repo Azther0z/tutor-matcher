@@ -9,6 +9,7 @@ export type TutorProfileFields = {
   introVideoUrl: string | null;
   identificationCardUrl: string | null;
   certificationUrl: string | null;
+  certificationUrls?: string[];
 };
 export type TutorApplication = TutorProfileFields & {
   id: string;
@@ -34,6 +35,12 @@ export type TutorReviewRequest = TutorProfileVersion & {
   user: { id: string; firstName: string; lastName: string; email: string };
   currentProfile: TutorApplication | null;
 };
+
+export function getTutorCertificationUrls(profile: TutorProfileFields | null): string[] {
+  return (
+    profile?.certificationUrls ?? (profile?.certificationUrl ? [profile.certificationUrl] : [])
+  );
+}
 
 export function tutorDetailsFromApplication(profile: TutorProfileFields | null): TutorDetails {
   return {

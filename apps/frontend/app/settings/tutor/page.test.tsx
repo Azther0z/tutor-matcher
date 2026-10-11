@@ -71,6 +71,220 @@ it("keeps the approved profile and publication controls while an edit is pending
   );
 });
 
+it("shows every private certificate in the owner's pending edit", async () => {
+  const urls = [profileVersion.certificationUrl!, "https://example.com/extra-certificate.pdf"];
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse({ ...pendingEdit, version: { ...pendingEdit.version, certificationUrls: urls } })
+  );
+  render(<TutorSettingsPage />);
+  const pending = await screen.findByRole("region", { name: "Pending request" });
+  for (const url of urls) {
+    expect(within(pending).getByRole("link", { name: url })).toHaveAttribute("href", url);
+  }
+});
+
+it("explains and displays retained extra certificates during a bio-only draft save", async () => {
+  const extra = "https://example.com/extra-certificate.pdf";
+  const version = {
+    ...approved.version,
+    certificationUrls: [profileVersion.certificationUrl!, extra],
+  };
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse({ ...approved, version }))
+    .mockResolvedValueOnce(
+      jsonResponse({ ...approved, version: { ...version, status: "DRAFT", bio: "Updated bio." } })
+    );
+  render(<TutorSettingsPage />);
+  const retained = await screen.findByRole("region", {
+    name: "Additional teaching certifications (private)",
+  });
+  expect(within(retained).getByRole("link", { name: extra })).toHaveAttribute("href", extra);
+  expect(within(retained).getByText(/other certifications are retained/)).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: "Updated bio." } });
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled());
+  const payload = JSON.parse(fetchMock.mock.calls[1][1].body);
+  expect(payload.bio).toBe("Updated bio.");
+  expect(payload.certificationUrl).toBe(profileVersion.certificationUrl);
+  expect(payload.certificationUrls).toEqual([profileVersion.certificationUrl, extra]);
+  expect(screen.getByRole("link", { name: extra })).toHaveAttribute("href", extra);
+});
+
+it("retries a late-sorting certificate replacement with the same complete collection", async () => {
+  const original = "https://example.com/a-certificate.pdf";
+  const extra = "https://example.com/m-certificate.pdf";
+  const replacement = "https://example.com/z-certificate.pdf";
+  const version = {
+    ...approved.version,
+    certificationUrl: original,
+    certificationUrls: [original, extra],
+  };
+  const saved = {
+    ...approved,
+    version: {
+      ...version,
+      status: "DRAFT",
+      certificationUrl: extra,
+      certificationUrls: [extra, replacement],
+    },
+  };
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse({ ...approved, version }))
+    .mockRejectedValueOnce(new Error("Response lost after saving"))
+    .mockResolvedValueOnce(jsonResponse(saved))
+    .mockResolvedValueOnce(jsonResponse(saved));
+  render(<TutorSettingsPage />);
+  fireEvent.change(await screen.findByLabelText(/Teaching certification document URL/), {
+    target: { value: replacement },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Response lost after saving");
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled());
+  const firstPayload = JSON.parse(fetchMock.mock.calls[1][1].body);
+  const retryPayload = JSON.parse(fetchMock.mock.calls[2][1].body);
+  expect(firstPayload.certificationUrls).toEqual([replacement, extra]);
+  expect(retryPayload).toEqual(firstPayload);
+  expect(screen.getByLabelText(/Teaching certification document URL/)).toHaveValue(extra);
+  expect(screen.getByRole("link", { name: replacement })).toHaveAttribute("href", replacement);
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+  expect(JSON.parse(fetchMock.mock.calls[3][1].body).certificationUrls).toEqual([
+    extra,
+    replacement,
+  ]);
+});
+
+it("clearing the editable certificate removes only that entry from the draft snapshot", async () => {
+  const extra = "https://example.com/extra-certificate.pdf";
+  fetchMock
+    .mockResolvedValueOnce(
+      jsonResponse({
+        ...approved,
+        version: {
+          ...approved.version,
+          certificationUrls: [profileVersion.certificationUrl!, extra],
+        },
+      })
+    )
+    .mockResolvedValueOnce(
+      jsonResponse({
+        ...approved,
+        version: {
+          ...approved.version,
+          status: "DRAFT",
+          certificationUrl: extra,
+          certificationUrls: [extra],
+        },
+      })
+    );
+  render(<TutorSettingsPage />);
+  fireEvent.change(await screen.findByLabelText(/Teaching certification document URL/), {
+    target: { value: "" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  const payload = JSON.parse(fetchMock.mock.calls[1][1].body);
+  expect(payload.certificationUrl).toBeNull();
+  expect(payload.certificationUrls).toEqual([extra]);
+});
+
+it("deduplicates replacing A with retained B on save and retry, then clears only B", async () => {
+  const original = "https://example.com/a-certificate.pdf";
+  const retained = "https://example.com/b-certificate.pdf";
+  const version = {
+    ...approved.version,
+    certificationUrl: original,
+    certificationUrls: [original, retained],
+  };
+  const saved = {
+    ...approved,
+    version: {
+      ...version,
+      status: "DRAFT",
+      certificationUrl: retained,
+      certificationUrls: [retained],
+    },
+  };
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse({ ...approved, version }))
+    .mockRejectedValueOnce(new Error("Response lost after saving"))
+    .mockResolvedValueOnce(jsonResponse(saved))
+    .mockResolvedValueOnce(
+      jsonResponse({
+        ...saved,
+        version: { ...saved.version, certificationUrl: null, certificationUrls: [] },
+      })
+    );
+  render(<TutorSettingsPage />);
+  fireEvent.change(await screen.findByLabelText(/Teaching certification document URL/), {
+    target: { value: retained },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Response lost after saving");
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled());
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body).certificationUrls).toEqual([retained]);
+  expect(fetchMock.mock.calls[2][1].body).toBe(fetchMock.mock.calls[1][1].body);
+  fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
+    target: { value: "" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+  expect(JSON.parse(fetchMock.mock.calls[3][1].body).certificationUrls).toEqual([]);
+});
+
+it("allows submission when only an extra certificate differs from the approved collection", async () => {
+  const primary = profileVersion.certificationUrl!;
+  const currentExtra = "https://example.com/b-certificate.pdf";
+  const proposedExtra = "https://example.com/z-certificate.pdf";
+  const tutor = { ...approvedTutor, certificationUrls: [primary, currentExtra] };
+  const version = {
+    ...approved.version,
+    status: "DRAFT",
+    certificationUrls: [primary, proposedExtra],
+  };
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }))
+    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }))
+    .mockResolvedValueOnce(
+      jsonResponse({ ...approved, tutor, version: { ...version, status: "PENDING" } })
+    );
+  render(<TutorSettingsPage />);
+  await screen.findByLabelText("Tutor bio");
+  fireEvent.click(screen.getByRole("checkbox"));
+  const submit = screen.getByRole("button", { name: "Submit changes for review" });
+  expect(submit).toBeEnabled();
+  fireEvent.click(submit);
+  await screen.findByText("Pending Verification");
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body).certificationUrls).toEqual([
+    primary,
+    proposedExtra,
+  ]);
+});
+
+it("keeps submission disabled for reordered certificates even with a different singular selection", async () => {
+  const primary = profileVersion.certificationUrl!;
+  const extra = "https://example.com/extra-certificate.pdf";
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse({
+      ...approved,
+      tutor: { ...approvedTutor, certificationUrls: [primary, extra] },
+      version: {
+        ...approved.version,
+        status: "DRAFT",
+        certificationUrl: extra,
+        certificationUrls: [extra, primary],
+      },
+    })
+  );
+  render(<TutorSettingsPage />);
+  expect(await screen.findByLabelText(/Teaching certification document URL/)).toHaveValue(extra);
+  fireEvent.click(screen.getByRole("checkbox"));
+  expect(screen.getByRole("button", { name: "Submit changes for review" })).toBeDisabled();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
 it("submits edits without overwriting the live profile, names, or publication", async () => {
   fetchMock
     .mockResolvedValueOnce(jsonResponse(approved))

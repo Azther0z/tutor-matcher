@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
 import { TutorConsent } from "@/src/components/tutor-consent";
+import { TutorCertificationLinks } from "@/src/components/tutor-certification-links";
 import { TutorDetailsFields } from "@/src/components/tutor-details-fields";
 import {
   tutorApi,
+  getTutorCertificationUrls,
   tutorDetailsFromApplication,
   tutorDetailsPayload,
   type TutorApplicationResponse,
+  type TutorProfileFields,
 } from "@/src/lib/tutor-application";
 import {
   emptyTutorDetails,
@@ -24,6 +27,32 @@ const panel = "rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]
 const button =
   "rounded-full border border-black/[.12] px-6 py-3 font-medium hover:bg-black/[.04] disabled:opacity-60 dark:border-white/[.18] dark:hover:bg-white/[.08]";
 const apiPath = "/api/profiles/me/tutor";
+
+function buildDraftPayload(details: TutorDetails, loadedProfile: TutorProfileFields | null) {
+  const payload = tutorDetailsPayload(details);
+  const certificationUrls = getTutorCertificationUrls(loadedProfile).flatMap((url) =>
+    url === loadedProfile?.certificationUrl
+      ? payload.certificationUrl
+        ? [payload.certificationUrl]
+        : []
+      : [url]
+  );
+  if (!loadedProfile?.certificationUrl && payload.certificationUrl) {
+    certificationUrls.push(payload.certificationUrl);
+  }
+  return { ...payload, certificationUrls: [...new Set(certificationUrls)] };
+}
+
+function profileContent(profile: TutorProfileFields) {
+  const fields = tutorDetailsPayload(tutorDetailsFromApplication(profile));
+  return JSON.stringify([
+    fields.avatarUrl,
+    fields.bio,
+    fields.introVideoUrl,
+    fields.identificationCardUrl,
+    [...new Set(getTutorCertificationUrls(profile))].sort(),
+  ]);
+}
 
 export function TutorProfileEditor({ enrollment = false }: { enrollment?: boolean }) {
   return (
@@ -87,7 +116,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
   async function saveDraft() {
     const result = await tutorApi<TutorApplicationResponse>(`${apiPath}/draft`, {
       method: "PUT",
-      body: JSON.stringify(tutorDetailsPayload(details)),
+      body: JSON.stringify(buildDraftPayload(details, data?.version ?? data?.tutor ?? null)),
     });
     setData(result);
     setDetails(tutorDetailsFromApplication(result.version ?? result.tutor));
@@ -120,10 +149,13 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
   const version = data?.version;
   const pending = version?.status === "PENDING";
   const approvedEnrollment = enrollment && !!tutor;
+  const editableProfile = version ?? tutor ?? null;
+  const retainedCertificationUrls = getTutorCertificationUrls(editableProfile).filter(
+    (url) => url !== editableProfile?.certificationUrl
+  );
   const noChanges =
     !!tutor &&
-    JSON.stringify(tutorDetailsPayload(details)) ===
-      JSON.stringify(tutorDetailsPayload(tutorDetailsFromApplication(tutor)));
+    profileContent(buildDraftPayload(details, editableProfile)) === profileContent(tutor);
   const canSubmit =
     consent && Object.keys(validateTutorDetails(details)).length === 0 && !noChanges;
 
@@ -269,7 +301,6 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
               [
                 ["Intro video", version.introVideoUrl],
                 ["Identification card (private)", version.identificationCardUrl],
-                ["Teaching certification (private)", version.certificationUrl],
               ] as const
             ).map(([label, url]) => (
               <div key={label}>
@@ -290,6 +321,12 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                 </dd>
               </div>
             ))}
+            <div>
+              <dt className="font-medium">Teaching certification (private)</dt>
+              <dd>
+                <TutorCertificationLinks urls={getTutorCertificationUrls(version)} />
+              </dd>
+            </div>
           </dl>
           <p className="mt-2 text-sm">
             Submitted requests cannot be edited. Withdraw this request to make changes and
@@ -333,6 +370,18 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
               errors={errors}
               onChange={(name, value) => setDetails((current) => ({ ...current, [name]: value }))}
             />
+            {retainedCertificationUrls.length > 0 && (
+              <section className={panel} aria-label="Additional teaching certifications (private)">
+                <h2 className="text-xl font-semibold">
+                  Additional teaching certifications (private)
+                </h2>
+                <p className="my-3 text-sm text-zinc-500">
+                  The URL field edits one certification. These other certifications are retained
+                  when you save or submit your profile.
+                </p>
+                <TutorCertificationLinks urls={retainedCertificationUrls} />
+              </section>
+            )}
             <TutorConsent
               consentAccepted={consent}
               setConsentAccepted={setConsent}
