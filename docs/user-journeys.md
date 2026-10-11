@@ -310,12 +310,18 @@ Related stories: US6-1 … US6-3.
    certification document, and an introduction video. Submit stays disabled until all three are
    present. Subjects are not part of the application — they are added afterwards in
    `/settings/tutor`.
-3. Submitting sets the application to **pending**. The page then shows the uploaded
+3. A student can save an incomplete **draft**. Submission validates all required fields
+   and consent, then sets the profile version to **pending**. There is at most one
+   pending version per user. Submitted content is fixed; withdraw and create a new
+   draft to change it. The page then shows the uploaded
    documents, the introduction video, and _Awaiting approval_, with **Cancel & re-submit**.
 4. While pending the user is still a student: `/dashboard/tutor` and `/settings/tutor`
    bounce back to the application.
-5. An admin approves or rejects at `/admin/tutor-requests`. Approval grants the tutor
-   capability; rejection notifies the applicant with a reason.
+5. An admin compares proposed and current content at `/admin/tutor-requests`. Initial
+   approval creates a Tutor as **unpublished**, linked to the approved version on the
+   same User account, and grants a **Verified** badge. The tutor chooses when to publish.
+   Rejection requires a reason displayed to the applicant; revised submissions create
+   new versions. Review outcomes are visible in the application/settings UI.
 6. After approval, `/(auth)/enroll-tutor` redirects to `/dashboard/tutor`.
 
 Related stories: US1-4, US9-1.
@@ -336,7 +342,21 @@ inside their own card rather than pushing the page. Subject **Update** links to
 and intro video URL, then **Verification** (document state and Replace documents), then
 **Subjects**. Listing and document changes are **submitted for review** and only go live
 once an admin approves; a rejection leaves the live listing untouched and returns a
-reason. Submit is disabled when nothing changed.
+reason. Submit is disabled when nothing changed. Approval switches the current profile
+version immediately, preserving the publication setting at that moment. The submit
+UI explains this automatic application. Drafts are editable; pending and approved
+versions remain immutable history. Account names are edited in Account settings,
+not as part of a profile review.
+
+**Unpublishing.** Hide the tutor and subjects from search/recommendations and reject
+new bookings on the backend. Direct tutor/booking-subject links show that the tutor
+is not accepting bookings. Existing subject details, conversations, booked lessons,
+and tutor management access remain available. Search/recommendation and subject
+management pages that are placeholders are not implemented by AUTH-4.
+
+**Verification privacy.** Public tutor responses include only approved public content
+and the Verified badge. Identification-card and private certificate URLs are returned
+only to their owner and authorized admins.
 
 **Subjects.** Each subject is its own offering with a name, description, hourly rate,
 and format. Adding starts as a single **Add subject** button that opens the form;

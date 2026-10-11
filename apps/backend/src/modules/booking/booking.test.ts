@@ -112,10 +112,8 @@ describe("trial booking rules", () => {
           tutorId: SLOT_A,
           tutor: {
             id: SLOT_A,
-            avatarUrl: null,
-            bio: null,
-            introVideoUrl: null,
-            identificationCardUrl: "fixture",
+            currentProfileVersion: { avatarUrl: null },
+            currentProfileVersionId: SLOT_B,
             enrolledAt: now,
             status: "PUBLISHED",
             user: {

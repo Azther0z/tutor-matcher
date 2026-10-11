@@ -23,7 +23,8 @@ Terms below follow [`CONTEXT.md`](../CONTEXT.md).
 ```
 User (every account; student by default)
  ├─ tutorId  ──> Tutor ──< Subject ──< AvailabilitySubject >── Availability (30-min slot)
- │                 └──< Certification                              │
+ │                 └─ currentProfileVersionId → TutorProfileVersion │
+ ├──< TutorProfileVersion ──< TutorProfileVersionCertification       │
  ├─ isAdmin                                                        │
  ├─ Wallet balance ──< Payment / wallet transaction                │
  ├──< Booking >── Subject                                          │
@@ -84,28 +85,47 @@ Indexes: unique `token_hash`, unique `user_id`, and `expires_at`.
 
 ### tutors
 
-| Column                  | Type        | Constraints                 | Notes                                                                                 |
-| ----------------------- | ----------- | --------------------------- | ------------------------------------------------------------------------------------- |
-| tutor_id                | SERIAL      | PK                          |                                                                                       |
-| avatar_url              | TEXT        | NULL                        |                                                                                       |
-| bio                     | TEXT        | NULL                        | Listing bio                                                                           |
-| intro_video_url         | TEXT        | NULL                        |                                                                                       |
-| identification_card_url | TEXT        | NOT NULL                    | URL of the identification card image uploaded when applying (`identificationCardUrl`) |
-| enrolled_at             | TIMESTAMP   | NOT NULL, DEFAULT now()     |                                                                                       |
-| status                  | TutorStatus | NOT NULL, DEFAULT `PENDING` | `PENDING`, `UNPUBLISHED`, `PUBLISHED`, `REJECTED`                                     |
+| Column                     | Type        | Constraints                                   | Notes                                     |
+| -------------------------- | ----------- | --------------------------------------------- | ----------------------------------------- |
+| tutor_id                   | UUID        | PK                                            | Stable identity for subjects and bookings |
+| current_profile_version_id | UUID        | UNIQUE, NOT NULL, FK → tutor_profile_versions | Current approved content                  |
+| enrolled_at                | TIMESTAMP   | NOT NULL, DEFAULT now()                       | Initial approval time                     |
+| status                     | TutorStatus | NOT NULL, DEFAULT `UNPUBLISHED`               | Publication only                          |
 
-`status` currently carries both the application decision and the listing's published
-state — see [Reconciliation](#reconciliation-requirement-vs-implementation).
+### tutor_profile_versions
 
-### certifications
+| Column                  | Type                      | Constraints               | Notes                                       |
+| ----------------------- | ------------------------- | ------------------------- | ------------------------------------------- |
+| profile_version_id      | UUID                      | PK                        | Application or profile revision             |
+| user_id                 | UUID                      | NOT NULL, FK → users      | Owner, including students with no Tutor yet |
+| avatar_url              | TEXT                      | NULL                      | Proposed photo                              |
+| bio                     | TEXT                      | NULL                      | Required on submission                      |
+| intro_video_url         | TEXT                      | NULL                      | Required on submission                      |
+| identification_card_url | TEXT                      | NULL                      | Private; required on submission             |
+| status                  | TutorProfileVersionStatus | NOT NULL, DEFAULT `DRAFT` | Review lifecycle                            |
+| created_at              | TIMESTAMP                 | NOT NULL, DEFAULT now()   | Orders drafts and history                   |
+| submitted_at            | TIMESTAMP                 | NULL                      | Set on submission                           |
+| reviewed_at             | TIMESTAMP                 | NULL                      | Set on admin decision                       |
+| reviewed_by_id          | UUID                      | NULL, FK → users          | Reviewing admin                             |
+| rejection_reason        | TEXT                      | NULL                      | Required when rejecting                     |
 
-| Column           | Type   | Constraints                                        |
-| ---------------- | ------ | -------------------------------------------------- |
-| certification_id | SERIAL | PK                                                 |
-| file_url         | TEXT   | NOT NULL                                           |
-| tutor_id         | INT    | NOT NULL, FK → tutors.tutor_id, ON DELETE RESTRICT |
+Draft fields may be incomplete. Submission requires a bio, identification-card URL,
+a certification URL, introduction-video URL, and consent. Submitted versions are
+immutable. User-row locks serialize submissions, withdrawal and review; only one
+pending version per user is allowed. Approval atomically creates a Tutor or updates
+its pointer, only to an approved version belonging to that user. Publication remains
+independent. Approved history is retained; content is not copied into `tutors`.
 
-Index: `tutor_id`.
+### tutor_profile_version_certifications
+
+| Column             | Type | Constraints                                              | Notes                        |
+| ------------------ | ---- | -------------------------------------------------------- | ---------------------------- |
+| certification_id   | UUID | PK                                                       |                              |
+| profile_version_id | UUID | NOT NULL, FK → tutor_profile_versions, ON DELETE CASCADE | Version-specific certificate |
+| file_url           | TEXT | NOT NULL                                                 | Private document reference   |
+
+The current form handles one certification; version ownership allows historical
+certificates to remain attached to the submission that was reviewed.
 
 ### subjects
 
@@ -215,11 +235,12 @@ Indexes: `admin_user_id`, `reporter_user_id`, `reported_user_id`.
 
 ### Enums
 
-| Enum            | Values                                            |
-| --------------- | ------------------------------------------------- |
-| `TutorStatus`   | `PENDING`, `UNPUBLISHED`, `PUBLISHED`, `REJECTED` |
-| `PaymentType`   | `REFUND`, `PAYOUT`, `TRANSFER`                    |
-| `PaymentStatus` | `PENDING`, `HOLDING`, `COMPLETED`, `CANCELLED`    |
+| Enum                        | Values                                                  |
+| --------------------------- | ------------------------------------------------------- |
+| `TutorStatus`               | `UNPUBLISHED`, `PUBLISHED`                              |
+| `TutorProfileVersionStatus` | `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED` |
+| `PaymentType`               | `REFUND`, `PAYOUT`, `TRANSFER`                          |
+| `PaymentStatus`             | `PENDING`, `HOLDING`, `COMPLETED`, `CANCELLED`          |
 
 ---
 
@@ -268,18 +289,15 @@ that the current schema is wrong to have shipped.
 
 ### Entities the product needs that do not exist yet
 
-| ID  | Missing                                                                                                                                                                                        | Journey                        |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| G8  | **Tutor application** as its own record — submitted at, reviewed at, reviewing admin, rejection reason. Today `tutors.status` conflates the application decision with listing publication.     | §6 Becoming a tutor, §10 Admin |
-| G9  | **Listing revision + admin review** of listing and document changes before they go live                                                                                                        | §7 Listing, §10 Admin          |
-| G10 | **Payout account** (bank details, default flag)                                                                                                                                                | §4 Payouts, `/settings/wallet` |
-| G11 | **Notification preference** per user and event type, with email and push flags                                                                                                                 | §8 Notifications               |
-| G12 | **Review reply** from the tutor, and a moderation status on reviews and messages                                                                                                               | §9 Reviews, §10 Admin          |
-| G13 | **Account suspension / ban** state on `users`                                                                                                                                                  | §10 Admin                      |
-| G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                                                                                  | §2 Search filters, §7 Subjects |
-| G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up                                                           | §10 Admin queues               |
-| G17 | **Document type** on `certifications` (identification card vs teaching certification); the identification card image URL (`identification_card_url`) sits on `tutors`, not in a document table | §6 Application, §10 Admin      |
-| G18 | **Audit log** for admin decisions on content and money                                                                                                                                         | §10 Admin                      |
+| ID  | Missing                                                                                                                              | Journey                        |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
+| G10 | **Payout account** (bank details, default flag)                                                                                      | §4 Payouts, `/settings/wallet` |
+| G11 | **Notification preference** per user and event type, with email and push flags                                                       | §8 Notifications               |
+| G12 | **Review reply** from the tutor, and a moderation status on reviews and messages                                                     | §9 Reviews, §10 Admin          |
+| G13 | **Account suspension / ban** state on `users`                                                                                        | §10 Admin                      |
+| G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                        | §2 Search filters, §7 Subjects |
+| G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up | §10 Admin queues               |
+| G18 | **Audit log** for admin decisions on content and money                                                                               | §10 Admin                      |
 
 ---
 
@@ -287,10 +305,13 @@ that the current schema is wrong to have shipped.
 
 Present today: `subjects(tutor_id)`, `bookings(user_id)`, `bookings(subject_id)`,
 `payments(from_user_id)`, `payments(to_user_id)`, `reviews(user_id)`,
-`reviews(subject_id)`, `reviews(booking_id)`, `certifications(tutor_id)`,
+`reviews(subject_id)`, `reviews(booking_id)`,
+`tutor_profile_version_certifications(profile_version_id)`,
+`tutor_profile_versions(user_id, created_at)`,
+`tutor_profile_versions(status, submitted_at)`,
 `messages(from_user_id)`, `messages(to_user_id)`, `reports(admin_user_id)`,
 `reports(reporter_user_id)`, `reports(reported_user_id)`, plus the unique indexes on
-`users(email)`, `users(tutor_id)`, `password_reset_tokens(token_hash)`,
+`users(email)`, `users(tutor_id)`, `tutors(current_profile_version_id)`, `password_reset_tokens(token_hash)`,
 `password_reset_tokens(user_id)`,
 `availabilities(booking_id)`, and
 `payments(booking_id)`.

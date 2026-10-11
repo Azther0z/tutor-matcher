@@ -1,3 +1,4 @@
+import { URL } from "node:url";
 import { z } from "zod";
 
 const studentEducationLevels = [
@@ -12,42 +13,52 @@ const studentEducationLevels = [
 
 const preferredLearningPeriods = ["MORNING", "AFTERNOON", "EVENING", "FLEXIBLE"] as const;
 
-const optionalUrl = z.url().nullable().optional();
+const httpUrl = z.url().refine((value) => {
+  try {
+    const protocol = new URL(value).protocol;
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}, "Use an HTTP or HTTPS URL");
+
+const tutorFields = {
+  avatarUrl: httpUrl.nullable().optional(),
+  bio: z.string().trim().min(1).max(2000),
+  introVideoUrl: httpUrl,
+  identificationCardUrl: httpUrl,
+  certificationUrl: httpUrl,
+};
 
 export const profileRequestSchema = z.object({
-  user: z.object({
-    firstName: z.string().trim().min(1).max(100),
-    lastName: z.string().trim().min(1).max(100),
-  }),
-  tutor: z.object({
-    avatarUrl: optionalUrl,
-    bio: z.string().trim().min(1).max(2000),
-    introVideoUrl: optionalUrl,
-    identificationCardUrl: z.url(),
-    certificationUrl: z.url(),
-  }),
+  user: z
+    .object({
+      firstName: z.string().trim().min(1).max(100),
+      lastName: z.string().trim().min(1).max(100),
+    })
+    .optional(),
+  tutor: z.object(tutorFields),
 });
-
 export type ProfileRequest = z.infer<typeof profileRequestSchema>;
 
-// Tutor enrollment collects the public Tutor details plus the application's
-// required documents — the account's name and personal bio are already set
-// elsewhere (signup / settings). All three application requirements
-// (identification card, teaching-certification document, bio) are required here and
-// validated server-side; avatar and intro video are additional listing details.
-// `consentAccepted` must be explicitly `true` on every (re-)submission — it
-// gates creation of the Tutor application on consenting to identity,
-// credential, and payout data processing (AUTH-6).
+// AUTH-6 consent is explicit on every initial application/re-submission.
 export const tutorEnrollmentRequestSchema = z.object({
-  avatarUrl: optionalUrl,
-  bio: z.string().trim().min(1).max(2000),
-  introVideoUrl: z.url(),
-  identificationCardUrl: z.url(),
-  certificationUrl: z.url(),
+  ...tutorFields,
   consentAccepted: z.literal(true),
 });
-
 export type TutorEnrollmentRequest = z.infer<typeof tutorEnrollmentRequestSchema>;
+
+export const tutorDraftRequestSchema = z.object({
+  avatarUrl: httpUrl.nullable().optional(),
+  bio: z.string().trim().max(2000).nullable().optional(),
+  introVideoUrl: httpUrl.nullable().optional(),
+  identificationCardUrl: httpUrl.nullable().optional(),
+  certificationUrl: httpUrl.nullable().optional(),
+  consentAccepted: z.boolean().optional(),
+});
+export type TutorDraftRequest = z.infer<typeof tutorDraftRequestSchema>;
+export const tutorSubmitRequestSchema = z.object({ consentAccepted: z.literal(true) });
+export const tutorPublicationRequestSchema = z.object({ published: z.boolean() });
 
 export const studentProfileRequestSchema = z.object({
   educationLevel: z.enum(studentEducationLevels),

@@ -174,6 +174,32 @@ plus the per-app `eslint --fix` for `apps/backend` and `apps/frontend` — and t
 `npm run format:check` as a gate. Formatting and lint fixes are applied and
 re-staged automatically; no need to run them by hand before committing.
 
+## Tutor profile approval (AUTH-4)
+
+Applications and edits are reviewed at `/admin/tutor-requests` by a database-authorized
+admin. `/enroll-tutor` supports drafts, submission, withdrawal and review outcomes;
+`/settings/tutor` manages revisions and publication. Approval creates an unpublished
+Tutor initially, or switches an existing Tutor's current profile version without
+changing publication. Verification documents remain URL references; file-storage
+infrastructure is outside this change.
+
+For a fresh disposable database, use the existing `prisma db push` and seed workflow.
+For an existing pre-AUTH-4 database whose fixtures must be preserved, stop the app,
+back up the database, and run the one-time upgrade **before** `db push`, from `apps/backend`:
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/upgrade-tutor-profile-versions.sql
+npm run db:push
+npm run gen-mock-data
+```
+
+The upgrade retains approved profile content, certificates, Tutor IDs, subjects and
+bookings. Legacy pending/rejected applications become versions without a Tutor row.
+It aborts for orphaned tutors or unapproved tutors owning subjects. Legacy approved
+records retain their prior approval state; review time and reviewer remain unknown. This is a
+one-time upgrade utility, not Prisma migration history. No existing database is
+changed automatically by installing this branch.
+
 ## Testing
 
 The backend has two complementary test suites:

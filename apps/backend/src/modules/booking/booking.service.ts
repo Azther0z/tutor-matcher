@@ -100,7 +100,10 @@ const detailInclude = {
   subject: {
     include: {
       tutor: {
-        include: { user: { select: { id: true, firstName: true, lastName: true } } },
+        include: {
+          user: { select: { id: true, firstName: true, lastName: true } },
+          currentProfileVersion: { select: { avatarUrl: true } },
+        },
       },
     },
   },
@@ -257,7 +260,7 @@ export function mapBookingResponse(
         name: booking.subject.tutor.user
           ? `${booking.subject.tutor.user.firstName} ${booking.subject.tutor.user.lastName}`
           : "Tutor",
-        avatarUrl: booking.subject.tutor.avatarUrl,
+        avatarUrl: booking.subject.tutor.currentProfileVersion.avatarUrl,
       },
     },
     availabilities: booking.availabilities.map((slot) => ({
@@ -344,15 +347,19 @@ export async function getSubjectAvailability(subjectId: string) {
   const subject = await prisma.subject.findUnique({
     where: { id: subjectId },
     include: {
-      tutor: { include: { user: { select: { firstName: true, lastName: true } } } },
+      tutor: {
+        include: {
+          user: { select: { firstName: true, lastName: true } },
+          currentProfileVersion: { select: { avatarUrl: true } },
+        },
+      },
       availabilitySubjects: {
         where: { availability: { bookingId: null, startedAt: { gt: now } } },
         include: { availability: true },
       },
     },
   });
-  if (!subject || subject.tutor.status !== "PUBLISHED")
-    throw new BookingNotFoundError("Subject not found", "SUBJECT_NOT_FOUND");
+  if (!subject) throw new BookingNotFoundError("Subject not found", "SUBJECT_NOT_FOUND");
   return {
     subject: {
       id: subject.id,
@@ -364,10 +371,11 @@ export async function getSubjectAvailability(subjectId: string) {
         name: subject.tutor.user
           ? `${subject.tutor.user.firstName} ${subject.tutor.user.lastName}`
           : "Tutor",
-        avatarUrl: subject.tutor.avatarUrl,
+        avatarUrl: subject.tutor.currentProfileVersion.avatarUrl,
       },
     },
-    slots: subject.availabilitySubjects
+    acceptingBookings: subject.tutor.status === "PUBLISHED",
+    slots: (subject.tutor.status === "PUBLISHED" ? subject.availabilitySubjects : [])
       .map(({ availability }) => ({
         id: availability.id,
         startedAt: availability.startedAt.toISOString(),

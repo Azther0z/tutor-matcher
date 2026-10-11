@@ -69,3 +69,14 @@ it("refreshes availability only for a structured slot-taken error", async () => 
   expect(await screen.findByText(/just booked by someone else/i)).toBeInTheDocument();
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
 });
+
+it("keeps subject details visible but disables new bookings when unpublished", async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ ...availability, acceptingBookings: false, slots: [] }),
+  });
+  render(<SubjectBookingPage />);
+  expect(await screen.findByText("This tutor isn’t accepting bookings")).toBeInTheDocument();
+  expect(screen.getByText("English with Alice")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Confirm booking" })).toBeDisabled();
+});

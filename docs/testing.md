@@ -2,11 +2,11 @@
 
 ## Current Test Suites
 
-| Scope                      | Runner and libraries                        | Location                                              | Current coverage                                      |
-| -------------------------- | ------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
-| Backend conventional tests | Jest, Supertest, `ts-jest`                  | `apps/backend/test/` plus `*.test.ts` beside the code | Root route, auth middleware, auth and profile modules |
-| Backend behavior tests     | Cucumber.js, Gherkin, TypeScript, Supertest | `apps/backend/features/`                              | Backend root-route scenario                           |
-| Frontend tests             | Jest, React Testing Library, jsdom          | `*.test.tsx` beside the page                          | Sign-up page, tutor settings page                     |
+| Scope                      | Runner and libraries                        | Location                                              | Current coverage                                                            |
+| -------------------------- | ------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------- |
+| Backend conventional tests | Jest, Supertest, `ts-jest`                  | `apps/backend/test/` plus `*.test.ts` beside the code | Root, auth, profile review, discovery, messaging and booking modules        |
+| Backend behavior tests     | Cucumber.js, Gherkin, TypeScript, Supertest | `apps/backend/features/`                              | Backend root-route scenario                                                 |
+| Frontend tests             | Jest, React Testing Library, jsdom          | `*.test.tsx` beside the page                          | Auth, profile applications/edits, admin review, discovery and booking pages |
 
 The Jest and Cucumber.js backend suites import `apps/backend/src/app.ts`. Supertest creates an
 ephemeral listener for each request, so contributors do not need to start the backend development
@@ -97,3 +97,23 @@ behavior are implemented, following the journeys in [User Journeys](user-journey
 
 The product invariants in [User Journeys](user-journeys.md#invariants) are the shortlist of
 behaviours worth a scenario each.
+
+## AUTH-4 acceptance coverage
+
+Profile workflow tests exercise initial pending applications without creating a Tutor,
+admin-only approval/rejection, rejection reasons, draft validation, withdrawal and
+resubmission, immutable submitted versions, and concurrent writes. Approved edits
+switch profile versions while preserving Tutor identity and publication. Public
+responses exclude private verification documents. Frontend tests cover application
+and edit states, admin comparisons/actions, and access errors.
+
+Run the real PostgreSQL workflow and booking regression suites against an isolated
+database already synchronized to the schema:
+
+```bash
+RUN_DATABASE_INTEGRATION=true npm --prefix apps/backend test -- --runInBand
+```
+
+The booking regression verifies that unpublished tutors reject new bookings while
+existing booked subject details and conversations remain accessible. The data-preserving
+upgrade utility is described in the README; it is separate from Prisma migrations.

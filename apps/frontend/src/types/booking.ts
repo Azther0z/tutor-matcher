@@ -21,6 +21,7 @@ export type BookingSubject = {
 };
 
 export type AvailabilityResponse = {
+  acceptingBookings?: boolean;
   subject: BookingSubject;
   slots: AvailabilitySlot[];
 };

@@ -1,35 +1,94 @@
-import type { TutorDetails } from "@/src/lib/tutor-details";
+import { clearAuthToken, getAuthToken } from "@/src/lib/auth";
+import { normalizeHttpsUrl, type TutorDetails } from "@/src/lib/tutor-details";
 
-export type TutorRecordStatus = "PENDING" | "UNPUBLISHED" | "PUBLISHED" | "REJECTED";
-export type TutorApplicationStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
-
-export type TutorApplication = {
-  id: string;
+export type TutorRecordStatus = "UNPUBLISHED" | "PUBLISHED";
+export type TutorVersionStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export type TutorProfileFields = {
   avatarUrl: string | null;
   bio: string | null;
   introVideoUrl: string | null;
-  identificationCardUrl: string;
+  identificationCardUrl: string | null;
   certificationUrl: string | null;
+};
+export type TutorApplication = TutorProfileFields & {
+  id: string;
   status: TutorRecordStatus;
   enrolledAt: string;
+  verified: boolean;
 };
-
+export type TutorProfileVersion = TutorProfileFields & {
+  id: string;
+  userId: string;
+  status: TutorVersionStatus;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  reviewedById: string | null;
+  rejectionReason: string | null;
+};
 export type TutorApplicationResponse = {
-  status: TutorApplicationStatus;
+  status: TutorVersionStatus | "NONE";
   tutor: TutorApplication | null;
+  version: TutorProfileVersion | null;
+};
+export type TutorReviewRequest = TutorProfileVersion & {
+  user: { id: string; firstName: string; lastName: string; email: string };
+  currentProfile: TutorApplication | null;
 };
 
-export type TutorEnrollmentResponse = {
-  status: Exclude<TutorApplicationStatus, "NONE">;
-  tutor: TutorApplication;
-};
-
-export function tutorDetailsFromApplication(application: TutorApplication | null): TutorDetails {
+export function tutorDetailsFromApplication(profile: TutorProfileFields | null): TutorDetails {
   return {
-    avatarUrl: application?.avatarUrl ?? "",
-    bio: application?.bio ?? "",
-    introVideoUrl: application?.introVideoUrl ?? "",
-    identificationCardUrl: application?.identificationCardUrl ?? "",
-    certificationUrl: application?.certificationUrl ?? "",
+    avatarUrl: profile?.avatarUrl ?? "",
+    bio: profile?.bio ?? "",
+    introVideoUrl: profile?.introVideoUrl ?? "",
+    identificationCardUrl: profile?.identificationCardUrl ?? "",
+    certificationUrl: profile?.certificationUrl ?? "",
   };
+}
+
+export function tutorDetailsPayload(details: TutorDetails): TutorProfileFields {
+  return {
+    avatarUrl: normalizeHttpsUrl(details.avatarUrl) || null,
+    bio: details.bio.trim() || null,
+    introVideoUrl: normalizeHttpsUrl(details.introVideoUrl) || null,
+    identificationCardUrl: normalizeHttpsUrl(details.identificationCardUrl) || null,
+    certificationUrl: normalizeHttpsUrl(details.certificationUrl) || null,
+  };
+}
+
+export class TutorApiError extends Error {
+  constructor(
+    message: string,
+    public status: number
+  ) {
+    super(message);
+  }
+}
+
+export async function tutorApi<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getAuthToken();
+  if (!token) throw new TutorApiError("Please log in to continue.", 401);
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...options.headers,
+    },
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    if (response.status === 401) clearAuthToken();
+    const serverMessage = data?.message;
+    const message = Array.isArray(serverMessage) ? serverMessage.join(" ") : serverMessage;
+    throw new TutorApiError(
+      response.status === 403
+        ? "You do not have permission to perform this action."
+        : typeof message === "string"
+          ? message
+          : "Could not complete the request. Please try again.",
+      response.status
+    );
+  }
+  if (data === null) throw new Error("The server returned an empty response. Please refresh.");
+  return data as T;
 }

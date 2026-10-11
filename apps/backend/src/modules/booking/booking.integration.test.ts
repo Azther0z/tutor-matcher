@@ -20,6 +20,9 @@ const token = signAuthToken({
 const authorize = (test: request.Test) => test.set("Authorization", `Bearer ${token}`);
 
 async function cleanFixtures() {
+  await prisma.message.deleteMany({
+    where: { OR: [{ fromUserId: STUDENT_ID }, { fromUserId: TUTOR_USER_ID }] },
+  });
   await prisma.payment.deleteMany({ where: { booking: { subjectId: SUBJECT_ID } } });
   await prisma.availability.updateMany({
     where: { id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID] } },
@@ -31,8 +34,10 @@ async function cleanFixtures() {
     where: { id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID] } },
   });
   await prisma.subject.deleteMany({ where: { id: SUBJECT_ID } });
-  await prisma.user.deleteMany({ where: { id: { in: [STUDENT_ID, TUTOR_USER_ID] } } });
+  await prisma.user.updateMany({ where: { id: TUTOR_USER_ID }, data: { tutorId: null } });
   await prisma.tutor.deleteMany({ where: { id: TUTOR_ID } });
+  await prisma.tutorProfileVersion.deleteMany({ where: { userId: TUTOR_USER_ID } });
+  await prisma.user.deleteMany({ where: { id: { in: [STUDENT_ID, TUTOR_USER_ID] } } });
 }
 
 const describeWithDatabase =
@@ -41,9 +46,6 @@ const describeWithDatabase =
 describeWithDatabase("booking HTTP and database lifecycle", () => {
   beforeAll(async () => {
     await cleanFixtures();
-    await prisma.tutor.create({
-      data: { id: TUTOR_ID, identificationCardUrl: "integration-fixture", status: "PUBLISHED" },
-    });
     await prisma.user.createMany({
       data: [
         {
@@ -61,10 +63,24 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
           email: "booking-integration-tutor@example.com",
           password: "fixture",
           balance: "0.00",
-          tutorId: TUTOR_ID,
         },
       ],
     });
+    await prisma.tutor.create({
+      data: {
+        id: TUTOR_ID,
+        status: "PUBLISHED",
+        currentProfileVersion: {
+          create: {
+            userId: TUTOR_USER_ID,
+            status: "APPROVED",
+            identificationCardUrl: "https://example.com/id.png",
+            bio: "Integration tutor",
+          },
+        },
+      },
+    });
+    await prisma.user.update({ where: { id: TUTOR_USER_ID }, data: { tutorId: TUTOR_ID } });
     await prisma.subject.create({
       data: {
         id: SUBJECT_ID,
@@ -211,5 +227,53 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     expect(booking).toMatchObject({ status: "CANCELLED", cancellationReason: "PAYMENT_EXPIRED" });
     expect(transfer.status).toBe("CANCELLED");
     expect(slot.bookingId).toBeNull();
+  });
+  it("unpublishing blocks new bookings without removing existing lessons or conversations", async () => {
+    const created = await authorize(
+      request(app)
+        .post("/api/bookings")
+        .send({
+          subjectId: SUBJECT_ID,
+          availabilityIds: [PENDING_SLOT_ID],
+          isTrial: true,
+        })
+    ).expect(201);
+    await prisma.tutor.update({ where: { id: TUTOR_ID }, data: { status: "UNPUBLISHED" } });
+    try {
+      const availability = await authorize(
+        request(app).get(`/api/bookings/subjects/${SUBJECT_ID}/availability`)
+      ).expect(200);
+      expect(availability.body).toMatchObject({
+        acceptingBookings: false,
+        slots: [],
+        subject: { id: SUBJECT_ID },
+      });
+      await authorize(
+        request(app)
+          .post("/api/bookings")
+          .send({
+            subjectId: SUBJECT_ID,
+            availabilityIds: [PAID_SLOT_ID],
+            isTrial: true,
+          })
+      ).expect(404);
+      const lesson = await authorize(
+        request(app).get(`/api/bookings/${created.body.booking.id}`)
+      ).expect(200);
+      expect(lesson.body.booking.subject.id).toBe(SUBJECT_ID);
+      await authorize(
+        request(app)
+          .post("/api/messages")
+          .send({ toUserId: TUTOR_USER_ID, message: "See you at our lesson" })
+      ).expect(201);
+      const thread = await authorize(
+        request(app).get(`/api/messages/thread/${TUTOR_USER_ID}`)
+      ).expect(200);
+      expect(thread.body).toEqual(
+        expect.arrayContaining([expect.objectContaining({ message: "See you at our lesson" })])
+      );
+    } finally {
+      await prisma.tutor.update({ where: { id: TUTOR_ID }, data: { status: "PUBLISHED" } });
+    }
   });
 });

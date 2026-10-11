@@ -20,7 +20,7 @@ export const emptyTutorDetails: TutorDetails = {
 function isValidUrl(value: string) {
   try {
     const url = new URL(normalizeHttpsUrl(value));
-    return url.protocol === "https:" && url.hostname.includes(".");
+    return url.protocol === "https:" || url.protocol === "http:";
   } catch {
     return false;
   }

@@ -10,6 +10,11 @@ type TutorSummary = {
   userId: string;
   firstName: string;
   lastName: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  introVideoUrl: string | null;
+  status: "PUBLISHED" | "UNPUBLISHED";
+  verified: boolean;
 };
 
 export default function TutorDetailPage() {
@@ -102,6 +107,30 @@ function TutorDetailView() {
         <h1 className="text-4xl font-semibold tracking-tight">
           {tutor.firstName} {tutor.lastName}
         </h1>
+        {tutor.verified && (
+          <span className="self-start rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-300">
+            Verified
+          </span>
+        )}
+        {tutor.status === "UNPUBLISHED" && (
+          <p role="status" className="text-zinc-600 dark:text-zinc-400">
+            This tutor isn’t accepting bookings. Existing chats and booked lessons remain
+            accessible.
+          </p>
+        )}
+        {tutor.bio && (
+          <p className="whitespace-pre-wrap text-zinc-600 dark:text-zinc-400">{tutor.bio}</p>
+        )}
+        {tutor.introVideoUrl && /^https?:\/\//i.test(tutor.introVideoUrl) && (
+          <a
+            className="underline"
+            href={tutor.introVideoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Watch introduction video
+          </a>
+        )}
       </div>
 
       <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
@@ -137,7 +166,7 @@ function TutorDetailView() {
       <section className="flex flex-col gap-2 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
         <h2 className="text-xl font-semibold">Full profile coming soon</h2>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Bio, subjects, availability, and reviews will be implemented here.
+          Subjects, availability, and reviews will be implemented here.
         </p>
         <p className="text-sm text-zinc-500">Backlog: DISC-3, REV-2, REV-3</p>
       </section>

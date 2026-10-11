@@ -5,6 +5,7 @@ export type AuthUser = {
   firstName?: string;
   lastName?: string;
   email?: string;
+  isAdmin?: boolean;
 };
 
 export function getAuthToken() {

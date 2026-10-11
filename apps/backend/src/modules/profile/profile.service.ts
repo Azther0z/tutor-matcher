@@ -1,9 +1,12 @@
+import type { Prisma, TutorProfileVersion } from "../../generated/prisma/client.ts";
+import { tutorEnrollmentRequestSchema } from "./profile.schema.ts";
 import { prisma } from "../../lib/db.ts";
 import type {
   AccountUpdateRequest,
   ProfileRequest,
   StudentProfileRequest,
   TutorEnrollmentRequest,
+  TutorDraftRequest,
 } from "./profile.schema.ts";
 
 export class ProfileForbiddenError extends Error {
@@ -27,125 +30,6 @@ export class TutorAlreadyApprovedError extends Error {
   }
 }
 
-// The enroll page only cares about three application phases; PUBLISHED and
-// UNPUBLISHED both mean "this account can use the Tutor capability".
-export type TutorApplicationStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
-
-// Tutor application review is not implemented yet, so a complete application
-// grants the Tutor capability immediately. UNPUBLISHED keeps the public listing
-// hidden until the Tutor finishes configuring it.
-const AUTO_APPROVED_TUTOR_STATUS = "UNPUBLISHED" as const;
-
-const tutorApplicationSelect = {
-  id: true,
-  avatarUrl: true,
-  bio: true,
-  introVideoUrl: true,
-  identificationCardUrl: true,
-  status: true,
-  enrolledAt: true,
-  // The enrollment application manages exactly one certification document —
-  // enrollTutor() always updates that same row rather than adding another.
-  certifications: { select: { id: true, fileUrl: true }, take: 1 },
-} as const;
-
-function applicationStatusFor(status: string): Exclude<TutorApplicationStatus, "NONE"> {
-  if (status === "PENDING") return "PENDING";
-  if (status === "REJECTED") return "REJECTED";
-  return "APPROVED";
-}
-
-// A linked Tutor record does not by itself mean "approved". This distinction
-// still matters for records created by the future admin-review workflow.
-function isApprovedTutorStatus(status: string): boolean {
-  return status === "PUBLISHED" || status === "UNPUBLISHED";
-}
-
-export async function getTutorApplication(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { tutor: { select: tutorApplicationSelect } },
-  });
-
-  if (!user) {
-    throw new UserNotFoundError();
-  }
-
-  if (!user.tutor) {
-    return { status: "NONE" as const, tutor: null };
-  }
-
-  const { certifications, ...tutor } = user.tutor;
-
-  return {
-    status: applicationStatusFor(user.tutor.status),
-    tutor: { ...tutor, certificationUrl: certifications[0]?.fileUrl ?? null },
-  };
-}
-
-export async function enrollTutor(userId: string, input: TutorEnrollmentRequest) {
-  return prisma.$transaction(async (tx) => {
-    const existingUser = await tx.user.findUnique({
-      where: { id: userId },
-      select: {
-        tutorId: true,
-        tutor: { select: { status: true, certifications: { select: { id: true }, take: 1 } } },
-      },
-    });
-
-    if (!existingUser) {
-      throw new UserNotFoundError();
-    }
-
-    // A new applicant, a pending applicant, or a rejected applicant may
-    // (re-)submit. Once the account has the Tutor capability, the application
-    // is closed.
-    if (
-      existingUser.tutor &&
-      existingUser.tutor.status !== "PENDING" &&
-      existingUser.tutor.status !== "REJECTED"
-    ) {
-      throw new TutorAlreadyApprovedError();
-    }
-
-    const tutorData = {
-      avatarUrl: input.avatarUrl,
-      bio: input.bio,
-      introVideoUrl: input.introVideoUrl,
-      identificationCardUrl: input.identificationCardUrl,
-      status: AUTO_APPROVED_TUTOR_STATUS,
-    };
-
-    const tutor = existingUser.tutorId
-      ? await tx.tutor.update({ where: { id: existingUser.tutorId }, data: tutorData })
-      : await tx.tutor.create({ data: tutorData });
-
-    if (!existingUser.tutorId) {
-      await tx.user.update({
-        where: { id: userId },
-        data: { tutor: { connect: { id: tutor.id } } },
-      });
-    }
-
-    // The application requires exactly one teaching-certification document;
-    // re-submission replaces it rather than accumulating extra rows.
-    const existingCertificationId = existingUser.tutor?.certifications[0]?.id;
-    const certification = existingCertificationId
-      ? await tx.certification.update({
-          where: { id: existingCertificationId },
-          data: { fileUrl: input.certificationUrl },
-        })
-      : await tx.certification.create({
-          data: { fileUrl: input.certificationUrl, tutorId: tutor.id },
-        });
-
-    return {
-      status: applicationStatusFor(tutor.status),
-      tutor: { ...tutor, certificationUrl: certification.fileUrl },
-    };
-  });
-}
-
 export class AccountNotFoundError extends Error {
   constructor(message = "Account not found") {
     super(message);
@@ -165,69 +49,6 @@ export class EmailAlreadyInUseError extends Error {
     super(message);
     this.name = "EmailAlreadyInUseError";
   }
-}
-
-export async function updateTutorProfile(userId: string, input: ProfileRequest) {
-  return prisma.$transaction(async (tx) => {
-    const existingUser = await tx.user.findUnique({
-      where: { id: userId },
-      select: {
-        tutorId: true,
-        tutor: { select: { status: true, certifications: { select: { id: true }, take: 1 } } },
-      },
-    });
-
-    // A linked Tutor record is not by itself "approved" — enrollTutor() links
-    // one immediately on first submission as UNPUBLISHED. This endpoint edits
-    // an approved listing, so only an account with the Tutor capability may use
-    // it; everyone else belongs in the enroll-tutor application instead.
-    if (
-      !existingUser ||
-      !existingUser.tutorId ||
-      !existingUser.tutor ||
-      !isApprovedTutorStatus(existingUser.tutor.status)
-    ) {
-      throw new ProfileForbiddenError();
-    }
-
-    const tutorData = {
-      avatarUrl: input.tutor.avatarUrl,
-      bio: input.tutor.bio,
-      introVideoUrl: input.tutor.introVideoUrl,
-      identificationCardUrl: input.tutor.identificationCardUrl,
-    };
-
-    const tutor = await tx.tutor.update({ where: { id: existingUser.tutorId }, data: tutorData });
-
-    const user = await tx.user.update({
-      where: { id: userId },
-      data: {
-        firstName: input.user.firstName,
-        lastName: input.user.lastName,
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        createdAt: true,
-      },
-    });
-
-    // Same one-certification-document model as the enrollment flow: replace
-    // the existing document rather than accumulating extra rows.
-    const existingCertificationId = existingUser.tutor.certifications[0]?.id;
-    const certification = existingCertificationId
-      ? await tx.certification.update({
-          where: { id: existingCertificationId },
-          data: { fileUrl: input.tutor.certificationUrl },
-        })
-      : await tx.certification.create({
-          data: { fileUrl: input.tutor.certificationUrl, tutorId: tutor.id },
-        });
-
-    return { user, tutor: { ...tutor, certificationUrl: certification.fileUrl } };
-  });
 }
 
 export class LearningAreaNotFoundError extends Error {
@@ -438,4 +259,263 @@ export async function updateAccount(userId: string, input: AccountUpdateRequest)
 
     throw error;
   }
+}
+
+export class TutorWorkflowError extends Error {
+  constructor(
+    public readonly statusCode: number,
+    message: string
+  ) {
+    super(message);
+    this.name = "TutorWorkflowError";
+  }
+}
+
+export const versionInclude = { certifications: { orderBy: { id: "asc" as const } } };
+export const currentTutorInclude = { currentProfileVersion: { include: versionInclude } };
+type VersionWithCertificates = TutorProfileVersion & { certifications: { fileUrl: string }[] };
+type CurrentTutor = {
+  id: string;
+  status: string;
+  enrolledAt: Date;
+  currentProfileVersionId: string;
+  currentProfileVersion: VersionWithCertificates;
+};
+
+export function flattenVersion(version: VersionWithCertificates) {
+  const { certifications, ...fields } = version;
+  return { ...fields, certificationUrl: certifications[0]?.fileUrl ?? null };
+}
+
+export function flattenTutor(tutor: CurrentTutor) {
+  const version = tutor.currentProfileVersion;
+  return {
+    id: tutor.id,
+    status: tutor.status,
+    enrolledAt: tutor.enrolledAt,
+    avatarUrl: version.avatarUrl,
+    bio: version.bio,
+    introVideoUrl: version.introVideoUrl,
+    identificationCardUrl: version.identificationCardUrl,
+    certificationUrl: version.certifications[0]?.fileUrl ?? null,
+    verified: true,
+  };
+}
+
+// Every workflow writer takes this same row lock before checking pending state.
+// PostgreSQL READ COMMITTED then sees the previous writer's committed changes.
+export async function lockProfileUser(tx: Prisma.TransactionClient, userId: string) {
+  await tx.$queryRaw`SELECT user_id FROM users WHERE user_id = ${userId}::uuid FOR UPDATE`;
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    include: { tutor: { include: currentTutorInclude } },
+  });
+  if (!user) throw new UserNotFoundError();
+  return user;
+}
+
+async function applicationResponse(tx: Prisma.TransactionClient, userId: string) {
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    include: { tutor: { include: currentTutorInclude } },
+  });
+  if (!user) throw new UserNotFoundError();
+  const active = await tx.tutorProfileVersion.findFirst({
+    where: { userId, status: { in: ["DRAFT", "PENDING"] } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    include: versionInclude,
+  });
+  const latest =
+    active ??
+    (await tx.tutorProfileVersion.findFirst({
+      where: { userId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      include: versionInclude,
+    }));
+  return {
+    status: user.tutor ? "APPROVED" : (latest?.status ?? "NONE"),
+    tutor: user.tutor ? flattenTutor(user.tutor) : null,
+    version: latest ? flattenVersion(latest) : null,
+  };
+}
+
+export async function getTutorApplication(userId: string) {
+  return prisma.$transaction((tx) => applicationResponse(tx, userId), {
+    isolationLevel: "RepeatableRead",
+  });
+}
+
+async function requireNoPending(tx: Prisma.TransactionClient, userId: string) {
+  const pending = await tx.tutorProfileVersion.findFirst({ where: { userId, status: "PENDING" } });
+  if (pending)
+    throw new TutorWorkflowError(409, "Withdraw your pending request before changing it");
+}
+
+async function writeDraft(tx: Prisma.TransactionClient, userId: string, input: TutorDraftRequest) {
+  const draft = await tx.tutorProfileVersion.findFirst({
+    where: { userId, status: "DRAFT" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  const previous = draft
+    ? null
+    : await tx.tutorProfileVersion.findFirst({
+        where: { userId },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        include: versionInclude,
+      });
+  const fields = input;
+  const certificationUrl = input.certificationUrl;
+  const baseline: Partial<ReturnType<typeof flattenVersion>> = previous
+    ? flattenVersion(previous)
+    : {};
+  const createdAt = new Date(Math.max(Date.now(), (previous?.createdAt.getTime() ?? 0) + 1));
+  // Pick fields explicitly: validation middleware does not replace req.body.
+  const data = {
+    avatarUrl: fields.avatarUrl,
+    bio: fields.bio?.trim() ?? fields.bio,
+    introVideoUrl: fields.introVideoUrl,
+    identificationCardUrl: fields.identificationCardUrl,
+  };
+  const certifications =
+    certificationUrl === undefined
+      ? undefined
+      : {
+          ...(draft ? { deleteMany: {} } : {}),
+          create: certificationUrl ? [{ fileUrl: certificationUrl }] : [],
+        };
+  return draft
+    ? tx.tutorProfileVersion.update({
+        where: { id: draft.id },
+        data: { ...data, certifications },
+        include: versionInclude,
+      })
+    : tx.tutorProfileVersion.create({
+        data: {
+          avatarUrl: fields.avatarUrl === undefined ? baseline.avatarUrl : data.avatarUrl,
+          bio: fields.bio === undefined ? baseline.bio : data.bio,
+          introVideoUrl:
+            fields.introVideoUrl === undefined ? baseline.introVideoUrl : data.introVideoUrl,
+          identificationCardUrl:
+            fields.identificationCardUrl === undefined
+              ? baseline.identificationCardUrl
+              : data.identificationCardUrl,
+          userId,
+          createdAt,
+          certifications:
+            certifications ??
+            (previous
+              ? { create: previous.certifications.map(({ fileUrl }) => ({ fileUrl })) }
+              : undefined),
+        },
+        include: versionInclude,
+      });
+}
+
+export function validateSubmission(version: VersionWithCertificates) {
+  const parsed = tutorEnrollmentRequestSchema.safeParse({
+    ...flattenVersion(version),
+    consentAccepted: true,
+  });
+  if (!parsed.success)
+    throw new TutorWorkflowError(
+      400,
+      "Complete your bio, introduction video, identification card and certification before submitting"
+    );
+}
+
+export async function saveTutorDraft(userId: string, input: TutorDraftRequest) {
+  return prisma.$transaction(async (tx) => {
+    await lockProfileUser(tx, userId);
+    await requireNoPending(tx, userId);
+    await writeDraft(tx, userId, input);
+    return applicationResponse(tx, userId);
+  });
+}
+
+async function submitVersion(
+  tx: Prisma.TransactionClient,
+  version: VersionWithCertificates,
+  current?: VersionWithCertificates
+) {
+  validateSubmission(version);
+  const content = (value: VersionWithCertificates) =>
+    JSON.stringify([
+      value.avatarUrl,
+      value.bio,
+      value.introVideoUrl,
+      value.identificationCardUrl,
+      value.certifications.map(({ fileUrl }) => fileUrl).sort(),
+    ]);
+  if (current && content(current) === content(version)) {
+    throw new TutorWorkflowError(400, "Change your profile before submitting it for review");
+  }
+  await tx.tutorProfileVersion.update({
+    where: { id: version.id },
+    data: { status: "PENDING", submittedAt: new Date() },
+  });
+}
+
+export async function submitTutorDraft(userId: string) {
+  return prisma.$transaction(async (tx) => {
+    const user = await lockProfileUser(tx, userId);
+    await requireNoPending(tx, userId);
+    const draft = await tx.tutorProfileVersion.findFirst({
+      where: { userId, status: "DRAFT" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      include: versionInclude,
+    });
+    if (!draft) throw new TutorWorkflowError(404, "No draft to submit");
+    await submitVersion(tx, draft, user.tutor?.currentProfileVersion);
+    return applicationResponse(tx, userId);
+  });
+}
+
+export async function enrollTutor(userId: string, input: TutorEnrollmentRequest) {
+  return prisma.$transaction(async (tx) => {
+    const user = await lockProfileUser(tx, userId);
+    if (user.tutor) throw new TutorAlreadyApprovedError();
+    await requireNoPending(tx, userId);
+    const draft = await writeDraft(tx, userId, input);
+    await submitVersion(tx, draft);
+    return applicationResponse(tx, userId);
+  });
+}
+
+export async function updateTutorProfile(userId: string, input: ProfileRequest) {
+  return prisma.$transaction(async (tx) => {
+    const user = await lockProfileUser(tx, userId);
+    if (!user.tutor) throw new ProfileForbiddenError();
+    await requireNoPending(tx, userId);
+    const draft = await writeDraft(tx, userId, input.tutor);
+    await submitVersion(tx, draft, user.tutor.currentProfileVersion);
+    // Names belong to account settings; never mutate them during review.
+    return applicationResponse(tx, userId);
+  });
+}
+
+export async function withdrawTutorRequest(userId: string) {
+  return prisma.$transaction(async (tx) => {
+    await lockProfileUser(tx, userId);
+    const pending = await tx.tutorProfileVersion.findFirst({
+      where: { userId, status: "PENDING" },
+    });
+    if (!pending) throw new TutorWorkflowError(409, "No pending request to withdraw");
+    await tx.tutorProfileVersion.update({
+      where: { id: pending.id },
+      data: { status: "CANCELLED" },
+    });
+    return applicationResponse(tx, userId);
+  });
+}
+
+export async function setTutorPublication(userId: string, published: boolean) {
+  return prisma.$transaction(async (tx) => {
+    const user = await lockProfileUser(tx, userId);
+    if (!user.tutor) throw new ProfileForbiddenError();
+    await tx.tutor.update({
+      where: { id: user.tutor.id },
+      data: { status: published ? "PUBLISHED" : "UNPUBLISHED" },
+    });
+    return applicationResponse(tx, userId);
+  });
 }

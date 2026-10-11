@@ -31,10 +31,8 @@ from sign-up; nothing has to be granted.
 _Avoid_: Learner, client, buyer
 
 **Tutor**:
-A user whose tutor application has been approved. In the current sprint, a complete
-application is approved immediately; the stored Tutor status starts as `UNPUBLISHED`
-until the public listing is configured. A tutor manages subjects and availability,
-teaches confirmed lessons, and receives earnings into the same wallet.
+A user whose initial tutor application has been approved by an admin. A tutor owns
+subjects, teaches booked lessons, and chooses whether their listing accepts new bookings.
 _Avoid_: Teacher, instructor, provider
 
 **Admin**:
@@ -44,22 +42,24 @@ accounts.
 _Avoid_: Moderator, staff, superuser
 
 **Tutor Application**:
-A student's request to gain the tutor capability, carrying an identification card URL, a
-teaching certification URL, and a bio. The current sprint approves a complete
-submission immediately; `pending` and `rejected` remain available for the future admin
-review workflow, where a pending application can be cancelled and re-submitted.
+A student's submitted profile version requesting the tutor capability, with identity,
+teaching credentials, introduction video, and bio for admin review.
 _Avoid_: Tutor signup, tutor registration, enrolment
+
+**Tutor Profile Version**:
+One complete proposed or approved set of tutor profile content and verification documents.
+The current approved version remains in use while a replacement awaits review.
+_Avoid_: Separate tutor account, duplicate live profile
 
 **Verification Document**:
 The URL reference for the identification card or teaching certification file attached to a
 tutor application and checked by an admin. Replacing a document re-enters admin review
-once that workflow is enabled.
+before becoming current.
 _Avoid_: Transfer proof, attachment, credential
 
 **Listing**:
-The tutor's public profile content — display name, headline, bio, photo, intro video
-URL, and published state. Listing and document changes go through admin review before
-they go live.
+The tutor's approved public profile. Publication controls discovery and new bookings;
+unpublishing preserves existing lessons and conversations, independently of profile review.
 _Avoid_: Tutor page, storefront, public profile
 
 **Subject**:

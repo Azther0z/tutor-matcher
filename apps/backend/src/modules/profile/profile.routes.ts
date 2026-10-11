@@ -9,6 +9,10 @@ import {
   saveStudentProfileForCurrentUser,
   updateAccountForCurrentUser,
   updateProfile,
+  saveDraftForCurrentUser,
+  submitDraftForCurrentUser,
+  withdrawRequestForCurrentUser,
+  setPublicationForCurrentUser,
 } from "./profile.controller.ts";
 import {
   accountUpdateSchema,
@@ -16,6 +20,9 @@ import {
   profileRequestSchema,
   studentProfileRequestSchema,
   tutorEnrollmentRequestSchema,
+  tutorDraftRequestSchema,
+  tutorSubmitRequestSchema,
+  tutorPublicationRequestSchema,
 } from "./profile.schema.ts";
 
 export const profileRouter = Router();
@@ -36,3 +43,16 @@ profileRouter.put(
 );
 profileRouter.get("/me/account", getAccountForCurrentUser);
 profileRouter.put("/me/account", validate(accountUpdateSchema), updateAccountForCurrentUser);
+
+profileRouter.put("/me/tutor/draft", validate(tutorDraftRequestSchema), saveDraftForCurrentUser);
+profileRouter.post(
+  "/me/tutor/submit",
+  validate(tutorSubmitRequestSchema),
+  submitDraftForCurrentUser
+);
+profileRouter.post("/me/tutor/withdraw", withdrawRequestForCurrentUser);
+profileRouter.patch(
+  "/me/tutor/publication",
+  validate(tutorPublicationRequestSchema),
+  setPublicationForCurrentUser
+);

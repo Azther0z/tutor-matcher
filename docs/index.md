@@ -65,5 +65,5 @@ Things the product needs but does not yet have an answer for:
   [`user-journeys.md`](user-journeys.md#4--money).
 - Whether lesson rescheduling is in scope at all is still open.
 - File storage for tutor verification documents is not chosen yet.
-- Most product flows have no automated behaviour-test coverage yet — see
+- Most product flows have no Gherkin behaviour-test coverage yet — see
   [`testing.md`](testing.md#current-coverage-boundary).

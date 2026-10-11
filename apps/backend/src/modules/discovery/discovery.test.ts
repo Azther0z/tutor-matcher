@@ -52,7 +52,11 @@ describe("Discovery API", () => {
       id: USER_ID,
       firstName: "Anong",
       lastName: "P.",
-      tutor: { id: TUTOR_ID },
+      tutor: {
+        id: TUTOR_ID,
+        status: "PUBLISHED",
+        currentProfileVersion: { bio: "Approved bio", avatarUrl: null, introVideoUrl: null },
+      },
     });
 
     const response = await request(app)
@@ -68,6 +72,12 @@ describe("Discovery API", () => {
       userId: USER_ID,
       firstName: "Anong",
       lastName: "P.",
+      status: "PUBLISHED",
+      verified: true,
+      bio: "Approved bio",
+      avatarUrl: null,
+      introVideoUrl: null,
     });
+    expect(JSON.stringify(response.body)).not.toContain("identificationCardUrl");
   });
 });

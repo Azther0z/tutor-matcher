@@ -16,6 +16,11 @@ import {
   updateAccount,
   updateTutorProfile,
   UserNotFoundError,
+  TutorWorkflowError,
+  saveTutorDraft,
+  submitTutorDraft,
+  withdrawTutorRequest,
+  setTutorPublication,
 } from "./profile.service.ts";
 import type {
   AccountUpdateRequest,
@@ -30,11 +35,7 @@ export async function updateProfile(req: Request, res: Response) {
     const profile = await updateTutorProfile(req.user!.sub, req.body as ProfileRequest);
     res.status(200).json(profile);
   } catch (error) {
-    if (error instanceof ProfileForbiddenError) {
-      res.status(403).json({ message: error.message });
-      return;
-    }
-
+    if (handleTutorError(error, res)) return;
     throw error;
   }
 }
@@ -44,11 +45,7 @@ export async function getTutorApplicationForCurrentUser(req: Request, res: Respo
     const application = await getTutorApplication(req.user!.sub);
     res.status(200).json(application);
   } catch (error) {
-    if (error instanceof UserNotFoundError) {
-      res.status(404).json({ message: error.message });
-      return;
-    }
-
+    if (handleTutorError(error, res)) return;
     throw error;
   }
 }
@@ -58,11 +55,7 @@ export async function enrollTutorForCurrentUser(req: Request, res: Response) {
     const result = await enrollTutor(req.user!.sub, req.body as TutorEnrollmentRequest);
     res.status(200).json(result);
   } catch (error) {
-    if (error instanceof UserNotFoundError) {
-      res.status(404).json({ message: error.message });
-      return;
-    }
-
+    if (handleTutorError(error, res)) return;
     if (error instanceof TutorAlreadyApprovedError) {
       res.status(409).json({ message: error.message });
       return;
@@ -154,6 +147,51 @@ export async function updateAccountForCurrentUser(req: Request, res: Response) {
     res.status(200).json({ account, token });
   } catch (error) {
     if (handleAccountError(error, res)) return;
+    throw error;
+  }
+}
+
+function handleTutorError(error: unknown, res: Response) {
+  if (error instanceof TutorWorkflowError) {
+    res.status(error.statusCode).json({ message: error.message });
+    return true;
+  }
+  if (error instanceof UserNotFoundError || error instanceof ProfileForbiddenError) {
+    res.status(error instanceof UserNotFoundError ? 404 : 403).json({ message: error.message });
+    return true;
+  }
+  return false;
+}
+
+export async function saveDraftForCurrentUser(req: Request, res: Response) {
+  try {
+    res.json(await saveTutorDraft(req.user!.sub, req.body));
+  } catch (error) {
+    if (handleTutorError(error, res)) return;
+    throw error;
+  }
+}
+export async function submitDraftForCurrentUser(req: Request, res: Response) {
+  try {
+    res.json(await submitTutorDraft(req.user!.sub));
+  } catch (error) {
+    if (handleTutorError(error, res)) return;
+    throw error;
+  }
+}
+export async function withdrawRequestForCurrentUser(req: Request, res: Response) {
+  try {
+    res.json(await withdrawTutorRequest(req.user!.sub));
+  } catch (error) {
+    if (handleTutorError(error, res)) return;
+    throw error;
+  }
+}
+export async function setPublicationForCurrentUser(req: Request, res: Response) {
+  try {
+    res.json(await setTutorPublication(req.user!.sub, req.body.published));
+  } catch (error) {
+    if (handleTutorError(error, res)) return;
     throw error;
   }
 }

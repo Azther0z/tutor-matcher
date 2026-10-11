@@ -103,22 +103,27 @@ async function main() {
     where: { email: "carol@example.com" },
   });
 
-  const existingTutor = await prisma.tutor.findFirst({
-    where: { identificationCardUrl: FIXTURE_TUTOR_IDENTIFICATION_CARD_URL },
-  });
-  const tutor = existingTutor
-    ? await prisma.tutor.update({
-        where: { id: existingTutor.id },
-        data: { status: "PUBLISHED" },
-      })
-    : await prisma.tutor.create({
-        data: {
-          identificationCardUrl: FIXTURE_TUTOR_IDENTIFICATION_CARD_URL,
-          bio: "Development tutor fixture",
-          status: "PUBLISHED",
+  const existingTutor = await prisma.tutor.findFirst({ where: { user: { id: alice.id } } });
+  const tutor =
+    existingTutor ??
+    (await prisma.tutor.create({
+      data: {
+        status: "PUBLISHED",
+        currentProfileVersion: {
+          create: {
+            userId: alice.id,
+            bio: "Development tutor fixture",
+            identificationCardUrl: FIXTURE_TUTOR_IDENTIFICATION_CARD_URL,
+            introVideoUrl: "https://example.com/development-intro.mp4",
+            status: "APPROVED",
+            submittedAt: new Date(),
+            reviewedAt: new Date(),
+            reviewedById: carol.id,
+            certifications: { create: { fileUrl: FIXTURE_CERTIFICATION_URL } },
+          },
         },
-      });
-
+      },
+    }));
   await prisma.user.update({
     where: { id: alice.id },
     data: { tutor: { connect: { id: tutor.id } } },
@@ -243,18 +248,6 @@ async function main() {
         user: { connect: { id: bob.id } },
         subject: { connect: { id: subject.id } },
         booking: { connect: { id: booking.id } },
-      },
-    });
-  }
-
-  const existingCertification = await prisma.certification.findFirst({
-    where: { tutorId: tutor.id, fileUrl: FIXTURE_CERTIFICATION_URL },
-  });
-  if (!existingCertification) {
-    await prisma.certification.create({
-      data: {
-        fileUrl: FIXTURE_CERTIFICATION_URL,
-        tutor: { connect: { id: tutor.id } },
       },
     });
   }

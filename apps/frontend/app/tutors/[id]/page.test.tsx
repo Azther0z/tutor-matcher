@@ -118,3 +118,44 @@ describe("TutorDetailPage", () => {
     );
   });
 });
+
+it("shows the verified badge and approved public bio without private document URLs", async () => {
+  localStorage.setItem("authToken", "token");
+  fetchMock.mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      ...tutor,
+      status: "PUBLISHED",
+      verified: true,
+      bio: "Approved teaching bio.",
+      identificationCardUrl: "https://example.com/private-id.pdf",
+      certificationUrl: "https://example.com/private-certificate.pdf",
+    }),
+  });
+  render(<TutorDetailPage />);
+  expect(await screen.findByText("Verified")).toBeInTheDocument();
+  expect(screen.getByText("Approved teaching bio.")).toBeInTheDocument();
+  expect(screen.queryByText("https://example.com/private-id.pdf")).not.toBeInTheDocument();
+  expect(screen.queryByText("https://example.com/private-certificate.pdf")).not.toBeInTheDocument();
+});
+
+it("shows unpublished status while keeping messaging accessible", async () => {
+  localStorage.setItem("authToken", "token");
+  fetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+    Promise.resolve({
+      ok: true,
+      json: async () =>
+        init?.method === "POST" ? { id: 1 } : { ...tutor, status: "UNPUBLISHED", verified: true },
+    })
+  );
+  render(<TutorDetailPage />);
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "This tutor isn’t accepting bookings"
+  );
+  const textarea = screen.getByPlaceholderText("Ask Anong a question before booking…");
+  fireEvent.change(textarea, { target: { value: "About our existing lesson" } });
+  fireEvent.click(screen.getByRole("button", { name: "Message Anong" }));
+  await waitFor(() =>
+    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("/messages?with="))
+  );
+});
