@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -162,6 +163,7 @@ model TutorProfileVersion {
   currentForTutor Tutor?
   certifications  TutorProfileVersionCertification[]
 
+  @@unique([userId], map: "tutor_profile_versions_one_pending_per_user", where: { status: "PENDING" })
   @@index([userId, createdAt])
   @@index([status, submittedAt])
   @@map("tutor_profile_versions")
