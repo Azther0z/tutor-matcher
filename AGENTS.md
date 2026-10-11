@@ -42,6 +42,7 @@
 ### Preferences
 - For AI-assisted Sprint delivery, assign the entire story, including design integration and automated testing, to one fixed two-person pair.
 - Treat the prototype as behavioural authority and `apps/backend/prisma/schema.prisma` as the authority for what the database currently contains.
+- Ask before changing the Prisma schema or modifying database data directly.
 - While Tutor Matcher has no real production database, do not maintain Prisma migration history; synchronize disposable databases from `schema.prisma` with `prisma db push`.
 - Until the admin tutor-application review workflow is implemented, represent the identification card and teaching certification as URLs and auto-approve a complete submission by storing the Tutor as `UNPUBLISHED`; once that workflow is available, restore new submissions to `PENDING`. Defer normal file upload and document storage to the next Sprint.
 
