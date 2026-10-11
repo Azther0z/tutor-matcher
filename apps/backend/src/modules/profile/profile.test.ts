@@ -25,7 +25,7 @@ const { app } = await import("../../app.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");
 
 const profile = {
-  user: { firstName: "Ada", lastName: "Lovelace", bio: "Mathematics tutor" },
+  user: { firstName: "Ada", lastName: "Lovelace" },
   tutor: {
     avatarUrl: "https://example.com/avatar.jpg",
     bio: "I teach calculus.",
@@ -150,7 +150,6 @@ describe("PUT /api/profiles/me", () => {
         email: "tutor@example.com",
         firstName: "Ada",
         lastName: "Lovelace",
-        bio: "Mathematics tutor",
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
       });
       certificationUpdate.mockResolvedValue({
@@ -188,7 +187,6 @@ describe("PUT /api/profiles/me", () => {
       email: "tutor@example.com",
       firstName: "Ada",
       lastName: "Lovelace",
-      bio: "Mathematics tutor",
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
     certificationCreate.mockResolvedValue({

@@ -18,7 +18,6 @@ type FieldErrors = Partial<Record<"firstName" | "lastName", string>> & TutorDeta
 export default function TutorSettingsPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [userBio, setUserBio] = useState("");
   const [details, setDetails] = useState<TutorDetails>({
     avatarUrl: "",
     bio: "",
@@ -68,7 +67,6 @@ export default function TutorSettingsPage() {
           user: {
             firstName: firstName.trim(),
             lastName: lastName.trim(),
-            bio: userBio.trim() || null,
           },
           tutor: {
             avatarUrl: normalizeHttpsUrl(details.avatarUrl) || null,
@@ -138,18 +136,6 @@ export default function TutorSettingsPage() {
                 className={tutorDetailsInputClassName}
               />
               {fieldErrors.lastName && <span className="text-red-600">{fieldErrors.lastName}</span>}
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm font-medium sm:col-span-2">
-              Personal bio <span className="font-normal text-zinc-500">(optional)</span>
-              <textarea
-                name="userBio"
-                rows={3}
-                maxLength={2000}
-                value={userBio}
-                onChange={(event) => setUserBio(event.target.value)}
-                className="rounded-lg border border-black/[.12] bg-transparent px-3 py-2 text-base outline-none focus:border-foreground dark:border-white/[.18]"
-              />
             </label>
           </div>
         </section>

@@ -57,9 +57,6 @@ describe("TutorSettingsPage", () => {
     render(<TutorSettingsPage />);
     completeRequiredFields();
 
-    fireEvent.change(screen.getByLabelText(/Personal bio/), {
-      target: { value: "Account biography" },
-    });
     fireEvent.change(screen.getByLabelText(/Avatar URL/), {
       target: { value: "https://example.com/avatar.jpg" },
     });
@@ -74,7 +71,7 @@ describe("TutorSettingsPage", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        user: { firstName: "Ada", lastName: "Lovelace", bio: "Account biography" },
+        user: { firstName: "Ada", lastName: "Lovelace" },
         tutor: {
           avatarUrl: "https://example.com/avatar.jpg",
           bio: "I teach mathematics.",
