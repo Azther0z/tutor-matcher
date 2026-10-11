@@ -233,7 +233,7 @@ it("can create and delete another draft while pending without changing the reque
   expect(screen.getByText("Pending Verification")).toBeInTheDocument();
 });
 
-it("guards draft switches and starting another form with Save, close, and Cancel", async () => {
+it("guards draft switches and starting another form with Save, Discard, and close", async () => {
   fetchMock.mockResolvedValueOnce(jsonResponse(application()));
   render(<TutorProfileEditor enrollment />);
   await openTutorEditor();
@@ -242,13 +242,13 @@ it("guards draft switches and starting another form with Save, close, and Cancel
   expect(screen.getByRole("dialog", { name: "Unsaved changes" })).toBeInTheDocument();
   expect(screen.getAllByRole("dialog")).toHaveLength(1);
   expect(screen.queryByLabelText("Tutor bio")).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  fireEvent.click(screen.getByRole("button", { name: "Close Unsaved changes" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("Keep me");
   fireEvent.click(screen.getByRole("button", { name: "New draft" }));
-  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  fireEvent.click(screen.getByRole("button", { name: "Close Unsaved changes" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("Keep me");
   fireEvent.click(screen.getByRole("button", { name: /Edit draft .*Second saved draft/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Close Unsaved changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Discard" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue(second.bio);
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
@@ -261,7 +261,7 @@ it("drops an unsaved new form through the close prompt without issuing DELETE", 
   await openTutorEditor();
   fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: "Unsaved" } });
   fireEvent.click(screen.getByRole("button", { name: "Close Draft" }));
-  fireEvent.click(screen.getByRole("button", { name: "Close Unsaved changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Discard" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   await openTutorEditor();
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
@@ -455,10 +455,10 @@ it("guards closing an untouched new draft marked Not saved and discards locally 
   fireEvent.click(within(editor).getByRole("button", { name: "Close Draft" }));
   const prompt = screen.getByRole("dialog", { name: "Unsaved changes" });
   expect(within(prompt).getByRole("button", { name: "Save" })).toBeInTheDocument();
-  fireEvent.click(within(prompt).getByRole("button", { name: "Cancel" }));
+  fireEvent.click(within(prompt).getByRole("button", { name: "Close Unsaved changes" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
   fireEvent.keyDown(screen.getByRole("dialog", { name: "Draft" }), { key: "Escape" });
-  fireEvent.click(screen.getByRole("button", { name: "Close Unsaved changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Discard" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(
     screen.getByRole("button", { name: "Edit draft 1: First saved draft" })
@@ -475,12 +475,13 @@ it("guards dirty Escape and backdrop closure with an accessible prompt", async (
   const prompt = screen.getByRole("dialog", { name: "Unsaved changes" });
   expect(within(prompt).getByRole("button", { name: "Save" })).toBeInTheDocument();
   expect(within(prompt).getByRole("button", { name: "Close Unsaved changes" })).toBeInTheDocument();
-  expect(within(prompt).queryByRole("button", { name: "Discard" })).not.toBeInTheDocument();
-  fireEvent.click(within(prompt).getByRole("button", { name: "Cancel" }));
+  expect(within(prompt).getByRole("button", { name: "Discard" })).toBeInTheDocument();
+  expect(within(prompt).queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+  fireEvent.click(within(prompt).getByRole("button", { name: "Close Unsaved changes" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("Keep changes");
   fireEvent.click(screen.getByRole("dialog", { name: "Draft" }).parentElement!);
   expect(screen.getByRole("dialog", { name: "Unsaved changes" })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Close Unsaved changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Discard" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
@@ -546,7 +547,7 @@ it("discards only local edits on close, retaining the persisted row and exact sn
   fireEvent.click(edit);
   fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: "Local only" } });
   fireEvent.click(screen.getByRole("button", { name: "Close Draft" }));
-  fireEvent.click(screen.getByRole("button", { name: "Close Unsaved changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Discard" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(edit).toBeInTheDocument();
   expect(edit).toHaveFocus();
@@ -661,7 +662,7 @@ it("saves a dirty draft and closes both dialogs from the close prompt, restoring
   expect(document.body.style.overflow).not.toBe("hidden");
 });
 
-it("keeps edits and the prompt when Save on close fails, and Cancel returns to editing", async () => {
+it("keeps edits and the prompt when Save on close fails, and closing returns to editing", async () => {
   fetchMock
     .mockResolvedValueOnce(jsonResponse(application()))
     .mockResolvedValueOnce(jsonResponse({ message: "Could not save" }, 500));
@@ -675,7 +676,7 @@ it("keeps edits and the prompt when Save on close fails, and Cancel returns to e
   const prompt = screen.getByRole("dialog", { name: "Unsaved changes" });
   expect(await within(prompt).findByRole("alert")).toHaveTextContent("Could not save");
   expect(screen.queryByRole("dialog", { name: "Draft" })).not.toBeInTheDocument();
-  fireEvent.click(within(prompt).getByRole("button", { name: "Cancel" }));
+  fireEvent.click(within(prompt).getByRole("button", { name: "Close Unsaved changes" }));
   expect(screen.getByRole("dialog", { name: "Draft" })).toBeInTheDocument();
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("Unsaved after failure");
   expect(fetchMock.mock.calls[1][1].method).toBe("PUT");
@@ -861,7 +862,7 @@ it("returns confirmation close to unsaved editing, while row confirmation close 
   fireEvent.click(screen.getByRole("button", { name: "Close Submit draft for review?" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("Unchanged by Cancel");
   fireEvent.click(screen.getByRole("button", { name: "Close Draft" }));
-  fireEvent.click(screen.getByRole("button", { name: "Close Unsaved changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Discard" }));
   fireEvent.click(screen.getByRole("button", { name: "Submit draft 2: Second saved draft" }));
   fireEvent.click(screen.getByRole("button", { name: "Close Submit draft for review?" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

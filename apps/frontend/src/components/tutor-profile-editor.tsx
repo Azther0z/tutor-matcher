@@ -685,21 +685,20 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           titleId="tutor-close-title"
           busy={busy}
           onClose={() => setCloseTransition(null)}
-          onCloseButton={() => {
-            loadDetails(emptyTutorDetails, null);
-            const transition = closeTransition;
-            setCloseTransition(null);
-            transition();
-          }}
           footer={
             <div className="flex flex-wrap justify-end gap-3">
               <button
                 type="button"
                 className={button}
                 disabled={busy}
-                onClick={() => setCloseTransition(null)}
+                onClick={() => {
+                  loadDetails(emptyTutorDetails, null);
+                  const transition = closeTransition;
+                  setCloseTransition(null);
+                  transition();
+                }}
               >
-                Cancel
+                Discard
               </button>
               <button
                 type="button"
@@ -721,8 +720,8 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           }
         >
           <p>
-            Save your changes before closing? Closing with × discards only unsaved edits; your saved
-            draft stays in the list. Cancel returns to editing.
+            Save your changes before closing? Discard drops only unsaved edits; your saved draft
+            stays in the list. Closing with × returns to editing.
           </p>
           {actionError && (
             <p role="alert" className="mt-4 text-red-600 dark:text-red-400">
