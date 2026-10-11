@@ -30,6 +30,7 @@ function application(overrides: Partial<TutorApplicationResponse> = {}): TutorAp
     tutor: null,
     version: first,
     drafts: [first, second],
+    submissions: [],
     pendingRequest: null,
     latestReview: null,
     latestSubmittedVersion: null,
@@ -336,7 +337,9 @@ it("retains an edited draft when withdrawal changes the separate pending request
     target: { value: "Keep local draft edits" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Withdraw request" }));
-  await screen.findByText("Request withdrawn and restored as a draft.");
+  await screen.findByText(
+    "Request cancelled. You can create a new draft from its submission history."
+  );
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("Keep local draft edits");
   expect(screen.getByRole("dialog", { name: "Draft" })).toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "Pending request" })).not.toBeInTheDocument();
@@ -684,7 +687,7 @@ it("requires confirmation and fresh consent to submit a valid saved row without 
   );
   const confirmation = screen.getByRole("dialog", { name: "Submit draft for review?" });
   expect(within(confirmation).getByText(/only one request at a time/)).toHaveTextContent(
-    /withdraw.*restore it as a draft/
+    /cancel a pending request/
   );
   expect(within(confirmation).getByText(/only one request at a time/)).toHaveTextContent(
     /approved profile stays unchanged/
@@ -761,38 +764,51 @@ it("blocks both submit entry points while one request is pending", async () => {
   expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled();
 });
 
-it("restores the withdrawn exact snapshot while new drafts start empty after reload with other drafts", async () => {
+it("shows cancelled history after reload, copies it explicitly, and keeps new drafts empty", async () => {
   const cancelled = {
     ...profileVersion,
-    bio: "Withdrawn exact snapshot",
+    bio: "Cancelled exact snapshot",
     status: "CANCELLED" as const,
     certificationUrls: ["https://example.com/one.pdf", "https://example.com/two.pdf"],
   };
-  const restored = {
+  const copied = {
     ...cancelled,
     id: "44444444-4444-4444-8444-444444444444",
     status: "DRAFT" as const,
   };
-  const response = application({
-    version: restored,
-    drafts: [restored, first, second],
-    latestSubmittedVersion: cancelled,
-  });
+  const response = application({ submissions: [cancelled], latestSubmittedVersion: cancelled });
   fetchMock
     .mockResolvedValueOnce(jsonResponse(application({ pendingRequest: profileVersion })))
     .mockResolvedValueOnce(jsonResponse(response))
-    .mockResolvedValueOnce(jsonResponse({ ...response, version: first }));
+    .mockResolvedValueOnce(jsonResponse(response))
+    .mockResolvedValueOnce(
+      jsonResponse({ ...response, version: copied, drafts: [copied, first, second] })
+    );
   const view = render(<TutorProfileEditor enrollment />);
   fireEvent.click(await screen.findByRole("button", { name: "Withdraw request" }));
-  await screen.findByText("Request withdrawn and restored as a draft.");
-  fireEvent.click(screen.getByRole("button", { name: "Edit draft 1: Withdrawn exact snapshot" }));
-  expect(screen.getByLabelText("Tutor bio")).toHaveValue(cancelled.bio);
+  await screen.findByText(
+    "Request cancelled. You can create a new draft from its submission history."
+  );
+  expect(screen.getAllByRole("button", { name: /Edit draft / })).toHaveLength(2);
+  view.unmount();
+  render(<TutorProfileEditor enrollment />);
+  const history = await screen.findByRole("region", { name: "Submission history" });
+  expect(within(history).getByText(/Cancelled · Submitted/)).toBeInTheDocument();
+  expect(within(history).getByText(cancelled.bio)).toBeInTheDocument();
+  fireEvent.click(
+    within(history).getByRole("button", { name: "Create draft from cancelled submission" })
+  );
+  expect(await screen.findByLabelText("Tutor bio")).toHaveValue(cancelled.bio);
   expect(screen.getByLabelText("Certification / portfolio URL 2")).toHaveValue(
     cancelled.certificationUrls[1]
   );
-  view.unmount();
-  render(<TutorProfileEditor enrollment />);
-  fireEvent.click(await screen.findByRole("button", { name: "New draft" }));
+  expect(fetchMock.mock.calls[3][0]).toBe(
+    `/api/profiles/me/tutor/submissions/${cancelled.id}/copy`
+  );
+  expect(fetchMock.mock.calls[3][1].method).toBe("POST");
+  expect(screen.getByLabelText("Draft status")).toHaveTextContent("Saved");
+  fireEvent.click(screen.getByRole("button", { name: "Close Draft" }));
+  fireEvent.click(screen.getByRole("button", { name: "New draft" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
   expect(screen.getByLabelText(/Avatar URL/)).toHaveValue("");
   expect(screen.queryByLabelText("Certification / portfolio URL 2")).not.toBeInTheDocument();
@@ -857,4 +873,20 @@ it("edits the exact row snapshot from confirmation and renders certificate remov
   expect(screen.getByLabelText("Certification / portfolio URL 1")).toHaveValue(
     first.certificationUrls[0]
   );
+});
+
+it("directs approved applicants to Tutor settings instead of creating a hidden draft", async () => {
+  const cancelled = { ...profileVersion, status: "CANCELLED" as const };
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse(application({ tutor: approvedTutor, submissions: [cancelled] }))
+  );
+  render(<TutorProfileEditor enrollment />);
+  expect(
+    await screen.findByRole("link", { name: "Create a draft in Tutor settings" })
+  ).toHaveAttribute("href", "/settings/tutor");
+  expect(
+    screen.queryByRole("button", { name: "Create draft from cancelled submission" })
+  ).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
 });

@@ -161,36 +161,33 @@ it("submits a normalized draft and remains pending with no Tutor or dashboard re
   expect(screen.getByRole("button", { name: "New draft" })).toBeEnabled();
 });
 
-it("withdraws the immutable request and seeds a new draft for resubmission", async () => {
-  const cancelled = {
-    ...pending,
+it("cancels a submission without creating a draft, then explicitly copies a new draft", async () => {
+  const submission = { ...profileVersion, status: "CANCELLED" };
+  const cancelled = { status: "CANCELLED", tutor: null, version: submission };
+  const copied = {
+    ...cancelled,
     status: "DRAFT",
-    version: { ...profileVersion, status: "DRAFT" },
-    latestSubmittedVersion: { ...profileVersion, status: "CANCELLED" },
+    version: { ...profileVersion, id: "new-draft", status: "DRAFT" },
+    submissions: [submission],
   };
   fetchMock
     .mockResolvedValueOnce(jsonResponse(pending))
     .mockResolvedValueOnce(jsonResponse(cancelled))
-    .mockResolvedValueOnce(
-      jsonResponse({
-        ...cancelled,
-        status: "DRAFT",
-        version: { ...profileVersion, status: "DRAFT" },
-      })
-    )
-    .mockResolvedValueOnce(jsonResponse(pending));
+    .mockResolvedValueOnce(jsonResponse(copied));
   render(<EnrollTutorPage />);
   fireEvent.click(await screen.findByRole("button", { name: "Withdraw request" }));
-  await screen.findByText("Request withdrawn and restored as a draft.");
-  await openTutorEditor();
-  expect(screen.getByLabelText("Tutor bio")).toHaveValue(profileFields.bio);
-  expect(fetchMock.mock.calls[1]).toEqual([
-    "/api/profiles/me/tutor/withdraw",
+  await screen.findByText(
+    "Request cancelled. You can create a new draft from its submission history."
+  );
+  expect(screen.getByText("No saved drafts yet.")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Create draft from cancelled submission" }));
+  expect(await screen.findByLabelText("Tutor bio")).toHaveValue(profileFields.bio);
+  expect(fetchMock.mock.calls[2]).toEqual([
+    `/api/profiles/me/tutor/submissions/${profileVersion.id}/copy`,
     expect.objectContaining({ method: "POST" }),
   ]);
-  fireEvent.click(screen.getByRole("button", { name: "Submit" }));
-  await confirmTutorSubmission();
-  expect(await screen.findByText("Pending Verification")).toBeInTheDocument();
+  expect(screen.getByLabelText("Draft status")).toHaveTextContent("Saved");
 });
 
 it("keeps a pending request locked if withdrawal fails", async () => {
@@ -237,7 +234,8 @@ it("shows the rejection reason and lets the applicant revise and resubmit", asyn
     .mockResolvedValueOnce(jsonResponse(pending));
   render(<EnrollTutorPage />);
   await openTutorEditor();
-  expect(await screen.findByText(/Please provide a readable certificate/)).toBeInTheDocument();
+  expect(screen.getAllByText(/Please provide a readable certificate/).length).toBeGreaterThan(0);
+  fillApplication();
   fireEvent.change(screen.getByLabelText(/Certification \/ portfolio URL/), {
     target: { value: "https://example.com/readable.pdf" },
   });

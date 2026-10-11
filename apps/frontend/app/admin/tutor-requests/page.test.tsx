@@ -183,3 +183,32 @@ it("does not turn unsafe document URLs into clickable links", async () => {
   expect(screen.getByText("javascript:alert(1)")).toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "javascript:alert(1)" })).not.toBeInTheDocument();
 });
+
+it("filters past submissions with read-only content, reasons, and no review actions", async () => {
+  const past = ["APPROVED", "REJECTED", "CANCELLED"].map((status, index) => ({
+    ...reviewRequest,
+    id: `past-${index}`,
+    status,
+    bio: `${status} content`,
+    rejectionReason: status === "REJECTED" ? "Unclear experience" : null,
+    reviewedAt: status === "CANCELLED" ? null : "2026-10-12T12:00:00.000Z",
+  }));
+  fetchMock.mockResolvedValueOnce(jsonResponse([reviewRequest, ...past]));
+  render(<TutorRequestsPage />);
+  await screen.findByRole("button", { name: "Approve request" });
+  for (const status of ["APPROVED", "REJECTED", "CANCELLED"]) {
+    fireEvent.change(screen.getByRole("combobox", { name: "Submission status" }), {
+      target: { value: status },
+    });
+    expect(screen.getByText(`${status} content`)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Approve request" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reject request" })).not.toBeInTheDocument();
+    if (status === "REJECTED")
+      expect(screen.getByText("Reason: Unclear experience")).toBeInTheDocument();
+  }
+  fireEvent.change(screen.getByRole("combobox", { name: "Submission status" }), {
+    target: { value: "ALL" },
+  });
+  expect(screen.getAllByRole("region")).toHaveLength(4);
+  expect(screen.getAllByRole("button", { name: "Approve request" })).toHaveLength(1);
+});

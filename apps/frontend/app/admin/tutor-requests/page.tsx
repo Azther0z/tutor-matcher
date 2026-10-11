@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
-import { TutorProfileComparison } from "@/src/components/tutor-profile-comparison";
+import {
+  TutorProfileComparison,
+  TutorProfileSnapshot,
+} from "@/src/components/tutor-profile-comparison";
 import {
   TutorApiError,
   tutorApi,
@@ -28,6 +31,10 @@ function TutorRequests() {
   const [forbidden, setForbidden] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
+  const [status, setStatus] = useState("PENDING");
+  const visibleRequests = requests?.filter(
+    (request) => status === "ALL" || request.status === status
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -76,16 +83,41 @@ function TutorRequests() {
           >
             Refresh requests
           </button>
+          <label className="flex flex-col gap-2 self-start">
+            Submission status
+            <select
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+              className="rounded-md border border-black/[.12] bg-background px-3 py-2 dark:border-white/[.18]"
+            >
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="ALL">All submissions</option>
+            </select>
+          </label>
           {!requests && !error && <p>Loading requests…</p>}
-          {requests?.length === 0 && <p>No pending tutor requests.</p>}
-          {requests?.map((request) => (
+          {visibleRequests?.length === 0 && (
+            <p>
+              {status === "PENDING"
+                ? "No pending tutor requests."
+                : "No matching tutor submissions."}
+            </p>
+          )}
+          {visibleRequests?.map((request) => (
             <ReviewCard
               key={request.id}
               request={request}
-              onReviewed={(decision) => {
-                setRequests((current) => current?.filter((item) => item.id !== request.id) ?? null);
+              onReviewed={(reviewed) => {
+                setRequests(
+                  (current) =>
+                    current?.map((item) =>
+                      item.id === request.id ? { ...item, ...reviewed } : item
+                    ) ?? null
+                );
                 setMessage(
-                  `Request ${decision === "APPROVED" ? "approved" : "rejected"} for ${request.user.firstName} ${request.user.lastName}.`
+                  `Request ${reviewed.status === "APPROVED" ? "approved" : "rejected"} for ${request.user.firstName} ${request.user.lastName}.`
                 );
               }}
               onForbidden={() => {
@@ -108,7 +140,7 @@ function ReviewCard({
   onForbidden,
 }: {
   request: TutorReviewRequest;
-  onReviewed: (decision: "APPROVED" | "REJECTED") => void;
+  onReviewed: (reviewed: TutorProfileVersion) => void;
   onForbidden: () => void;
 }) {
   const [reason, setReason] = useState("");
@@ -128,14 +160,17 @@ function ReviewCard({
     busyRef.current = true;
     setBusy(true);
     try {
-      await tutorApi<TutorProfileVersion>(`/api/admin/tutor-requests/${request.id}/review`, {
-        method: "POST",
-        body: JSON.stringify({
-          decision,
-          ...(decision === "REJECTED" ? { rejectionReason: reason.trim() } : {}),
-        }),
-      });
-      onReviewed(decision);
+      const reviewed = await tutorApi<TutorProfileVersion>(
+        `/api/admin/tutor-requests/${request.id}/review`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            decision,
+            ...(decision === "REJECTED" ? { rejectionReason: reason.trim() } : {}),
+          }),
+        }
+      );
+      onReviewed(reviewed);
     } catch (failure) {
       if (failure instanceof TutorApiError && failure.status === 403) onForbidden();
       else setError(failure instanceof Error ? failure.message : "Could not review this request.");
@@ -155,46 +190,62 @@ function ReviewCard({
       </h2>
       <p className="mt-1 break-all text-sm text-zinc-500">{request.user.email}</p>
       <p className="my-4 text-sm">
-        {request.currentProfile ? "Profile edit" : "Initial application"} · Pending Verification
+        {request.status === "PENDING"
+          ? "Pending Verification"
+          : request.status === "CANCELLED"
+            ? "Cancelled"
+            : request.status === "APPROVED"
+              ? "Approved"
+              : "Rejected"}
         {request.submittedAt && <> · Submitted {new Date(request.submittedAt).toLocaleString()}</>}
       </p>
-      <TutorProfileComparison current={request.currentProfile} proposed={request} />
-      <fieldset disabled={busy} className="mt-5 flex flex-col gap-3">
-        <label htmlFor={`reason-${request.id}`} className="text-sm font-medium">
-          Rejection reason (required to reject)
-        </label>
-        <textarea
-          id={`reason-${request.id}`}
-          rows={3}
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          aria-invalid={reasonError}
-          aria-describedby={reasonError ? `reason-error-${request.id}` : undefined}
-          className="rounded-lg border border-black/[.12] bg-transparent p-3 dark:border-white/[.18]"
-        />
-        {reasonError && (
-          <p id={`reason-error-${request.id}`} role="alert" className="text-sm text-red-600">
-            Enter a rejection reason.
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="text-sm text-red-600">
-            {error}
-          </p>
-        )}
-        <div className="flex flex-wrap justify-end gap-3">
-          <button className={button} disabled={busy} onClick={() => void review("REJECTED")}>
-            Reject request
-          </button>
-          <button
-            className={`${button} bg-foreground text-background`}
-            disabled={busy}
-            onClick={() => void review("APPROVED")}
-          >
-            {busy ? "Reviewing…" : "Approve request"}
-          </button>
-        </div>
-      </fieldset>
+      {request.status === "PENDING" ? (
+        <TutorProfileComparison current={request.currentProfile} proposed={request} />
+      ) : (
+        <TutorProfileSnapshot profile={request} />
+      )}
+      {request.reviewedAt && (
+        <p className="mt-3 text-sm">Reviewed {new Date(request.reviewedAt).toLocaleString()}</p>
+      )}
+      {request.rejectionReason && <p className="mt-3">Reason: {request.rejectionReason}</p>}
+      {request.status === "PENDING" && (
+        <fieldset disabled={busy} className="mt-5 flex flex-col gap-3">
+          <label htmlFor={`reason-${request.id}`} className="text-sm font-medium">
+            Rejection reason (required to reject)
+          </label>
+          <textarea
+            id={`reason-${request.id}`}
+            rows={3}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            aria-invalid={reasonError}
+            aria-describedby={reasonError ? `reason-error-${request.id}` : undefined}
+            className="rounded-lg border border-black/[.12] bg-transparent p-3 dark:border-white/[.18]"
+          />
+          {reasonError && (
+            <p id={`reason-error-${request.id}`} role="alert" className="text-sm text-red-600">
+              Enter a rejection reason.
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="text-sm text-red-600">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap justify-end gap-3">
+            <button className={button} disabled={busy} onClick={() => void review("REJECTED")}>
+              Reject request
+            </button>
+            <button
+              className={`${button} bg-foreground text-background`}
+              disabled={busy}
+              onClick={() => void review("APPROVED")}
+            >
+              {busy ? "Reviewing…" : "Approve request"}
+            </button>
+          </div>
+        </fieldset>
+      )}
     </section>
   );
 }

@@ -32,6 +32,7 @@ export type TutorApplicationResponse = {
   tutor: TutorApplication | null;
   version: TutorProfileVersion | null;
   drafts: TutorProfileVersion[];
+  submissions: TutorProfileVersion[];
   pendingRequest: TutorProfileVersion | null;
   latestReview: TutorProfileVersion | null;
   latestSubmittedVersion: TutorProfileVersion | null;

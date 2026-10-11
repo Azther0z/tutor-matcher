@@ -96,3 +96,25 @@ export function TutorProfileComparison({
     </div>
   );
 }
+
+export function TutorProfileSnapshot({ profile }: { profile: TutorProfileFields }) {
+  return (
+    <dl className="space-y-3 text-sm">
+      {fields.map((field) => (
+        <div key={field.name}>
+          <dt className="font-medium">
+            {field.label}
+            {field.private && " (private)"}
+          </dt>
+          <dd className="mt-1">
+            {field.name === "certificationUrl" ? (
+              <TutorCertificationLinks urls={getTutorCertificationUrls(profile)} />
+            ) : (
+              <ProfileValue name={field.name} value={profile[field.name] ?? null} />
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}

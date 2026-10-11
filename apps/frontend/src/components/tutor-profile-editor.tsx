@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
+import { TutorProfileSnapshot } from "@/src/components/tutor-profile-comparison";
 import { TutorDialog } from "@/src/components/tutor-dialog";
 import { TutorConsent } from "@/src/components/tutor-consent";
 import { TutorCertificationLinks } from "@/src/components/tutor-certification-links";
@@ -215,7 +216,6 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
   }
 
   const tutor = data?.tutor;
-  const version = data?.version;
   const pending = data?.pendingRequest;
   const latestReview = data?.latestReview;
   const approvedEnrollment = enrollment && !!tutor;
@@ -351,10 +351,6 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           </p>
         </section>
       )}
-      {version?.status === "CANCELLED" && (
-        <p role="status">Request withdrawn. You can edit and re-submit.</p>
-      )}
-
       {pending && (
         <section className={panel} aria-label="Pending request">
           <h2 className="text-xl font-semibold">Pending Verification</h2>
@@ -400,8 +396,8 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
             </div>
           </dl>
           <p className="mt-2 text-sm">
-            Submitted requests cannot be edited. Withdraw this request to make changes and
-            re-submit.
+            Submitted requests cannot be edited. Withdrawing cancels the request. You can then
+            create a separate draft from its submission history.
           </p>
           <button
             className={`${button} mt-4`}
@@ -414,7 +410,9 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                 setData(result);
                 if (!dirty && !selectedId) loadDetails(emptyTutorDetails, null);
                 setConsent(false);
-                setMessage("Request withdrawn and restored as a draft.");
+                setMessage(
+                  "Request cancelled. You can create a new draft from its submission history."
+                );
               })
             }
           >
@@ -422,6 +420,74 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           </button>
         </section>
       )}
+
+      <section className={panel} aria-label="Submission history">
+        <h2 className="text-xl font-semibold">Submission history</h2>
+        {data.submissions?.filter((submission) => submission.status !== "PENDING").length ? (
+          <ul className="mt-4 divide-y divide-black/[.12] dark:divide-white/[.18]">
+            {data.submissions
+              .filter((submission) => submission.status !== "PENDING")
+              .map((submission) => (
+                <li key={submission.id} className="py-3">
+                  <details>
+                    <summary className="cursor-pointer font-medium">
+                      {submission.status === "CANCELLED"
+                        ? "Cancelled"
+                        : submission.status === "APPROVED"
+                          ? "Approved"
+                          : "Rejected"}
+                      {submission.submittedAt &&
+                        ` · Submitted ${new Date(submission.submittedAt).toLocaleString()}`}
+                    </summary>
+                    <div className="mt-4">
+                      <TutorProfileSnapshot profile={submission} />
+                      {submission.reviewedAt && (
+                        <p className="mt-3 text-sm">
+                          Reviewed {new Date(submission.reviewedAt).toLocaleString()}
+                        </p>
+                      )}
+                      {submission.rejectionReason && (
+                        <p className="mt-3">Reason: {submission.rejectionReason}</p>
+                      )}
+                      {submission.status === "CANCELLED" &&
+                        (approvedEnrollment ? (
+                          <Link href="/settings/tutor" className="mt-4 inline-block underline">
+                            Create a draft in Tutor settings
+                          </Link>
+                        ) : (
+                          <button
+                            className={`${button} mt-4`}
+                            disabled={busy}
+                            onClick={() =>
+                              requestTransition(() => {
+                                void runAction(async () => {
+                                  const result = await tutorApi<TutorApplicationResponse>(
+                                    `${apiPath}/submissions/${submission.id}/copy`,
+                                    { method: "POST" }
+                                  );
+                                  setData(result);
+                                  loadDetails(
+                                    tutorDetailsFromApplication(result.version),
+                                    result.version!.id
+                                  );
+                                  setEditorOpen(true);
+                                  setMessage("New draft created from the cancelled submission.");
+                                });
+                              })
+                            }
+                          >
+                            Create draft from cancelled submission
+                          </button>
+                        ))}
+                    </div>
+                  </details>
+                </li>
+              ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-zinc-500">No past submissions yet.</p>
+        )}
+      </section>
 
       {!approvedEnrollment && (
         <section className={panel} aria-label="Saved drafts">
@@ -724,8 +790,8 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         >
           <p className="mb-5">
             You can submit only one request at a time. Submitted requests cannot be edited. You can
-            withdraw a pending request to restore it as a draft. Your approved profile stays
-            unchanged until approval.
+            cancel a pending request, then create a new draft from it in submission history. Your
+            approved profile stays unchanged until approval.
           </p>
           <TutorConsent unframed consentAccepted={consent} setConsentAccepted={setConsent} />
           {actionError && (

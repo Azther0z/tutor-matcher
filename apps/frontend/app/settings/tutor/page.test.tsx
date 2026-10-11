@@ -25,13 +25,14 @@ const approved = {
   tutor: approvedTutor,
   version: { ...profileVersion, status: "APPROVED" },
 };
+const approvedWithDraft = { ...approved, version: { ...profileVersion, status: "DRAFT" } };
 const pendingEdit = {
   ...approved,
   version: { ...profileVersion, bio: "New bio awaiting review." },
 };
 
-it("prefills approved fields, keeps account names separate, and requires changes", async () => {
-  fetchMock.mockResolvedValueOnce(jsonResponse(approved));
+it("loads saved draft fields, keeps account names separate, and requires changes", async () => {
+  fetchMock.mockResolvedValueOnce(jsonResponse(approvedWithDraft));
   render(<TutorSettingsPage />);
   await openTutorEditor();
   expect(await screen.findByLabelText("Tutor bio")).toHaveValue(approvedTutor.bio);
@@ -97,7 +98,13 @@ it("edits all certificates and preserves them through bio-only saves", async () 
     bio: "Updated bio.",
   };
   fetchMock
-    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor }))
+    .mockResolvedValueOnce(
+      jsonResponse({
+        ...approved,
+        tutor,
+        version: { ...profileVersion, ...tutor, id: profileVersion.id, status: "DRAFT" },
+      })
+    )
     .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }));
   render(<TutorSettingsPage />);
   await openTutorEditor();
@@ -119,7 +126,13 @@ it("retries a replacement with the same collection and adopts the saved ordering
   const tutor = { ...approvedTutor, certificationUrls: [original, extra] };
   const version = { ...profileVersion, status: "DRAFT", certificationUrls: [extra, replacement] };
   fetchMock
-    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor }))
+    .mockResolvedValueOnce(
+      jsonResponse({
+        ...approved,
+        tutor,
+        version: { ...profileVersion, ...tutor, id: profileVersion.id, status: "DRAFT" },
+      })
+    )
     .mockRejectedValueOnce(new Error("Response lost after saving"))
     .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }))
     .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }));
@@ -153,7 +166,13 @@ it("removes exactly one certificate and permits an empty saved draft", async () 
   const tutor = { ...approvedTutor, certificationUrls: [profileVersion.certificationUrl!, extra] };
   const version = { ...profileVersion, status: "DRAFT", certificationUrls: [extra] };
   fetchMock
-    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor }))
+    .mockResolvedValueOnce(
+      jsonResponse({
+        ...approved,
+        tutor,
+        version: { ...profileVersion, ...tutor, id: profileVersion.id, status: "DRAFT" },
+      })
+    )
     .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }))
     .mockResolvedValueOnce(
       jsonResponse({ ...approved, tutor, version: { ...version, certificationUrls: [] } })
@@ -176,7 +195,13 @@ it("deduplicates replacement URLs on save and retry without resurrecting removed
   const tutor = { ...approvedTutor, certificationUrls: [original, retained] };
   const version = { ...profileVersion, status: "DRAFT", certificationUrls: [retained] };
   fetchMock
-    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor }))
+    .mockResolvedValueOnce(
+      jsonResponse({
+        ...approved,
+        tutor,
+        version: { ...profileVersion, ...tutor, id: profileVersion.id, status: "DRAFT" },
+      })
+    )
     .mockRejectedValueOnce(new Error("Response lost after saving"))
     .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }))
     .mockResolvedValueOnce(
@@ -266,6 +291,12 @@ it("submits edits without overwriting the live profile, names, or publication", 
   fireEvent.change(await screen.findByLabelText("Tutor bio"), {
     target: { value: "New bio awaiting review." },
   });
+  fireEvent.change(screen.getByLabelText("Intro video URL"), {
+    target: { value: approvedTutor.introVideoUrl },
+  });
+  fireEvent.change(screen.getByLabelText(/Identification card URL/), {
+    target: { value: approvedTutor.identificationCardUrl },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Submit" }));
   await confirmTutorSubmission();
   await screen.findByText("Pending Verification");
@@ -311,8 +342,8 @@ it("keeps rejected edits separate from the approved profile and displays the rea
   );
   render(<TutorSettingsPage />);
   await openTutorEditor();
-  expect(await screen.findByText(/Clarify your qualifications/)).toBeInTheDocument();
-  expect(screen.getByLabelText("Tutor bio")).toHaveValue(approvedTutor.bio);
+  expect(screen.getAllByText(/Clarify your qualifications/).length).toBeGreaterThan(0);
+  expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
   expect(
     within(screen.getByRole("region", { name: "Current approved profile" })).getByText(
       approvedTutor.bio!
@@ -359,7 +390,7 @@ it("allows a bio edit while retaining approved HTTP document links", async () =>
     jsonResponse({
       ...approved,
       tutor: profile,
-      version: { ...profileVersion, ...profile, status: "APPROVED" },
+      version: { ...profileVersion, ...profile, id: profileVersion.id, status: "DRAFT" },
     })
   );
   render(<TutorSettingsPage />);

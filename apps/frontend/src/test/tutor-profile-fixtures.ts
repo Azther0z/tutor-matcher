@@ -50,13 +50,14 @@ export function jsonApplicationResponse(body: unknown, status = 200) {
       Partial<
         Pick<
           import("@/src/lib/tutor-application").TutorApplicationResponse,
-          "drafts" | "pendingRequest" | "latestReview" | "latestSubmittedVersion"
+          "drafts" | "submissions" | "pendingRequest" | "latestReview" | "latestSubmittedVersion"
         >
       >;
     const version = application.version;
     return jsonResponse(
       {
         drafts: version?.status === "DRAFT" ? [version] : [],
+        submissions: version && version.status !== "DRAFT" ? [version] : [],
         pendingRequest: version?.status === "PENDING" ? version : null,
         latestSubmittedVersion: version?.status !== "DRAFT" ? version : null,
         latestReview:
