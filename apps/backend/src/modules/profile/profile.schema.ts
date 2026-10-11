@@ -28,6 +28,7 @@ const tutorFields = {
   introVideoUrl: httpUrl,
   identificationCardUrl: httpUrl,
   certificationUrl: httpUrl,
+  certificationUrls: z.array(httpUrl).optional(),
 };
 
 export const profileRequestSchema = z.object({

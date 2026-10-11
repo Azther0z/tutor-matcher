@@ -64,6 +64,22 @@ describe("AUTH-4 profile validation", () => {
         .expect(400);
     }
   );
+  it.each(["/api/profiles/me/tutor", "/api/profiles/me"])(
+    "validates every certificate snapshot URL on %s before persistence",
+    async (path) => {
+      const tutor = {
+        ...fields,
+        certificationUrls: [fields.certificationUrl, "javascript:alert(1)"],
+      };
+      await request(app)
+        .put(path)
+        .set("Authorization", auth())
+        .send(path === "/api/profiles/me" ? { tutor } : { ...tutor, consentAccepted: true })
+        .expect(400);
+      expect(lock).not.toHaveBeenCalled();
+      expect(createVersion).not.toHaveBeenCalled();
+    }
+  );
   it("refuses draft writes while a request is pending", async () => {
     findVersion.mockResolvedValue({ status: "PENDING" });
     await request(app)
