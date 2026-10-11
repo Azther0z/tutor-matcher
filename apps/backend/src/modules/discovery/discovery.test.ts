@@ -55,7 +55,16 @@ describe("Discovery API", () => {
       tutor: {
         id: TUTOR_ID,
         status: "PUBLISHED",
-        currentProfileVersion: { bio: "Approved bio", avatarUrl: null, introVideoUrl: null },
+        currentProfileVersion: {
+          bio: "Approved bio",
+          avatarUrl: null,
+          introVideoUrl: null,
+          identificationCardUrl: "https://example.com/private-id",
+          certifications: [
+            { fileUrl: "https://example.com/private-certificate" },
+            { fileUrl: "https://example.com/private-second-certificate" },
+          ],
+        },
       },
     });
 
@@ -79,5 +88,6 @@ describe("Discovery API", () => {
       introVideoUrl: null,
     });
     expect(JSON.stringify(response.body)).not.toContain("identificationCardUrl");
+    expect(JSON.stringify(response.body)).not.toContain("private-");
   });
 });

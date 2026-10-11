@@ -220,6 +220,115 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
     }
   );
 
+  it.each(["direct", "draft"])(
+    "retains all certificates through a bio-only %s edit and approval",
+    async (flow) => {
+      const initial = await approvedTutor();
+      const certificateUrls = [fields.certificationUrl, "https://example.com/z-certificate"];
+      await prisma.tutorProfileVersionCertification.create({
+        data: { profileVersionId: initial.versionId, fileUrl: certificateUrls[1]! },
+      });
+      const editFields = { ...fields, bio: "Updated bio with unchanged certificates" };
+      let edit;
+      if (flow === "draft") {
+        await auth(request(app).put("/api/profiles/me/tutor/draft")).send(editFields).expect(200);
+        await auth(request(app).put("/api/profiles/me/tutor/draft")).send(editFields).expect(200);
+        edit = await auth(request(app).post("/api/profiles/me/tutor/submit"))
+          .send({ consentAccepted: true })
+          .expect(200);
+      } else {
+        edit = await auth(request(app).put("/api/profiles/me"))
+          .send({ tutor: editFields })
+          .expect(200);
+      }
+      expect(edit.body.version.certificationUrls).toEqual(certificateUrls);
+      expect(edit.body.tutor.certificationUrls).toEqual(certificateUrls);
+      const queue = await auth(request(app).get("/api/admin/tutor-requests"), adminId).expect(200);
+      const queued = queue.body.find((item: { id: string }) => item.id === edit.body.version.id);
+      expect(queued.certificationUrls).toEqual(certificateUrls);
+      expect(queued.currentProfile.certificationUrls).toEqual(certificateUrls);
+      expect((await review(edit.body.version.id)).status).toBe(200);
+      const approved = await auth(request(app).get("/api/profiles/me/tutor")).expect(200);
+      expect(approved.body.tutor.certificationUrls).toEqual(certificateUrls);
+      expect(approved.body.tutor.certificationUrl).toBe(fields.certificationUrl);
+      expect(approved.body.tutor.bio).toBe(editFields.bio);
+      expect(
+        await prisma.tutorProfileVersionCertification.count({
+          where: { profileVersionId: initial.versionId },
+        })
+      ).toBe(2);
+    }
+  );
+
+  it("does not treat hidden extra certificates as a change in an unchanged submission", async () => {
+    const initial = await approvedTutor();
+    await prisma.tutorProfileVersionCertification.create({
+      data: { profileVersionId: initial.versionId, fileUrl: "https://example.com/z-certificate" },
+    });
+    await auth(request(app).put("/api/profiles/me")).send({ tutor: fields }).expect(400);
+    await auth(request(app).put("/api/profiles/me/tutor/draft")).send(fields).expect(200);
+    await auth(request(app).post("/api/profiles/me/tutor/submit"))
+      .send({ consentAccepted: true })
+      .expect(400);
+    expect(await prisma.tutorProfileVersion.count({ where: { userId, status: "PENDING" } })).toBe(
+      0
+    );
+  });
+
+  it.each(["https://example.com/a-replacement", "https://example.com/zz-replacement"])(
+    "retains other certificates when replacing with %s and resaving a draft",
+    async (replacement) => {
+      const initial = await approvedTutor();
+      const retained = "https://example.com/z-certificate";
+      await prisma.tutorProfileVersionCertification.create({
+        data: { profileVersionId: initial.versionId, fileUrl: retained },
+      });
+      await auth(request(app).put("/api/profiles/me/tutor/draft"))
+        .send({ certificationUrl: replacement })
+        .expect(200);
+      const draft = await auth(request(app).put("/api/profiles/me/tutor/draft"))
+        .send({ ...fields, certificationUrl: replacement })
+        .expect(200);
+      expect(draft.body.version.certificationUrls).toEqual([replacement, retained].sort());
+      const partial = await auth(request(app).put("/api/profiles/me/tutor/draft"))
+        .send({ bio: "Changed without certificate fields" })
+        .expect(200);
+      expect(partial.body.version.certificationUrls).toEqual([replacement, retained].sort());
+      expect(partial.body.tutor.certificationUrls).toEqual([fields.certificationUrl, retained]);
+    }
+  );
+
+  it("uses the complete certificate snapshot for idempotent draft replacement and clearing", async () => {
+    const initial = await approvedTutor();
+    const retained = "https://example.com/z-certificate";
+    const replacement = "https://example.com/zz-replacement";
+    await prisma.tutorProfileVersionCertification.create({
+      data: { profileVersionId: initial.versionId, fileUrl: retained },
+    });
+    const input = {
+      ...fields,
+      certificationUrl: replacement,
+      certificationUrls: [replacement, retained],
+    };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const saved = await auth(request(app).put("/api/profiles/me/tutor/draft"))
+        .send(input)
+        .expect(200);
+      expect(saved.body.version.certificationUrls).toEqual([retained, replacement]);
+    }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const cleared = await auth(request(app).put("/api/profiles/me/tutor/draft"))
+        .send({ certificationUrl: null, certificationUrls: [replacement] })
+        .expect(200);
+      expect(cleared.body.version.certificationUrls).toEqual([replacement]);
+    }
+    await auth(request(app).put("/api/profiles/me/tutor/draft"))
+      .send({ certificationUrls: ["javascript:alert(1)"] })
+      .expect(400);
+    const unchanged = await auth(request(app).get("/api/profiles/me/tutor")).expect(200);
+    expect(unchanged.body.version.certificationUrls).toEqual([replacement]);
+  });
+
   it("rejected edits keep the current profile and publication setting", async () => {
     const initial = await approvedTutor();
     await auth(request(app).patch("/api/profiles/me/tutor/publication"))

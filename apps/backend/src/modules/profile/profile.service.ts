@@ -271,7 +271,7 @@ export class TutorWorkflowError extends Error {
   }
 }
 
-export const versionInclude = { certifications: { orderBy: { id: "asc" as const } } };
+export const versionInclude = { certifications: { orderBy: { fileUrl: "asc" as const } } };
 export const currentTutorInclude = { currentProfileVersion: { include: versionInclude } };
 type VersionWithCertificates = TutorProfileVersion & { certifications: { fileUrl: string }[] };
 type CurrentTutor = {
@@ -284,7 +284,11 @@ type CurrentTutor = {
 
 export function flattenVersion(version: VersionWithCertificates) {
   const { certifications, ...fields } = version;
-  return { ...fields, certificationUrl: certifications[0]?.fileUrl ?? null };
+  return {
+    ...fields,
+    certificationUrl: certifications[0]?.fileUrl ?? null,
+    certificationUrls: certifications.map(({ fileUrl }) => fileUrl),
+  };
 }
 
 export function flattenTutor(tutor: CurrentTutor) {
@@ -298,6 +302,7 @@ export function flattenTutor(tutor: CurrentTutor) {
     introVideoUrl: version.introVideoUrl,
     identificationCardUrl: version.identificationCardUrl,
     certificationUrl: version.certifications[0]?.fileUrl ?? null,
+    certificationUrls: version.certifications.map(({ fileUrl }) => fileUrl),
     verified: true,
   };
 }
@@ -355,6 +360,7 @@ async function writeDraft(tx: Prisma.TransactionClient, userId: string, input: T
   const draft = await tx.tutorProfileVersion.findFirst({
     where: { userId, status: "DRAFT" },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    include: versionInclude,
   });
   const previous = draft
     ? null
@@ -376,13 +382,26 @@ async function writeDraft(tx: Prisma.TransactionClient, userId: string, input: T
     introVideoUrl: fields.introVideoUrl,
     identificationCardUrl: fields.identificationCardUrl,
   };
+  const existingCertificates = (draft ?? previous)?.certifications ?? [];
+  const certificateChanged =
+    certificationUrl !== undefined &&
+    !existingCertificates.some(({ fileUrl }) => fileUrl === certificationUrl) &&
+    (certificationUrl !== null || existingCertificates.length > 0);
+  const certificateUrls =
+    input.certificationUrls ??
+    (certificateChanged
+      ? [
+          ...(certificationUrl ? [certificationUrl] : []),
+          ...(certificationUrl ? existingCertificates.slice(1).map(({ fileUrl }) => fileUrl) : []),
+        ]
+      : existingCertificates.map(({ fileUrl }) => fileUrl));
   const certifications =
-    certificationUrl === undefined
-      ? undefined
-      : {
+    !draft || certificateChanged || input.certificationUrls !== undefined
+      ? {
           ...(draft ? { deleteMany: {} } : {}),
-          create: certificationUrl ? [{ fileUrl: certificationUrl }] : [],
-        };
+          create: certificateUrls.map((fileUrl) => ({ fileUrl })),
+        }
+      : undefined;
   return draft
     ? tx.tutorProfileVersion.update({
         where: { id: draft.id },
@@ -401,11 +420,7 @@ async function writeDraft(tx: Prisma.TransactionClient, userId: string, input: T
               : data.identificationCardUrl,
           userId,
           createdAt,
-          certifications:
-            certifications ??
-            (previous
-              ? { create: previous.certifications.map(({ fileUrl }) => ({ fileUrl })) }
-              : undefined),
+          certifications,
         },
         include: versionInclude,
       });

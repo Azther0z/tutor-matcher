@@ -54,6 +54,7 @@ export const tutorDraftRequestSchema = z.object({
   introVideoUrl: httpUrl.nullable().optional(),
   identificationCardUrl: httpUrl.nullable().optional(),
   certificationUrl: httpUrl.nullable().optional(),
+  certificationUrls: z.array(httpUrl).optional(),
   consentAccepted: z.boolean().optional(),
 });
 export type TutorDraftRequest = z.infer<typeof tutorDraftRequestSchema>;
