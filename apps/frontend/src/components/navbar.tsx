@@ -183,9 +183,7 @@ export function Navbar() {
                 aria-label="Wallet balance"
                 className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200"
               >
-                {walletBalance === null
-                  ? "฿ —"
-                  : `฿ ${walletFormat.format(Number(walletBalance))}`}
+                {walletBalance === null ? "฿ —" : `฿ ${walletFormat.format(Number(walletBalance))}`}
               </span>
               <button
                 type="button"
