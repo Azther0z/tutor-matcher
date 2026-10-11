@@ -20,7 +20,7 @@ export async function listTutorRequests(adminId: string) {
   return prisma.$transaction(async (tx) => {
     await requireAdmin(tx, adminId);
     const requests = await tx.tutorProfileVersion.findMany({
-      where: { status: "PENDING" },
+      where: { status: { in: ["PENDING", "APPROVED", "REJECTED", "CANCELLED"] } },
       orderBy: [{ submittedAt: "asc" }, { id: "asc" }],
       include: {
         ...versionInclude,

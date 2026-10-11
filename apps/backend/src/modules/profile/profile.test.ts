@@ -46,6 +46,7 @@ describe("AUTH-4 profile validation", () => {
     ["put", "/api/profiles/me/tutor/draft"],
     ["post", "/api/profiles/me/tutor/submit"],
     ["post", "/api/profiles/me/tutor/withdraw"],
+    ["post", "/api/profiles/me/tutor/submissions/33333333-3333-4333-8333-333333333333/copy"],
     ["patch", "/api/profiles/me/tutor/publication"],
   ])("requires authentication on %s %s", async (method, path) => {
     await request(app)[method as "put" | "post" | "patch"](path!).send({}).expect(401);
@@ -108,6 +109,7 @@ describe("AUTH-4 profile validation", () => {
       tutor: null,
       version: null,
       drafts: [],
+      submissions: [],
       pendingRequest: null,
       latestReview: null,
       latestSubmittedVersion: null,

@@ -23,6 +23,7 @@ import {
   discardTutorDraft,
   submitTutorDraft,
   withdrawTutorRequest,
+  copyCancelledTutorSubmission,
   setTutorPublication,
 } from "./profile.service.ts";
 import type {
@@ -229,6 +230,15 @@ export async function submitSelectedDraftForCurrentUser(req: Request, res: Respo
   try {
     const { draftId } = tutorDraftParamsSchema.parse(req.params);
     res.json(await submitTutorDraft(req.user!.sub, draftId));
+  } catch (error) {
+    if (handleTutorError(error, res)) return;
+    throw error;
+  }
+}
+
+export async function copyCancelledSubmissionForCurrentUser(req: Request, res: Response) {
+  try {
+    res.json(await copyCancelledTutorSubmission(req.user!.sub, req.params.draftId as string));
   } catch (error) {
     if (handleTutorError(error, res)) return;
     throw error;

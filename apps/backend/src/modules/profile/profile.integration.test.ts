@@ -48,6 +48,9 @@ async function review(id: string, decision = "APPROVED", rejectionReason?: strin
     rejectionReason,
   });
 }
+function copySubmission(id: string, owner = userId) {
+  return auth(request(app).post(`/api/profiles/me/tutor/submissions/${id}/copy`), owner);
+}
 async function approvedTutor() {
   const id = await submitInitial();
   await (
@@ -167,8 +170,10 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
     expect(other.status).toBe(409);
     const withdrawn = await auth(request(app).post("/api/profiles/me/tutor/withdraw")).expect(200);
     await auth(request(app).post("/api/profiles/me/tutor/withdraw")).expect(409);
-    await submitDraft(withdrawn.body.version.id).expect(200);
-    expect(withdrawn.body.version.id).not.toBe(id);
+    expect(withdrawn.body.version).toMatchObject({ id, status: "CANCELLED" });
+    const copied = await copySubmission(id).expect(200);
+    await submitDraft(copied.body.version.id).expect(200);
+    expect(copied.body.version.id).not.toBe(id);
     expect((await prisma.tutorProfileVersion.findUniqueOrThrow({ where: { id } })).status).toBe(
       "CANCELLED"
     );
@@ -769,7 +774,7 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
         .currentProfileVersionId
     ).toBe(initial.versionId);
   });
-  it("restores a withdrawn applicant snapshot to the draft list and retains its baseline after reload", async () => {
+  it("retains a cancelled snapshot across reload and copies it only on explicit request", async () => {
     const saved = await createDraft({ bio: "Independent saved draft", certificationUrls: [] });
     const certificates = ["http://example.com/withdrawn-a", "https://example.com/withdrawn-b"];
     const selected = await createDraft({
@@ -779,13 +784,14 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
     });
     const selectedId = selected.body.version.id;
     await submitDraft(selectedId).expect(200);
-    const restored = await auth(request(app).post("/api/profiles/me/tutor/withdraw")).expect(200);
+    await auth(request(app).post("/api/profiles/me/tutor/withdraw")).expect(200);
     const reloaded = await auth(request(app).get("/api/profiles/me/tutor")).expect(200);
     expect(reloaded.body).toMatchObject({
       tutor: null,
       pendingRequest: null,
       latestReview: null,
-      version: { id: restored.body.version.id, status: "DRAFT", certificationUrls: certificates },
+      drafts: [saved.body.version],
+      submissions: [expect.objectContaining({ id: selectedId, status: "CANCELLED" })],
       latestSubmittedVersion: {
         id: selectedId,
         status: "CANCELLED",
@@ -794,7 +800,7 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
         certificationUrls: certificates,
       },
     });
-    const reseeded = await createDraft({});
+    const reseeded = await copySubmission(selectedId).expect(200);
     expect(reseeded.body.version).toMatchObject({
       ...fields,
       bio: "Withdrawn applicant content",
@@ -823,6 +829,54 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
     expect(withdrawn.certifications.map((certificate) => certificate.fileUrl).sort()).toEqual(
       certificates
     );
+  });
+
+  it("lists submitted history for owners and admins while keeping drafts private and copy ownership enforced", async () => {
+    const approved = await approvedTutor();
+    const rejected = await createDraft({ ...fields, bio: "Rejected edit" });
+    await submitDraft(rejected.body.version.id).expect(200);
+    expect((await review(rejected.body.version.id, "REJECTED", "Please clarify")).status).toBe(200);
+    const cancelled = await createDraft({ ...fields, bio: "Cancelled edit" });
+    await submitDraft(cancelled.body.version.id).expect(200);
+    await copySubmission(cancelled.body.version.id).expect(409);
+    await auth(request(app).post("/api/profiles/me/tutor/withdraw")).expect(200);
+    const pending = await createDraft({ ...fields, bio: "Pending edit" });
+    await submitDraft(pending.body.version.id).expect(200);
+    const privateDraft = await createDraft({ bio: "Private unsent draft" });
+    const own = await auth(request(app).get("/api/profiles/me/tutor")).expect(200);
+    expect(
+      own.body.submissions.map((version: { status: string }) => version.status).sort()
+    ).toEqual(["APPROVED", "CANCELLED", "PENDING", "REJECTED"]);
+    const other = await auth(request(app).get("/api/profiles/me/tutor"), adminId).expect(200);
+    expect(other.body.submissions).toEqual([]);
+    const admin = await auth(request(app).get("/api/admin/tutor-requests"), adminId).expect(200);
+    const userHistory = admin.body.filter(
+      (version: { userId: string }) => version.userId === userId
+    );
+    expect(userHistory.map((version: { status: string }) => version.status).sort()).toEqual([
+      "APPROVED",
+      "CANCELLED",
+      "PENDING",
+      "REJECTED",
+    ]);
+    expect(
+      admin.body.some((version: { id: string }) => version.id === privateDraft.body.version.id)
+    ).toBe(false);
+    await copySubmission(cancelled.body.version.id, adminId).expect(404);
+    await copySubmission(approved.versionId).expect(409);
+    await copySubmission(rejected.body.version.id).expect(409);
+    await copySubmission(privateDraft.body.version.id).expect(409);
+    await copySubmission("invalid-id").expect(400);
+    const copied = await copySubmission(cancelled.body.version.id).expect(200);
+    expect(copied.body.version).toMatchObject({
+      status: "DRAFT",
+      bio: "Cancelled edit",
+      submittedAt: null,
+      reviewedAt: null,
+    });
+    expect(copied.body.version.id).not.toBe(cancelled.body.version.id);
+    expect(copied.body.pendingRequest.id).toBe(pending.body.version.id);
+    expect(copied.body.tutor.id).toBe(approved.tutor.id);
   });
 
   it("ignores injected ownership and review fields when creating and saving a draft", async () => {
@@ -952,7 +1006,7 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
     { approved: true, certificates: [] },
     { approved: true, certificates: ["http://example.com/a", "https://example.com/b"] },
   ])(
-    "withdrawal restores the exact snapshot with existing drafts (%j)",
+    "cancellation retains history and explicit copying preserves the exact snapshot (%j)",
     async ({ approved, certificates }) => {
       const initial = approved ? await approvedTutor() : null;
       if (initial)
@@ -978,7 +1032,12 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
       const withdrawn = await auth(request(app).post("/api/profiles/me/tutor/withdraw")).expect(
         200
       );
-      const restored = withdrawn.body.version;
+      expect(withdrawn.body.drafts).toEqual([remaining.body.version]);
+      expect(withdrawn.body.submissions).toContainEqual(
+        expect.objectContaining({ id: before.id, status: "CANCELLED" })
+      );
+      const copied = await copySubmission(before.id).expect(200);
+      const restored = copied.body.version;
       expect(restored).toMatchObject({
         userId,
         status: "DRAFT",
@@ -995,10 +1054,10 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
       expect(restored.id).not.toBe(before.id);
       expect(new Date(restored.createdAt).getTime()).toBeGreaterThan(before.createdAt.getTime());
       expect(withdrawn.body).toMatchObject({
-        status: approved ? "APPROVED" : "DRAFT",
+        status: approved ? "APPROVED" : "CANCELLED",
         pendingRequest: null,
       });
-      expect(withdrawn.body.drafts).toHaveLength(2);
+      expect(copied.body.drafts).toHaveLength(2);
       expect(
         withdrawn.body.drafts.find(
           (draft: { id: string }) => draft.id === remaining.body.version.id
@@ -1022,13 +1081,13 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
     }
   );
 
-  it("serializes duplicate withdrawals to exactly one restored draft", async () => {
+  it("serializes duplicate withdrawals without creating any draft", async () => {
     const id = await submitInitial();
     const attempts = await Promise.all(
       Array.from({ length: 3 }, () => auth(request(app).post("/api/profiles/me/tutor/withdraw")))
     );
     expect(attempts.map((response) => response.status).sort()).toEqual([200, 409, 409]);
-    expect(await prisma.tutorProfileVersion.count({ where: { userId, status: "DRAFT" } })).toBe(1);
+    expect(await prisma.tutorProfileVersion.count({ where: { userId, status: "DRAFT" } })).toBe(0);
     expect(await prisma.tutorProfileVersion.count({ where: { userId, status: "PENDING" } })).toBe(
       0
     );
@@ -1036,7 +1095,7 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
       "CANCELLED"
     );
     await auth(request(app).post("/api/profiles/me/tutor/withdraw")).expect(409);
-    expect(await prisma.tutorProfileVersion.count({ where: { userId } })).toBe(2);
+    expect(await prisma.tutorProfileVersion.count({ where: { userId } })).toBe(1);
   });
   it.each([
     { certificates: [] },

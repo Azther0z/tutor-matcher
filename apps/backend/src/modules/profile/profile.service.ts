@@ -351,6 +351,7 @@ async function applicationResponse(
     tutor: user.tutor ? flattenTutor(user.tutor) : null,
     version: latest ? flattenVersion(latest) : null,
     drafts: drafts.map(flattenVersion),
+    submissions: versions.filter((version) => version.status !== "DRAFT").map(flattenVersion),
     pendingRequest: pending ? flattenVersion(pending) : null,
     latestReview: latestReview ? flattenVersion(latestReview) : null,
     latestSubmittedVersion: latestSubmittedVersion ? flattenVersion(latestSubmittedVersion) : null,
@@ -586,23 +587,37 @@ export async function withdrawTutorRequest(userId: string) {
       where: { id: pending.id },
       data: { status: "CANCELLED" },
     });
+    return applicationResponse(tx, userId, pending.id);
+  });
+}
+
+export async function copyCancelledTutorSubmission(userId: string, submissionId: string) {
+  return prisma.$transaction(async (tx) => {
+    await lockProfileUser(tx, userId);
+    const submission = await tx.tutorProfileVersion.findFirst({
+      where: { id: submissionId, userId },
+      include: versionInclude,
+    });
+    if (!submission) throw new TutorWorkflowError(404, "Submission not found");
+    if (submission.status !== "CANCELLED")
+      throw new TutorWorkflowError(409, "Only cancelled submissions can be copied");
     const newest = await tx.tutorProfileVersion.findFirst({
       where: { userId },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: { createdAt: true },
     });
-    // Copy the submitted snapshot exactly, including incomplete legacy values.
+    // Copy the cancelled snapshot exactly, including incomplete legacy values.
     // The cancelled version remains immutable; review metadata belongs to it alone.
     const draft = await tx.tutorProfileVersion.create({
       data: {
         userId,
-        avatarUrl: pending.avatarUrl,
-        bio: pending.bio,
-        introVideoUrl: pending.introVideoUrl,
-        identificationCardUrl: pending.identificationCardUrl,
+        avatarUrl: submission.avatarUrl,
+        bio: submission.bio,
+        introVideoUrl: submission.introVideoUrl,
+        identificationCardUrl: submission.identificationCardUrl,
         createdAt: new Date(Math.max(Date.now(), (newest?.createdAt.getTime() ?? 0) + 1)),
         certifications: {
-          create: pending.certifications.map(({ fileUrl }) => ({ fileUrl })),
+          create: submission.certifications.map(({ fileUrl }) => ({ fileUrl })),
         },
       },
     });
