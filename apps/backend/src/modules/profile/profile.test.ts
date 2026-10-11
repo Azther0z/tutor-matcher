@@ -2,13 +2,19 @@ import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import request from "supertest";
 const findUser = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const findVersion = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const findVersions = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const createVersion = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const updateVersion = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const lock = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const tx = {
   $queryRaw: lock,
   user: { findUnique: findUser },
-  tutorProfileVersion: { findFirst: findVersion, create: createVersion, update: updateVersion },
+  tutorProfileVersion: {
+    findMany: findVersions,
+    findFirst: findVersion,
+    create: createVersion,
+    update: updateVersion,
+  },
 };
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
@@ -27,9 +33,11 @@ const fields = {
   certificationUrl: "https://example.com/cert",
 };
 beforeEach(() => {
-  for (const mock of [findUser, findVersion, createVersion, updateVersion, lock]) mock.mockReset();
+  for (const mock of [findUser, findVersion, findVersions, createVersion, updateVersion, lock])
+    mock.mockReset();
   findUser.mockResolvedValue({ tutor: null });
   findVersion.mockResolvedValue(null);
+  findVersions.mockResolvedValue([]);
   lock.mockResolvedValue([]);
 });
 describe("AUTH-4 profile validation", () => {
@@ -80,8 +88,8 @@ describe("AUTH-4 profile validation", () => {
       expect(createVersion).not.toHaveBeenCalled();
     }
   );
-  it("refuses draft writes while a request is pending", async () => {
-    findVersion.mockResolvedValue({ status: "PENDING" });
+  it("rejects ambiguous legacy draft selection without mutating anything", async () => {
+    findVersions.mockResolvedValue([{ status: "DRAFT" }, { status: "DRAFT" }]);
     await request(app)
       .put("/api/profiles/me/tutor/draft")
       .set("Authorization", auth())
@@ -95,7 +103,15 @@ describe("AUTH-4 profile validation", () => {
       .get("/api/profiles/me/tutor")
       .set("Authorization", auth())
       .expect(200);
-    expect(res.body).toEqual({ status: "NONE", tutor: null, version: null });
+    expect(res.body).toEqual({
+      status: "NONE",
+      tutor: null,
+      version: null,
+      drafts: [],
+      pendingRequest: null,
+      latestReview: null,
+      latestSubmittedVersion: null,
+    });
   });
   it("returns 404 for a deleted account", async () => {
     findUser.mockResolvedValue(null);
@@ -108,4 +124,55 @@ describe("AUTH-4 profile validation", () => {
       .send({ published: true })
       .expect(403);
   });
+});
+
+describe("selected draft request validation", () => {
+  it.each(["put", "delete", "post"] as const)(
+    "rejects malformed draft IDs on %s",
+    async (method) => {
+      const suffix = method === "post" ? "/submit" : "";
+      const attempt = request(app)[method]("/api/profiles/me/tutor/drafts/not-a-uuid" + suffix);
+      await attempt.set("Authorization", auth()).send({ consentAccepted: true }).expect(400);
+      expect(lock).not.toHaveBeenCalled();
+    }
+  );
+  it.each(
+    [["ftp://example.com/cert"], ["https://example.com/cert", "javascript:alert(1)"]].map(
+      (certificationUrls) => ({ certificationUrls })
+    )
+  )("rejects invalid supplied direct certification arrays (%s)", async ({ certificationUrls }) => {
+    const modern = { ...fields, certificationUrl: undefined };
+    await request(app)
+      .put("/api/profiles/me/tutor")
+      .set("Authorization", auth())
+      .send({ ...modern, certificationUrls, consentAccepted: true })
+      .expect(400);
+    expect(lock).not.toHaveBeenCalled();
+  });
+  it.each([false, undefined])(
+    "requires fresh consent on selected submit (%s)",
+    async (consentAccepted) => {
+      await request(app)
+        .post("/api/profiles/me/tutor/drafts/11111111-1111-4111-8111-111111111111/submit")
+        .set("Authorization", auth())
+        .send({ consentAccepted })
+        .expect(400);
+      expect(lock).not.toHaveBeenCalled();
+    }
+  );
+});
+
+describe("optional certification request schemas", () => {
+  it.each([{ certificationUrls: undefined }, { certificationUrls: [] }])(
+    "accepts absent or empty certification collections (%s)",
+    async ({ certificationUrls }) => {
+      const { tutorEnrollmentRequestSchema, profileRequestSchema } =
+        await import("./profile.schema.ts");
+      const modern = { ...fields, certificationUrl: undefined, certificationUrls };
+      expect(
+        tutorEnrollmentRequestSchema.safeParse({ ...modern, consentAccepted: true }).success
+      ).toBe(true);
+      expect(profileRequestSchema.safeParse({ tutor: modern }).success).toBe(true);
+    }
+  );
 });

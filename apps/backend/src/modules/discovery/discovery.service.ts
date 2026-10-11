@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/db.ts";
+import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
 
 export class TutorNotFoundError extends Error {
   constructor() {
@@ -18,7 +19,9 @@ export async function getTutorSummary(tutorId: string) {
         select: {
           id: true,
           status: true,
-          currentProfileVersion: { select: { bio: true, avatarUrl: true, introVideoUrl: true } },
+          currentProfileVersion: {
+            select: { bio: true, avatarUrl: true, introVideoUrl: true, ...publicPortfolioSelect },
+          },
         },
       },
     },
@@ -38,5 +41,6 @@ export async function getTutorSummary(tutorId: string) {
     bio: tutor.tutor.currentProfileVersion.bio,
     avatarUrl: tutor.tutor.currentProfileVersion.avatarUrl,
     introVideoUrl: tutor.tutor.currentProfileVersion.introVideoUrl,
+    certificationUrls: publicCertificationUrls(tutor.tutor.currentProfileVersion),
   };
 }

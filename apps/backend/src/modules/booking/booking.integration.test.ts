@@ -4,6 +4,8 @@ import { app } from "../../app.ts";
 import { prisma } from "../../lib/db.ts";
 import { signAuthToken } from "../../lib/jwt.ts";
 
+const PORTFOLIO_URLS = ["http://example.com/contest-a", "https://example.com/contest-b"];
+
 const STUDENT_ID = "41000000-0000-4000-8000-000000000001";
 const TUTOR_USER_ID = "41000000-0000-4000-8000-000000000002";
 const TUTOR_ID = "41000000-0000-4000-8000-000000000003";
@@ -76,6 +78,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
             status: "APPROVED",
             identificationCardUrl: "https://example.com/id.png",
             bio: "Integration tutor",
+            certifications: { create: PORTFOLIO_URLS.map((fileUrl) => ({ fileUrl })) },
           },
         },
       },
@@ -127,6 +130,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
       id: TUTOR_ID,
       name: "Test Tutor",
       avatarUrl: null,
+      certificationUrls: PORTFOLIO_URLS,
     });
     expect(JSON.stringify(created.body)).not.toContain("identificationCardUrl");
     const bookingId = created.body.booking.id as string;
@@ -246,7 +250,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
       expect(availability.body).toMatchObject({
         acceptingBookings: false,
         slots: [],
-        subject: { id: SUBJECT_ID },
+        subject: { id: SUBJECT_ID, tutor: { certificationUrls: PORTFOLIO_URLS } },
       });
       await authorize(
         request(app)
@@ -261,6 +265,9 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         request(app).get(`/api/bookings/${created.body.booking.id}`)
       ).expect(200);
       expect(lesson.body.booking.subject.id).toBe(SUBJECT_ID);
+      expect(lesson.body.booking.subject.tutor.certificationUrls).toEqual(PORTFOLIO_URLS);
+      expect(JSON.stringify(lesson.body)).not.toContain("identificationCardUrl");
+      expect(JSON.stringify(lesson.body)).not.toContain("https://example.com/id.png");
       await authorize(
         request(app)
           .post("/api/messages")

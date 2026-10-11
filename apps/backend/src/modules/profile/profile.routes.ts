@@ -10,6 +10,10 @@ import {
   updateAccountForCurrentUser,
   updateProfile,
   saveDraftForCurrentUser,
+  createDraftForCurrentUser,
+  updateDraftForCurrentUser,
+  discardDraftForCurrentUser,
+  submitSelectedDraftForCurrentUser,
   submitDraftForCurrentUser,
   withdrawRequestForCurrentUser,
   setPublicationForCurrentUser,
@@ -21,6 +25,7 @@ import {
   studentProfileRequestSchema,
   tutorEnrollmentRequestSchema,
   tutorDraftRequestSchema,
+  tutorDraftParamsSchema,
   tutorSubmitRequestSchema,
   tutorPublicationRequestSchema,
 } from "./profile.schema.ts";
@@ -55,4 +60,27 @@ profileRouter.patch(
   "/me/tutor/publication",
   validate(tutorPublicationRequestSchema),
   setPublicationForCurrentUser
+);
+
+profileRouter.post(
+  "/me/tutor/drafts",
+  validate(tutorDraftRequestSchema),
+  createDraftForCurrentUser
+);
+profileRouter.put(
+  "/me/tutor/drafts/:draftId",
+  validate(tutorDraftParamsSchema, "params"),
+  validate(tutorDraftRequestSchema),
+  updateDraftForCurrentUser
+);
+profileRouter.delete(
+  "/me/tutor/drafts/:draftId",
+  validate(tutorDraftParamsSchema, "params"),
+  discardDraftForCurrentUser
+);
+profileRouter.post(
+  "/me/tutor/drafts/:draftId/submit",
+  validate(tutorDraftParamsSchema, "params"),
+  validate(tutorSubmitRequestSchema),
+  submitSelectedDraftForCurrentUser
 );

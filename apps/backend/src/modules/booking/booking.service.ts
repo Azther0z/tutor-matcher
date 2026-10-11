@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
+import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
 import type {
   CancelBookingInput,
   CreateBookingInput,
@@ -102,7 +103,7 @@ const detailInclude = {
       tutor: {
         include: {
           user: { select: { id: true, firstName: true, lastName: true } },
-          currentProfileVersion: { select: { avatarUrl: true } },
+          currentProfileVersion: { select: { avatarUrl: true, ...publicPortfolioSelect } },
         },
       },
     },
@@ -261,6 +262,7 @@ export function mapBookingResponse(
           ? `${booking.subject.tutor.user.firstName} ${booking.subject.tutor.user.lastName}`
           : "Tutor",
         avatarUrl: booking.subject.tutor.currentProfileVersion.avatarUrl,
+        certificationUrls: publicCertificationUrls(booking.subject.tutor.currentProfileVersion),
       },
     },
     availabilities: booking.availabilities.map((slot) => ({
@@ -350,7 +352,7 @@ export async function getSubjectAvailability(subjectId: string) {
       tutor: {
         include: {
           user: { select: { firstName: true, lastName: true } },
-          currentProfileVersion: { select: { avatarUrl: true } },
+          currentProfileVersion: { select: { avatarUrl: true, ...publicPortfolioSelect } },
         },
       },
       availabilitySubjects: {
@@ -372,6 +374,7 @@ export async function getSubjectAvailability(subjectId: string) {
           ? `${subject.tutor.user.firstName} ${subject.tutor.user.lastName}`
           : "Tutor",
         avatarUrl: subject.tutor.currentProfileVersion.avatarUrl,
+        certificationUrls: publicCertificationUrls(subject.tutor.currentProfileVersion),
       },
     },
     acceptingBookings: subject.tutor.status === "PUBLISHED",

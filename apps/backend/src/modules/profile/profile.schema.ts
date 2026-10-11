@@ -27,7 +27,7 @@ const tutorFields = {
   bio: z.string().trim().min(1).max(2000),
   introVideoUrl: httpUrl,
   identificationCardUrl: httpUrl,
-  certificationUrl: httpUrl,
+  certificationUrl: httpUrl.optional(),
   certificationUrls: z.array(httpUrl).optional(),
 };
 
@@ -59,6 +59,7 @@ export const tutorDraftRequestSchema = z.object({
   consentAccepted: z.boolean().optional(),
 });
 export type TutorDraftRequest = z.infer<typeof tutorDraftRequestSchema>;
+export const tutorDraftParamsSchema = z.object({ draftId: z.uuid() });
 export const tutorSubmitRequestSchema = z.object({ consentAccepted: z.literal(true) });
 export const tutorPublicationRequestSchema = z.object({ published: z.boolean() });
 

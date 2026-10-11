@@ -1,5 +1,9 @@
 import type { Prisma, TutorProfileVersion } from "../../generated/prisma/client.ts";
-import { tutorEnrollmentRequestSchema } from "./profile.schema.ts";
+import {
+  tutorEnrollmentRequestSchema,
+  tutorDraftRequestSchema,
+  profileRequestSchema,
+} from "./profile.schema.ts";
 import { prisma } from "../../lib/db.ts";
 import type {
   AccountUpdateRequest,
@@ -319,28 +323,37 @@ export async function lockProfileUser(tx: Prisma.TransactionClient, userId: stri
   return user;
 }
 
-async function applicationResponse(tx: Prisma.TransactionClient, userId: string) {
+async function applicationResponse(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  focusVersionId?: string
+) {
   const user = await tx.user.findUnique({
     where: { id: userId },
     include: { tutor: { include: currentTutorInclude } },
   });
   if (!user) throw new UserNotFoundError();
-  const active = await tx.tutorProfileVersion.findFirst({
-    where: { userId, status: { in: ["DRAFT", "PENDING"] } },
+  const versions = await tx.tutorProfileVersion.findMany({
+    where: { userId },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     include: versionInclude,
   });
-  const latest =
-    active ??
-    (await tx.tutorProfileVersion.findFirst({
-      where: { userId },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      include: versionInclude,
-    }));
+  const drafts = versions.filter((version) => version.status === "DRAFT");
+  const pending = versions.find((version) => version.status === "PENDING");
+  const latestSubmittedVersion = versions.find((version) => version.status !== "DRAFT");
+  const latestReview = versions
+    .filter((version) => version.status === "APPROVED" || version.status === "REJECTED")
+    .sort((a, b) => (b.reviewedAt?.getTime() ?? 0) - (a.reviewedAt?.getTime() ?? 0))[0];
+  const focus = focusVersionId ? versions.find((version) => version.id === focusVersionId) : null;
+  const latest = focus ?? pending ?? drafts[0] ?? versions[0];
   return {
-    status: user.tutor ? "APPROVED" : (latest?.status ?? "NONE"),
+    status: user.tutor ? "APPROVED" : pending ? "PENDING" : (latest?.status ?? "NONE"),
     tutor: user.tutor ? flattenTutor(user.tutor) : null,
     version: latest ? flattenVersion(latest) : null,
+    drafts: drafts.map(flattenVersion),
+    pendingRequest: pending ? flattenVersion(pending) : null,
+    latestReview: latestReview ? flattenVersion(latestReview) : null,
+    latestSubmittedVersion: latestSubmittedVersion ? flattenVersion(latestSubmittedVersion) : null,
   };
 }
 
@@ -353,97 +366,152 @@ export async function getTutorApplication(userId: string) {
 async function requireNoPending(tx: Prisma.TransactionClient, userId: string) {
   const pending = await tx.tutorProfileVersion.findFirst({ where: { userId, status: "PENDING" } });
   if (pending)
-    throw new TutorWorkflowError(409, "Withdraw your pending request before changing it");
+    throw new TutorWorkflowError(409, "Withdraw your pending request before submitting another");
 }
 
-async function writeDraft(tx: Prisma.TransactionClient, userId: string, input: TutorDraftRequest) {
-  const draft = await tx.tutorProfileVersion.findFirst({
+async function legacyDraft(tx: Prisma.TransactionClient, userId: string) {
+  const drafts = await tx.tutorProfileVersion.findMany({
     where: { userId, status: "DRAFT" },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    include: versionInclude,
+    take: 2,
+  });
+  if (drafts.length > 1)
+    throw new TutorWorkflowError(409, "Multiple drafts exist; select a draft by ID");
+  return drafts[0];
+}
+
+async function ownerDraft(tx: Prisma.TransactionClient, userId: string, draftId: string) {
+  const draft = await tx.tutorProfileVersion.findFirst({
+    where: { id: draftId, userId },
     include: versionInclude,
   });
-  const previous = draft
-    ? null
-    : await tx.tutorProfileVersion.findFirst({
-        where: { userId },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        include: versionInclude,
-      });
-  const fields = input;
-  const certificationUrl = input.certificationUrl;
-  const baseline: Partial<ReturnType<typeof flattenVersion>> = previous
-    ? flattenVersion(previous)
-    : {};
-  const createdAt = new Date(Math.max(Date.now(), (previous?.createdAt.getTime() ?? 0) + 1));
-  // Pick fields explicitly: validation middleware does not replace req.body.
-  const data = {
-    avatarUrl: fields.avatarUrl,
-    bio: fields.bio?.trim() ?? fields.bio,
-    introVideoUrl: fields.introVideoUrl,
-    identificationCardUrl: fields.identificationCardUrl,
-  };
-  const existingCertificates = (draft ?? previous)?.certifications ?? [];
+  if (!draft) throw new TutorWorkflowError(404, "Draft not found");
+  if (draft.status !== "DRAFT") throw new TutorWorkflowError(409, "Only drafts can be changed");
+  return draft;
+}
+
+async function draftBaseline(tx: Prisma.TransactionClient, userId: string) {
+  const tutor = await tx.tutor.findFirst({
+    where: { user: { id: userId } },
+    include: currentTutorInclude,
+  });
+  return (
+    tutor?.currentProfileVersion ??
+    tx.tutorProfileVersion.findFirst({
+      where: { userId, status: { not: "DRAFT" } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      include: versionInclude,
+    })
+  );
+}
+
+async function writeDraft(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  input: TutorDraftRequest,
+  draft?: VersionWithCertificates
+) {
+  // Parse here: validation middleware checks input without replacing req.body.
+  const fields = tutorDraftRequestSchema.parse(input);
+  const previous = draft ?? (await draftBaseline(tx, userId));
+  const existingCertificates = previous?.certifications ?? [];
+  const certificationUrl = fields.certificationUrl;
   const certificateChanged =
     certificationUrl !== undefined &&
     !existingCertificates.some(({ fileUrl }) => fileUrl === certificationUrl) &&
     (certificationUrl !== null || existingCertificates.length > 0);
-  const certificateUrls =
-    input.certificationUrls ??
-    (certificateChanged
-      ? [
-          ...(certificationUrl ? [certificationUrl] : []),
-          ...(certificationUrl ? existingCertificates.slice(1).map(({ fileUrl }) => fileUrl) : []),
-        ]
-      : existingCertificates.map(({ fileUrl }) => fileUrl));
-  const certifications =
-    !draft || certificateChanged || input.certificationUrls !== undefined
-      ? {
-          ...(draft ? { deleteMany: {} } : {}),
-          create: certificateUrls.map((fileUrl) => ({ fileUrl })),
-        }
-      : undefined;
-  return draft
-    ? tx.tutorProfileVersion.update({
-        where: { id: draft.id },
-        data: { ...data, certifications },
-        include: versionInclude,
-      })
-    : tx.tutorProfileVersion.create({
-        data: {
-          avatarUrl: fields.avatarUrl === undefined ? baseline.avatarUrl : data.avatarUrl,
-          bio: fields.bio === undefined ? baseline.bio : data.bio,
-          introVideoUrl:
-            fields.introVideoUrl === undefined ? baseline.introVideoUrl : data.introVideoUrl,
-          identificationCardUrl:
-            fields.identificationCardUrl === undefined
-              ? baseline.identificationCardUrl
-              : data.identificationCardUrl,
-          userId,
-          createdAt,
-          certifications,
-        },
-        include: versionInclude,
-      });
+  const certificateUrls = [
+    ...new Set(
+      fields.certificationUrls ??
+        (certificateChanged
+          ? [
+              ...(certificationUrl ? [certificationUrl] : []),
+              ...(certificationUrl
+                ? existingCertificates.slice(1).map(({ fileUrl }) => fileUrl)
+                : []),
+            ]
+          : existingCertificates.map(({ fileUrl }) => fileUrl))
+    ),
+  ];
+  const data = {
+    avatarUrl: fields.avatarUrl === undefined ? previous?.avatarUrl : fields.avatarUrl,
+    bio: fields.bio === undefined ? previous?.bio : fields.bio,
+    introVideoUrl:
+      fields.introVideoUrl === undefined ? previous?.introVideoUrl : fields.introVideoUrl,
+    identificationCardUrl:
+      fields.identificationCardUrl === undefined
+        ? previous?.identificationCardUrl
+        : fields.identificationCardUrl,
+    certifications: {
+      ...(draft ? { deleteMany: {} } : {}),
+      create: certificateUrls.map((fileUrl) => ({ fileUrl })),
+    },
+  };
+  if (draft) {
+    return tx.tutorProfileVersion.update({
+      where: { id: draft.id },
+      data,
+      include: versionInclude,
+    });
+  }
+  const newest = await tx.tutorProfileVersion.findFirst({
+    where: { userId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { createdAt: true },
+  });
+  const createdAt = new Date(Math.max(Date.now(), (newest?.createdAt.getTime() ?? 0) + 1));
+  return tx.tutorProfileVersion.create({
+    data: { ...data, userId, createdAt },
+    include: versionInclude,
+  });
+}
+
+export async function createTutorDraft(userId: string, input: TutorDraftRequest) {
+  return prisma.$transaction(async (tx) => {
+    await lockProfileUser(tx, userId);
+    const draft = await writeDraft(tx, userId, input);
+    return applicationResponse(tx, userId, draft.id);
+  });
+}
+
+export async function updateTutorDraft(userId: string, draftId: string, input: TutorDraftRequest) {
+  return prisma.$transaction(async (tx) => {
+    await lockProfileUser(tx, userId);
+    const draft = await ownerDraft(tx, userId, draftId);
+    await writeDraft(tx, userId, input, draft);
+    return applicationResponse(tx, userId, draftId);
+  });
+}
+
+export async function discardTutorDraft(userId: string, draftId: string) {
+  return prisma.$transaction(async (tx) => {
+    await lockProfileUser(tx, userId);
+    await ownerDraft(tx, userId, draftId);
+    await tx.tutorProfileVersion.delete({ where: { id: draftId } });
+    return applicationResponse(tx, userId);
+  });
 }
 
 export function validateSubmission(version: VersionWithCertificates) {
   const parsed = tutorEnrollmentRequestSchema.safeParse({
     ...flattenVersion(version),
+    // The canonical array may be empty; the response-only singular alias is then null.
+    certificationUrl: undefined,
     consentAccepted: true,
   });
   if (!parsed.success)
     throw new TutorWorkflowError(
       400,
-      "Complete your bio, introduction video, identification card and certification before submitting"
+      "Complete your bio, introduction video and identification card, and use valid certification URLs when supplied"
     );
 }
 
 export async function saveTutorDraft(userId: string, input: TutorDraftRequest) {
   return prisma.$transaction(async (tx) => {
     await lockProfileUser(tx, userId);
-    await requireNoPending(tx, userId);
-    await writeDraft(tx, userId, input);
-    return applicationResponse(tx, userId);
+    const existing = await legacyDraft(tx, userId);
+    const draft = await writeDraft(tx, userId, input, existing);
+    return applicationResponse(tx, userId, draft.id);
   });
 }
 
@@ -470,18 +538,14 @@ async function submitVersion(
   });
 }
 
-export async function submitTutorDraft(userId: string) {
+export async function submitTutorDraft(userId: string, draftId?: string) {
   return prisma.$transaction(async (tx) => {
     const user = await lockProfileUser(tx, userId);
+    const draft = draftId ? await ownerDraft(tx, userId, draftId) : await legacyDraft(tx, userId);
     await requireNoPending(tx, userId);
-    const draft = await tx.tutorProfileVersion.findFirst({
-      where: { userId, status: "DRAFT" },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      include: versionInclude,
-    });
     if (!draft) throw new TutorWorkflowError(404, "No draft to submit");
     await submitVersion(tx, draft, user.tutor?.currentProfileVersion);
-    return applicationResponse(tx, userId);
+    return applicationResponse(tx, userId, draft.id);
   });
 }
 
@@ -490,7 +554,8 @@ export async function enrollTutor(userId: string, input: TutorEnrollmentRequest)
     const user = await lockProfileUser(tx, userId);
     if (user.tutor) throw new TutorAlreadyApprovedError();
     await requireNoPending(tx, userId);
-    const draft = await writeDraft(tx, userId, input);
+    const parsed = tutorEnrollmentRequestSchema.parse(input);
+    const draft = await writeDraft(tx, userId, parsed, await legacyDraft(tx, userId));
     await submitVersion(tx, draft);
     return applicationResponse(tx, userId);
   });
@@ -501,7 +566,8 @@ export async function updateTutorProfile(userId: string, input: ProfileRequest) 
     const user = await lockProfileUser(tx, userId);
     if (!user.tutor) throw new ProfileForbiddenError();
     await requireNoPending(tx, userId);
-    const draft = await writeDraft(tx, userId, input.tutor);
+    const parsed = profileRequestSchema.parse(input);
+    const draft = await writeDraft(tx, userId, parsed.tutor, await legacyDraft(tx, userId));
     await submitVersion(tx, draft, user.tutor.currentProfileVersion);
     // Names belong to account settings; never mutate them during review.
     return applicationResponse(tx, userId);
@@ -513,13 +579,34 @@ export async function withdrawTutorRequest(userId: string) {
     await lockProfileUser(tx, userId);
     const pending = await tx.tutorProfileVersion.findFirst({
       where: { userId, status: "PENDING" },
+      include: versionInclude,
     });
     if (!pending) throw new TutorWorkflowError(409, "No pending request to withdraw");
     await tx.tutorProfileVersion.update({
       where: { id: pending.id },
       data: { status: "CANCELLED" },
     });
-    return applicationResponse(tx, userId);
+    const newest = await tx.tutorProfileVersion.findFirst({
+      where: { userId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: { createdAt: true },
+    });
+    // Copy the submitted snapshot exactly, including incomplete legacy values.
+    // The cancelled version remains immutable; review metadata belongs to it alone.
+    const draft = await tx.tutorProfileVersion.create({
+      data: {
+        userId,
+        avatarUrl: pending.avatarUrl,
+        bio: pending.bio,
+        introVideoUrl: pending.introVideoUrl,
+        identificationCardUrl: pending.identificationCardUrl,
+        createdAt: new Date(Math.max(Date.now(), (newest?.createdAt.getTime() ?? 0) + 1)),
+        certifications: {
+          create: pending.certifications.map(({ fileUrl }) => ({ fileUrl })),
+        },
+      },
+    });
+    return applicationResponse(tx, userId, draft.id);
   });
 }
 

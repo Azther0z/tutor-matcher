@@ -18,6 +18,9 @@ import {
   UserNotFoundError,
   TutorWorkflowError,
   saveTutorDraft,
+  createTutorDraft,
+  updateTutorDraft,
+  discardTutorDraft,
   submitTutorDraft,
   withdrawTutorRequest,
   setTutorPublication,
@@ -27,7 +30,7 @@ import type {
   ProfileRequest,
   TutorEnrollmentRequest,
 } from "./profile.schema.ts";
-import { learningAreaSearchSchema } from "./profile.schema.ts";
+import { learningAreaSearchSchema, tutorDraftParamsSchema } from "./profile.schema.ts";
 import { signAuthToken } from "../../lib/jwt.ts";
 
 export async function updateProfile(req: Request, res: Response) {
@@ -190,6 +193,42 @@ export async function withdrawRequestForCurrentUser(req: Request, res: Response)
 export async function setPublicationForCurrentUser(req: Request, res: Response) {
   try {
     res.json(await setTutorPublication(req.user!.sub, req.body.published));
+  } catch (error) {
+    if (handleTutorError(error, res)) return;
+    throw error;
+  }
+}
+
+export async function createDraftForCurrentUser(req: Request, res: Response) {
+  try {
+    res.json(await createTutorDraft(req.user!.sub, req.body));
+  } catch (error) {
+    if (handleTutorError(error, res)) return;
+    throw error;
+  }
+}
+export async function updateDraftForCurrentUser(req: Request, res: Response) {
+  try {
+    const { draftId } = tutorDraftParamsSchema.parse(req.params);
+    res.json(await updateTutorDraft(req.user!.sub, draftId, req.body));
+  } catch (error) {
+    if (handleTutorError(error, res)) return;
+    throw error;
+  }
+}
+export async function discardDraftForCurrentUser(req: Request, res: Response) {
+  try {
+    const { draftId } = tutorDraftParamsSchema.parse(req.params);
+    res.json(await discardTutorDraft(req.user!.sub, draftId));
+  } catch (error) {
+    if (handleTutorError(error, res)) return;
+    throw error;
+  }
+}
+export async function submitSelectedDraftForCurrentUser(req: Request, res: Response) {
+  try {
+    const { draftId } = tutorDraftParamsSchema.parse(req.params);
+    res.json(await submitTutorDraft(req.user!.sub, draftId));
   } catch (error) {
     if (handleTutorError(error, res)) return;
     throw error;
