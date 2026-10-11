@@ -174,41 +174,6 @@ plus the per-app `eslint --fix` for `apps/backend` and `apps/frontend` — and t
 `npm run format:check` as a gate. Formatting and lint fixes are applied and
 re-staged automatically; no need to run them by hand before committing.
 
-## Tutor profile approval (AUTH-4)
-
-Applications and edits are reviewed at `/admin/tutor-requests` by a database-authorized
-admin. `/enroll-tutor` supports multiple saved drafts, submission, withdrawal and review outcomes;
-`/settings/tutor` manages revisions and publication. Approval creates an unpublished
-Tutor initially, or switches an existing Tutor's current profile version without
-changing publication. Verification documents remain URL references; file-storage
-infrastructure is outside this change. Each draft supports multiple optional certification URLs
-and can be saved, selected for editing, discarded or submitted. Only one request per
-user can await review; other drafts remain editable while it is pending. Switching
-drafts opens a modal; closing it requires saving or explicitly discarding unsaved changes.
-Draft rows have Edit and Trash icons and a Submit action. The editor has a sticky header
-and Save draft / Submit footer. Closing unsaved edits offers Save or Cancel, with × to discard unsaved edits.
-Submit confirmation replaces the editor, contains consent, and offers Edit draft. It explains
-the pending-request limit and withdrawal. Approved certificates form a public portfolio;
-identification-card references remain private. Withdrawing only cancels the request.
-Owners can view submission history and explicitly copy a cancelled submission into a
-new saved draft. Admins can filter pending, approved, rejected and cancelled submissions;
-unsent drafts stay private and past submissions have no review actions.
-
-For disposable local databases, synchronize this schema through the existing reset workflow:
-
-```bash
-just reset-db
-```
-
-This deletes local PostgreSQL data, recreates and seeds the database, and starts the app.
-The pre-AUTH-4 schema is not compatible with this branch; local accounts and bookings
-will be lost during reset. There is no data-preserving upgrade script or Prisma migration
-history for this change. Preserve any needed data separately before resetting.
-
-A partial unique index in `schema.prisma` permits only one pending profile version per
-user while allowing multiple drafts and reviewed versions. User-row locks also serialize
-workflow actions so concurrent submissions return a useful conflict response.
-
 ## Testing
 
 The backend has two complementary test suites:
