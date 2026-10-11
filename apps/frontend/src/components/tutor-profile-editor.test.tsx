@@ -234,6 +234,8 @@ it("guards draft switches and starting another form with Save, Discard, and Canc
   fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: "Keep me" } });
   fireEvent.click(screen.getByRole("button", { name: /Edit draft .*Second saved draft/ }));
   expect(screen.getByRole("dialog", { name: "Unsaved changes" })).toBeInTheDocument();
+  expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  expect(screen.queryByLabelText("Tutor bio")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("Keep me");
   fireEvent.click(screen.getByRole("button", { name: "New draft" }));
@@ -280,7 +282,7 @@ it("shows the latest rejection independently of saved drafts and pending status"
   expect(screen.getByText("Pending Verification")).toBeInTheDocument();
 });
 
-it("seeds new Tutor drafts from the approved profile rather than a rejected edit", async () => {
+it("starts new Tutor drafts empty even with approved and rejected profiles", async () => {
   fetchMock.mockResolvedValueOnce(
     jsonResponse(
       application({
@@ -292,10 +294,8 @@ it("seeds new Tutor drafts from the approved profile rather than a rejected edit
   );
   render(<TutorProfileEditor />);
   fireEvent.click(await screen.findByRole("button", { name: "New draft" }));
-  expect(screen.getByLabelText("Tutor bio")).toHaveValue(approvedTutor.bio);
-  expect(screen.getByLabelText("Certification / portfolio URL 1")).toHaveValue(
-    approvedTutor.certificationUrls[0]
-  );
+  expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
+  expect(screen.queryByLabelText("Certification / portfolio URL 1")).not.toBeInTheDocument();
 });
 
 it("uses contrasting primary hover styles without secondary hover backgrounds", async () => {
@@ -308,15 +308,13 @@ it("uses contrasting primary hover styles without secondary hover backgrounds", 
   expect(screen.getByRole("button", { name: "Save draft" })).toHaveClass("hover:bg-black/[.04]");
 });
 
-it("seeds a new applicant draft from the latest rejection without changing saved drafts", async () => {
+it("starts a new applicant draft empty without changing saved drafts", async () => {
   const rejected = { ...second, status: "REJECTED" as const, bio: "Latest rejected snapshot" };
   fetchMock.mockResolvedValueOnce(jsonResponse(application({ latestReview: rejected })));
   render(<TutorProfileEditor enrollment />);
   fireEvent.click(await screen.findByRole("button", { name: "New draft" }));
-  expect(screen.getByLabelText("Tutor bio")).toHaveValue(rejected.bio);
-  expect(screen.getByLabelText("Certification / portfolio URL 1")).toHaveValue(
-    rejected.certificationUrls[0]
-  );
+  expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
+  expect(screen.queryByLabelText("Certification / portfolio URL 1")).not.toBeInTheDocument();
   expect(
     screen.getByRole("button", { name: /Edit draft .*First saved draft/ })
   ).toBeInTheDocument();
@@ -444,13 +442,13 @@ it("guards closing an untouched new draft marked Not saved and discards locally 
   fireEvent.click(await screen.findByRole("button", { name: "New draft" }));
   const editor = screen.getByRole("dialog", { name: "Draft" });
   expect(screen.getByLabelText("Draft status")).toHaveTextContent("Not saved");
-  expect(screen.getByLabelText("Tutor bio")).toHaveValue(approvedTutor.bio);
+  expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
   fireEvent.click(within(editor).getByRole("button", { name: "Close Draft" }));
   const prompt = screen.getByRole("dialog", { name: "Unsaved changes" });
   expect(within(prompt).getByRole("button", { name: "Save" })).toBeInTheDocument();
   fireEvent.click(within(prompt).getByRole("button", { name: "Cancel" }));
-  expect(screen.getByLabelText("Tutor bio")).toHaveValue(approvedTutor.bio);
-  fireEvent.keyDown(editor, { key: "Escape" });
+  expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
+  fireEvent.keyDown(screen.getByRole("dialog", { name: "Draft" }), { key: "Escape" });
   fireEvent.click(screen.getByRole("button", { name: "Discard" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(
@@ -470,7 +468,7 @@ it("guards dirty Escape and backdrop closure with an accessible prompt", async (
   expect(within(prompt).getByRole("button", { name: "Discard" })).toBeInTheDocument();
   fireEvent.click(within(prompt).getByRole("button", { name: "Cancel" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("Keep changes");
-  fireEvent.click(editor.parentElement!);
+  fireEvent.click(screen.getByRole("dialog", { name: "Draft" }).parentElement!);
   expect(screen.getByRole("dialog", { name: "Unsaved changes" })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Discard" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -666,7 +664,7 @@ it("keeps edits and the prompt when Save on close fails, and Cancel returns to e
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   const prompt = screen.getByRole("dialog", { name: "Unsaved changes" });
   expect(await within(prompt).findByRole("alert")).toHaveTextContent("Could not save");
-  expect(screen.getByLabelText("Tutor bio")).toHaveValue("Unsaved after failure");
+  expect(screen.queryByRole("dialog", { name: "Draft" })).not.toBeInTheDocument();
   fireEvent.click(within(prompt).getByRole("button", { name: "Cancel" }));
   expect(screen.getByRole("dialog", { name: "Draft" })).toBeInTheDocument();
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("Unsaved after failure");
@@ -763,7 +761,7 @@ it("blocks both submit entry points while one request is pending", async () => {
   expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled();
 });
 
-it("restores the withdrawn exact snapshot to the list and seeds new forms from it after reload with other drafts", async () => {
+it("restores the withdrawn exact snapshot while new drafts start empty after reload with other drafts", async () => {
   const cancelled = {
     ...profileVersion,
     bio: "Withdrawn exact snapshot",
@@ -795,13 +793,9 @@ it("restores the withdrawn exact snapshot to the list and seeds new forms from i
   view.unmount();
   render(<TutorProfileEditor enrollment />);
   fireEvent.click(await screen.findByRole("button", { name: "New draft" }));
-  expect(screen.getByLabelText("Tutor bio")).toHaveValue(cancelled.bio);
-  expect(screen.getByLabelText("Certification / portfolio URL 1")).toHaveValue(
-    cancelled.certificationUrls[0]
-  );
-  expect(screen.getByLabelText("Certification / portfolio URL 2")).toHaveValue(
-    cancelled.certificationUrls[1]
-  );
+  expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
+  expect(screen.getByLabelText(/Avatar URL/)).toHaveValue("");
+  expect(screen.queryByLabelText("Certification / portfolio URL 2")).not.toBeInTheDocument();
   expect(screen.getByLabelText("Draft status")).toHaveTextContent("Not saved");
 });
 

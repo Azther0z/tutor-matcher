@@ -32,11 +32,6 @@ const button = `${buttonBase} hover:bg-black/[.04] dark:hover:bg-white/[.08]`;
 const primaryButton = `${buttonBase} bg-foreground text-background hover:opacity-80`;
 const apiPath = "/api/profiles/me/tutor";
 
-function newDraftDetails(data: TutorApplicationResponse): TutorDetails {
-  const source = data.tutor ?? data.latestSubmittedVersion ?? data.latestReview;
-  return tutorDetailsFromApplication(source);
-}
-
 function profileContent(profile: TutorProfileFields) {
   const fields = tutorDetailsPayload(tutorDetailsFromApplication(profile));
   return JSON.stringify([
@@ -88,7 +83,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         setData(result);
         const draft = result.drafts[0];
         loadDetails(
-          draft ? tutorDetailsFromApplication(draft) : newDraftDetails(result),
+          draft ? tutorDetailsFromApplication(draft) : emptyTutorDetails,
           draft?.id ?? null
         );
         setLoadError(null);
@@ -139,7 +134,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
 
   function closeEditor() {
     requestTransition(() => {
-      loadDetails(newDraftDetails(data!), null);
+      loadDetails(emptyTutorDetails, null);
       setEditorOpen(false);
       setActionError(null);
       setMessage(null);
@@ -212,7 +207,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         body: JSON.stringify({ consentAccepted: true }),
       });
       setData(result);
-      loadDetails(newDraftDetails(result), null);
+      loadDetails(emptyTutorDetails, null);
       setSubmitOpen(false);
       setEditorOpen(false);
       setMessage("Submitted for admin review. No changes are applied until approval.");
@@ -417,7 +412,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                   method: "POST",
                 });
                 setData(result);
-                if (!dirty && !selectedId) loadDetails(newDraftDetails(result), null);
+                if (!dirty && !selectedId) loadDetails(emptyTutorDetails, null);
                 setConsent(false);
                 setMessage("Request withdrawn and restored as a draft.");
               })
@@ -499,7 +494,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                               { method: "DELETE" }
                             );
                             setData(result);
-                            if (selectedId === draft.id) loadDetails(newDraftDetails(result), null);
+                            if (selectedId === draft.id) loadDetails(emptyTutorDetails, null);
                             setMessage("Draft discarded.");
                           });
                         }}
@@ -560,7 +555,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
             disabled={busy}
             onClick={() =>
               requestTransition(() => {
-                loadDetails(newDraftDetails(data), null);
+                loadDetails(emptyTutorDetails, null);
                 setMessage(null);
                 setActionError(null);
                 setEditorOpen(true);
@@ -574,7 +569,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         </section>
       )}
 
-      {!approvedEnrollment && editorOpen && (
+      {!approvedEnrollment && editorOpen && !closeTransition && (
         <TutorDialog
           title="Draft"
           status={selectedId && !dirty ? "Saved" : "Not saved"}
@@ -664,7 +659,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                 className={button}
                 disabled={busy}
                 onClick={() => {
-                  loadDetails(newDraftDetails(data!), null);
+                  loadDetails(emptyTutorDetails, null);
                   const transition = closeTransition;
                   setCloseTransition(null);
                   transition();
@@ -713,6 +708,9 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
               <button type="button" className={button} disabled={busy} onClick={cancelSubmission}>
                 Cancel
               </button>
+              <button type="button" className={button} disabled={busy} onClick={editSubmission}>
+                Edit draft
+              </button>
               <button
                 type="button"
                 className={primaryButton}
@@ -720,9 +718,6 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                 onClick={confirmSubmit}
               >
                 Confirm submit
-              </button>
-              <button type="button" className={button} disabled={busy} onClick={editSubmission}>
-                Edit draft
               </button>
             </div>
           }
