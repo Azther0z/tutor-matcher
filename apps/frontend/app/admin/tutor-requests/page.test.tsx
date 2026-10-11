@@ -68,7 +68,7 @@ it.each([
     await screen.findByRole("button", { name: "Approve request" });
     const row = screen
       .getByRole("rowheader", {
-        name: "Teaching certification URL Private verification document Changed",
+        name: "Teaching certifications / portfolio Changed",
       })
       .closest("tr")!;
     expect(row).toHaveClass("bg-amber-500/10");
@@ -101,7 +101,7 @@ it("does not highlight certificate collections that differ only in order", async
   await screen.findByRole("button", { name: "Approve request" });
   const row = screen
     .getByRole("rowheader", {
-      name: "Teaching certification URL Private verification document",
+      name: "Teaching certifications / portfolio",
     })
     .closest("tr")!;
   expect(row).not.toHaveClass("bg-amber-500/10");
@@ -116,7 +116,7 @@ it("shows initial applications with no current profile and approves via the revi
   fireEvent.click(await screen.findByRole("button", { name: "Approve request" }));
   expect(await screen.findByText("Request approved for Ada Lovelace.")).toBeInTheDocument();
   expect(fetchMock).toHaveBeenLastCalledWith(
-    "/api/admin/tutor-requests/version-1/review",
+    `/api/admin/tutor-requests/${reviewRequest.id}/review`,
     expect.objectContaining({
       method: "POST",
       headers: { Authorization: "Bearer admin-token", "Content-Type": "application/json" },
@@ -143,7 +143,7 @@ it("requires a nonblank rejection reason and submits the trimmed reason", async 
   fireEvent.click(screen.getByRole("button", { name: "Reject request" }));
   expect(await screen.findByText("Request rejected for Ada Lovelace.")).toBeInTheDocument();
   expect(fetchMock).toHaveBeenLastCalledWith(
-    "/api/admin/tutor-requests/version-1/review",
+    `/api/admin/tutor-requests/${reviewRequest.id}/review`,
     expect.objectContaining({
       body: JSON.stringify({ decision: "REJECTED", rejectionReason: "Please clarify the bio." }),
     })

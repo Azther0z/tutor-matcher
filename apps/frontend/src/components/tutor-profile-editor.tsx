@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
+import { TutorDialog } from "@/src/components/tutor-dialog";
 import { TutorConsent } from "@/src/components/tutor-consent";
 import { TutorCertificationLinks } from "@/src/components/tutor-certification-links";
 import { TutorDetailsFields } from "@/src/components/tutor-details-fields";
@@ -14,6 +15,7 @@ import {
   tutorDetailsPayload,
   type TutorApplicationResponse,
   type TutorProfileFields,
+  type TutorProfileVersion,
 } from "@/src/lib/tutor-application";
 import {
   emptyTutorDetails,
@@ -24,23 +26,15 @@ import {
 
 const shell = "mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-16";
 const panel = "rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]";
-const button =
-  "rounded-full border border-black/[.12] px-6 py-3 font-medium hover:bg-black/[.04] disabled:opacity-60 dark:border-white/[.18] dark:hover:bg-white/[.08]";
+const buttonBase =
+  "rounded-full border border-black/[.12] px-6 py-3 font-medium disabled:opacity-60 dark:border-white/[.18]";
+const button = `${buttonBase} hover:bg-black/[.04] dark:hover:bg-white/[.08]`;
+const primaryButton = `${buttonBase} bg-foreground text-background hover:opacity-80`;
 const apiPath = "/api/profiles/me/tutor";
 
-function buildDraftPayload(details: TutorDetails, loadedProfile: TutorProfileFields | null) {
-  const payload = tutorDetailsPayload(details);
-  const certificationUrls = getTutorCertificationUrls(loadedProfile).flatMap((url) =>
-    url === loadedProfile?.certificationUrl
-      ? payload.certificationUrl
-        ? [payload.certificationUrl]
-        : []
-      : [url]
-  );
-  if (!loadedProfile?.certificationUrl && payload.certificationUrl) {
-    certificationUrls.push(payload.certificationUrl);
-  }
-  return { ...payload, certificationUrls: [...new Set(certificationUrls)] };
+function newDraftDetails(data: TutorApplicationResponse): TutorDetails {
+  const source = data.tutor ?? data.latestSubmittedVersion ?? data.latestReview;
+  return tutorDetailsFromApplication(source);
 }
 
 function profileContent(profile: TutorProfileFields) {
@@ -66,9 +60,16 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
   const { replace } = useRouter();
   const [data, setData] = useState<TutorApplicationResponse | null>(null);
   const [details, setDetails] = useState<TutorDetails>(emptyTutorDetails);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [closeTransition, setCloseTransition] = useState<(() => void) | null>(null);
+  const [submitOpen, setSubmitOpen] = useState(false);
+  const [rowSubmission, setRowSubmission] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [baseline, setBaseline] = useState(JSON.stringify(emptyTutorDetails));
+  const dirty = JSON.stringify(details) !== baseline;
   const [errors, setErrors] = useState<TutorDetailsFieldErrors>({});
   const [consent, setConsent] = useState(false);
-  const [consentError, setConsentError] = useState<string>();
+
   const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -85,7 +86,11 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           replace("/enroll-tutor");
         }
         setData(result);
-        setDetails(tutorDetailsFromApplication(result.version ?? result.tutor));
+        const draft = result.drafts[0];
+        loadDetails(
+          draft ? tutorDetailsFromApplication(draft) : newDraftDetails(result),
+          draft?.id ?? null
+        );
         setLoadError(null);
       })
       .catch((error: unknown) => {
@@ -113,51 +118,116 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
     }
   }
 
-  async function saveDraft() {
-    const result = await tutorApi<TutorApplicationResponse>(`${apiPath}/draft`, {
-      method: "PUT",
-      body: JSON.stringify(buildDraftPayload(details, data?.version ?? data?.tutor ?? null)),
-    });
-    setData(result);
-    setDetails(tutorDetailsFromApplication(result.version ?? result.tutor));
+  function loadDetails(next: TutorDetails, id: string | null) {
+    setDetails(next);
+    setBaseline(JSON.stringify(next));
+    setSelectedId(id);
+    setConsent(false);
     setErrors({});
-    setConsentError(undefined);
-    return result;
+  }
+
+  function updateDetails(next: TutorDetails) {
+    setDetails(next);
+    setErrors((current) => (Object.keys(current).length ? validateTutorDetails(next) : current));
+    setActionError(null);
+  }
+
+  function requestTransition(transition: () => void) {
+    if (editorOpen && (dirty || !selectedId)) setCloseTransition(() => transition);
+    else transition();
+  }
+
+  function closeEditor() {
+    requestTransition(() => {
+      loadDetails(newDraftDetails(data!), null);
+      setEditorOpen(false);
+      setActionError(null);
+      setMessage(null);
+    });
+  }
+
+  useEffect(() => {
+    if (!dirty) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, [dirty]);
+
+  async function saveDraft() {
+    const result = await tutorApi<TutorApplicationResponse>(
+      selectedId ? `${apiPath}/drafts/${selectedId}` : `${apiPath}/drafts`,
+      {
+        method: selectedId ? "PUT" : "POST",
+        body: JSON.stringify(tutorDetailsPayload(details)),
+      }
+    );
+    const saved = result.version;
+    if (!saved || saved.status !== "DRAFT")
+      throw new Error("Could not identify the saved draft. Please refresh.");
+    setData(result);
+    // Save normalizes the snapshot but keeps consent for this explicit submit action.
+    const next = tutorDetailsFromApplication(saved);
+    setDetails(next);
+    setBaseline(JSON.stringify(next));
+    setSelectedId(saved.id);
+    setErrors({});
+    return saved;
   }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     const nextErrors = validateTutorDetails(details);
     setErrors(nextErrors);
-    setConsentError(
-      consent ? undefined : "Consent is required before submitting your profile for review."
-    );
-    if (Object.keys(nextErrors).length || !consent || noChanges) return;
+    if (Object.keys(nextErrors).length || noChanges || pending) return;
+    setRowSubmission(false);
+    setConsent(false);
+    setEditorOpen(false);
+    setSubmitOpen(true);
+  }
+
+  function editSubmission() {
+    setSubmitOpen(false);
+    setConsent(false);
+    setActionError(null);
+    setEditorOpen(true);
+  }
+
+  function cancelSubmission() {
+    setSubmitOpen(false);
+    setConsent(false);
+    if (!rowSubmission) setEditorOpen(true);
+  }
+
+  function confirmSubmit() {
+    if (!consent || pending || noChanges || Object.keys(validateTutorDetails(details)).length)
+      return;
     void runAction(async () => {
-      await saveDraft();
-      const result = await tutorApi<TutorApplicationResponse>(`${apiPath}/submit`, {
+      const id = rowSubmission ? selectedId : (await saveDraft()).id;
+      if (!id) throw new Error("Select a saved draft before submitting.");
+      const result = await tutorApi<TutorApplicationResponse>(`${apiPath}/drafts/${id}/submit`, {
         method: "POST",
         body: JSON.stringify({ consentAccepted: true }),
       });
       setData(result);
-      setConsent(false);
+      loadDetails(newDraftDetails(result), null);
+      setSubmitOpen(false);
+      setEditorOpen(false);
       setMessage("Submitted for admin review. No changes are applied until approval.");
     });
   }
 
   const tutor = data?.tutor;
   const version = data?.version;
-  const pending = version?.status === "PENDING";
+  const pending = data?.pendingRequest;
+  const latestReview = data?.latestReview;
   const approvedEnrollment = enrollment && !!tutor;
-  const editableProfile = version ?? tutor ?? null;
-  const retainedCertificationUrls = getTutorCertificationUrls(editableProfile).filter(
-    (url) => url !== editableProfile?.certificationUrl
-  );
   const noChanges =
-    !!tutor &&
-    profileContent(buildDraftPayload(details, editableProfile)) === profileContent(tutor);
+    !!tutor && profileContent(tutorDetailsPayload(details)) === profileContent(tutor);
   const canSubmit =
-    consent && Object.keys(validateTutorDetails(details)).length === 0 && !noChanges;
+    Object.keys(validateTutorDetails(details)).length === 0 && !noChanges && !pending;
 
   if (loadError)
     return (
@@ -197,7 +267,16 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Subjects and hourly rates are configured separately. Change your name in{" "}
-          <Link className="underline" href="/settings/account">
+          <Link
+            className="underline"
+            href="/settings/account"
+            onClick={(event) => {
+              if (busy || (editorOpen && dirty)) {
+                event.preventDefault();
+                if (!busy) requestTransition(() => replace("/settings/account"));
+              }
+            }}
+          >
             account settings
           </Link>
           .
@@ -259,7 +338,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         </section>
       )}
 
-      {version?.status === "APPROVED" && (
+      {latestReview?.status === "APPROVED" && (
         <p role="status">
           Your profile was approved.
           {tutor
@@ -267,10 +346,10 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
             : " Refresh to see your Tutor profile."}
         </p>
       )}
-      {version?.status === "REJECTED" && (
+      {latestReview?.status === "REJECTED" && (
         <section className={panel} role="status">
           <h2 className="text-xl font-semibold">Request rejected</h2>
-          <p className="mt-2">Reason: {version.rejectionReason}</p>
+          <p className="mt-2">Reason: {latestReview.rejectionReason}</p>
           <p className="mt-2">
             {tutor ? "Your approved profile is unchanged. " : ""}Update the details below and
             re-submit.
@@ -279,9 +358,6 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
       )}
       {version?.status === "CANCELLED" && (
         <p role="status">Request withdrawn. You can edit and re-submit.</p>
-      )}
-      {version?.status === "DRAFT" && (
-        <p className="text-sm text-zinc-500">Draft saved. It has not been submitted for review.</p>
       )}
 
       {pending && (
@@ -295,12 +371,12 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           <dl className="mt-4 space-y-3 text-sm">
             <div>
               <dt className="font-medium">Submitted bio</dt>
-              <dd className="whitespace-pre-wrap">{version.bio}</dd>
+              <dd className="whitespace-pre-wrap">{pending.bio}</dd>
             </div>
             {(
               [
-                ["Intro video", version.introVideoUrl],
-                ["Identification card (private)", version.identificationCardUrl],
+                ["Intro video", pending.introVideoUrl],
+                ["Identification card (private)", pending.identificationCardUrl],
               ] as const
             ).map(([label, url]) => (
               <div key={label}>
@@ -322,9 +398,9 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
               </div>
             ))}
             <div>
-              <dt className="font-medium">Teaching certification (private)</dt>
+              <dt className="font-medium">Teaching certifications / portfolio</dt>
               <dd>
-                <TutorCertificationLinks urls={getTutorCertificationUrls(version)} />
+                <TutorCertificationLinks urls={getTutorCertificationUrls(pending)} />
               </dd>
             </div>
           </dl>
@@ -341,9 +417,9 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                   method: "POST",
                 });
                 setData(result);
-                setDetails(tutorDetailsFromApplication(result.version ?? result.tutor));
+                if (!dirty && !selectedId) loadDetails(newDraftDetails(result), null);
                 setConsent(false);
-                setMessage("Request withdrawn. Edit your details and submit again when ready.");
+                setMessage("Request withdrawn and restored as a draft.");
               })
             }
           >
@@ -352,45 +428,161 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         </section>
       )}
 
-      {!pending && !approvedEnrollment && (
-        <form onSubmit={submit} className="flex flex-col gap-6" noValidate>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {tutor
-              ? "Your current profile stays live during review. Once approved, these changes apply automatically, keeping your publication setting."
-              : "Save an incomplete draft at any time. Submit a complete application for admin review. Approval lets you set up your subjects before publishing."}
+      {!approvedEnrollment && (
+        <section className={panel} aria-label="Saved drafts">
+          <h2 className="text-xl font-semibold">Your drafts</h2>
+          <p className="my-3 text-sm text-zinc-500">
+            Select one saved snapshot to edit. Pending requests and reviewed versions cannot be
+            edited.
           </p>
-          {noChanges && (
-            <p className="text-sm text-zinc-500">
-              Change at least one profile field before submitting for review.
-            </p>
+          {data.drafts.length === 0 ? (
+            <p>No saved drafts yet.</p>
+          ) : (
+            <ul className="divide-y divide-black/[.08] dark:divide-white/[.12]">
+              {data.drafts.map((draft: TutorProfileVersion, index: number) => {
+                const unchanged = !!tutor && profileContent(draft) === profileContent(tutor);
+                const label = `draft ${index + 1}: ${draft.bio?.trim().slice(0, 100) || "Untitled draft"}`;
+                return (
+                  <li
+                    key={draft.id}
+                    className="flex items-center justify-between gap-4 rounded-md py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
+                        {draft.bio?.trim().slice(0, 100) || "Untitled draft"}
+                      </p>
+                      <time className="text-sm text-zinc-500" dateTime={draft.createdAt}>
+                        {new Date(draft.createdAt).toLocaleString()}
+                      </time>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        aria-label={`Edit ${label}`}
+                        aria-haspopup="dialog"
+                        className="rounded-md border border-black/[.12] px-3 py-2 text-sm hover:bg-black/[.04] dark:border-white/[.18] dark:hover:bg-white/[.08]"
+                        disabled={busy}
+                        onClick={() =>
+                          requestTransition(() => {
+                            loadDetails(tutorDetailsFromApplication(draft), draft.id);
+                            setMessage(null);
+                            setActionError(null);
+                            setEditorOpen(true);
+                          })
+                        }
+                      >
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                          className="h-5 w-5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                        >
+                          <path d="m16 3 5 5-12 12-6 1 1-6L16 3Z" />
+                          <path d="m14 5 5 5" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Trash ${label}`}
+                        className="rounded-md border border-black/[.12] px-3 py-2 text-sm text-red-700 hover:bg-red-500/10 dark:border-white/[.18] dark:text-red-300"
+                        disabled={busy}
+                        onClick={() => {
+                          if (
+                            !window.confirm(`Permanently discard ${label}? This cannot be undone.`)
+                          )
+                            return;
+                          void runAction(async () => {
+                            const result = await tutorApi<TutorApplicationResponse>(
+                              `${apiPath}/drafts/${draft.id}`,
+                              { method: "DELETE" }
+                            );
+                            setData(result);
+                            if (selectedId === draft.id) loadDetails(newDraftDetails(result), null);
+                            setMessage("Draft discarded.");
+                          });
+                        }}
+                      >
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                          className="h-5 w-5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                        >
+                          <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Submit ${label}`}
+                        aria-haspopup="dialog"
+                        disabled={busy || !!pending || unchanged}
+                        title={
+                          pending
+                            ? "Only one request can be pending. Withdraw it before submitting another."
+                            : unchanged
+                              ? "Change your profile before submitting for review."
+                              : "Submit this draft for review"
+                        }
+                        className="rounded-md border border-black/[.12] px-3 py-2 text-sm hover:bg-black/[.04] disabled:opacity-60 dark:border-white/[.18] dark:hover:bg-white/[.08]"
+                        onClick={() =>
+                          requestTransition(() => {
+                            const next = tutorDetailsFromApplication(draft);
+                            loadDetails(next, draft.id);
+                            const nextErrors = validateTutorDetails(next);
+                            setErrors(nextErrors);
+                            setActionError(null);
+                            setMessage(null);
+                            if (Object.keys(nextErrors).length) {
+                              setEditorOpen(true);
+                              setActionError("Complete this draft before submitting for review.");
+                            } else {
+                              setRowSubmission(true);
+                              setSubmitOpen(true);
+                            }
+                          })
+                        }
+                      >
+                        Submit
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
-          <fieldset disabled={busy} className="flex min-w-0 flex-col gap-6">
-            <TutorDetailsFields
-              values={details}
-              errors={errors}
-              onChange={(name, value) => setDetails((current) => ({ ...current, [name]: value }))}
-            />
-            {retainedCertificationUrls.length > 0 && (
-              <section className={panel} aria-label="Additional teaching certifications (private)">
-                <h2 className="text-xl font-semibold">
-                  Additional teaching certifications (private)
-                </h2>
-                <p className="my-3 text-sm text-zinc-500">
-                  The URL field edits one certification. These other certifications are retained
-                  when you save or submit your profile.
-                </p>
-                <TutorCertificationLinks urls={retainedCertificationUrls} />
-              </section>
-            )}
-            <TutorConsent
-              consentAccepted={consent}
-              setConsentAccepted={setConsent}
-              error={consentError}
-            />
+          <button
+            type="button"
+            className={`${button} mt-4`}
+            disabled={busy}
+            onClick={() =>
+              requestTransition(() => {
+                loadDetails(newDraftDetails(data), null);
+                setMessage(null);
+                setActionError(null);
+                setEditorOpen(true);
+              })
+            }
+            aria-haspopup="dialog"
+            data-tutor-dialog-trigger
+          >
+            New draft
+          </button>
+        </section>
+      )}
+
+      {!approvedEnrollment && editorOpen && (
+        <TutorDialog
+          title="Draft"
+          status={selectedId && !dirty ? "Saved" : "Not saved"}
+          titleId="tutor-draft-dialog-title"
+          busy={busy}
+          onClose={closeEditor}
+          footer={
             <div className="flex flex-wrap justify-end gap-3">
-              <Link className={button} href={tutor ? "/dashboard/tutor" : "/dashboard"}>
-                Back to dashboard
-              </Link>
               <button
                 type="button"
                 className={button}
@@ -406,32 +598,167 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
               </button>
               <button
                 type="submit"
-                className={`${button} bg-foreground text-background`}
+                form="tutor-draft-form"
+                className={primaryButton}
                 disabled={busy || !canSubmit}
               >
-                {busy ? "Saving…" : tutor ? "Submit changes for review" : "Submit application"}
+                Submit
               </button>
             </div>
-          </fieldset>
-        </form>
+          }
+        >
+          <form id="tutor-draft-form" onSubmit={submit} className="flex flex-col gap-6" noValidate>
+            {pending && (
+              <p role="status">
+                One request is already pending. You can create, edit, save, and discard drafts while
+                it is reviewed.
+              </p>
+            )}
+            {noChanges && (
+              <p className="text-sm text-zinc-500">
+                Change at least one profile field before submitting for review.
+              </p>
+            )}
+            <fieldset disabled={busy} className="flex min-w-0 flex-col gap-6">
+              <TutorDetailsFields
+                unframed
+                values={details}
+                errors={errors}
+                onChange={(name, value) => updateDetails({ ...details, [name]: value })}
+                onCertificationsChange={(certificationUrls) =>
+                  updateDetails({ ...details, certificationUrls })
+                }
+              />
+            </fieldset>
+          </form>
+          {actionError && !closeTransition && !submitOpen && (
+            <p role="alert" className="mt-4 text-red-600 dark:text-red-400">
+              {actionError}
+            </p>
+          )}
+          {message && (
+            <p role="status" className="mt-4">
+              {message}
+            </p>
+          )}
+        </TutorDialog>
       )}
-      {actionError && (
+      {closeTransition && (
+        <TutorDialog
+          title="Unsaved changes"
+          titleId="tutor-close-title"
+          busy={busy}
+          onClose={() => setCloseTransition(null)}
+          footer={
+            <div className="flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                className={button}
+                disabled={busy}
+                onClick={() => setCloseTransition(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={button}
+                disabled={busy}
+                onClick={() => {
+                  loadDetails(newDraftDetails(data!), null);
+                  const transition = closeTransition;
+                  setCloseTransition(null);
+                  transition();
+                }}
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                className={primaryButton}
+                disabled={busy}
+                onClick={() =>
+                  void runAction(async () => {
+                    await saveDraft();
+                    const transition = closeTransition;
+                    setCloseTransition(null);
+                    transition();
+                    setMessage("Draft saved. It has not been submitted for review.");
+                  })
+                }
+              >
+                Save
+              </button>
+            </div>
+          }
+        >
+          <p>
+            Save your changes before closing? Discard drops only unsaved edits; your saved draft
+            stays in the list.
+          </p>
+          {actionError && (
+            <p role="alert" className="mt-4 text-red-600 dark:text-red-400">
+              {actionError}
+            </p>
+          )}
+        </TutorDialog>
+      )}
+      {submitOpen && (
+        <TutorDialog
+          title="Submit draft for review?"
+          titleId="tutor-submit-title"
+          busy={busy}
+          onClose={cancelSubmission}
+          footer={
+            <div className="flex flex-wrap justify-end gap-3">
+              <button type="button" className={button} disabled={busy} onClick={cancelSubmission}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={primaryButton}
+                disabled={busy || !consent || !!pending}
+                onClick={confirmSubmit}
+              >
+                Confirm submit
+              </button>
+              <button type="button" className={button} disabled={busy} onClick={editSubmission}>
+                Edit draft
+              </button>
+            </div>
+          }
+        >
+          <p className="mb-5">
+            You can submit only one request at a time. Submitted requests cannot be edited. You can
+            withdraw a pending request to restore it as a draft. Your approved profile stays
+            unchanged until approval.
+          </p>
+          <TutorConsent unframed consentAccepted={consent} setConsentAccepted={setConsent} />
+          {actionError && (
+            <p role="alert" className="mt-4 text-red-600 dark:text-red-400">
+              {actionError}
+            </p>
+          )}
+        </TutorDialog>
+      )}
+      {!editorOpen && !submitOpen && actionError && (
         <p role="alert" className="text-red-600 dark:text-red-400">
           {actionError}
         </p>
       )}
-      {message && <p role="status">{message}</p>}
+      {!editorOpen && message && <p role="status">{message}</p>}
       <button
         className={`${button} self-start`}
         disabled={busy}
         onClick={() => {
-          setData(null);
-          setMessage(null);
-          setActionError(null);
-          setConsent(false);
-          setErrors({});
-          setConsentError(undefined);
-          setReload((value) => value + 1);
+          requestTransition(() => {
+            setEditorOpen(false);
+            setData(null);
+            setMessage(null);
+            setActionError(null);
+            setConsent(false);
+            setErrors({});
+            setReload((value) => value + 1);
+          });
         }}
       >
         Refresh review status

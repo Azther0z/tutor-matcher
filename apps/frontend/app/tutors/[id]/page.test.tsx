@@ -119,7 +119,7 @@ describe("TutorDetailPage", () => {
   });
 });
 
-it("shows the verified badge and approved public bio without private document URLs", async () => {
+it("shows approved public bio and portfolio while keeping identification private", async () => {
   localStorage.setItem("authToken", "token");
   fetchMock.mockResolvedValue({
     ok: true,
@@ -129,14 +129,25 @@ it("shows the verified badge and approved public bio without private document UR
       verified: true,
       bio: "Approved teaching bio.",
       identificationCardUrl: "https://example.com/private-id.pdf",
-      certificationUrl: "https://example.com/private-certificate.pdf",
+      certificationUrl: "https://example.com/ignored-legacy-alias.pdf",
+      certificationUrls: ["http://example.com/contest.pdf", "https://example.com/teaching.pdf"],
     }),
   });
   render(<TutorDetailPage />);
   expect(await screen.findByText("Verified")).toBeInTheDocument();
   expect(screen.getByText("Approved teaching bio.")).toBeInTheDocument();
   expect(screen.queryByText("https://example.com/private-id.pdf")).not.toBeInTheDocument();
-  expect(screen.queryByText("https://example.com/private-certificate.pdf")).not.toBeInTheDocument();
+  expect(
+    screen.queryByText("https://example.com/ignored-legacy-alias.pdf")
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "http://example.com/contest.pdf" })).toHaveAttribute(
+    "href",
+    "http://example.com/contest.pdf"
+  );
+  expect(screen.getByRole("link", { name: "https://example.com/teaching.pdf" })).toHaveAttribute(
+    "rel",
+    "noopener noreferrer"
+  );
 });
 
 it("shows unpublished status while keeping messaging accessible", async () => {
@@ -158,4 +169,36 @@ it("shows unpublished status while keeping messaging accessible", async () => {
   await waitFor(() =>
     expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("/messages?with="))
   );
+});
+
+it("hides the optional portfolio section when no approved certificates are returned", async () => {
+  localStorage.setItem("authToken", "token");
+  fetchMock.mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      ...tutor,
+      certificationUrls: [],
+      identificationCardUrl: "https://example.com/id-secret",
+      drafts: [{ certificationUrls: ["https://example.com/draft-secret"] }],
+    }),
+  });
+  render(<TutorDetailPage />);
+  await screen.findByText("Anong P.");
+  expect(
+    screen.queryByRole("region", { name: "Teaching certifications / portfolio" })
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText("https://example.com/draft-secret")).not.toBeInTheDocument();
+  expect(screen.queryByText("https://example.com/id-secret")).not.toBeInTheDocument();
+});
+
+it("never creates links for non-HTTP or malformed portfolio URLs", async () => {
+  localStorage.setItem("authToken", "token");
+  fetchMock.mockResolvedValue({
+    ok: true,
+    json: async () => ({ ...tutor, certificationUrls: ["javascript:alert(1)", "https://"] }),
+  });
+  render(<TutorDetailPage />);
+  await screen.findByText("Anong P.");
+  expect(screen.queryByRole("link", { name: "javascript:alert(1)" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "https://" })).not.toBeInTheDocument();
 });

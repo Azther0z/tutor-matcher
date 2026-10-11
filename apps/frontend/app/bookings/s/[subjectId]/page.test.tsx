@@ -80,3 +80,28 @@ it("keeps subject details visible but disables new bookings when unpublished", a
   expect(screen.getByText("English with Alice")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Confirm booking" })).toBeDisabled();
 });
+
+it("shows approved portfolio evidence in the existing subject booking UI and keeps ID references private", async () => {
+  const certificates = ["http://example.com/contest.pdf", "https://example.com/teaching.pdf"];
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      ...availability,
+      subject: {
+        ...availability.subject,
+        tutor: {
+          ...availability.subject.tutor,
+          certificationUrls: certificates,
+          identificationCardUrl: "https://example.com/id-private",
+        },
+      },
+    }),
+  });
+  render(<SubjectBookingPage />);
+  expect(
+    await screen.findByRole("region", { name: "Teaching certifications / portfolio" })
+  ).toBeInTheDocument();
+  for (const url of certificates)
+    expect(screen.getByRole("link", { name: url })).toHaveAttribute("href", url);
+  expect(screen.queryByText("https://example.com/id-private")).not.toBeInTheDocument();
+});

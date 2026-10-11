@@ -8,7 +8,7 @@ const fields: { name: ProfileFieldName; label: string; private?: boolean }[] = [
   { name: "bio", label: "Bio" },
   { name: "introVideoUrl", label: "Introduction video URL" },
   { name: "identificationCardUrl", label: "Identification card URL", private: true },
-  { name: "certificationUrl", label: "Teaching certification URL", private: true },
+  { name: "certificationUrl", label: "Teaching certifications / portfolio" },
 ];
 
 function ProfileValue({ name, value }: { name: ProfileFieldName; value: string | null }) {
@@ -85,7 +85,7 @@ export function TutorProfileComparison({
                   {certificationField ? (
                     <TutorCertificationLinks urls={getTutorCertificationUrls(proposed)} />
                   ) : (
-                    <ProfileValue name={field.name} value={proposed[field.name]} />
+                    <ProfileValue name={field.name} value={proposed[field.name] ?? null} />
                   )}
                 </td>
               </tr>

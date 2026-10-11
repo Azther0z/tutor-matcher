@@ -8,8 +8,8 @@ export type TutorProfileFields = {
   bio: string | null;
   introVideoUrl: string | null;
   identificationCardUrl: string | null;
-  certificationUrl: string | null;
-  certificationUrls?: string[];
+  certificationUrl?: string | null;
+  certificationUrls: string[];
 };
 export type TutorApplication = TutorProfileFields & {
   id: string;
@@ -21,6 +21,7 @@ export type TutorProfileVersion = TutorProfileFields & {
   id: string;
   userId: string;
   status: TutorVersionStatus;
+  createdAt: string;
   submittedAt: string | null;
   reviewedAt: string | null;
   reviewedById: string | null;
@@ -30,6 +31,10 @@ export type TutorApplicationResponse = {
   status: TutorVersionStatus | "NONE";
   tutor: TutorApplication | null;
   version: TutorProfileVersion | null;
+  drafts: TutorProfileVersion[];
+  pendingRequest: TutorProfileVersion | null;
+  latestReview: TutorProfileVersion | null;
+  latestSubmittedVersion: TutorProfileVersion | null;
 };
 export type TutorReviewRequest = TutorProfileVersion & {
   user: { id: string; firstName: string; lastName: string; email: string };
@@ -48,7 +53,7 @@ export function tutorDetailsFromApplication(profile: TutorProfileFields | null):
     bio: profile?.bio ?? "",
     introVideoUrl: profile?.introVideoUrl ?? "",
     identificationCardUrl: profile?.identificationCardUrl ?? "",
-    certificationUrl: profile?.certificationUrl ?? "",
+    certificationUrls: [...getTutorCertificationUrls(profile)],
   };
 }
 
@@ -58,7 +63,9 @@ export function tutorDetailsPayload(details: TutorDetails): TutorProfileFields {
     bio: details.bio.trim() || null,
     introVideoUrl: normalizeHttpsUrl(details.introVideoUrl) || null,
     identificationCardUrl: normalizeHttpsUrl(details.identificationCardUrl) || null,
-    certificationUrl: normalizeHttpsUrl(details.certificationUrl) || null,
+    certificationUrls: [
+      ...new Set(details.certificationUrls.map(normalizeHttpsUrl).filter(Boolean)),
+    ],
   };
 }
 
