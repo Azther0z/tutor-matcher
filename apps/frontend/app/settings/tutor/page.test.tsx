@@ -82,7 +82,7 @@ it("shows every portfolio certificate in the owner's pending edit", async () => 
     jsonResponse({ ...pendingEdit, version: { ...pendingEdit.version, certificationUrls: urls } })
   );
   render(<TutorSettingsPage />);
-  const pending = await screen.findByRole("region", { name: "Pending request" });
+  const pending = await screen.findByRole("region", { name: "Submission history" });
   for (const url of urls) {
     expect(within(pending).getByRole("link", { name: url })).toHaveAttribute("href", url);
   }

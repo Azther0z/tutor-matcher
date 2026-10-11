@@ -30,7 +30,7 @@ function application(overrides: Partial<TutorApplicationResponse> = {}): TutorAp
     tutor: null,
     version: first,
     drafts: [first, second],
-    submissions: [],
+    submissions: overrides.pendingRequest ? [overrides.pendingRequest] : [],
     pendingRequest: null,
     latestReview: null,
     latestSubmittedVersion: null,
@@ -198,7 +198,12 @@ it("blocks only submission while another request is pending, allowing draft edit
   fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
   await screen.findByText("Draft saved. It has not been submitted for review.");
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("Saved while pending");
-  const pending = screen.getByRole("region", { name: "Pending request" });
+  const pending = screen.getByRole("region", { name: "Submission history" });
+  expect(within(pending).getByText("Pending Verification").closest("details")).not.toHaveAttribute(
+    "open"
+  );
+  expect(screen.queryByRole("region", { name: "Pending request" })).not.toBeInTheDocument();
+  expect(within(pending).getByRole("button", { name: "Withdraw request" })).toBeEnabled();
   expect(within(pending).getByText(profileVersion.bio!)).toBeInTheDocument();
   expect(within(pending).queryByRole("textbox")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "New draft" })).toBeEnabled();
@@ -328,6 +333,7 @@ it("retains an edited draft when withdrawal changes the separate pending request
     jsonResponse({
       ...data,
       pendingRequest: null,
+      submissions: [{ ...profileVersion, status: "CANCELLED" }],
       version: { ...profileVersion, status: "CANCELLED" },
     })
   );
@@ -342,7 +348,7 @@ it("retains an edited draft when withdrawal changes the separate pending request
   );
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("Keep local draft edits");
   expect(screen.getByRole("dialog", { name: "Draft" })).toBeInTheDocument();
-  expect(screen.queryByRole("region", { name: "Pending request" })).not.toBeInTheDocument();
+  expect(screen.queryByText("Pending Verification")).not.toBeInTheDocument();
 });
 
 it("never submits if the explicit save fails", async () => {
@@ -793,7 +799,9 @@ it("shows cancelled history after reload, copies it explicitly, and keeps new dr
   view.unmount();
   render(<TutorProfileEditor enrollment />);
   const history = await screen.findByRole("region", { name: "Submission history" });
-  expect(within(history).getByText(/Cancelled · Submitted/)).toBeInTheDocument();
+  expect(within(history).getByText("Cancelled").closest("summary")).toHaveTextContent(
+    /Cancelled · Submitted/
+  );
   expect(within(history).getByText(cancelled.bio)).toBeInTheDocument();
   fireEvent.click(
     within(history).getByRole("button", { name: "Create draft from cancelled submission" })

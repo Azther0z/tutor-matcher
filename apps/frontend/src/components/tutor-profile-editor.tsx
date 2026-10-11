@@ -7,7 +7,6 @@ import { RequireAuth } from "@/src/components/require-auth";
 import { TutorProfileSnapshot } from "@/src/components/tutor-profile-comparison";
 import { TutorDialog } from "@/src/components/tutor-dialog";
 import { TutorConsent } from "@/src/components/tutor-consent";
-import { TutorCertificationLinks } from "@/src/components/tutor-certification-links";
 import { TutorDetailsFields } from "@/src/components/tutor-details-fields";
 import {
   tutorApi,
@@ -351,141 +350,106 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           </p>
         </section>
       )}
-      {pending && (
-        <section className={panel} aria-label="Pending request">
-          <h2 className="text-xl font-semibold">Pending Verification</h2>
-          <p className="mt-2">
-            {tutor
-              ? "Your current approved profile stays unchanged while these edits are reviewed. You can keep teaching and change publication independently."
-              : "Your application is awaiting admin approval. You remain a student until it is approved."}
-          </p>
-          <dl className="mt-4 space-y-3 text-sm">
-            <div>
-              <dt className="font-medium">Submitted bio</dt>
-              <dd className="whitespace-pre-wrap">{pending.bio}</dd>
-            </div>
-            {(
-              [
-                ["Intro video", pending.introVideoUrl],
-                ["Identification card (private)", pending.identificationCardUrl],
-              ] as const
-            ).map(([label, url]) => (
-              <div key={label}>
-                <dt className="font-medium">{label}</dt>
-                <dd>
-                  {url && /^https?:\/\//i.test(url) ? (
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="break-all underline"
-                    >
-                      {url}
-                    </a>
-                  ) : (
-                    "Not provided"
-                  )}
-                </dd>
-              </div>
-            ))}
-            <div>
-              <dt className="font-medium">Teaching certifications / portfolio</dt>
-              <dd>
-                <TutorCertificationLinks urls={getTutorCertificationUrls(pending)} />
-              </dd>
-            </div>
-          </dl>
-          <p className="mt-2 text-sm">
-            Submitted requests cannot be edited. Withdrawing cancels the request. You can then
-            create a separate draft from its submission history.
-          </p>
-          <button
-            className={`${button} mt-4`}
-            disabled={busy}
-            onClick={() =>
-              void runAction(async () => {
-                const result = await tutorApi<TutorApplicationResponse>(`${apiPath}/withdraw`, {
-                  method: "POST",
-                });
-                setData(result);
-                if (!dirty && !selectedId) loadDetails(emptyTutorDetails, null);
-                setConsent(false);
-                setMessage(
-                  "Request cancelled. You can create a new draft from its submission history."
-                );
-              })
-            }
-          >
-            Withdraw request
-          </button>
-        </section>
-      )}
-
       <section className={panel} aria-label="Submission history">
         <h2 className="text-xl font-semibold">Submission history</h2>
-        {data.submissions?.filter((submission) => submission.status !== "PENDING").length ? (
+        {data.submissions?.length ? (
           <ul className="mt-4 divide-y divide-black/[.12] dark:divide-white/[.18]">
-            {data.submissions
-              .filter((submission) => submission.status !== "PENDING")
-              .map((submission) => (
-                <li key={submission.id} className="py-3">
-                  <details>
-                    <summary className="cursor-pointer font-medium">
-                      {submission.status === "CANCELLED"
-                        ? "Cancelled"
-                        : submission.status === "APPROVED"
-                          ? "Approved"
-                          : "Rejected"}
-                      {submission.submittedAt &&
-                        ` · Submitted ${new Date(submission.submittedAt).toLocaleString()}`}
-                    </summary>
-                    <div className="mt-4">
-                      <TutorProfileSnapshot profile={submission} />
-                      {submission.reviewedAt && (
-                        <p className="mt-3 text-sm">
-                          Reviewed {new Date(submission.reviewedAt).toLocaleString()}
-                        </p>
-                      )}
-                      {submission.rejectionReason && (
-                        <p className="mt-3">Reason: {submission.rejectionReason}</p>
-                      )}
-                      {submission.status === "CANCELLED" &&
-                        (approvedEnrollment ? (
-                          <Link href="/settings/tutor" className="mt-4 inline-block underline">
-                            Create a draft in Tutor settings
-                          </Link>
-                        ) : (
-                          <button
-                            className={`${button} mt-4`}
-                            disabled={busy}
-                            onClick={() =>
-                              requestTransition(() => {
-                                void runAction(async () => {
-                                  const result = await tutorApi<TutorApplicationResponse>(
-                                    `${apiPath}/submissions/${submission.id}/copy`,
-                                    { method: "POST" }
-                                  );
-                                  setData(result);
-                                  loadDetails(
-                                    tutorDetailsFromApplication(result.version),
-                                    result.version!.id
-                                  );
-                                  setEditorOpen(true);
-                                  setMessage("New draft created from the cancelled submission.");
-                                });
-                              })
-                            }
-                          >
-                            Create draft from cancelled submission
-                          </button>
-                        ))}
-                    </div>
-                  </details>
-                </li>
-              ))}
+            {data.submissions.map((submission) => (
+              <li key={submission.id} className="py-3">
+                <details>
+                  <summary className="cursor-pointer font-medium">
+                    <span>
+                      {submission.status === "PENDING"
+                        ? "Pending Verification"
+                        : submission.status === "CANCELLED"
+                          ? "Cancelled"
+                          : submission.status === "APPROVED"
+                            ? "Approved"
+                            : "Rejected"}
+                    </span>
+                    {submission.submittedAt &&
+                      ` · Submitted ${new Date(submission.submittedAt).toLocaleString()}`}
+                  </summary>
+                  <div className="mt-4">
+                    {submission.status === "PENDING" && (
+                      <p className="mb-4 text-sm text-zinc-500">
+                        {tutor
+                          ? "Your current approved profile stays unchanged while these edits are reviewed. You can keep teaching and change publication independently."
+                          : "Your application is awaiting admin approval. You remain a student until it is approved."}{" "}
+                        Submitted requests cannot be edited. Withdrawing cancels the request; you
+                        can then create a separate draft from its history.
+                      </p>
+                    )}
+                    <TutorProfileSnapshot profile={submission} />
+                    {submission.status === "PENDING" && (
+                      <button
+                        className={`${button} mt-4`}
+                        disabled={busy}
+                        onClick={() =>
+                          void runAction(async () => {
+                            const result = await tutorApi<TutorApplicationResponse>(
+                              `${apiPath}/withdraw`,
+                              {
+                                method: "POST",
+                              }
+                            );
+                            setData(result);
+                            if (!dirty && !selectedId) loadDetails(emptyTutorDetails, null);
+                            setConsent(false);
+                            setMessage(
+                              "Request cancelled. You can create a new draft from its submission history."
+                            );
+                          })
+                        }
+                      >
+                        Withdraw request
+                      </button>
+                    )}
+                    {submission.reviewedAt && (
+                      <p className="mt-3 text-sm">
+                        Reviewed {new Date(submission.reviewedAt).toLocaleString()}
+                      </p>
+                    )}
+                    {submission.rejectionReason && (
+                      <p className="mt-3">Reason: {submission.rejectionReason}</p>
+                    )}
+                    {submission.status === "CANCELLED" &&
+                      (approvedEnrollment ? (
+                        <Link href="/settings/tutor" className="mt-4 inline-block underline">
+                          Create a draft in Tutor settings
+                        </Link>
+                      ) : (
+                        <button
+                          className={`${button} mt-4`}
+                          disabled={busy}
+                          onClick={() =>
+                            requestTransition(() => {
+                              void runAction(async () => {
+                                const result = await tutorApi<TutorApplicationResponse>(
+                                  `${apiPath}/submissions/${submission.id}/copy`,
+                                  { method: "POST" }
+                                );
+                                setData(result);
+                                loadDetails(
+                                  tutorDetailsFromApplication(result.version),
+                                  result.version!.id
+                                );
+                                setEditorOpen(true);
+                                setMessage("New draft created from the cancelled submission.");
+                              });
+                            })
+                          }
+                        >
+                          Create draft from cancelled submission
+                        </button>
+                      ))}
+                  </div>
+                </details>
+              </li>
+            ))}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-zinc-500">No past submissions yet.</p>
+          <p className="mt-3 text-sm text-zinc-500">No submissions yet.</p>
         )}
       </section>
 

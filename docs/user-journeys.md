@@ -325,8 +325,9 @@ Related stories: US6-1 … US6-3.
    fields and consent, then sets that version to **pending**. There is at most one
    pending version per user. Other drafts remain editable while a request is pending,
    but another submission is blocked until review or withdrawal. Submitted content is
-   fixed; **Withdraw request** cancels it without creating a draft. The owner can see past
-   approved, rejected and cancelled submissions in **Submission history**. **Create draft from
+   fixed; **Withdraw request** cancels it without creating a draft. The owner sees pending,
+   approved, rejected and cancelled submissions as compact expandable rows in **Submission history**.
+   Pending Verification and its Withdraw action are inside that list, with no separate pending panel. **Create draft from
    cancelled submission** explicitly copies its content and certificates into a new saved draft
    with a new ID; the cancelled submission and other drafts remain unchanged.
    The page shows the pending documents and introduction video separately from drafts.
