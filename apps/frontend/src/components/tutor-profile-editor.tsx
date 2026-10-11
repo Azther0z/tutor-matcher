@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
 import { TutorProfileSnapshot } from "@/src/components/tutor-profile-comparison";
+import { TutorRefreshButton } from "@/src/components/tutor-refresh-button";
+import { TutorSubmissionStatus } from "@/src/components/tutor-submission-status";
 import { TutorDialog } from "@/src/components/tutor-dialog";
 import { TutorConsent } from "@/src/components/tutor-consent";
 import { TutorDetailsFields } from "@/src/components/tutor-details-fields";
@@ -351,22 +353,31 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         </section>
       )}
       <section className={panel} aria-label="Submission history">
-        <h2 className="text-xl font-semibold">Submission history</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">Submission history</h2>
+          <TutorRefreshButton
+            label="Refresh review status"
+            disabled={busy}
+            onClick={() => {
+              requestTransition(() => {
+                setEditorOpen(false);
+                setData(null);
+                setMessage(null);
+                setActionError(null);
+                setConsent(false);
+                setErrors({});
+                setReload((value) => value + 1);
+              });
+            }}
+          />
+        </div>
         {data.submissions?.length ? (
           <ul className="mt-4 divide-y divide-black/[.12] dark:divide-white/[.18]">
             {data.submissions.map((submission) => (
               <li key={submission.id} className="py-3">
                 <details>
                   <summary className="cursor-pointer font-medium">
-                    <span>
-                      {submission.status === "PENDING"
-                        ? "Pending Verification"
-                        : submission.status === "CANCELLED"
-                          ? "Cancelled"
-                          : submission.status === "APPROVED"
-                            ? "Approved"
-                            : "Rejected"}
-                    </span>
+                    <TutorSubmissionStatus status={submission.status} />
                     {submission.submittedAt &&
                       ` · Submitted ${new Date(submission.submittedAt).toLocaleString()}`}
                   </summary>
@@ -761,23 +772,6 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         </p>
       )}
       {!editorOpen && message && <p role="status">{message}</p>}
-      <button
-        className={`${button} self-start`}
-        disabled={busy}
-        onClick={() => {
-          requestTransition(() => {
-            setEditorOpen(false);
-            setData(null);
-            setMessage(null);
-            setActionError(null);
-            setConsent(false);
-            setErrors({});
-            setReload((value) => value + 1);
-          });
-        }}
-      >
-        Refresh review status
-      </button>
     </main>
   );
 }

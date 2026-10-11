@@ -209,6 +209,8 @@ it("filters past submissions with read-only content, reasons, and no review acti
   fireEvent.change(screen.getByRole("combobox", { name: "Submission status" }), {
     target: { value: "ALL" },
   });
-  expect(screen.getAllByRole("region")).toHaveLength(4);
+  expect(
+    within(screen.getByRole("region", { name: "Tutor submissions" })).getAllByRole("region")
+  ).toHaveLength(4);
   expect(screen.getAllByRole("button", { name: "Approve request" })).toHaveLength(1);
 });

@@ -327,7 +327,8 @@ Related stories: US6-1 … US6-3.
    but another submission is blocked until review or withdrawal. Submitted content is
    fixed; **Withdraw request** cancels it without creating a draft. The owner sees pending,
    approved, rejected and cancelled submissions as compact expandable rows in **Submission history**.
-   Pending Verification and its Withdraw action are inside that list, with no separate pending panel. **Create draft from
+   Pending Verification and its Withdraw action are inside that list, with no separate pending panel.
+   A reload icon sits at the top-right of Submission history. **Create draft from
    cancelled submission** explicitly copies its content and certificates into a new saved draft
    with a new ID; the cancelled submission and other drafts remain unchanged.
    The page shows the pending documents and introduction video separately from drafts.
@@ -450,11 +451,15 @@ Related stories: US9-1 … US9-5.
 
 ---
 
-**Admin submission history.** `/admin/tutor-requests` defaults to Pending and can filter
+**Admin submission history.** `/admin/tutor-requests` uses compact expandable rows showing
+applicant name/email, status and submission date. The list box has a reload icon on the
+left and status filter on the top-right. It defaults to Pending and can filter
 Approved, Rejected, Cancelled or All submissions. Unsent drafts are never included.
 Past submissions show their exact content, submitted/review dates and rejection reason
 where applicable, with no approval or rejection controls. Pending requests retain the
-current-versus-proposed comparison and review actions.
+current-versus-proposed comparison and review actions when expanded. Owner and admin
+lists share status badges: amber for Pending Verification, green for Approved, red for
+Rejected and gray for Cancelled. Reload icons have accessible labels and tooltips.
 
 ## Invariants
 

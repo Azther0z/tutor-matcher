@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { TutorRefreshButton } from "@/src/components/tutor-refresh-button";
+import { TutorSubmissionStatus } from "@/src/components/tutor-submission-status";
 import { RequireAuth } from "@/src/components/require-auth";
 import {
   TutorProfileComparison,
@@ -72,69 +74,89 @@ function TutorRequests() {
       )}
       {message && <p role="status">{message}</p>}
       {!forbidden && (
-        <>
-          <button
-            className={`${button} self-start`}
-            onClick={() => {
-              setRequests(null);
-              setError(null);
-              setReload((value) => value + 1);
-            }}
-          >
-            Refresh requests
-          </button>
-          <label className="flex flex-col gap-2 self-start">
-            Submission status
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-              className="rounded-md border border-black/[.12] bg-background px-3 py-2 dark:border-white/[.18]"
-            >
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-              <option value="CANCELLED">Cancelled</option>
-              <option value="ALL">All submissions</option>
-            </select>
-          </label>
-          {!requests && !error && <p>Loading requests…</p>}
-          {visibleRequests?.length === 0 && (
-            <p>
-              {status === "PENDING"
-                ? "No pending tutor requests."
-                : "No matching tutor submissions."}
-            </p>
-          )}
-          {visibleRequests?.map((request) => (
-            <ReviewCard
-              key={request.id}
-              request={request}
-              onReviewed={(reviewed) => {
-                setRequests(
-                  (current) =>
-                    current?.map((item) =>
-                      item.id === request.id ? { ...item, ...reviewed } : item
-                    ) ?? null
-                );
-                setMessage(
-                  `Request ${reviewed.status === "APPROVED" ? "approved" : "rejected"} for ${request.user.firstName} ${request.user.lastName}.`
-                );
-              }}
-              onForbidden={() => {
-                setForbidden(true);
+        <section
+          aria-label="Tutor submissions"
+          className="overflow-hidden rounded-lg border border-black/[.12] dark:border-white/[.18]"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[.12] px-4 py-3 dark:border-white/[.18]">
+            <TutorRefreshButton
+              label="Refresh requests"
+              onClick={() => {
                 setRequests(null);
-                setMessage(null);
-                setError("Admin access required.");
+                setError(null);
+                setReload((value) => value + 1);
               }}
             />
-          ))}
-        </>
+            <label className="ml-auto flex items-center gap-2 text-sm">
+              <span>Submission status</span>
+              <span className="relative">
+                <select
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value)}
+                  className="appearance-none rounded-md border border-black/[.12] bg-background py-2 pl-3 pr-9 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 dark:border-white/[.18] dark:[color-scheme:dark]"
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="CANCELLED">Cancelled</option>
+                  <option value="ALL">All submissions</option>
+                </select>
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </label>
+          </div>
+          <div className="px-4">
+            {!requests && !error && <p className="py-5 text-sm text-zinc-500">Loading requests…</p>}
+            {visibleRequests?.length === 0 && (
+              <p className="py-5 text-sm text-zinc-500">
+                {status === "PENDING"
+                  ? "No pending tutor requests."
+                  : "No matching tutor submissions."}
+              </p>
+            )}
+            <ul className="divide-y divide-black/[.12] dark:divide-white/[.18]">
+              {visibleRequests?.map((request) => (
+                <li key={request.id}>
+                  <ReviewRow
+                    request={request}
+                    onReviewed={(reviewed) => {
+                      setRequests(
+                        (current) =>
+                          current?.map((item) =>
+                            item.id === request.id ? { ...item, ...reviewed } : item
+                          ) ?? null
+                      );
+                      setMessage(
+                        `Request ${reviewed.status === "APPROVED" ? "approved" : "rejected"} for ${request.user.firstName} ${request.user.lastName}.`
+                      );
+                    }}
+                    onForbidden={() => {
+                      setForbidden(true);
+                      setRequests(null);
+                      setMessage(null);
+                      setError("Admin access required.");
+                    }}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
       )}
     </main>
   );
 }
 
-function ReviewCard({
+function ReviewRow({
   request,
   onReviewed,
   onForbidden,
@@ -181,71 +203,76 @@ function ReviewCard({
   }
 
   return (
-    <section
-      className="rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]"
-      aria-label={`Request from ${request.user.firstName} ${request.user.lastName}`}
-    >
-      <h2 className="text-xl font-semibold">
-        {request.user.firstName} {request.user.lastName}
-      </h2>
-      <p className="mt-1 break-all text-sm text-zinc-500">{request.user.email}</p>
-      <p className="my-4 text-sm">
-        {request.status === "PENDING"
-          ? "Pending Verification"
-          : request.status === "CANCELLED"
-            ? "Cancelled"
-            : request.status === "APPROVED"
-              ? "Approved"
-              : "Rejected"}
-        {request.submittedAt && <> · Submitted {new Date(request.submittedAt).toLocaleString()}</>}
-      </p>
-      {request.status === "PENDING" ? (
-        <TutorProfileComparison current={request.currentProfile} proposed={request} />
-      ) : (
-        <TutorProfileSnapshot profile={request} />
-      )}
-      {request.reviewedAt && (
-        <p className="mt-3 text-sm">Reviewed {new Date(request.reviewedAt).toLocaleString()}</p>
-      )}
-      {request.rejectionReason && <p className="mt-3">Reason: {request.rejectionReason}</p>}
-      {request.status === "PENDING" && (
-        <fieldset disabled={busy} className="mt-5 flex flex-col gap-3">
-          <label htmlFor={`reason-${request.id}`} className="text-sm font-medium">
-            Rejection reason (required to reject)
-          </label>
-          <textarea
-            id={`reason-${request.id}`}
-            rows={3}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            aria-invalid={reasonError}
-            aria-describedby={reasonError ? `reason-error-${request.id}` : undefined}
-            className="rounded-lg border border-black/[.12] bg-transparent p-3 dark:border-white/[.18]"
-          />
-          {reasonError && (
-            <p id={`reason-error-${request.id}`} role="alert" className="text-sm text-red-600">
-              Enter a rejection reason.
-            </p>
+    <section aria-label={`Request from ${request.user.firstName} ${request.user.lastName}`}>
+      <details>
+        <summary className="cursor-pointer py-4 marker:text-zinc-500">
+          <span className="inline-flex w-[calc(100%_-_1.5rem)] flex-wrap items-center justify-between gap-3 align-middle">
+            <span className="min-w-0">
+              <span className="block font-medium">
+                {request.user.firstName} {request.user.lastName}
+              </span>
+              <span className="block break-all text-sm text-zinc-500">{request.user.email}</span>
+            </span>
+            <span className="text-sm sm:text-right">
+              <TutorSubmissionStatus status={request.status} />
+              {request.submittedAt && (
+                <time dateTime={request.submittedAt} className="block text-xs text-zinc-500">
+                  Submitted {new Date(request.submittedAt).toLocaleString()}
+                </time>
+              )}
+            </span>
+          </span>
+        </summary>
+        <div className="pb-5">
+          {request.status === "PENDING" ? (
+            <TutorProfileComparison current={request.currentProfile} proposed={request} />
+          ) : (
+            <TutorProfileSnapshot profile={request} />
           )}
-          {error && (
-            <p role="alert" className="text-sm text-red-600">
-              {error}
-            </p>
+          {request.reviewedAt && (
+            <p className="mt-3 text-sm">Reviewed {new Date(request.reviewedAt).toLocaleString()}</p>
           )}
-          <div className="flex flex-wrap justify-end gap-3">
-            <button className={button} disabled={busy} onClick={() => void review("REJECTED")}>
-              Reject request
-            </button>
-            <button
-              className={`${button} bg-foreground text-background`}
-              disabled={busy}
-              onClick={() => void review("APPROVED")}
-            >
-              {busy ? "Reviewing…" : "Approve request"}
-            </button>
-          </div>
-        </fieldset>
-      )}
+          {request.rejectionReason && <p className="mt-3">Reason: {request.rejectionReason}</p>}
+          {request.status === "PENDING" && (
+            <fieldset disabled={busy} className="mt-5 flex flex-col gap-3">
+              <label htmlFor={`reason-${request.id}`} className="text-sm font-medium">
+                Rejection reason (required to reject)
+              </label>
+              <textarea
+                id={`reason-${request.id}`}
+                rows={3}
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                aria-invalid={reasonError}
+                aria-describedby={reasonError ? `reason-error-${request.id}` : undefined}
+                className="rounded-lg border border-black/[.12] bg-transparent p-3 dark:border-white/[.18]"
+              />
+              {reasonError && (
+                <p id={`reason-error-${request.id}`} role="alert" className="text-sm text-red-600">
+                  Enter a rejection reason.
+                </p>
+              )}
+              {error && (
+                <p role="alert" className="text-sm text-red-600">
+                  {error}
+                </p>
+              )}
+              <div className="flex flex-wrap justify-end gap-3">
+                <button className={button} disabled={busy} onClick={() => void review("REJECTED")}>
+                  Reject request
+                </button>
+                <button
+                  className={`${button} bg-foreground text-background`}
+                  disabled={busy}
+                  onClick={() => void review("APPROVED")}
+                >
+                  {busy ? "Reviewing…" : "Approve request"}
+                </button>
+              </div>
+            </fieldset>
+          )}
+        </div>
+      </details>
     </section>
   );
 }
