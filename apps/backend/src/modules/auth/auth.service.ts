@@ -42,7 +42,7 @@ export class InvalidPasswordResetTokenError extends Error {
   }
 }
 
-export async function signup({ firstName, lastName, email, password, bio }: SignupInput) {
+export async function signup({ firstName, lastName, email, password }: SignupInput) {
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
   if (existing) {
@@ -57,7 +57,6 @@ export async function signup({ firstName, lastName, email, password, bio }: Sign
         lastName,
         email,
         password: passwordHash,
-        bio: bio ?? null,
       },
     });
 

@@ -103,7 +103,6 @@ describe("POST /api/auth/signup", () => {
         lastName: string;
         email: string;
         password: string;
-        bio: string | null;
         isTutor?: boolean;
       };
     };
@@ -111,28 +110,10 @@ describe("POST /api/auth/signup", () => {
       firstName: "Ada",
       lastName: "Lovelace",
       email: "ada@example.com",
-      bio: null,
     });
     expect(createCall.data.password).not.toBe("supersecret");
     await expect(bcrypt.compare("supersecret", createCall.data.password)).resolves.toBe(true);
     expect(createCall.data).not.toHaveProperty("isTutor");
-  });
-
-  it("stores an optional bio when one is provided", async () => {
-    userCreate.mockResolvedValue({
-      id: userId,
-      email: "ada@example.com",
-      createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    });
-
-    await request(app)
-      .post("/api/auth/signup")
-      .send({ ...signupBody, bio: "Maths tutor" })
-      .expect(201);
-
-    expect(userCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({ bio: "Maths tutor" }),
-    });
   });
 
   it("rejects an invalid body with 400", async () => {

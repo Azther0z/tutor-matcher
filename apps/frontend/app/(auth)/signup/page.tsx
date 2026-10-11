@@ -10,7 +10,6 @@ export default function SignupPage() {
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [bio, setBio] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -54,7 +53,6 @@ export default function SignupPage() {
           lastName: lastName.trim(),
           email,
           password,
-          bio: bio.trim() || null,
         }),
       });
 
@@ -144,18 +142,6 @@ export default function SignupPage() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1.5 text-sm font-medium">
-          Bio <span className="font-normal text-zinc-500">(optional)</span>
-          <textarea
-            name="bio"
-            rows={3}
-            maxLength={2000}
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            className="rounded-lg border border-black/[.12] bg-transparent px-3 py-2 text-base outline-none focus:border-foreground dark:border-white/[.18]"
           />
         </label>
 

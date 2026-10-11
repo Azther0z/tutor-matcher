@@ -204,14 +204,12 @@ export async function updateTutorProfile(userId: string, input: ProfileRequest) 
       data: {
         firstName: input.user.firstName,
         lastName: input.user.lastName,
-        bio: input.user.bio,
       },
       select: {
         id: true,
         email: true,
         firstName: true,
         lastName: true,
-        bio: true,
         createdAt: true,
       },
     });

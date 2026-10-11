@@ -39,7 +39,6 @@ const signupRequestBody = JSON.stringify({
   lastName: "Lovelace",
   email: "tutor@example.com",
   password: "supersecret",
-  bio: null,
 });
 
 describe("SignupPage", () => {
@@ -67,33 +66,6 @@ describe("SignupPage", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: signupRequestBody,
-    });
-  });
-
-  it("sends a trimmed bio when one is entered", async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({ id: "33333333-3333-4333-8333-333333333333" }),
-    });
-    render(<SignupPage />);
-    completeSignup();
-    fireEvent.change(screen.getByLabelText(/Bio/), {
-      target: { value: "  Maths tutor  " },
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
-
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/login"));
-    expect(fetchMock).toHaveBeenCalledWith("/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        firstName: "Ada",
-        lastName: "Lovelace",
-        email: "tutor@example.com",
-        password: "supersecret",
-        bio: "Maths tutor",
-      }),
     });
   });
 

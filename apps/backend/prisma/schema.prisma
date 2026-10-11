@@ -57,7 +57,6 @@ model User {
   lastName  String   @map("last_name")
   email     String   @unique
   password  String
-  bio       String?
   createdAt DateTime @default(now()) @map("created_at")
   balance   Decimal  @default(0) @db.Decimal(12, 2)
   isAdmin   Boolean  @default(false) @map("is_admin")
