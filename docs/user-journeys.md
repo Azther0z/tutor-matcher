@@ -312,7 +312,7 @@ Related stories: US6-1 … US6-3.
    draft; every supplied URL must be valid. Submit stays disabled until required fields are
    present. Subjects are not part of the application — they are added afterwards in
    `/settings/tutor`.
-3. A student can save multiple incomplete **drafts** and see them in a list. **New draft**
+3. A student can save multiple incomplete **drafts** and see them in a list. **New draft** starts empty; it
    and each row's **Edit** button open a modal for one draft at a time. Each row has a
    **Trash** icon to delete that saved draft after confirmation, an **Edit** icon and a
    **Submit** action. Submitting asks for confirmation explaining the one-pending-request
@@ -320,13 +320,15 @@ Related stories: US6-1 … US6-3.
    to the shared editor. Confirmation replaces the editor modal. The modal has a sticky
    **Draft** header with Saved / Not saved status beside it and a close button, with
    **Save draft** and **Submit** in its sticky footer. Fields sit directly in the modal.
-   Closing with unsaved changes offers Save, Discard or Cancel. Discard drops only unsaved
+   Closing with unsaved changes replaces the editor with Save, Discard or Cancel; Cancel reopens the same form. Discard drops only unsaved
    changes; saved drafts remain in the list. Submission saves the selected content, validates all required
    fields and consent, then sets that version to **pending**. There is at most one
    pending version per user. Other drafts remain editable while a request is pending,
    but another submission is blocked until review or withdrawal. Submitted content is
-   fixed; **Withdraw request** cancels it and restores its content as a new editable
-   draft in the list, preserving the cancelled request's history and other saved drafts.
+   fixed; **Withdraw request** cancels it without creating a draft. The owner can see past
+   approved, rejected and cancelled submissions in **Submission history**. **Create draft from
+   cancelled submission** explicitly copies its content and certificates into a new saved draft
+   with a new ID; the cancelled submission and other drafts remain unchanged.
    The page shows the pending documents and introduction video separately from drafts.
 4. While pending the user is still a student: `/dashboard/tutor` and `/settings/tutor`
    bounce back to the application.
@@ -365,8 +367,9 @@ Discard drops unsaved edits; the list's Trash action deletes a saved draft after
 Multiple optional portfolio certification URLs can be added, edited or removed from each draft.
 Students see only the current approved portfolio; proposed and rejected certificates remain private.
 Other drafts stay editable during review; only a second submission is blocked. Submit
-confirmation explains the pending limit and withdrawal. Withdrawal restores the submitted
-content to a new editable draft while retaining the cancelled request in history.
+confirmation explains the pending limit and cancellation. Withdrawal only cancels the submitted
+version; its immutable content stays visible in submission history. The tutor can explicitly
+create a separate draft from a cancelled submission, copying all content and certificates.
 Pending and approved versions remain immutable history. Account names are edited in Account settings,
 not as part of a profile review.
 
@@ -445,6 +448,12 @@ Related stories: US8-1 … US8-4.
 Related stories: US9-1 … US9-5.
 
 ---
+
+**Admin submission history.** `/admin/tutor-requests` defaults to Pending and can filter
+Approved, Rejected, Cancelled or All submissions. Unsent drafts are never included.
+Past submissions show their exact content, submitted/review dates and rejection reason
+where applicable, with no approval or rejection controls. Pending requests retain the
+current-versus-proposed comparison and review actions.
 
 ## Invariants
 

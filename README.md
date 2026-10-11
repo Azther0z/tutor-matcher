@@ -189,8 +189,10 @@ Draft rows have Edit and Trash icons and a Submit action. The editor has a stick
 and Save draft / Submit footer. Closing unsaved edits offers Save, Discard or Cancel.
 Submit confirmation replaces the editor, contains consent, and offers Edit draft. It explains
 the pending-request limit and withdrawal. Approved certificates form a public portfolio;
-identification-card references remain private. Withdrawing
-restores the submitted content to a new editable draft and keeps cancelled history.
+identification-card references remain private. Withdrawing only cancels the request.
+Owners can view submission history and explicitly copy a cancelled submission into a
+new saved draft. Admins can filter pending, approved, rejected and cancelled submissions;
+unsent drafts stay private and past submissions have no review actions.
 
 For disposable local databases, synchronize this schema through the existing reset workflow:
 

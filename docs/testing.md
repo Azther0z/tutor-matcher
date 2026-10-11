@@ -105,7 +105,7 @@ admin-only approval/rejection, rejection reasons, multiple private drafts, draft
 editing/discard/submission, ownership and immutable submitted versions. Other drafts
 remain editable during review; concurrent submissions permit only one pending request.
 Certifications are optional; supplied URLs are validated and remain version-specific through
-replacement, removal and retries. Withdrawal restores a new draft with the exact submitted content while preserving cancelled history; duplicate withdrawals restore only one draft. Approved edits
+replacement, removal and retries. Withdrawal retains cancelled history without creating a draft; duplicate withdrawals cancel only once. Owner-only explicit copying creates a new draft with the exact submitted content. Admin history includes submitted statuses and excludes unsent drafts. Approved edits
 switch profile versions while preserving Tutor identity and publication. Public
 responses exclude identification-card references and proposed certificate versions, while
 showing the current approved portfolio. Frontend tests cover application
