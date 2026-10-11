@@ -109,7 +109,7 @@ replacement, removal and retries. Withdrawal retains cancelled history without c
 switch profile versions while preserving Tutor identity and publication. Public
 responses exclude identification-card references and proposed certificate versions, while
 showing the current approved portfolio. Frontend tests cover application
-and edit states, draft modals with sticky headers/footers and Save/Discard/Cancel close prompts,
+and edit states, draft modals with sticky headers/footers and Save/Cancel close prompts with × to discard unsaved edits,
 draft-specific Edit/Trash icons, submission confirmations, multiple optional certification inputs,
 admin comparisons/actions, access errors, and readable submit-button hover styles.
 

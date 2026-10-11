@@ -31,6 +31,7 @@ export function TutorDialog({
   title,
   titleId,
   onClose,
+  onCloseButton = onClose,
   busy = false,
   children,
   footer,
@@ -39,6 +40,7 @@ export function TutorDialog({
   title: string;
   titleId: string;
   onClose: () => void;
+  onCloseButton?: () => void;
   busy?: boolean;
   children: ReactNode;
   footer?: ReactNode;
@@ -147,7 +149,7 @@ export function TutorDialog({
             type="button"
             aria-label={`Close ${title}`}
             disabled={busy}
-            onClick={onClose}
+            onClick={onCloseButton}
             className="rounded-lg px-3 py-2 text-xl leading-none hover:bg-black/[.06] disabled:opacity-60 dark:hover:bg-white/[.1]"
           >
             ×

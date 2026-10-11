@@ -320,7 +320,7 @@ Related stories: US6-1 … US6-3.
    to the shared editor. Confirmation replaces the editor modal. The modal has a sticky
    **Draft** header with Saved / Not saved status beside it and a close button, with
    **Save draft** and **Submit** in its sticky footer. Fields sit directly in the modal.
-   Closing with unsaved changes replaces the editor with Save, Discard or Cancel; Cancel reopens the same form. Discard drops only unsaved
+   Closing with unsaved changes replaces the editor with Save or Cancel, with × to discard unsaved edits; Cancel reopens the same form. Closing with × drops only unsaved
    changes; saved drafts remain in the list. Submission saves the selected content, validates all required
    fields and consent, then sets that version to **pending**. There is at most one
    pending version per user. Other drafts remain editable while a request is pending,
@@ -363,8 +363,8 @@ reason. Submit is disabled when nothing changed. Approval switches the current p
 version immediately, preserving the publication setting at that moment. The submit
 UI explains this automatic application. A draft list has Edit and Trash icons and a Submit action.
 Creating or editing a draft opens a modal with a sticky header and Save draft / Submit footer.
-Only one draft is edited at a time; closing with unsaved changes offers Save, Discard or Cancel.
-Discard drops unsaved edits; the list's Trash action deletes a saved draft after confirmation.
+Only one draft is edited at a time; closing with unsaved changes offers Save or Cancel, with × to discard unsaved edits.
+Closing the prompt with × drops unsaved edits; the list's Trash action deletes a saved draft after confirmation.
 Multiple optional portfolio certification URLs can be added, edited or removed from each draft.
 Students see only the current approved portfolio; proposed and rejected certificates remain private.
 Other drafts stay editable during review; only a second submission is blocked. Submit

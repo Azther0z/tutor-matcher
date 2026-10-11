@@ -186,7 +186,7 @@ and can be saved, selected for editing, discarded or submitted. Only one request
 user can await review; other drafts remain editable while it is pending. Switching
 drafts opens a modal; closing it requires saving or explicitly discarding unsaved changes.
 Draft rows have Edit and Trash icons and a Submit action. The editor has a sticky header
-and Save draft / Submit footer. Closing unsaved edits offers Save, Discard or Cancel.
+and Save draft / Submit footer. Closing unsaved edits offers Save or Cancel, with × to discard unsaved edits.
 Submit confirmation replaces the editor, contains consent, and offers Edit draft. It explains
 the pending-request limit and withdrawal. Approved certificates form a public portfolio;
 identification-card references remain private. Withdrawing only cancels the request.
