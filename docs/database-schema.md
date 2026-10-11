@@ -109,23 +109,29 @@ Indexes: unique `token_hash`, unique `user_id`, and `expires_at`.
 | reviewed_by_id          | UUID                      | NULL, FK → users          | Reviewing admin                             |
 | rejection_reason        | TEXT                      | NULL                      | Required when rejecting                     |
 
-Draft fields may be incomplete. Submission requires a bio, identification-card URL,
-a certification URL, introduction-video URL, and consent. Submitted versions are
+Draft fields may be incomplete. A user may own multiple drafts, each independently
+editable and discardable by its ID, including while another version is pending.
+Submission requires a bio, identification-card URL, introduction-video URL, and consent.
+Certifications are optional; every supplied certification URL must be valid. Submitted versions are
 immutable. User-row locks serialize submissions, withdrawal and review; only one
-pending version per user is allowed. Approval atomically creates a Tutor or updates
+pending version per user is allowed, enforced by a partial unique index in `schema.prisma`. Approval atomically creates a Tutor or updates
 its pointer, only to an approved version belonging to that user. Publication remains
-independent. Approved history is retained; content is not copied into `tutors`.
+independent. Withdrawal marks the submitted version CANCELLED and copies its content
+and certification URLs into a new DRAFT; other drafts and the current approved profile
+remain unchanged. Approved history is retained; content is not copied into `tutors`.
 
 ### tutor_profile_version_certifications
 
-| Column             | Type | Constraints                                              | Notes                        |
-| ------------------ | ---- | -------------------------------------------------------- | ---------------------------- |
-| certification_id   | UUID | PK                                                       |                              |
-| profile_version_id | UUID | NOT NULL, FK → tutor_profile_versions, ON DELETE CASCADE | Version-specific certificate |
-| file_url           | TEXT | NOT NULL                                                 | Private document reference   |
+| Column             | Type | Constraints                                              | Notes                                                                  |
+| ------------------ | ---- | -------------------------------------------------------- | ---------------------------------------------------------------------- |
+| certification_id   | UUID | PK                                                       |                                                                        |
+| profile_version_id | UUID | NOT NULL, FK → tutor_profile_versions, ON DELETE CASCADE | Version-specific certificate                                           |
+| file_url           | TEXT | NOT NULL                                                 | Portfolio certificate URL; public only in the current approved version |
 
-The current form handles one certification; version ownership allows historical
-certificates to remain attached to the submission that was reviewed.
+The form supports multiple certification URLs per version. Draft saves replace only
+that draft's complete certificate collection, including explicit removals. Certificates
+in the current approved version remain unchanged until review approves a replacement;
+historical certificates stay attached to the version that was reviewed.
 
 ### subjects
 

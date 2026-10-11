@@ -306,15 +306,28 @@ Related stories: US6-1 … US6-3.
 ## 6 · Becoming a tutor
 
 1. A logged-in student opens **Become a tutor** → `/(auth)/enroll-tutor`.
-2. The application requires **all three**: an identification card document, a teaching
-   certification document, and an introduction video. Submit stays disabled until all three are
+2. The application requires a bio, an identification card document and an introduction video.
+   Portfolio certifications are optional evidence of achievements, contests or qualifications
+   that students can view once approved. Multiple certifications can be added or removed in a
+   draft; every supplied URL must be valid. Submit stays disabled until required fields are
    present. Subjects are not part of the application — they are added afterwards in
    `/settings/tutor`.
-3. A student can save an incomplete **draft**. Submission validates all required fields
-   and consent, then sets the profile version to **pending**. There is at most one
-   pending version per user. Submitted content is fixed; withdraw and create a new
-   draft to change it. The page then shows the uploaded
-   documents, the introduction video, and _Awaiting approval_, with **Cancel & re-submit**.
+3. A student can save multiple incomplete **drafts** and see them in a list. **New draft**
+   and each row's **Edit** button open a modal for one draft at a time. Each row has a
+   **Trash** icon to delete that saved draft after confirmation, an **Edit** icon and a
+   **Submit** action. Submitting asks for confirmation explaining the one-pending-request
+   limit and withdrawal, with consent inside confirmation and an Edit draft action to return
+   to the shared editor. Confirmation replaces the editor modal. The modal has a sticky
+   **Draft** header with Saved / Not saved status beside it and a close button, with
+   **Save draft** and **Submit** in its sticky footer. Fields sit directly in the modal.
+   Closing with unsaved changes offers Save, Discard or Cancel. Discard drops only unsaved
+   changes; saved drafts remain in the list. Submission saves the selected content, validates all required
+   fields and consent, then sets that version to **pending**. There is at most one
+   pending version per user. Other drafts remain editable while a request is pending,
+   but another submission is blocked until review or withdrawal. Submitted content is
+   fixed; **Withdraw request** cancels it and restores its content as a new editable
+   draft in the list, preserving the cancelled request's history and other saved drafts.
+   The page shows the pending documents and introduction video separately from drafts.
 4. While pending the user is still a student: `/dashboard/tutor` and `/settings/tutor`
    bounce back to the application.
 5. An admin compares proposed and current content at `/admin/tutor-requests`. Initial
@@ -322,7 +335,8 @@ Related stories: US6-1 … US6-3.
    same User account, and grants a **Verified** badge. The tutor chooses when to publish.
    Rejection requires a reason displayed to the applicant; revised submissions create
    new versions. Review outcomes are visible in the application/settings UI.
-6. After approval, `/(auth)/enroll-tutor` redirects to `/dashboard/tutor`.
+6. After approval, the application shows the approved Tutor and links to Tutor settings
+   and the dashboard. The user chooses when to publish.
 
 Related stories: US1-4, US9-1.
 
@@ -344,8 +358,16 @@ and intro video URL, then **Verification** (document state and Replace documents
 once an admin approves; a rejection leaves the live listing untouched and returns a
 reason. Submit is disabled when nothing changed. Approval switches the current profile
 version immediately, preserving the publication setting at that moment. The submit
-UI explains this automatic application. Drafts are editable; pending and approved
-versions remain immutable history. Account names are edited in Account settings,
+UI explains this automatic application. A draft list has Edit and Trash icons and a Submit action.
+Creating or editing a draft opens a modal with a sticky header and Save draft / Submit footer.
+Only one draft is edited at a time; closing with unsaved changes offers Save, Discard or Cancel.
+Discard drops unsaved edits; the list's Trash action deletes a saved draft after confirmation.
+Multiple optional portfolio certification URLs can be added, edited or removed from each draft.
+Students see only the current approved portfolio; proposed and rejected certificates remain private.
+Other drafts stay editable during review; only a second submission is blocked. Submit
+confirmation explains the pending limit and withdrawal. Withdrawal restores the submitted
+content to a new editable draft while retaining the cancelled request in history.
+Pending and approved versions remain immutable history. Account names are edited in Account settings,
 not as part of a profile review.
 
 **Unpublishing.** Hide the tutor and subjects from search/recommendations and reject
@@ -354,9 +376,10 @@ is not accepting bookings. Existing subject details, conversations, booked lesso
 and tutor management access remain available. Search/recommendation and subject
 management pages that are placeholders are not implemented by AUTH-4.
 
-**Verification privacy.** Public tutor responses include only approved public content
-and the Verified badge. Identification-card and private certificate URLs are returned
-only to their owner and authorized admins.
+**Verification privacy and portfolio.** Student-facing tutor responses include approved public
+content, portfolio certification URLs and the Verified badge. Identification-card URLs
+remain restricted to their owner and authorized admins. Draft, pending, rejected and
+cancelled portfolios are not shown to students.
 
 **Subjects.** Each subject is its own offering with a name, description, hourly rate,
 and format. Adding starts as a single **Add subject** button that opens the form;

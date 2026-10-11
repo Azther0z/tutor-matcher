@@ -43,7 +43,7 @@ _Avoid_: Moderator, staff, superuser
 
 **Tutor Application**:
 A student's submitted profile version requesting the tutor capability, with identity,
-teaching credentials, introduction video, and bio for admin review.
+optional teaching credentials, introduction video, and bio for admin review.
 _Avoid_: Tutor signup, tutor registration, enrolment
 
 **Tutor Profile Version**:
@@ -51,11 +51,21 @@ One complete proposed or approved set of tutor profile content and verification 
 The current approved version remains in use while a replacement awaits review.
 _Avoid_: Separate tutor account, duplicate live profile
 
+**Tutor Profile Draft**:
+A user's saved, editable profile version that has not been submitted for review.
+A user may keep several drafts while only one submitted version awaits an admin decision.
+_Avoid_: Pending application, published profile
+
 **Verification Document**:
-The URL reference for the identification card or teaching certification file attached to a
-tutor application and checked by an admin. Replacing a document re-enters admin review
+The private identification-card URL attached to a tutor application and checked by an admin.
+Replacing a document re-enters admin review
 before becoming current.
 _Avoid_: Transfer proof, attachment, credential
+
+**Tutor Portfolio Certificate**:
+An optional certificate URL showing a tutor's achievements, contest participation or qualifications.
+Certificates belong to a profile version and are visible to students only from its current approved version.
+_Avoid_: Private identity document, mandatory teaching license
 
 **Listing**:
 The tutor's approved public profile. Publication controls discovery and new bookings;

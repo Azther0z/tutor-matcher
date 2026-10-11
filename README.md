@@ -177,28 +177,35 @@ re-staged automatically; no need to run them by hand before committing.
 ## Tutor profile approval (AUTH-4)
 
 Applications and edits are reviewed at `/admin/tutor-requests` by a database-authorized
-admin. `/enroll-tutor` supports drafts, submission, withdrawal and review outcomes;
+admin. `/enroll-tutor` supports multiple saved drafts, submission, withdrawal and review outcomes;
 `/settings/tutor` manages revisions and publication. Approval creates an unpublished
 Tutor initially, or switches an existing Tutor's current profile version without
 changing publication. Verification documents remain URL references; file-storage
-infrastructure is outside this change.
+infrastructure is outside this change. Each draft supports multiple optional certification URLs
+and can be saved, selected for editing, discarded or submitted. Only one request per
+user can await review; other drafts remain editable while it is pending. Switching
+drafts opens a modal; closing it requires saving or explicitly discarding unsaved changes.
+Draft rows have Edit and Trash icons and a Submit action. The editor has a sticky header
+and Save draft / Submit footer. Closing unsaved edits offers Save, Discard or Cancel.
+Submit confirmation replaces the editor, contains consent, and offers Edit draft. It explains
+the pending-request limit and withdrawal. Approved certificates form a public portfolio;
+identification-card references remain private. Withdrawing
+restores the submitted content to a new editable draft and keeps cancelled history.
 
-For a fresh disposable database, use the existing `prisma db push` and seed workflow.
-For an existing pre-AUTH-4 database whose fixtures must be preserved, stop the app,
-back up the database, and run the one-time upgrade **before** `db push`, from `apps/backend`:
+For disposable local databases, synchronize this schema through the existing reset workflow:
 
 ```bash
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/upgrade-tutor-profile-versions.sql
-npm run db:push
-npm run gen-mock-data
+just reset-db
 ```
 
-The upgrade retains approved profile content, certificates, Tutor IDs, subjects and
-bookings. Legacy pending/rejected applications become versions without a Tutor row.
-It aborts for orphaned tutors or unapproved tutors owning subjects. Legacy approved
-records retain their prior approval state; review time and reviewer remain unknown. This is a
-one-time upgrade utility, not Prisma migration history. No existing database is
-changed automatically by installing this branch.
+This deletes local PostgreSQL data, recreates and seeds the database, and starts the app.
+The pre-AUTH-4 schema is not compatible with this branch; local accounts and bookings
+will be lost during reset. There is no data-preserving upgrade script or Prisma migration
+history for this change. Preserve any needed data separately before resetting.
+
+A partial unique index in `schema.prisma` permits only one pending profile version per
+user while allowing multiple drafts and reviewed versions. User-row locks also serialize
+workflow actions so concurrent submissions return a useful conflict response.
 
 ## Testing
 

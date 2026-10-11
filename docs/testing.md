@@ -101,11 +101,17 @@ behaviours worth a scenario each.
 ## AUTH-4 acceptance coverage
 
 Profile workflow tests exercise initial pending applications without creating a Tutor,
-admin-only approval/rejection, rejection reasons, draft validation, withdrawal and
-resubmission, immutable submitted versions, and concurrent writes. Approved edits
+admin-only approval/rejection, rejection reasons, multiple private drafts, draft-specific
+editing/discard/submission, ownership and immutable submitted versions. Other drafts
+remain editable during review; concurrent submissions permit only one pending request.
+Certifications are optional; supplied URLs are validated and remain version-specific through
+replacement, removal and retries. Withdrawal restores a new draft with the exact submitted content while preserving cancelled history; duplicate withdrawals restore only one draft. Approved edits
 switch profile versions while preserving Tutor identity and publication. Public
-responses exclude private verification documents. Frontend tests cover application
-and edit states, admin comparisons/actions, and access errors.
+responses exclude identification-card references and proposed certificate versions, while
+showing the current approved portfolio. Frontend tests cover application
+and edit states, draft modals with sticky headers/footers and Save/Discard/Cancel close prompts,
+draft-specific Edit/Trash icons, submission confirmations, multiple optional certification inputs,
+admin comparisons/actions, access errors, and readable submit-button hover styles.
 
 Run the real PostgreSQL workflow and booking regression suites against an isolated
 database already synchronized to the schema:
@@ -115,5 +121,7 @@ RUN_DATABASE_INTEGRATION=true npm --prefix apps/backend test -- --runInBand
 ```
 
 The booking regression verifies that unpublished tutors reject new bookings while
-existing booked subject details and conversations remain accessible. The data-preserving
-upgrade utility is described in the README; it is separate from Prisma migrations.
+existing booked subject details and conversations remain accessible. The local reset
+workflow is described in the README; it deletes and recreates disposable databases
+without Prisma migration history. Database tests also verify that a second pending
+version is rejected by the partial unique index even when bypassing workflow services.
