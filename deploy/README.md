@@ -30,7 +30,9 @@ rm deploy/secrets/database-url.env deploy/secrets/resend.env \
 Use the same strong password in `DATABASE_URL` and `POSTGRES_PASSWORD`. Set the database host to
 `postgres`, username to `postgres`, and database name to `tutor_matcher`. `FRONTEND_URL` is ordinary
 deployment configuration supplied through Compose interpolation, not part of the encrypted secret
-files. All three Resend settings are kept together in `resend.env`. Edit an encrypted file with
+files. It defaults to the public Tutor Matcher origin; override it when the frontend is hosted at a
+different public URL. All three Resend settings are kept together in `resend.env`, and
+`RESEND_FROM_EMAIL` must use a domain verified in Resend. Edit an encrypted file with
 `sops edit deploy/secrets/<name>.enc.env`; changing one independent secret does not require
 re-encrypting the other files. Commit only the encrypted `*.enc.env` files.
 

@@ -60,7 +60,7 @@ services:
       - ./secrets/resend.enc.env
     environment:
       PORT: "8000"
-      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3333}"
+      FRONTEND_URL: "${FRONTEND_URL:-https://tutor-matcher.azther0z.online}"
     ports:
       - "8000:8000"
     networks:
