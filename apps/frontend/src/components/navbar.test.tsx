@@ -27,7 +27,7 @@ function renderNavbar() {
 }
 
 function mockAuthedUser(
-  user: { firstName: string; lastName: string; email?: string },
+  user: { firstName: string; lastName: string; email?: string; isAdmin?: boolean },
   tutorStatus = "NONE"
 ) {
   fetchMock.mockImplementation((url: string) => {
@@ -107,4 +107,43 @@ describe("Navbar", () => {
       expect(screen.queryByRole("link", { name: "Become a tutor" })).not.toBeInTheDocument()
     );
   });
+});
+
+it("shows the review queue in the admin account menu", async () => {
+  setAuthToken("admin-token");
+  mockAuthedUser({ firstName: "Carol", lastName: "Davis", isAdmin: true });
+  renderNavbar();
+  fireEvent.click(await screen.findByRole("button", { name: "Open account menu" }));
+  expect(screen.getByRole("link", { name: "Tutor requests" })).toHaveAttribute(
+    "href",
+    "/admin/tutor-requests"
+  );
+});
+
+it("does not show the review queue to a nonadmin", async () => {
+  setAuthToken("student-token");
+  mockAuthedUser({ firstName: "Ada", lastName: "Lovelace", isAdmin: false });
+  renderNavbar();
+  fireEvent.click(await screen.findByRole("button", { name: "Open account menu" }));
+  expect(screen.queryByRole("link", { name: "Tutor requests" })).not.toBeInTheDocument();
+});
+
+it("retains tutor navigation while the latest profile edit is pending", async () => {
+  setAuthToken("tutor-token");
+  fetchMock.mockImplementation((url: string) =>
+    Promise.resolve({
+      ok: true,
+      json: async () =>
+        url === "/api/auth/me"
+          ? { firstName: "Ada", lastName: "Lovelace" }
+          : url === "/api/profiles/me/tutor"
+            ? { status: "APPROVED", tutor: { id: "tutor-1" }, version: { status: "PENDING" } }
+            : [],
+    })
+  );
+  renderNavbar();
+  await screen.findByRole("button", { name: "Open account menu" });
+  await waitFor(() =>
+    expect(screen.queryByRole("link", { name: "Become a tutor" })).not.toBeInTheDocument()
+  );
 });

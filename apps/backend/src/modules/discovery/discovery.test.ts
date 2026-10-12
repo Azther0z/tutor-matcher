@@ -52,7 +52,21 @@ describe("Discovery API", () => {
       id: USER_ID,
       firstName: "Anong",
       lastName: "P.",
-      tutor: { id: TUTOR_ID },
+      tutor: {
+        id: TUTOR_ID,
+        status: "PUBLISHED",
+        currentProfileVersion: {
+          status: "APPROVED",
+          bio: "Approved bio",
+          avatarUrl: null,
+          introVideoUrl: null,
+          identificationCardUrl: "https://example.com/private-id",
+          certifications: [
+            { fileUrl: "https://example.com/public-contest" },
+            { fileUrl: "https://example.com/public-second-contest" },
+          ],
+        },
+      },
     });
 
     const response = await request(app)
@@ -68,6 +82,45 @@ describe("Discovery API", () => {
       userId: USER_ID,
       firstName: "Anong",
       lastName: "P.",
+      status: "PUBLISHED",
+      verified: true,
+      bio: "Approved bio",
+      avatarUrl: null,
+      introVideoUrl: null,
+      certificationUrls: [
+        "https://example.com/public-contest",
+        "https://example.com/public-second-contest",
+      ],
     });
+    expect(JSON.stringify(response.body)).not.toContain("identificationCardUrl");
+    expect(JSON.stringify(response.body)).not.toContain("private-");
   });
+  it.each(["DRAFT", "PENDING", "REJECTED", "CANCELLED"])(
+    "never exposes a %s portfolio even if the current pointer is malformed",
+    async (status) => {
+      tutorFindUnique.mockResolvedValue({
+        id: USER_ID,
+        firstName: "Anong",
+        lastName: "P.",
+        tutor: {
+          id: TUTOR_ID,
+          status: "UNPUBLISHED",
+          currentProfileVersion: {
+            status,
+            bio: null,
+            avatarUrl: null,
+            introVideoUrl: null,
+            certifications: [{ fileUrl: "https://example.com/not-approved" }],
+          },
+        },
+      });
+      const response = await request(app)
+        .get(`/api/discovery/tutors/${TUTOR_ID}`)
+        .set("Authorization", `Bearer ${tokenFor()}`)
+        .expect(200);
+      expect(response.body.certificationUrls).toEqual([]);
+      expect(JSON.stringify(response.body)).not.toContain("not-approved");
+      expect(response.body).not.toHaveProperty("currentProfileVersion");
+    }
+  );
 });

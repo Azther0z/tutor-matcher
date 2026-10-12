@@ -112,10 +112,8 @@ describe("trial booking rules", () => {
           tutorId: SLOT_A,
           tutor: {
             id: SLOT_A,
-            avatarUrl: null,
-            bio: null,
-            introVideoUrl: null,
-            identificationCardUrl: "fixture",
+            currentProfileVersion: { avatarUrl: null, status: "APPROVED", certifications: [] },
+            currentProfileVersionId: SLOT_B,
             enrolledAt: now,
             status: "PUBLISHED",
             user: {
@@ -148,6 +146,7 @@ describe("trial booking rules", () => {
       id: SLOT_A,
       name: "Alice Johnson",
       avatarUrl: null,
+      certificationUrls: [],
     });
     expect(booking.payment).toMatchObject({
       walletBalance: "10.00",

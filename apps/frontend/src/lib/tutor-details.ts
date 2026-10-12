@@ -3,24 +3,26 @@ export type TutorDetails = {
   bio: string;
   introVideoUrl: string;
   identificationCardUrl: string;
-  certificationUrl: string;
+  certificationUrls: string[];
 };
 
-export type TutorDetailsFieldName = keyof TutorDetails;
-export type TutorDetailsFieldErrors = Partial<Record<TutorDetailsFieldName, string>>;
+export type TutorDetailsFieldName = Exclude<keyof TutorDetails, "certificationUrls">;
+export type TutorDetailsFieldErrors = Partial<Record<TutorDetailsFieldName, string>> & {
+  certifications?: (string | undefined)[];
+};
 
 export const emptyTutorDetails: TutorDetails = {
   avatarUrl: "",
   bio: "",
   introVideoUrl: "",
   identificationCardUrl: "",
-  certificationUrl: "",
+  certificationUrls: [],
 };
 
 function isValidUrl(value: string) {
   try {
     const url = new URL(normalizeHttpsUrl(value));
-    return url.protocol === "https:" && url.hostname.includes(".");
+    return url.protocol === "https:" || url.protocol === "http:";
   } catch {
     return false;
   }
@@ -57,11 +59,10 @@ export function validateTutorDetails(values: TutorDetails): TutorDetailsFieldErr
     errors.identificationCardUrl = "Enter a valid identification card URL.";
   }
 
-  if (!values.certificationUrl.trim()) {
-    errors.certificationUrl = "A teaching certification document is required.";
-  } else if (!isValidUrl(values.certificationUrl)) {
-    errors.certificationUrl = "Enter a valid certification document URL.";
-  }
+  const certifications = values.certificationUrls.map((value) =>
+    value.trim() && !isValidUrl(value) ? "Enter a valid certification document URL." : undefined
+  );
+  if (certifications.some(Boolean)) errors.certifications = certifications;
 
   return errors;
 }

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "./middleware/auth.ts";
+import { adminRouter } from "./modules/admin/admin.routes.ts";
 import { authRouter } from "./modules/auth/auth.routes.ts";
 import { bookingRouter } from "./modules/booking/booking.routes.ts";
 import { classroomRouter } from "./modules/classroom/classroom.routes.ts";
@@ -19,6 +20,7 @@ apiRouter.use("/health", healthRouter);
 apiRouter.use("/auth", authRouter);
 
 // Protected routes — require a valid Bearer token
+apiRouter.use("/admin", requireAuth, adminRouter);
 apiRouter.use("/profiles", requireAuth, profileRouter);
 apiRouter.use("/discovery", requireAuth, discoveryRouter);
 apiRouter.use("/bookings", requireAuth, bookingRouter);

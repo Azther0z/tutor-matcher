@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { TutorCertificationLinks } from "@/src/components/tutor-certification-links";
 import { ContinuousSlotPicker } from "@/src/components/continuous-slot-picker";
 import { RequireAuth } from "@/src/components/require-auth";
 import { BookingApiError, createBooking, getAvailability } from "@/src/lib/bookings-api";
@@ -54,7 +55,7 @@ function SubjectBookingContent() {
 
   async function submit() {
     // BOOK-1 requires at least one slot before creating the trial booking.
-    if (!data || selectedIds.length === 0) {
+    if (!data || data.acceptingBookings === false || selectedIds.length === 0) {
       setMessage("Choose at least one available time.");
       return;
     }
@@ -104,11 +105,22 @@ function SubjectBookingContent() {
             </p>
           )}
 
+          {!!data?.subject.tutor.certificationUrls?.length && (
+            <section className="mt-6 space-y-3" aria-label="Teaching certifications / portfolio">
+              <h2 className="text-xl font-semibold">Teaching certifications / portfolio</h2>
+              <TutorCertificationLinks urls={data.subject.tutor.certificationUrls} />
+            </section>
+          )}
+
           {loading ? (
             <p className="mt-10 text-zinc-500">Loading available times…</p>
           ) : openSlots.length === 0 ? (
             <div className="mt-8 rounded-2xl border border-dashed border-zinc-300 p-8 text-center">
-              <p className="font-medium">No open times right now</p>
+              <p className="font-medium">
+                {data?.acceptingBookings === false
+                  ? "This tutor isn’t accepting bookings"
+                  : "No open times right now"}
+              </p>
               <button
                 onClick={() => {
                   setLoading(true);
@@ -167,7 +179,9 @@ function SubjectBookingContent() {
           <button
             type="button"
             onClick={() => void submit()}
-            disabled={submitting || loading || selectedIds.length === 0}
+            disabled={
+              submitting || loading || data?.acceptingBookings === false || selectedIds.length === 0
+            }
             className="mt-5 h-12 w-full rounded-full bg-violet-600 font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Booking…" : total > 0 ? "Continue to payment" : "Confirm booking"}

@@ -1,470 +1,180 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import request from "supertest";
-
-const findUnique = jest.fn<(args: unknown) => Promise<unknown>>();
-const userUpdate = jest.fn<(args: unknown) => Promise<unknown>>();
-const tutorCreate = jest.fn<(args: unknown) => Promise<unknown>>();
-const tutorUpdate = jest.fn<(args: unknown) => Promise<unknown>>();
-const certificationCreate = jest.fn<(args: unknown) => Promise<unknown>>();
-const certificationUpdate = jest.fn<(args: unknown) => Promise<unknown>>();
-const transaction = jest.fn<(callback: (tx: unknown) => Promise<unknown>) => Promise<unknown>>();
-
+const findUser = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const findVersion = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const findVersions = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const createVersion = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const updateVersion = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const lock = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const tx = {
-  user: { findUnique, update: userUpdate },
-  tutor: { create: tutorCreate, update: tutorUpdate },
-  certification: { create: certificationCreate, update: certificationUpdate },
-};
-
-jest.unstable_mockModule("../../lib/db.ts", () => ({
-  // `tx` and the top-level client share the same mocks so a service can call
-  // `prisma.user.findUnique` directly or inside `prisma.$transaction`.
-  prisma: { $transaction: transaction, ...tx },
-}));
-
-const { app } = await import("../../app.ts");
-const { signAuthToken } = await import("../../lib/jwt.ts");
-
-const profile = {
-  user: { firstName: "Ada", lastName: "Lovelace" },
-  tutor: {
-    avatarUrl: "https://example.com/avatar.jpg",
-    bio: "I teach calculus.",
-    introVideoUrl: "https://example.com/intro.mp4",
-    identificationCardUrl: "https://example.com/identification-card.pdf",
-    certificationUrl: "https://example.com/certification.pdf",
+  $queryRaw: lock,
+  user: { findUnique: findUser },
+  tutorProfileVersion: {
+    findMany: findVersions,
+    findFirst: findVersion,
+    create: createVersion,
+    update: updateVersion,
   },
 };
-
-// The `Tutor` table's own columns — certificationUrl lives in a separate
-// `Certification` record, so it never appears in a tutor.create/update `data`.
-const tutorFields = {
-  avatarUrl: profile.tutor.avatarUrl,
-  bio: profile.tutor.bio,
-  introVideoUrl: profile.tutor.introVideoUrl,
-  identificationCardUrl: profile.tutor.identificationCardUrl,
+jest.unstable_mockModule("../../lib/db.ts", () => ({
+  prisma: {
+    ...tx,
+    $transaction: async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx),
+  },
+}));
+const { app } = await import("../../app.ts");
+const { signAuthToken } = await import("../../lib/jwt.ts");
+const auth = () =>
+  `Bearer ${signAuthToken({ sub: "11111111-1111-4111-8111-111111111111", email: "user@example.com", isAdmin: false })}`;
+const fields = {
+  bio: "Calculus",
+  introVideoUrl: "https://example.com/video",
+  identificationCardUrl: "https://example.com/id",
+  certificationUrl: "https://example.com/cert",
 };
-
-function tokenFor(userId: string) {
-  return signAuthToken({ sub: userId, email: "tutor@example.com", isAdmin: false });
-}
-
-describe("PUT /api/profiles/me", () => {
-  const tutorId = "88888888-8888-4888-8888-888888888888";
-  const certificationId = "99999999-9999-4999-8999-999999999999";
-
-  beforeEach(() => {
-    findUnique.mockReset();
-    userUpdate.mockReset();
-    tutorCreate.mockReset();
-    tutorUpdate.mockReset();
-    certificationCreate.mockReset();
-    certificationUpdate.mockReset();
-    transaction.mockReset();
-    transaction.mockImplementation(async (callback) => callback(tx));
+beforeEach(() => {
+  for (const mock of [findUser, findVersion, findVersions, createVersion, updateVersion, lock])
+    mock.mockReset();
+  findUser.mockResolvedValue({ tutor: null });
+  findVersion.mockResolvedValue(null);
+  findVersions.mockResolvedValue([]);
+  lock.mockResolvedValue([]);
+});
+describe("AUTH-4 profile validation", () => {
+  it.each([
+    ["put", "/api/profiles/me/tutor"],
+    ["put", "/api/profiles/me/tutor/draft"],
+    ["post", "/api/profiles/me/tutor/submit"],
+    ["post", "/api/profiles/me/tutor/withdraw"],
+    ["post", "/api/profiles/me/tutor/submissions/33333333-3333-4333-8333-333333333333/copy"],
+    ["patch", "/api/profiles/me/tutor/publication"],
+  ])("requires authentication on %s %s", async (method, path) => {
+    await request(app)[method as "put" | "post" | "patch"](path!).send({}).expect(401);
+    expect(lock).not.toHaveBeenCalled();
   });
-
-  it("requires authentication", async () => {
-    await request(app).put("/api/profiles/me").send(profile).expect(401);
-    expect(transaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects invalid profile data", async () => {
-    await request(app)
-      .put("/api/profiles/me")
-      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
-      .send({ ...profile, tutor: { ...profile.tutor, identificationCardUrl: "" } })
-      .expect(400);
-
-    expect(transaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects a missing Tutor bio", async () => {
-    await request(app)
-      .put("/api/profiles/me")
-      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
-      .send({ ...profile, tutor: { ...profile.tutor, bio: "" } })
-      .expect(400);
-
-    expect(transaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects an identification card that is not a URL", async () => {
-    await request(app)
-      .put("/api/profiles/me")
-      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
-      .send({ ...profile, tutor: { ...profile.tutor, identificationCardUrl: "ID-123" } })
-      .expect(400);
-
-    expect(transaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects a missing certification document", async () => {
-    await request(app)
-      .put("/api/profiles/me")
-      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
-      .send({ ...profile, tutor: { ...profile.tutor, certificationUrl: "" } })
-      .expect(400);
-
-    expect(transaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects a Student with no linked Tutor record", async () => {
-    findUnique.mockResolvedValue(null);
-
-    await request(app)
-      .put("/api/profiles/me")
-      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
-      .send(profile)
-      .expect(403);
-
-    expect(tutorCreate).not.toHaveBeenCalled();
-    expect(userUpdate).not.toHaveBeenCalled();
-  });
-
-  it.each(["PENDING", "REJECTED"] as const)(
-    "rejects an account whose Tutor application is still %s — a linked record is not an approved Tutor",
-    async (status) => {
-      findUnique.mockResolvedValue({ tutorId, tutor: { status, certifications: [] } });
-
+  it.each(["ftp://example.com/id", "javascript:alert(1)", "invalid", ""])(
+    "rejects unsafe/invalid document URL %s",
+    async (identificationCardUrl) => {
       await request(app)
-        .put("/api/profiles/me")
-        .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
-        .send(profile)
-        .expect(403);
-
-      expect(tutorUpdate).not.toHaveBeenCalled();
-      expect(tutorCreate).not.toHaveBeenCalled();
+        .put("/api/profiles/me/tutor")
+        .set("Authorization", auth())
+        .send({ ...fields, identificationCardUrl, consentAccepted: true })
+        .expect(400);
+      expect(lock).not.toHaveBeenCalled();
     }
   );
-
-  it.each(["PUBLISHED", "UNPUBLISHED"] as const)(
-    "updates the listing and certification for an approved (%s) Tutor",
-    async (status) => {
-      findUnique.mockResolvedValue({
-        tutorId,
-        tutor: { status, certifications: [{ id: certificationId }] },
-      });
-      tutorUpdate.mockResolvedValue({ id: tutorId, ...tutorFields });
-      userUpdate.mockResolvedValue({
-        id: "11111111-1111-4111-8111-111111111111",
-        email: "tutor@example.com",
-        firstName: "Ada",
-        lastName: "Lovelace",
-        createdAt: new Date("2026-01-01T00:00:00.000Z"),
-      });
-      certificationUpdate.mockResolvedValue({
-        id: certificationId,
-        fileUrl: profile.tutor.certificationUrl,
-        tutorId,
-      });
-
-      const res = await request(app)
-        .put("/api/profiles/me")
-        .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
-        .send(profile)
-        .expect(200);
-
-      expect(tutorUpdate).toHaveBeenCalledWith({ where: { id: tutorId }, data: tutorFields });
-      expect(certificationUpdate).toHaveBeenCalledWith({
-        where: { id: certificationId },
-        data: { fileUrl: profile.tutor.certificationUrl },
-      });
-      expect(tutorCreate).not.toHaveBeenCalled();
-      expect(certificationCreate).not.toHaveBeenCalled();
-      expect(res.body.user).not.toHaveProperty("password");
-      expect(res.body.tutor).toMatchObject(profile.tutor);
+  it.each([false, undefined])(
+    "requires explicit application consent (%s)",
+    async (consentAccepted) => {
+      await request(app)
+        .put("/api/profiles/me/tutor")
+        .set("Authorization", auth())
+        .send({ ...fields, consentAccepted })
+        .expect(400);
     }
   );
-
-  it("creates the certification document the first time an approved Tutor submits one", async () => {
-    findUnique.mockResolvedValue({
-      tutorId,
-      tutor: { status: "PUBLISHED", certifications: [] },
-    });
-    tutorUpdate.mockResolvedValue({ id: tutorId, ...tutorFields });
-    userUpdate.mockResolvedValue({
-      id: "11111111-1111-4111-8111-111111111111",
-      email: "tutor@example.com",
-      firstName: "Ada",
-      lastName: "Lovelace",
-      createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    });
-    certificationCreate.mockResolvedValue({
-      id: certificationId,
-      fileUrl: profile.tutor.certificationUrl,
-      tutorId,
-    });
-
+  it.each(["/api/profiles/me/tutor", "/api/profiles/me"])(
+    "validates every certificate snapshot URL on %s before persistence",
+    async (path) => {
+      const tutor = {
+        ...fields,
+        certificationUrls: [fields.certificationUrl, "javascript:alert(1)"],
+      };
+      await request(app)
+        .put(path)
+        .set("Authorization", auth())
+        .send(path === "/api/profiles/me" ? { tutor } : { ...tutor, consentAccepted: true })
+        .expect(400);
+      expect(lock).not.toHaveBeenCalled();
+      expect(createVersion).not.toHaveBeenCalled();
+    }
+  );
+  it("rejects ambiguous legacy draft selection without mutating anything", async () => {
+    findVersions.mockResolvedValue([{ status: "DRAFT" }, { status: "DRAFT" }]);
     await request(app)
-      .put("/api/profiles/me")
-      .set("Authorization", `Bearer ${tokenFor("11111111-1111-4111-8111-111111111111")}`)
-      .send(profile)
-      .expect(200);
-
-    expect(certificationCreate).toHaveBeenCalledWith({
-      data: { fileUrl: profile.tutor.certificationUrl, tutorId },
-    });
-    expect(certificationUpdate).not.toHaveBeenCalled();
-  });
-});
-
-describe("PUT /api/profiles/me/tutor", () => {
-  const userId = "11111111-1111-4111-8111-111111111111";
-  const tutorId = "88888888-8888-4888-8888-888888888888";
-  const certificationId = "99999999-9999-4999-8999-999999999999";
-
-  const enrollmentInput = {
-    ...profile.tutor,
-    certificationUrl: "https://example.com/certification.pdf",
-    consentAccepted: true,
-  };
-
-  beforeEach(() => {
-    findUnique.mockReset();
-    userUpdate.mockReset();
-    tutorCreate.mockReset();
-    tutorUpdate.mockReset();
-    certificationCreate.mockReset();
-    certificationUpdate.mockReset();
-    transaction.mockReset();
-    transaction.mockImplementation(async (callback) => callback(tx));
-  });
-
-  it("requires authentication", async () => {
-    await request(app).put("/api/profiles/me/tutor").send(enrollmentInput).expect(401);
-    expect(transaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects an application with a missing identification card", async () => {
-    await request(app)
-      .put("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .send({ ...enrollmentInput, identificationCardUrl: "" })
-      .expect(400);
-
-    expect(transaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects an application with a missing certification document", async () => {
-    await request(app)
-      .put("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .send({ ...enrollmentInput, certificationUrl: "" })
-      .expect(400);
-
-    expect(transaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects an application that has not accepted the consent checkbox", async () => {
-    await request(app)
-      .put("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .send({ ...enrollmentInput, consentAccepted: false })
-      .expect(400);
-
-    expect(transaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects an application with an identification card that is not a URL", async () => {
-    await request(app)
-      .put("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .send({ ...enrollmentInput, identificationCardUrl: "ID-123" })
-      .expect(400);
-
-    expect(transaction).not.toHaveBeenCalled();
-  });
-
-  it("returns 404 when the account no longer exists", async () => {
-    findUnique.mockResolvedValue(null);
-
-    await request(app)
-      .put("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .send(enrollmentInput)
-      .expect(404);
-
-    expect(tutorCreate).not.toHaveBeenCalled();
-  });
-
-  it("creates a Tutor record and its certification for a first-time applicant", async () => {
-    findUnique.mockResolvedValue({ tutorId: null, tutor: null });
-    tutorCreate.mockResolvedValue({ id: tutorId, status: "UNPUBLISHED", ...profile.tutor });
-    userUpdate.mockResolvedValue({ id: userId });
-    certificationCreate.mockResolvedValue({
-      id: certificationId,
-      fileUrl: enrollmentInput.certificationUrl,
-      tutorId,
-    });
-
-    const res = await request(app)
-      .put("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .send(enrollmentInput)
-      .expect(200);
-
-    expect(tutorCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({ ...tutorFields, status: "UNPUBLISHED" }),
-    });
-    expect(userUpdate).toHaveBeenCalledWith({
-      where: { id: userId },
-      data: { tutor: { connect: { id: tutorId } } },
-    });
-    expect(certificationCreate).toHaveBeenCalledWith({
-      data: { fileUrl: enrollmentInput.certificationUrl, tutorId },
-    });
-    expect(certificationUpdate).not.toHaveBeenCalled();
-    expect(res.body.status).toBe("APPROVED");
-    expect(res.body.tutor.status).toBe("UNPUBLISHED");
-    expect(res.body.tutor).toMatchObject({
-      ...profile.tutor,
-      certificationUrl: enrollmentInput.certificationUrl,
-    });
-  });
-
-  it("updates the existing Tutor record and certification on re-submission without re-linking", async () => {
-    findUnique.mockResolvedValue({
-      tutorId,
-      tutor: { status: "REJECTED", certifications: [{ id: certificationId }] },
-    });
-    tutorUpdate.mockResolvedValue({ id: tutorId, status: "UNPUBLISHED", ...profile.tutor });
-    certificationUpdate.mockResolvedValue({
-      id: certificationId,
-      fileUrl: enrollmentInput.certificationUrl,
-      tutorId,
-    });
-
-    const res = await request(app)
-      .put("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .send(enrollmentInput)
-      .expect(200);
-
-    expect(tutorUpdate).toHaveBeenCalledWith({
-      where: { id: tutorId },
-      data: { ...tutorFields, status: "UNPUBLISHED" },
-    });
-    expect(certificationUpdate).toHaveBeenCalledWith({
-      where: { id: certificationId },
-      data: { fileUrl: enrollmentInput.certificationUrl },
-    });
-    expect(tutorCreate).not.toHaveBeenCalled();
-    expect(certificationCreate).not.toHaveBeenCalled();
-    expect(userUpdate).not.toHaveBeenCalled();
-    expect(res.body.status).toBe("APPROVED");
-    expect(res.body.tutor.status).toBe("UNPUBLISHED");
-  });
-
-  it("returns 409 when the account is already an approved Tutor", async () => {
-    findUnique.mockResolvedValue({ tutorId, tutor: { status: "PUBLISHED", certifications: [] } });
-
-    await request(app)
-      .put("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .send(enrollmentInput)
+      .put("/api/profiles/me/tutor/draft")
+      .set("Authorization", auth())
+      .send({ bio: "New bio" })
       .expect(409);
-
-    expect(tutorUpdate).not.toHaveBeenCalled();
-    expect(tutorCreate).not.toHaveBeenCalled();
-    expect(certificationCreate).not.toHaveBeenCalled();
-    expect(certificationUpdate).not.toHaveBeenCalled();
+    expect(createVersion).not.toHaveBeenCalled();
+    expect(updateVersion).not.toHaveBeenCalled();
+  });
+  it("reports NONE with both nullable records", async () => {
+    const res = await request(app)
+      .get("/api/profiles/me/tutor")
+      .set("Authorization", auth())
+      .expect(200);
+    expect(res.body).toEqual({
+      status: "NONE",
+      tutor: null,
+      version: null,
+      drafts: [],
+      submissions: [],
+      pendingRequest: null,
+      latestReview: null,
+      latestSubmittedVersion: null,
+    });
+  });
+  it("returns 404 for a deleted account", async () => {
+    findUser.mockResolvedValue(null);
+    await request(app).get("/api/profiles/me/tutor").set("Authorization", auth()).expect(404);
+  });
+  it("refuses publication before approval", async () => {
+    await request(app)
+      .patch("/api/profiles/me/tutor/publication")
+      .set("Authorization", auth())
+      .send({ published: true })
+      .expect(403);
   });
 });
 
-describe("GET /api/profiles/me/tutor", () => {
-  const userId = "11111111-1111-4111-8111-111111111111";
-  const tutorRecord = {
-    id: "88888888-8888-4888-8888-888888888888",
-    avatarUrl: null,
-    bio: "I teach calculus.",
-    introVideoUrl: "https://example.com/intro.mp4",
-    identificationCardUrl: "https://example.com/identification-card.pdf",
-    status: "PENDING",
-    enrolledAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
-    certifications: [
-      {
-        id: "99999999-9999-4999-8999-999999999999",
-        fileUrl: "https://example.com/certification.pdf",
-      },
-    ],
-  };
-  const tutorWithoutCertifications = {
-    id: tutorRecord.id,
-    avatarUrl: tutorRecord.avatarUrl,
-    bio: tutorRecord.bio,
-    introVideoUrl: tutorRecord.introVideoUrl,
-    identificationCardUrl: tutorRecord.identificationCardUrl,
-    status: tutorRecord.status,
-    enrolledAt: tutorRecord.enrolledAt,
-  };
-
-  beforeEach(() => {
-    findUnique.mockReset();
+describe("selected draft request validation", () => {
+  it.each(["put", "delete", "post"] as const)(
+    "rejects malformed draft IDs on %s",
+    async (method) => {
+      const suffix = method === "post" ? "/submit" : "";
+      const attempt = request(app)[method]("/api/profiles/me/tutor/drafts/not-a-uuid" + suffix);
+      await attempt.set("Authorization", auth()).send({ consentAccepted: true }).expect(400);
+      expect(lock).not.toHaveBeenCalled();
+    }
+  );
+  it.each(
+    [["ftp://example.com/cert"], ["https://example.com/cert", "javascript:alert(1)"]].map(
+      (certificationUrls) => ({ certificationUrls })
+    )
+  )("rejects invalid supplied direct certification arrays (%s)", async ({ certificationUrls }) => {
+    const modern = { ...fields, certificationUrl: undefined };
+    await request(app)
+      .put("/api/profiles/me/tutor")
+      .set("Authorization", auth())
+      .send({ ...modern, certificationUrls, consentAccepted: true })
+      .expect(400);
+    expect(lock).not.toHaveBeenCalled();
   });
+  it.each([false, undefined])(
+    "requires fresh consent on selected submit (%s)",
+    async (consentAccepted) => {
+      await request(app)
+        .post("/api/profiles/me/tutor/drafts/11111111-1111-4111-8111-111111111111/submit")
+        .set("Authorization", auth())
+        .send({ consentAccepted })
+        .expect(400);
+      expect(lock).not.toHaveBeenCalled();
+    }
+  );
+});
 
-  it("requires authentication", async () => {
-    await request(app).get("/api/profiles/me/tutor").expect(401);
-    expect(findUnique).not.toHaveBeenCalled();
-  });
-
-  it("reports NONE when the account has no Tutor record", async () => {
-    findUnique.mockResolvedValue({ tutor: null });
-
-    const res = await request(app)
-      .get("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .expect(200);
-
-    expect(res.body).toEqual({ status: "NONE", tutor: null });
-  });
-
-  it("reports PENDING with the submitted application, including the certification document", async () => {
-    findUnique.mockResolvedValue({ tutor: tutorRecord });
-
-    const res = await request(app)
-      .get("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .expect(200);
-
-    expect(res.body).toEqual({
-      status: "PENDING",
-      tutor: {
-        ...tutorWithoutCertifications,
-        certificationUrl: "https://example.com/certification.pdf",
-      },
-    });
-  });
-
-  it("reports a null certificationUrl when no certification has been submitted", async () => {
-    findUnique.mockResolvedValue({ tutor: { ...tutorRecord, certifications: [] } });
-
-    const res = await request(app)
-      .get("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .expect(200);
-
-    expect(res.body.tutor.certificationUrl).toBeNull();
-  });
-
-  it("collapses PUBLISHED and UNPUBLISHED to APPROVED", async () => {
-    findUnique.mockResolvedValue({ tutor: { ...tutorRecord, status: "UNPUBLISHED" } });
-
-    const res = await request(app)
-      .get("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .expect(200);
-
-    expect(res.body.status).toBe("APPROVED");
-  });
-
-  it("reports REJECTED so the applicant can re-submit", async () => {
-    findUnique.mockResolvedValue({ tutor: { ...tutorRecord, status: "REJECTED" } });
-
-    const res = await request(app)
-      .get("/api/profiles/me/tutor")
-      .set("Authorization", `Bearer ${tokenFor(userId)}`)
-      .expect(200);
-
-    expect(res.body.status).toBe("REJECTED");
-  });
+describe("optional certification request schemas", () => {
+  it.each([{ certificationUrls: undefined }, { certificationUrls: [] }])(
+    "accepts absent or empty certification collections (%s)",
+    async ({ certificationUrls }) => {
+      const { tutorEnrollmentRequestSchema, profileRequestSchema } =
+        await import("./profile.schema.ts");
+      const modern = { ...fields, certificationUrl: undefined, certificationUrls };
+      expect(
+        tutorEnrollmentRequestSchema.safeParse({ ...modern, consentAccepted: true }).success
+      ).toBe(true);
+      expect(profileRequestSchema.safeParse({ tutor: modern }).success).toBe(true);
+    }
+  );
 });
