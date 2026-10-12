@@ -37,9 +37,16 @@ export type TutorApplicationResponse = {
   latestReview: TutorProfileVersion | null;
   latestSubmittedVersion: TutorProfileVersion | null;
 };
+// SAFE-2: an identity or certification URL whose file extension blocks approval.
+export type TutorDocumentIssue = {
+  document: "identificationCard" | "certification";
+  url: string;
+  extension: string;
+};
 export type TutorReviewRequest = TutorProfileVersion & {
   user: { id: string; firstName: string; lastName: string; email: string };
   currentProfile: TutorApplication | null;
+  documentIssues?: TutorDocumentIssue[];
 };
 
 export function getTutorCertificationUrls(profile: TutorProfileFields | null): string[] {
