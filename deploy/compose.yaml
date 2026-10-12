@@ -6,7 +6,7 @@ services:
       POSTGRES_DB: tutor_matcher
       POSTGRES_USER: postgres
     env_file:
-      - ./secrets/postgres.enc.env
+      - ./secrets/postgres-password.enc.env
     volumes:
       - /srv/platform/tutor-matcher/postgres:/var/lib/postgresql/data
     networks:
@@ -56,7 +56,8 @@ services:
     command: ["sh", "-c", "npm run db:push -- --force-reset && npm start"]
     hostname: tutor-matcher-backend
     env_file:
-      - ./secrets/backend.enc.env
+      - ./secrets/database-url.enc.env
+      - ./secrets/resend.enc.env
     environment:
       PORT: "8000"
       FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3333}"
