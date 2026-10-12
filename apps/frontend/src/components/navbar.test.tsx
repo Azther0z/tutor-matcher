@@ -107,6 +107,15 @@ describe("Navbar", () => {
       expect(screen.queryByRole("link", { name: "Become a tutor" })).not.toBeInTheDocument()
     );
   });
+
+  it("hides Become a tutor for an admin", async () => {
+    setAuthToken("admin-token");
+    mockAuthedUser({ firstName: "Carol", lastName: "Davis", isAdmin: true }, "NONE");
+    renderNavbar();
+
+    await screen.findByRole("button", { name: "Open account menu" });
+    expect(screen.queryByRole("link", { name: "Become a tutor" })).not.toBeInTheDocument();
+  });
 });
 
 it("shows the review queue in the admin account menu", async () => {
