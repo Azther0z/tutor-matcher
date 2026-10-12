@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/db.ts";
+import { sendTutorRequestRejectedEmail } from "../../lib/email.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
 import {
   TutorWorkflowError,
@@ -10,6 +11,7 @@ import {
   validateSubmission,
 } from "../profile/profile.service.ts";
 import type { TutorReviewRequest } from "./admin.schema.ts";
+import { UnsupportedDocumentFormatError, findUnsupportedDocuments } from "./document-format.ts";
 
 async function requireAdmin(tx: Prisma.TransactionClient, adminId: string) {
   const user = await tx.user.findUnique({ where: { id: adminId }, select: { isAdmin: true } });
@@ -37,6 +39,8 @@ export async function listTutorRequests(adminId: string) {
     });
     return requests.map(({ user, ...version }) => ({
       ...flattenVersion(version),
+      // Lets the admin page name an unsupported file before an approval is attempted.
+      documentIssues: findUnsupportedDocuments(version),
       user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email },
       currentProfile: user.tutor ? flattenTutor(user.tutor) : null,
     }));
@@ -44,7 +48,7 @@ export async function listTutorRequests(adminId: string) {
 }
 
 export async function reviewTutorRequest(adminId: string, id: string, input: TutorReviewRequest) {
-  return prisma.$transaction(async (tx) => {
+  const { reviewed, applicant } = await prisma.$transaction(async (tx) => {
     await requireAdmin(tx, adminId);
     const initial = await tx.tutorProfileVersion.findUnique({
       where: { id },
@@ -60,7 +64,12 @@ export async function reviewTutorRequest(adminId: string, id: string, input: Tut
     if (!version) throw new TutorWorkflowError(404, "Tutor request not found");
     if (version.status !== "PENDING")
       throw new TutorWorkflowError(409, "This request is no longer pending");
-    if (input.decision === "APPROVED") validateSubmission(version);
+    if (input.decision === "APPROVED") {
+      validateSubmission(version);
+      // Checked before any write, so a blocked approval leaves the request pending.
+      const documentIssues = findUnsupportedDocuments(version);
+      if (documentIssues.length > 0) throw new UnsupportedDocumentFormatError(documentIssues);
+    }
     const reviewed = await tx.tutorProfileVersion.update({
       where: { id },
       data: {
@@ -84,6 +93,26 @@ export async function reviewTutorRequest(adminId: string, id: string, input: Tut
         await tx.user.update({ where: { id: user.id }, data: { tutorId: tutor.id } });
       }
     }
-    return flattenVersion(reviewed);
+    return {
+      reviewed,
+      applicant: { email: user.email, firstName: user.firstName, hasTutor: !!user.tutor },
+    };
   });
+
+  // Sent after commit: a rolled-back review never emails, and a mail outage never undoes a
+  // recorded decision, since the applicant also sees the reason in their submission history.
+  if (reviewed.status === "REJECTED" && reviewed.rejectionReason) {
+    try {
+      await sendTutorRequestRejectedEmail({
+        to: applicant.email,
+        firstName: applicant.firstName,
+        reason: reviewed.rejectionReason,
+        hasTutor: applicant.hasTutor,
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  return flattenVersion(reviewed);
 }
