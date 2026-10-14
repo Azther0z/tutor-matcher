@@ -47,6 +47,8 @@ export function Navbar() {
   // approved without needing a separate effect to reset it.
   const [tutorStatus, setTutorStatus] = useState<string | null>(null);
   const isApprovedTutor = status === "authenticated" && tutorStatus === "APPROVED";
+  // Hides the call to apply only; an admin can still open /enroll-tutor directly.
+  const isAdmin = status === "authenticated" && user?.isAdmin === true;
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
 
   useEffect(() => {
@@ -131,7 +133,7 @@ export function Navbar() {
             </Link>
           ))}
 
-          {!isApprovedTutor && (
+          {!isApprovedTutor && !isAdmin && (
             <Link
               href="/enroll-tutor"
               className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-zinc-200"

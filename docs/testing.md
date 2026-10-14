@@ -125,3 +125,12 @@ existing booked subject details and conversations remain accessible. The local r
 workflow is described in the README; it deletes and recreates disposable databases
 without Prisma migration history. Database tests also verify that a second pending
 version is rejected by the partial unique index even when bypassing workflow services.
+
+## SAFE-2 acceptance coverage
+
+Admin tests verify that approving a request whose identification card or certification URL has
+an unsupported extension returns 422 naming each file and leaves the request pending, that
+extension-less URLs stay approvable, and that rejection still works. Rejection emails the
+trimmed reason to the applicant after the decision commits; an email failure is logged without
+undoing the rejection. Frontend tests cover the disabled Approve action, the file list and the
+server's 422 message.

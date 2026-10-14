@@ -11,6 +11,7 @@ import {
 import {
   TutorApiError,
   tutorApi,
+  type TutorDocumentIssue,
   type TutorProfileVersion,
   type TutorReviewRequest,
 } from "@/src/lib/tutor-application";
@@ -18,6 +19,10 @@ import {
 const shell = "mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16";
 const button =
   "rounded-full border border-black/[.12] px-5 py-2.5 font-medium disabled:opacity-60 dark:border-white/[.18]";
+const documentLabels: Record<TutorDocumentIssue["document"], string> = {
+  identificationCard: "Identification card",
+  certification: "Certification",
+};
 
 export default function TutorRequestsPage() {
   return (
@@ -170,6 +175,9 @@ function ReviewRow({
   const [reasonError, setReasonError] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  const documentIssues = request.documentIssues ?? [];
+  const approvalBlocked = documentIssues.length > 0;
+  const documentIssuesId = `document-issues-${request.id}`;
 
   async function review(decision: "APPROVED" | "REJECTED") {
     if (busyRef.current) return;
@@ -235,6 +243,24 @@ function ReviewRow({
           {request.rejectionReason && <p className="mt-3">Reason: {request.rejectionReason}</p>}
           {request.status === "PENDING" && (
             <fieldset disabled={busy} className="mt-5 flex flex-col gap-3">
+              {approvalBlocked && (
+                <div
+                  id={documentIssuesId}
+                  className="rounded-lg border border-red-500/40 bg-red-500/5 p-4 text-sm text-red-700 dark:text-red-300"
+                >
+                  <p className="font-medium">Approval blocked: unsupported file format</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    {documentIssues.map((issue, index) => (
+                      <li key={index} className="break-all">
+                        {documentLabels[issue.document]} ({issue.extension}): {issue.url}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2">
+                    Reject the request with a reason so the applicant can submit a supported file.
+                  </p>
+                </div>
+              )}
               <label htmlFor={`reason-${request.id}`} className="text-sm font-medium">
                 Rejection reason (required to reject)
               </label>
@@ -263,7 +289,8 @@ function ReviewRow({
                 </button>
                 <button
                   className={`${button} bg-foreground text-background`}
-                  disabled={busy}
+                  disabled={busy || approvalBlocked}
+                  aria-describedby={approvalBlocked ? documentIssuesId : undefined}
                   onClick={() => void review("APPROVED")}
                 >
                   {busy ? "Reviewing…" : "Approve request"}

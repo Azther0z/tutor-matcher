@@ -214,3 +214,58 @@ it("filters past submissions with read-only content, reasons, and no review acti
   ).toHaveLength(4);
   expect(screen.getAllByRole("button", { name: "Approve request" })).toHaveLength(1);
 });
+
+it("blocks approval and names verification files with unsupported formats", async () => {
+  fetchMock
+    .mockResolvedValueOnce(
+      jsonResponse([
+        {
+          ...reviewRequest,
+          identificationCardUrl: "https://example.com/id.docx",
+          documentIssues: [
+            {
+              document: "identificationCard",
+              url: "https://example.com/id.docx",
+              extension: ".docx",
+            },
+          ],
+        },
+      ])
+    )
+    .mockResolvedValueOnce(jsonResponse({ ...reviewRequest, status: "REJECTED" }));
+  render(<TutorRequestsPage />);
+  const approve = await screen.findByRole("button", { name: "Approve request" });
+  expect(approve).toBeDisabled();
+  expect(approve).toHaveAccessibleDescription(/Approval blocked: unsupported file format/);
+  expect(
+    screen.getByText("Identification card (.docx): https://example.com/id.docx")
+  ).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText(/Rejection reason/), {
+    target: { value: "Upload the identification card as a PDF or image." },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Reject request" }));
+  expect(await screen.findByText("Request rejected for Ada Lovelace.")).toBeInTheDocument();
+});
+
+it("shows which files blocked an approval the server refused", async () => {
+  const message =
+    "Approval blocked: unsupported file format for certification (.exe). Supported formats: .pdf, .jpg, .jpeg, .png, .webp.";
+  fetchMock.mockResolvedValueOnce(jsonResponse([reviewRequest])).mockResolvedValueOnce(
+    jsonResponse(
+      {
+        message,
+        documents: [
+          {
+            document: "certification",
+            url: "https://example.com/award.exe",
+            extension: ".exe",
+          },
+        ],
+      },
+      422
+    )
+  );
+  render(<TutorRequestsPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Approve request" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(message);
+});

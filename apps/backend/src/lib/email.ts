@@ -111,6 +111,22 @@ type PaymentNotificationEmail = {
   description: string;
 };
 
+type TutorRequestRejectedEmail = {
+  to: string;
+  firstName: string;
+  reason: string;
+  hasTutor: boolean;
+};
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 async function deliverEmail(payload: EmailPayload, deliveryErrorMessage: string) {
   const client = createResendClient();
   let result: { error?: unknown } | unknown;
@@ -192,5 +208,39 @@ export async function sendPaymentNotificationEmail({
       text: `${description}: ${formattedAmount}.`,
     },
     "Could not send payment notification email"
+  );
+}
+
+// SAFE-2: a rejection reason reaches the applicant by email as well as in their submission
+// history. It is an account email like password reset, so notification preferences do not apply.
+// Approved Tutors revise in Tutor settings; first-time applicants on the application page.
+export async function sendTutorRequestRejectedEmail({
+  to,
+  firstName,
+  reason,
+  hasTutor,
+}: TutorRequestRejectedEmail) {
+  const reviseUrl = new globalThis.URL(
+    hasTutor ? "/settings/tutor" : "/enroll-tutor",
+    env.frontendUrl
+  ).toString();
+
+  if (getEmailDeliveryMode() === "log") {
+    console.info(`[notification:tutor-request] ${to}: request not approved. Reason: ${reason}`);
+    return;
+  }
+
+  await deliverEmail(
+    {
+      from: env.resendFromEmail,
+      to: [to],
+      subject: "Your Tutor Matcher tutor request was not approved",
+      html: `<p>Hi ${escapeHtml(firstName)},</p>
+      <p>An admin reviewed your tutor request and did not approve it.</p>
+      <p><strong>Reason:</strong> ${escapeHtml(reason)}</p>
+      <p><a href="${reviseUrl}">Revise and submit again</a></p>`,
+      text: `Hi ${firstName},\n\nAn admin reviewed your tutor request and did not approve it.\n\nReason: ${reason}\n\nRevise and submit again: ${reviseUrl}`,
+    },
+    "Could not send tutor request notification email"
   );
 }

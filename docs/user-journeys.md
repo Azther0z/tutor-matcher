@@ -337,8 +337,11 @@ Related stories: US6-1 … US6-3.
 5. An admin compares proposed and current content at `/admin/tutor-requests`. Initial
    approval creates a Tutor as **unpublished**, linked to the approved version on the
    same User account, and grants a **Verified** badge. The tutor chooses when to publish.
-   Rejection requires a reason displayed to the applicant; revised submissions create
-   new versions. Review outcomes are visible in the application/settings UI.
+   Rejection requires a reason displayed to the applicant and emailed to them; revised
+   submissions create new versions. Review outcomes are visible in the application/settings UI.
+   Approval is blocked while the identification card or a certification URL ends in a file
+   extension other than `.pdf`, `.jpg`, `.jpeg`, `.png` or `.webp`; the admin sees which file
+   and rejects with a reason instead. A URL without an extension is left to the admin to check.
 6. After approval, the application shows the approved Tutor and links to Tutor settings
    and the dashboard. The user chooses when to publish.
 
@@ -457,7 +460,8 @@ left and status filter on the top-right. It defaults to Pending and can filter
 Approved, Rejected, Cancelled or All submissions. Unsent drafts are never included.
 Past submissions show their exact content, submitted/review dates and rejection reason
 where applicable, with no approval or rejection controls. Pending requests retain the
-current-versus-proposed comparison and review actions when expanded. Owner and admin
+current-versus-proposed comparison and review actions when expanded; a pending request
+with an unsupported verification file lists those files and disables Approve. Owner and admin
 lists share status badges: amber for Pending Verification, green for Approved, red for
 Rejected and gray for Cancelled. Reload icons have accessible labels and tooltips.
 
