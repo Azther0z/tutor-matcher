@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
 import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
+import { subjectSnapshot } from "../subject/subject.public.ts";
 import type {
   CancelBookingInput,
   CreateBookingInput,
@@ -253,9 +254,11 @@ export function mapBookingResponse(
     },
     subject: {
       id: booking.subject.id,
-      name: booking.subject.name,
-      description: booking.subject.description,
-      hourlyRate: decimalString(booking.subject.hourlyRate),
+      name: booking.subjectName ?? booking.subject.name,
+      description:
+        booking.subjectName == null ? booking.subject.description : booking.subjectDescription,
+      hourlyRate: decimalString(booking.subjectHourlyRate ?? booking.subject.hourlyRate),
+      format: booking.subjectFormat ?? booking.subject.format,
       tutor: {
         id: booking.subject.tutor.id,
         name: booking.subject.tutor.user
@@ -368,6 +371,7 @@ export async function getSubjectAvailability(subjectId: string) {
       name: subject.name,
       description: subject.description,
       hourlyRate: decimalString(subject.hourlyRate),
+      format: subject.format,
       tutor: {
         id: subject.tutor.id,
         name: subject.tutor.user
@@ -438,6 +442,7 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
           data: {
             userId,
             subjectId: input.subjectId,
+            ...subjectSnapshot(subject),
             description: input.description,
             isTrial: input.isTrial,
             totalAmount: amount,

@@ -390,9 +390,23 @@ remain restricted to their owner and authorized admins. Draft, pending, rejected
 cancelled portfolios are not shown to students.
 
 **Subjects.** Each subject is its own offering with a name, description, hourly rate,
-and format. Adding starts as a single **Add subject** button that opens the form;
+and format. PROF-6 currently supports **Online** only; in-person offerings and venues
+are deferred. Adding starts as a single **Add subject** button that opens the form;
 editing happens inline on the selected subject row. The Subjects section sits below
-Verification.
+Verification. Name and description are required (up to 100 and 2000 characters respectively).
+Rates are positive Thai baht amounts with at most two decimal places, up to ฿99,999,999.99.
+Duplicate names are allowed: each offering has its own identity.
+
+Subject saves take effect immediately and independently of profile review, including
+while an approved Tutor is unpublished or has a profile edit awaiting review. Only the
+owning Tutor can create or edit their offerings. Cancel discards unsaved form changes.
+Publication continues to control discovery and new bookings.
+
+A booking captures its subject name, description, hourly rate and format when it is
+created. Later subject edits affect future bookings while existing bookings retain
+those details and their stored total price. For older bookings without snapshots, the
+first subject edit preserves the currently stored details before changing the offering;
+values already overwritten before this feature cannot be recovered.
 
 **Availability.** The tutor picks a day, opens the 30-minute slots they can teach, and
 assigns which subject(s) each open slot covers — so one slot can advertise several

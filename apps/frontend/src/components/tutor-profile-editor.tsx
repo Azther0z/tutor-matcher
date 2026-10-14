@@ -10,6 +10,8 @@ import { TutorSubmissionStatus } from "@/src/components/tutor-submission-status"
 import { TutorDialog } from "@/src/components/tutor-dialog";
 import { TutorConsent } from "@/src/components/tutor-consent";
 import { TutorDetailsFields } from "@/src/components/tutor-details-fields";
+import { TutorSubjectsManager } from "@/src/components/tutor-subjects-manager";
+import type { SubjectOffering } from "@/src/lib/subjects";
 import {
   tutorApi,
   getTutorCertificationUrls,
@@ -70,7 +72,10 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [profileBusy, setBusy] = useState(false);
+  const [subjectBusy, setSubjectBusy] = useState(false);
+  const busy = profileBusy || subjectBusy;
+  const [subjects, setSubjects] = useState<SubjectOffering[]>([]);
   const busyRef = useRef(false);
   const [reload, setReload] = useState(0);
 
@@ -83,6 +88,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           replace("/enroll-tutor");
         }
         setData(result);
+        setSubjects(result.tutor?.subjects ?? []);
         const draft = result.drafts[0];
         loadDetails(
           draft ? tutorDetailsFromApplication(draft) : emptyTutorDetails,
@@ -318,6 +324,15 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           >
             {tutor.status === "PUBLISHED" ? "Unpublish profile" : "Publish profile"}
           </button>
+          {!enrollment && (
+            <div className="mt-5">
+              <h3 className="font-semibold">Verification</h3>
+              <p className="mt-1 text-sm text-zinc-500">
+                Your identity has been verified. Document changes use the profile review process
+                below.
+              </p>
+            </div>
+          )}
           {approvedEnrollment && (
             <p className="mt-4">
               Your application is approved.{" "}
@@ -332,6 +347,15 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
             </p>
           )}
         </section>
+      )}
+
+      {tutor && !enrollment && (
+        <TutorSubjectsManager
+          subjects={subjects}
+          setSubjects={setSubjects}
+          disabled={profileBusy || editorOpen || submitOpen || !!closeTransition}
+          onBusyChange={setSubjectBusy}
+        />
       )}
 
       {latestReview?.status === "APPROVED" && (

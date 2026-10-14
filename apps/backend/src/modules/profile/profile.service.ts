@@ -5,6 +5,7 @@ import {
   profileRequestSchema,
 } from "./profile.schema.ts";
 import { prisma } from "../../lib/db.ts";
+import { mapSubject, subjectSelect, type SubjectSummary } from "../subject/subject.public.ts";
 import type {
   AccountUpdateRequest,
   ProfileRequest,
@@ -276,7 +277,10 @@ export class TutorWorkflowError extends Error {
 }
 
 export const versionInclude = { certifications: { orderBy: { fileUrl: "asc" as const } } };
-export const currentTutorInclude = { currentProfileVersion: { include: versionInclude } };
+export const currentTutorInclude = {
+  currentProfileVersion: { include: versionInclude },
+  subjects: { select: subjectSelect, orderBy: [{ name: "asc" as const }, { id: "asc" as const }] },
+};
 type VersionWithCertificates = TutorProfileVersion & { certifications: { fileUrl: string }[] };
 type CurrentTutor = {
   id: string;
@@ -284,6 +288,7 @@ type CurrentTutor = {
   enrolledAt: Date;
   currentProfileVersionId: string;
   currentProfileVersion: VersionWithCertificates;
+  subjects?: SubjectSummary[];
 };
 
 export function flattenVersion(version: VersionWithCertificates) {
@@ -308,6 +313,7 @@ export function flattenTutor(tutor: CurrentTutor) {
     certificationUrl: version.certifications[0]?.fileUrl ?? null,
     certificationUrls: version.certifications.map(({ fileUrl }) => fileUrl),
     verified: true,
+    subjects: (tutor.subjects ?? []).map(mapSubject),
   };
 }
 

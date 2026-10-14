@@ -1,5 +1,6 @@
 import { clearAuthToken, getAuthToken } from "@/src/lib/auth";
 import { normalizeHttpsUrl, type TutorDetails } from "@/src/lib/tutor-details";
+import type { SubjectOffering } from "@/src/lib/subjects";
 
 export type TutorRecordStatus = "UNPUBLISHED" | "PUBLISHED";
 export type TutorVersionStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
@@ -16,6 +17,7 @@ export type TutorApplication = TutorProfileFields & {
   status: TutorRecordStatus;
   enrolledAt: string;
   verified: boolean;
+  subjects: SubjectOffering[];
 };
 export type TutorProfileVersion = TutorProfileFields & {
   id: string;
