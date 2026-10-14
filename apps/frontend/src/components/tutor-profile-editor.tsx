@@ -12,7 +12,6 @@ import { TutorConsent } from "@/src/components/tutor-consent";
 import { TutorDetailsFields } from "@/src/components/tutor-details-fields";
 import {
   tutorApi,
-  getTutorCertificationUrls,
   tutorDetailsFromApplication,
   tutorDetailsPayload,
   type TutorApplicationResponse,
@@ -41,7 +40,6 @@ function profileContent(profile: TutorProfileFields) {
     fields.bio,
     fields.introVideoUrl,
     fields.identificationCardUrl,
-    [...new Set(getTutorCertificationUrls(profile))].sort(),
   ]);
 }
 
@@ -661,9 +659,6 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                 values={details}
                 errors={errors}
                 onChange={(name, value) => updateDetails({ ...details, [name]: value })}
-                onCertificationsChange={(certificationUrls) =>
-                  updateDetails({ ...details, certificationUrls })
-                }
               />
             </fieldset>
           </form>

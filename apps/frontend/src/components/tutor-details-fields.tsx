@@ -93,7 +93,6 @@ type TutorDetailsFieldsProps = {
   values: TutorDetails;
   errors: TutorDetailsFieldErrors;
   onChange: (name: TutorDetailsFieldName, value: string) => void;
-  onCertificationsChange: (urls: string[]) => void;
   title?: string;
   description?: string;
   unframed?: boolean;
@@ -103,7 +102,6 @@ export function TutorDetailsFields({
   values,
   errors,
   onChange,
-  onCertificationsChange,
   unframed = false,
   title = "Public Tutor details",
   description = "Information shown on your Tutor profile.",
@@ -161,75 +159,6 @@ export function TutorDetailsFields({
           maxLength={255}
           helper="Used for Tutor verification. Visible only to you and administrators."
         />
-        <section aria-label="Teaching certifications / portfolio" className="flex flex-col gap-3">
-          <h3 className="font-medium">Teaching certifications / portfolio (optional)</h3>
-          <p className="text-sm text-zinc-500">
-            Optional portfolio evidence, such as contest certificates. Students can view these links
-            on your profile after approval. Blank entries are omitted.
-          </p>
-          {values.certificationUrls.map((url, index) => {
-            const error = errors.certifications?.[index];
-            return (
-              <div key={index} className="flex items-start gap-3">
-                <div className="flex flex-1 flex-col gap-1.5 text-sm font-medium">
-                  <label htmlFor={`certification-${index}`}>
-                    Certification / portfolio URL {index + 1}
-                  </label>
-                  <input
-                    id={`certification-${index}`}
-                    type="url"
-                    value={url}
-                    placeholder="https://example.com/certification.pdf"
-                    aria-invalid={!!error}
-                    aria-describedby={error ? `certification-error-${index}` : undefined}
-                    className={tutorDetailsInputClassName}
-                    onChange={(event) =>
-                      onCertificationsChange(
-                        values.certificationUrls.map((current, i) =>
-                          i === index ? event.target.value : current
-                        )
-                      )
-                    }
-                  />
-                  {error && (
-                    <span
-                      id={`certification-error-${index}`}
-                      className="text-red-600 dark:text-red-400"
-                    >
-                      {error}
-                    </span>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  className="mt-6 rounded-lg border px-3 py-2 hover:bg-black/[.04] dark:hover:bg-white/[.08]"
-                  onClick={() =>
-                    onCertificationsChange(values.certificationUrls.filter((_, i) => i !== index))
-                  }
-                  aria-label={`Remove certification ${index + 1}`}
-                >
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    className="h-5 w-5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                  >
-                    <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
-                  </svg>
-                </button>
-              </div>
-            );
-          })}
-          <button
-            type="button"
-            className="self-start rounded-lg border px-3 py-2 hover:bg-black/[.04] dark:hover:bg-white/[.08]"
-            onClick={() => onCertificationsChange([...values.certificationUrls, ""])}
-          >
-            Add certification
-          </button>
-        </section>
       </div>
     </section>
   );

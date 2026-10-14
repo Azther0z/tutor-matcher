@@ -110,8 +110,9 @@ switch profile versions while preserving Tutor identity and publication. Public
 responses exclude identification-card references and proposed certificate versions, while
 showing the current approved portfolio. Frontend tests cover application
 and edit states, draft modals with sticky headers/footers and Save/Cancel close prompts with × to discard unsaved edits,
-draft-specific Edit/Trash icons, submission confirmations, multiple optional certification inputs,
-admin comparisons/actions, access errors, and readable submit-button hover styles.
+draft-specific Edit/Trash icons, submission confirmations, the absence of certification inputs
+(drafts save an empty list), admin comparisons/actions, access errors, and readable
+submit-button hover styles.
 
 Run the real PostgreSQL workflow and booking regression suites against an isolated
 database already synchronized to the schema:
