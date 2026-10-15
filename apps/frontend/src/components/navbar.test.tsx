@@ -71,6 +71,7 @@ describe("Navbar", () => {
 
     expect(await screen.findByRole("link", { name: "Login" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign-up" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Wallet balance" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Open account menu" })).not.toBeInTheDocument();
   });
 
@@ -80,6 +81,10 @@ describe("Navbar", () => {
     renderNavbar();
 
     const accountButton = await screen.findByRole("button", { name: "Open account menu" });
+    expect(screen.getByRole("link", { name: "Wallet balance" })).toHaveAttribute(
+      "href",
+      "/wallet/topup"
+    );
     await waitFor(() =>
       expect(screen.getByLabelText("Wallet balance")).toHaveTextContent("฿ 1,250.50")
     );

@@ -181,12 +181,15 @@ export function Navbar() {
         <div className="flex shrink-0 items-center gap-3">
           {status === "authenticated" && user ? (
             <div ref={menuRef} className="relative flex items-center gap-3">
-              <span
+              <Link
+                href="/wallet/topup"
                 aria-label="Wallet balance"
-                className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200"
+                title="Top up your wallet"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 transition-colors hover:border-zinc-400 hover:bg-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400"
               >
                 {walletBalance === null ? "฿ —" : `฿ ${walletFormat.format(Number(walletBalance))}`}
-              </span>
+              </Link>
               <button
                 type="button"
                 aria-label="Open account menu"
