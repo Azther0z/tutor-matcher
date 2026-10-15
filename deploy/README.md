@@ -42,11 +42,11 @@ re-encrypting the other files. Commit only the encrypted `*.enc.env` files.
 Set `ADMIN_SIGNUP_KEY` to a random value with at least 32 bytes of entropy, for example by generating
 64 hexadecimal characters with `openssl rand -hex 32`. The signup form accepts this key only to
 create an Admin account; a missing, incorrect, or blank key creates a standard Student account.
-Production Compose treats `admin-signup-key.enc.env` as optional, so deployments remain usable
-before the key is configured. Optional `env_file` entries require Docker Compose 2.24.0 or later.
-The shared key authorizes every matching signup, so disable further admin signups by encrypting an
-empty `ADMIN_SIGNUP_KEY` after creating the intended Admin accounts. Existing Admin accounts keep
-their access when the signup key is disabled.
+Keep `admin-signup-key.enc.env` present in deployment because Docker Swarm requires `env_file`
+entries to use string paths. The `ADMIN_SIGNUP_KEY` value may be blank, which leaves signup open
+only for ordinary accounts. To disable admin signups after creating the intended Admin accounts,
+encrypt an empty `ADMIN_SIGNUP_KEY` in the file. Existing Admin accounts keep their access when the
+signup key is disabled.
 
 Do not commit plaintext dotenv files.
 
