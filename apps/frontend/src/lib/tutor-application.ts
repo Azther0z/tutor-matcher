@@ -49,19 +49,12 @@ export type TutorReviewRequest = TutorProfileVersion & {
   documentIssues?: TutorDocumentIssue[];
 };
 
-export function getTutorCertificationUrls(profile: TutorProfileFields | null): string[] {
-  return (
-    profile?.certificationUrls ?? (profile?.certificationUrl ? [profile.certificationUrl] : [])
-  );
-}
-
 export function tutorDetailsFromApplication(profile: TutorProfileFields | null): TutorDetails {
   return {
     avatarUrl: profile?.avatarUrl ?? "",
     bio: profile?.bio ?? "",
     introVideoUrl: profile?.introVideoUrl ?? "",
     identificationCardUrl: profile?.identificationCardUrl ?? "",
-    certificationUrls: [...getTutorCertificationUrls(profile)],
   };
 }
 
@@ -71,9 +64,9 @@ export function tutorDetailsPayload(details: TutorDetails): TutorProfileFields {
     bio: details.bio.trim() || null,
     introVideoUrl: normalizeHttpsUrl(details.introVideoUrl) || null,
     identificationCardUrl: normalizeHttpsUrl(details.identificationCardUrl) || null,
-    certificationUrls: [
-      ...new Set(details.certificationUrls.map(normalizeHttpsUrl).filter(Boolean)),
-    ],
+    // The form no longer collects certifications (they would be links, not stored files).
+    // An omitted list makes the API keep the previous version's, so clear them explicitly.
+    certificationUrls: [],
   };
 }
 

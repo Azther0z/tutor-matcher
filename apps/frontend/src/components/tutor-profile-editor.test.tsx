@@ -64,18 +64,12 @@ it("lists saved dates and selects the exact snapshot, saving only its ID", async
   ).toHaveLength(2);
   fireEvent.click(screen.getByRole("button", { name: /Edit draft .*Second saved draft/ }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue(second.bio);
-  expect(screen.getByLabelText("Certification / portfolio URL 1")).toHaveValue(
-    second.certificationUrls[0]
-  );
-  expect(screen.queryByLabelText("Certification / portfolio URL 2")).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: "Second revised" } });
   fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   expect(fetchMock.mock.calls[1][0]).toBe(`/api/profiles/me/tutor/drafts/${second.id}`);
   expect(fetchMock.mock.calls[1][1].method).toBe("PUT");
-  expect(JSON.parse(fetchMock.mock.calls[1][1].body).certificationUrls).toEqual(
-    second.certificationUrls
-  );
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body).bio).toBe("Second revised");
 });
 
 it("saves current edits before submitting the selected draft ID", async () => {
@@ -139,37 +133,21 @@ it("retains the saved draft when row deletion fails", async () => {
   expect(screen.getByLabelText("Tutor bio")).toHaveValue(first.bio);
 });
 
-it("adds and removes certificate inputs and validates every URL before submit", async () => {
-  fetchMock.mockResolvedValueOnce(jsonResponse(application()));
+it("collects no certifications and clears any the draft inherited when saving", async () => {
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse(application()))
+    .mockResolvedValueOnce(jsonResponse(application()));
   render(<TutorProfileEditor enrollment />);
   await openTutorEditor();
   await screen.findByLabelText("Tutor bio");
-  const submit = screen.getByRole("button", { name: "Submit" });
-  expect(submit).toBeEnabled();
-  fireEvent.click(screen.getByRole("button", { name: "Add certification" }));
-  expect(submit).toBeEnabled();
-  fireEvent.change(screen.getByLabelText("Certification / portfolio URL 3"), {
-    target: { value: "javascript:alert(1)" },
-  });
-  fireEvent.submit(document.getElementById("tutor-draft-form")!);
-  expect(screen.getByText("Enter a valid certification document URL.")).toBeInTheDocument();
-  expect(screen.getByLabelText("Certification / portfolio URL 3")).toHaveAttribute(
-    "aria-invalid",
-    "true"
-  );
-  expect(fetchMock).toHaveBeenCalledTimes(1);
-  fireEvent.change(screen.getByLabelText("Certification / portfolio URL 3"), {
-    target: { value: "http://example.com/third.pdf" },
-  });
-  expect(submit).toBeEnabled();
-  fireEvent.click(screen.getByRole("button", { name: "Remove certification 2" }));
-  expect(screen.getByLabelText("Certification / portfolio URL 2")).toHaveValue(
-    "http://example.com/third.pdf"
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Remove certification 2" }));
-  fireEvent.click(screen.getByRole("button", { name: "Remove certification 1" }));
-  expect(submit).toBeEnabled();
-  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(
+    screen.queryByRole("region", { name: "Teaching certifications / portfolio" })
+  ).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Add certification" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  // The first draft came back from the API with two certificates.
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body).certificationUrls).toEqual([]);
 });
 
 it("blocks only submission while another request is pending, allowing draft edits and save", async () => {
@@ -301,7 +279,6 @@ it("starts new Tutor drafts empty even with approved and rejected profiles", asy
   render(<TutorProfileEditor />);
   fireEvent.click(await screen.findByRole("button", { name: "New draft" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
-  expect(screen.queryByLabelText("Certification / portfolio URL 1")).not.toBeInTheDocument();
 });
 
 it("uses contrasting primary hover styles without secondary hover backgrounds", async () => {
@@ -320,7 +297,6 @@ it("starts a new applicant draft empty without changing saved drafts", async () 
   render(<TutorProfileEditor enrollment />);
   fireEvent.click(await screen.findByRole("button", { name: "New draft" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
-  expect(screen.queryByLabelText("Certification / portfolio URL 1")).not.toBeInTheDocument();
   expect(
     screen.getByRole("button", { name: /Edit draft .*First saved draft/ })
   ).toBeInTheDocument();
@@ -556,50 +532,38 @@ it("discards only local edits on close, retaining the persisted row and exact sn
   expect(screen.getByLabelText("Tutor bio")).toHaveValue(first.bio);
 });
 
-it.each([false, true])(
-  "submits without certificates, omitting blank rows (blank added: %s)",
-  async (addBlank) => {
-    const empty = { ...first, certificationUrls: [] };
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse(application({ status: "NONE", version: null, drafts: [] }))
+it("submits a new application without certificates", async () => {
+  const empty = { ...first, certificationUrls: [] };
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse(application({ status: "NONE", version: null, drafts: [] })))
+    .mockResolvedValueOnce(jsonResponse(application({ version: empty, drafts: [empty] })))
+    .mockResolvedValueOnce(
+      jsonResponse(
+        application({
+          status: "PENDING",
+          version: { ...empty, status: "PENDING" },
+          drafts: [],
+          pendingRequest: { ...empty, status: "PENDING" },
+        })
       )
-      .mockResolvedValueOnce(jsonResponse(application({ version: empty, drafts: [empty] })))
-      .mockResolvedValueOnce(
-        jsonResponse(
-          application({
-            status: "PENDING",
-            version: { ...empty, status: "PENDING" },
-            drafts: [],
-            pendingRequest: { ...empty, status: "PENDING" },
-          })
-        )
-      );
-    render(<TutorProfileEditor enrollment />);
-    await openTutorEditor();
-    expect(screen.queryByLabelText(/Certification \/ portfolio URL/)).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: first.bio } });
-    fireEvent.change(screen.getByLabelText("Intro video URL"), {
-      target: { value: first.introVideoUrl },
-    });
-    fireEvent.change(screen.getByLabelText(/Identification card URL/), {
-      target: { value: first.identificationCardUrl },
-    });
-    if (addBlank) {
-      fireEvent.click(screen.getByRole("button", { name: "Add certification" }));
-      fireEvent.change(screen.getByLabelText("Certification / portfolio URL 1"), {
-        target: { value: "   " },
-      });
-    }
-    expect(screen.getByRole("button", { name: "Submit" })).toBeEnabled();
-    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
-    await confirmTutorSubmission();
-    await screen.findByText("Pending Verification");
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body).certificationUrls).toEqual([]);
-    expect(fetchMock.mock.calls[2][0]).toBe(`/api/profiles/me/tutor/drafts/${first.id}/submit`);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  }
-);
+    );
+  render(<TutorProfileEditor enrollment />);
+  await openTutorEditor();
+  fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: first.bio } });
+  fireEvent.change(screen.getByLabelText("Intro video URL"), {
+    target: { value: first.introVideoUrl },
+  });
+  fireEvent.change(screen.getByLabelText(/Identification card URL/), {
+    target: { value: first.identificationCardUrl },
+  });
+  expect(screen.getByRole("button", { name: "Submit" })).toBeEnabled();
+  fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+  await confirmTutorSubmission();
+  await screen.findByText("Pending Verification");
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body).certificationUrls).toEqual([]);
+  expect(fetchMock.mock.calls[2][0]).toBe(`/api/profiles/me/tutor/drafts/${first.id}/submit`);
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
 
 it("uses one Draft header with Saved/Not saved status and only Save draft and Submit in the fixed footer", async () => {
   fetchMock.mockResolvedValueOnce(jsonResponse(application())).mockResolvedValueOnce(
@@ -712,13 +676,12 @@ it("requires confirmation and fresh consent to submit a valid saved row without 
   expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ consentAccepted: true });
 });
 
-it("opens an incomplete row for correction and clears stale field and collection errors as it is fixed", async () => {
+it("opens an incomplete row for correction and clears stale field errors as it is fixed", async () => {
   const incomplete = {
     ...first,
     bio: "",
     introVideoUrl: null,
     identificationCardUrl: null,
-    certificationUrls: ["https://example.com/good.pdf", "ftp://example.com/bad.pdf"],
   };
   fetchMock.mockResolvedValueOnce(
     jsonResponse(application({ version: incomplete, drafts: [incomplete] }))
@@ -744,16 +707,6 @@ it("opens an incomplete row for correction and clears stale field and collection
   fireEvent.change(screen.getByRole("textbox", { name: /Identification card URL/ }), {
     target: { value: "http://example.com/id.pdf" },
   });
-  expect(screen.getByLabelText("Certification / portfolio URL 2")).toHaveAttribute(
-    "aria-invalid",
-    "true"
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Remove certification 2" }));
-  expect(screen.queryByText("Enter a valid certification document URL.")).not.toBeInTheDocument();
-  expect(screen.getByLabelText("Certification / portfolio URL 1")).toHaveAttribute(
-    "aria-invalid",
-    "false"
-  );
   expect(screen.getByRole("button", { name: "Submit" })).toBeEnabled();
   fireEvent.click(screen.getByRole("button", { name: "Submit" }));
   expect(screen.getByRole("button", { name: "Confirm submit" })).toBeDisabled();
@@ -809,9 +762,6 @@ it("shows cancelled history after reload, copies it explicitly, and keeps new dr
     within(history).getByRole("button", { name: "Create draft from cancelled submission" })
   );
   expect(await screen.findByLabelText("Tutor bio")).toHaveValue(cancelled.bio);
-  expect(screen.getByLabelText("Certification / portfolio URL 2")).toHaveValue(
-    cancelled.certificationUrls[1]
-  );
   expect(fetchMock.mock.calls[3][0]).toBe(
     `/api/profiles/me/tutor/submissions/${cancelled.id}/copy`
   );
@@ -821,7 +771,6 @@ it("shows cancelled history after reload, copies it explicitly, and keeps new dr
   fireEvent.click(screen.getByRole("button", { name: "New draft" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
   expect(screen.getByLabelText(/Avatar URL/)).toHaveValue("");
-  expect(screen.queryByLabelText("Certification / portfolio URL 2")).not.toBeInTheDocument();
   expect(screen.getByLabelText("Draft status")).toHaveTextContent("Not saved");
 });
 
@@ -840,9 +789,6 @@ it("replaces the draft modal with confirmation and Edit draft returns the same u
   fireEvent.click(screen.getByRole("button", { name: "Edit draft" }));
   expect(screen.getAllByRole("dialog")).toHaveLength(1);
   expect(screen.getByLabelText("Tutor bio")).toHaveValue("Keep unsaved content");
-  expect(screen.getByLabelText("Certification / portfolio URL 2")).toHaveValue(
-    first.certificationUrls[1]
-  );
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Submit" }));
   expect(screen.getByRole("checkbox")).not.toBeChecked();
@@ -869,21 +815,12 @@ it("returns confirmation close to unsaved editing, while row confirmation close 
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 
-it("edits the exact row snapshot from confirmation and renders certificate remove actions as accessible trash icons", async () => {
+it("edits the exact row snapshot from confirmation", async () => {
   fetchMock.mockResolvedValueOnce(jsonResponse(application()));
   render(<TutorProfileEditor enrollment />);
   fireEvent.click(await screen.findByRole("button", { name: "Submit draft 1: First saved draft" }));
   fireEvent.click(screen.getByRole("button", { name: "Edit draft" }));
   expect(screen.getByLabelText("Tutor bio")).toHaveValue(first.bio);
-  const remove = screen.getByRole("button", { name: "Remove certification 2" });
-  expect(remove.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
-  expect(remove.textContent?.trim()).toBe("");
-  expect(screen.getByText(/Students can view these links/)).toBeInTheDocument();
-  fireEvent.click(remove);
-  expect(screen.queryByLabelText("Certification / portfolio URL 2")).not.toBeInTheDocument();
-  expect(screen.getByLabelText("Certification / portfolio URL 1")).toHaveValue(
-    first.certificationUrls[0]
-  );
 });
 
 it("directs approved applicants to Tutor settings instead of creating a hidden draft", async () => {

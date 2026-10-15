@@ -3,20 +3,16 @@ export type TutorDetails = {
   bio: string;
   introVideoUrl: string;
   identificationCardUrl: string;
-  certificationUrls: string[];
 };
 
-export type TutorDetailsFieldName = Exclude<keyof TutorDetails, "certificationUrls">;
-export type TutorDetailsFieldErrors = Partial<Record<TutorDetailsFieldName, string>> & {
-  certifications?: (string | undefined)[];
-};
+export type TutorDetailsFieldName = keyof TutorDetails;
+export type TutorDetailsFieldErrors = Partial<Record<TutorDetailsFieldName, string>>;
 
 export const emptyTutorDetails: TutorDetails = {
   avatarUrl: "",
   bio: "",
   introVideoUrl: "",
   identificationCardUrl: "",
-  certificationUrls: [],
 };
 
 function isValidUrl(value: string) {
@@ -58,11 +54,6 @@ export function validateTutorDetails(values: TutorDetails): TutorDetailsFieldErr
   } else if (!isValidUrl(values.identificationCardUrl)) {
     errors.identificationCardUrl = "Enter a valid identification card URL.";
   }
-
-  const certifications = values.certificationUrls.map((value) =>
-    value.trim() && !isValidUrl(value) ? "Enter a valid certification document URL." : undefined
-  );
-  if (certifications.some(Boolean)) errors.certifications = certifications;
 
   return errors;
 }

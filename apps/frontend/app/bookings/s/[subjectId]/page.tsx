@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { TutorCertificationLinks } from "@/src/components/tutor-certification-links";
 import { ContinuousSlotPicker } from "@/src/components/continuous-slot-picker";
 import { RequireAuth } from "@/src/components/require-auth";
 import { BookingApiError, createBooking, getAvailability } from "@/src/lib/bookings-api";
@@ -103,13 +102,6 @@ function SubjectBookingContent() {
             <p className="mt-2 text-zinc-600">
               {data.subject.name} with {data.subject.tutor.name}
             </p>
-          )}
-
-          {!!data?.subject.tutor.certificationUrls?.length && (
-            <section className="mt-6 space-y-3" aria-label="Teaching certifications / portfolio">
-              <h2 className="text-xl font-semibold">Teaching certifications / portfolio</h2>
-              <TutorCertificationLinks urls={data.subject.tutor.certificationUrls} />
-            </section>
           )}
 
           {loading ? (
