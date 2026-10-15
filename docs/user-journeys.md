@@ -310,8 +310,9 @@ Related stories: US6-1 … US6-3.
 1. A logged-in student opens **Become a tutor** → `/(auth)/enroll-tutor`.
 2. The application requires a bio, an identification card document and an introduction video.
    Portfolio certifications are not collected for now, because document upload and storage
-   are deferred. Submit stays disabled until required fields are present. Subjects are not part
-   of the application — they are added afterwards in `/settings/tutor`.
+   are deferred. Pressing Submit while a required field is missing blocks submission and
+   highlights the missing fields. Subjects are not part of the application — they are added
+   afterwards in `/settings/tutor`.
 3. A student can save multiple incomplete **drafts** and see them in a list. **New draft** starts empty; it
    and each row's **Edit** button open a modal for one draft at a time. Each row has a
    **Trash** icon to delete that saved draft after confirmation, an **Edit** icon and a

@@ -58,13 +58,13 @@ it("validates details before confirmation and requires explicit consent before s
   render(<EnrollTutorPage />);
   await openTutorEditor();
   const submit = screen.getByRole("button", { name: "Submit" });
-  expect(submit).toBeDisabled();
   fillApplication();
-  expect(submit).toBeEnabled();
   fireEvent.change(screen.getByLabelText(/Identification card URL/), {
     target: { value: "javascript:alert(1)" },
   });
-  expect(submit).toBeDisabled();
+  fireEvent.click(submit);
+  expect(screen.getByLabelText(/Identification card URL/)).toHaveAttribute("aria-invalid", "true");
+  expect(screen.queryByRole("button", { name: "Confirm submit" })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText(/Identification card URL/), {
     target: { value: "https://example.com/id.pdf" },
   });
