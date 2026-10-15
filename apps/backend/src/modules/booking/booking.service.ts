@@ -4,6 +4,7 @@ import { prisma } from "../../lib/db.ts";
 import { isTransactionConflict } from "../../lib/transaction-conflict.ts";
 import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
 import { subjectSnapshot } from "../subject/subject.public.ts";
+import { notifyUser } from "../notification/notification.service.ts";
 import { appendWalletMovement, InsufficientWalletBalance } from "../wallet/wallet-ledger.ts";
 import type {
   CancelBookingInput,
@@ -504,7 +505,7 @@ export async function confirmBookingPayment(userId: string, id: string) {
 
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      return await prisma.$transaction(
+      const confirmed = await prisma.$transaction(
         async (tx) => {
           const booking = await tx.booking.findUnique({
             where: { id },
@@ -562,10 +563,29 @@ export async function confirmBookingPayment(userId: string, id: string) {
             where: { id },
             include: detailInclude,
           });
-          return mapBookingResponse(detailed, userId, transactionNow);
+          return {
+            response: mapBookingResponse(detailed, userId, transactionNow),
+            recipientIds: [detailed.user.id, detailed.subject.tutor.user?.id].filter(
+              (recipientId): recipientId is string => recipientId !== undefined
+            ),
+          };
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
       );
+      // Notify only after commit, never from a transaction that can roll back or retry.
+      // Lookup/delivery failures must not turn a successful payment into a failed response.
+      await Promise.allSettled(
+        confirmed.recipientIds.map((recipientId) =>
+          notifyUser(recipientId, {
+            eventType: "booking",
+            details: {
+              subjectName: confirmed.response.subject.name,
+              scheduledAt: new Date(confirmed.response.startedAt),
+            },
+          })
+        )
+      );
+      return confirmed.response;
     } catch (error) {
       if (!isSerializationError(error)) throw error;
       const latest = await prisma.booking.findUnique({

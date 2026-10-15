@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import request from "supertest";
 import { app } from "../../app.ts";
 import { prisma } from "../../lib/db.ts";
@@ -50,6 +50,10 @@ const describeWithDatabase =
   process.env.RUN_DATABASE_INTEGRATION === "true" ? describe : describe.skip;
 
 describeWithDatabase("booking HTTP and database lifecycle", () => {
+  const emailLog = jest.spyOn(console, "info");
+  beforeEach(() => {
+    emailLog.mockClear();
+  });
   beforeAll(async () => {
     await cleanFixtures();
     await prisma.user.createMany({
@@ -125,6 +129,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
 
   afterAll(async () => {
     await cleanFixtures();
+    emailLog.mockRestore();
   });
 
   it("returns the actual tutor response shape and cancels an unpaid booking without writing money", async () => {
@@ -148,6 +153,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     const bookingId = created.body.booking.id as string;
 
     expect(await prisma.walletTransaction.count({ where: { bookingId } })).toBe(0);
+    expect(emailLog).not.toHaveBeenCalledWith(expect.stringContaining("[notification:booking]"));
 
     const cancelled = await authorize(
       request(app).post(`/api/bookings/${bookingId}/cancel`).send({ reason: "Changed plans" })
@@ -177,12 +183,20 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     const bookingId = created.body.booking.id as string;
 
     await authorize(request(app).post(`/api/bookings/${bookingId}/confirm-payment`)).expect(200);
+    expect(emailLog).toHaveBeenCalledWith(
+      expect.stringContaining("[notification:booking] booking-integration-student@example.com:")
+    );
+    expect(emailLog).toHaveBeenCalledWith(
+      expect.stringContaining("[notification:booking] booking-integration-tutor@example.com:")
+    );
+    emailLog.mockClear();
     const originalPayment = await prisma.walletTransaction.findUniqueOrThrow({
       where: { bookingId_type: { bookingId, type: "LESSON_PAYMENT" } },
     });
     expect(originalPayment.amount.toFixed(2)).toBe("75.00");
     expect(originalPayment.balanceAfter.toFixed(2)).toBe("425.00");
     await authorize(request(app).post(`/api/bookings/${bookingId}/confirm-payment`)).expect(409);
+    expect(emailLog).not.toHaveBeenCalledWith(expect.stringContaining("[notification:booking]"));
     const quoteResponse = await authorize(
       request(app).get(`/api/bookings/${bookingId}/cancellation-quote`)
     ).expect(200);
@@ -239,6 +253,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     });
     const before = await prisma.user.findUniqueOrThrow({ where: { id: STUDENT_ID } });
     await authorize(request(app).post(`/api/bookings/${booking.id}/confirm-payment`)).expect(402);
+    expect(emailLog).not.toHaveBeenCalledWith(expect.stringContaining("[notification:booking]"));
     expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
       "PENDING_PAYMENT"
     );
@@ -277,6 +292,38 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     expect(transfer).toEqual([]);
     expect(slot.bookingId).toBeNull();
   });
+  it("honors booking email preferences and keeps payment successful if email delivery fails", async () => {
+    await prisma.user.update({ where: { id: STUDENT_ID }, data: { notifyOnBooking: false } });
+    try {
+      const booking = await prisma.booking.create({
+        data: {
+          userId: STUDENT_ID,
+          subjectId: SUBJECT_ID,
+          subjectName: "Booked subject snapshot",
+          totalAmount: "1.00",
+          status: "PENDING_PAYMENT",
+          paymentExpiresAt: new Date(Date.now() + 600_000),
+          startedAt: new Date(Date.now() + 86_400_000),
+          endedAt: new Date(Date.now() + 88_200_000),
+        },
+      });
+      emailLog.mockImplementationOnce(() => {
+        throw new Error("Email delivery unavailable");
+      });
+      const paid = await authorize(
+        request(app).post(`/api/bookings/${booking.id}/confirm-payment`)
+      ).expect(200);
+      expect(paid.body.booking.status).toBe("CONFIRMED");
+      expect(emailLog).toHaveBeenCalledTimes(1);
+      expect(emailLog).toHaveBeenCalledWith(
+        expect.stringContaining("booking-integration-tutor@example.com: Booked subject snapshot")
+      );
+      expect(await prisma.walletTransaction.count({ where: { bookingId: booking.id } })).toBe(1);
+    } finally {
+      await prisma.user.update({ where: { id: STUDENT_ID }, data: { notifyOnBooking: true } });
+    }
+  });
+
   it("unpublishing blocks new bookings without removing existing lessons or conversations", async () => {
     const created = await authorize(
       request(app)
