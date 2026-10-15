@@ -59,7 +59,7 @@ jest.unstable_mockModule("../../lib/email.ts", () => ({
 }));
 
 const { app } = await import("../../app.ts");
-const { passwordResetRateLimiter } = await import("./auth.routes.ts");
+const { passwordResetRateLimiter, signupRateLimiter } = await import("./auth.routes.ts");
 const { GENERIC_PASSWORD_RESET_MESSAGE } = await import("../../lib/password-reset.ts");
 const { signAuthToken, verifyAuthToken } = await import("../../lib/jwt.ts");
 
@@ -77,6 +77,8 @@ beforeEach(() => {
   userFindUnique.mockResolvedValue(null);
   tokenDeleteMany.mockResolvedValue({ count: 1 });
   sendPasswordResetEmail.mockResolvedValue();
+  signupRateLimiter.resetKey("::ffff:127.0.0.1");
+  signupRateLimiter.resetKey("127.0.0.1");
   passwordResetRateLimiter.resetKey("::ffff:127.0.0.1");
   passwordResetRateLimiter.resetKey("127.0.0.1");
 });
@@ -132,6 +134,30 @@ describe("POST /api/auth/signup", () => {
       .send({ email: "ada@example.com", password: "supersecret" })
       .expect(400);
 
+    expect(userCreate).not.toHaveBeenCalled();
+  });
+
+  it("limits signup attempts by client IP", async () => {
+    const clientIp = "198.51.100.42";
+    signupRateLimiter.resetKey(clientIp);
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await request(app)
+        .post("/api/auth/signup")
+        .set("x-forwarded-for", clientIp)
+        .send({})
+        .expect(400);
+    }
+
+    const response = await request(app)
+      .post("/api/auth/signup")
+      .set("x-forwarded-for", clientIp)
+      .send({})
+      .expect(429);
+
+    expect(response.body).toEqual({
+      message: "Too many signup attempts. Please try again later.",
+    });
     expect(userCreate).not.toHaveBeenCalled();
   });
 
