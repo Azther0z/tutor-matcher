@@ -1,6 +1,7 @@
 "use client";
 
 import { RequireAuth } from "@/src/components/require-auth";
+import { TutorAvailabilityEditor } from "@/src/components/tutor-availability-editor";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -64,7 +65,14 @@ export default function DashboardPage() {
     })
       .then((response) => (response.ok ? response.json() : null))
       .then((data: { status?: string } | null) => {
-        if (!cancelled) setIsApprovedTutor(data?.status === "APPROVED");
+        if (cancelled) return;
+
+        const approved = data?.status === "APPROVED";
+        setIsApprovedTutor(approved);
+
+        if (approved && new URLSearchParams(window.location.search).get("tab") === "tutor") {
+          setActiveTab("tutor");
+        }
       })
       .catch(() => {
         if (!cancelled) setIsApprovedTutor(false);
@@ -96,58 +104,66 @@ export default function DashboardPage() {
 
   return (
     <RequireAuth>
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-16">
+      <main
+        className={`mx-auto flex w-full ${
+          isApprovedTutor ? "max-w-5xl" : "max-w-3xl"
+        } flex-1 flex-col gap-8 px-6 py-16`}
+      >
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">
             Tutor Matcher
           </p>
           <h1 className="text-4xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Choose whether to manage your learning or teaching.
+            {isApprovedTutor
+              ? "Choose whether to manage your learning or teaching."
+              : "Find Tutors and manage your learning journey."}
           </p>
         </div>
 
-        <div
-          role="tablist"
-          aria-label="Dashboard sections"
-          className="flex w-fit gap-1 rounded-xl border border-black/[.12] p-1 dark:border-white/[.18]"
-        >
-          {dashboardTabs.map((tab) => {
-            const selected = activeTab === tab;
-            const label = tab === "student" ? "Student" : "Tutor";
+        {isApprovedTutor && (
+          <div
+            role="tablist"
+            aria-label="Dashboard sections"
+            className="flex w-fit gap-1 rounded-xl border border-black/[.12] p-1 dark:border-white/[.18]"
+          >
+            {dashboardTabs.map((tab) => {
+              const selected = activeTab === tab;
+              const label = tab === "student" ? "Student" : "Tutor";
 
-            return (
-              <button
-                key={tab}
-                ref={(element) => {
-                  tabRefs.current[tab] = element;
-                }}
-                type="button"
-                role="tab"
-                id={`${tab}-dashboard-tab`}
-                aria-controls={`${tab}-dashboard-panel`}
-                aria-selected={selected}
-                tabIndex={selected ? 0 : -1}
-                onClick={() => setActiveTab(tab)}
-                onKeyDown={(event) => handleTabKeyDown(event, tab)}
-                className={`rounded-lg px-5 py-2 text-sm font-medium transition-colors ${
-                  selected
-                    ? "bg-foreground text-background"
-                    : "text-zinc-600 hover:bg-black/[.06] dark:text-zinc-300 dark:hover:bg-white/[.08]"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={tab}
+                  ref={(element) => {
+                    tabRefs.current[tab] = element;
+                  }}
+                  type="button"
+                  role="tab"
+                  id={`${tab}-dashboard-tab`}
+                  aria-controls={`${tab}-dashboard-panel`}
+                  aria-selected={selected}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => setActiveTab(tab)}
+                  onKeyDown={(event) => handleTabKeyDown(event, tab)}
+                  className={`rounded-lg px-5 py-2 text-sm font-medium transition-colors ${
+                    selected
+                      ? "bg-foreground text-background"
+                      : "text-zinc-600 hover:bg-black/[.06] dark:text-zinc-300 dark:hover:bg-white/[.08]"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <section
           id="student-dashboard-panel"
-          role="tabpanel"
-          aria-labelledby="student-dashboard-tab"
-          tabIndex={0}
-          hidden={activeTab !== "student"}
+          role={isApprovedTutor ? "tabpanel" : undefined}
+          aria-labelledby={isApprovedTutor ? "student-dashboard-tab" : undefined}
+          tabIndex={isApprovedTutor ? 0 : undefined}
+          hidden={isApprovedTutor && activeTab !== "student"}
           className="flex flex-col gap-8"
         >
           <div className="flex flex-col gap-2">
@@ -200,40 +216,32 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section
-          id="tutor-dashboard-panel"
-          role="tabpanel"
-          aria-labelledby="tutor-dashboard-tab"
-          tabIndex={0}
-          hidden={activeTab !== "tutor"}
-          className="flex flex-col gap-8"
-        >
-          <div className="flex flex-col gap-2">
-            <h2 className="text-2xl font-semibold">Tutor dashboard</h2>
-            <p className="text-zinc-600 dark:text-zinc-400">
-              Manage your teaching availability, subjects, and Tutor profile.
-            </p>
-          </div>
-
-          <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
-            <div>
-              <h3 className="text-xl font-semibold">
-                {isApprovedTutor ? "Your Tutor tools are ready" : "Teach with Tutor Matcher"}
-              </h3>
-              <p className="mt-2 leading-7 text-zinc-600 dark:text-zinc-400">
-                {isApprovedTutor
-                  ? "Publish availability and manage your tutoring activity from your Tutor dashboard."
-                  : "Apply to become a Tutor to manage your profile and publish availability."}
-              </p>
+        {isApprovedTutor && (
+          <section
+            id="tutor-dashboard-panel"
+            role="tabpanel"
+            aria-labelledby="tutor-dashboard-tab"
+            tabIndex={0}
+            hidden={activeTab !== "tutor"}
+            className="flex flex-col gap-8"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-col gap-2">
+                <h2 className="text-2xl font-semibold">Tutor dashboard</h2>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Manage your teaching availability, subjects, and Tutor profile.
+                </p>
+              </div>
+              <Link
+                href="/settings/tutor"
+                className="text-sm font-semibold text-violet-700 underline dark:text-violet-300"
+              >
+                Manage subjects and listing
+              </Link>
             </div>
-            <Link
-              href={isApprovedTutor ? "/dashboard/tutor" : "/enroll-tutor"}
-              className="flex h-11 w-fit items-center justify-center rounded-full bg-foreground px-5 font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
-            >
-              {isApprovedTutor ? "Open Tutor dashboard" : "Become a Tutor"}
-            </Link>
+            <TutorAvailabilityEditor />
           </section>
-        </section>
+        )}
       </main>
     </RequireAuth>
   );

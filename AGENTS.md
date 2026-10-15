@@ -48,6 +48,8 @@
 - Tutors create availability in a seven-day dated calendar with a month overview that opens the selected date's week. Each slot saves individually; there is no day or week save. Tutors may create, close and reassign free future slots on any future date. Paid slots and active payment holds are locked; conflicts preserve the slot draft. The three-month rule applies to student calendar navigation, not Tutor publishing.
 - Production admin provisioning uses an optional backend-only referral code. A match adds Admin during sign-up; a missing, invalid, or disabled code creates a standard Student account.
 - Docker Swarm production Compose uses string-form `env_file` entries. Keep `admin-signup-key.enc.env` present and use a blank `ADMIN_SIGNUP_KEY` to disable Admin signup.
+- `/dashboard` always shows the Student dashboard; only approved Tutors get a Tutor tab on that same page. Keep legacy `/dashboard/tutor` links forwarding to the Tutor tab.
+- Student accounts must continue to see **Become a tutor** in the navbar.
 
 ### Open Threads
 - Question: Is rescheduling a booking in scope?
