@@ -135,3 +135,12 @@ extension-less URLs stay approvable, and that rejection still works. Rejection e
 trimmed reason to the applicant after the decision commits; an email failure is logged without
 undoing the rejection. Frontend tests cover the disabled Approve action, the file list and the
 server's 422 message.
+
+## PROF-2 acceptance coverage
+
+A database integration test edits an approved Tutor's bio and introduction video and reads the
+public profile (`GET /api/discovery/tutors/:id`) before and after review: approval shows the new
+content, and a later rejected edit leaves it unchanged while the owner sees the rejection reason.
+Frontend tests cover the submit gate: pressing Submit with required fields missing is blocked,
+highlights those fields, and clears each error once it is fixed. Search results are not covered:
+`/search` is a placeholder until DISC-1, which should read each Tutor's current approved version.

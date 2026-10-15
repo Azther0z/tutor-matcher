@@ -393,9 +393,13 @@ it("keeps drafting in a modal and uses concise list rows with explicit edit and 
 });
 
 it("traps keyboard focus, skips disabled submit, and restores focus after clean Escape", async () => {
-  fetchMock.mockResolvedValueOnce(jsonResponse(application()));
-  const { container } = render(<TutorProfileEditor enrollment />);
-  const edit = await screen.findByRole("button", { name: "Edit draft 1: First saved draft" });
+  // A draft matching the approved profile keeps Submit disabled until something changes.
+  const unchanged = { ...first, bio: approvedTutor.bio };
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse(application({ tutor: approvedTutor, version: unchanged, drafts: [unchanged] }))
+  );
+  const { container } = render(<TutorProfileEditor />);
+  const edit = await screen.findByRole("button", { name: /^Edit draft 1:/ });
   edit.focus();
   fireEvent.click(edit);
   const dialog = screen.getByRole("dialog", { name: "Draft" });
@@ -404,16 +408,17 @@ it("traps keyboard focus, skips disabled submit, and restores focus after clean 
   const save = within(dialog).getByRole("button", { name: "Save draft" });
   expect(close).toHaveFocus();
   expect(container.inert).toBe(true);
-  fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: "" } });
   expect(submit).toBeDisabled();
   fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
   expect(save).toHaveFocus();
   fireEvent.keyDown(save, { key: "Tab" });
   expect(close).toHaveFocus();
-  fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: first.bio } });
+  fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: "Changed bio" } });
+  expect(submit).toBeEnabled();
   submit.focus();
   fireEvent.keyDown(submit, { key: "Tab" });
   expect(close).toHaveFocus();
+  fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: approvedTutor.bio } });
   fireEvent.keyDown(close, { key: "Escape" });
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(edit).toHaveFocus();
@@ -710,6 +715,42 @@ it("opens an incomplete row for correction and clears stale field errors as it i
   expect(screen.getByRole("button", { name: "Submit" })).toBeEnabled();
   fireEvent.click(screen.getByRole("button", { name: "Submit" }));
   expect(screen.getByRole("button", { name: "Confirm submit" })).toBeDisabled();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+it("highlights missing required fields when Submit is pressed in the editor", async () => {
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse(application({ status: "NONE", version: null, drafts: [] }))
+  );
+  render(<TutorProfileEditor enrollment />);
+  await openTutorEditor();
+  fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: "Only a bio" } });
+  fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Complete this draft before submitting for review."
+  );
+  expect(screen.getByRole("textbox", { name: /Intro video URL/ })).toHaveAttribute(
+    "aria-invalid",
+    "true"
+  );
+  expect(screen.getByRole("textbox", { name: /Identification card URL/ })).toHaveAttribute(
+    "aria-invalid",
+    "true"
+  );
+  expect(screen.getByText("Intro video URL is required.")).toBeInTheDocument();
+  expect(screen.getByText("Identification card URL is required.")).toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: /Tutor bio/ })).toHaveAttribute(
+    "aria-invalid",
+    "false"
+  );
+  expect(
+    screen.queryByRole("dialog", { name: "Submit draft for review?" })
+  ).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole("textbox", { name: /Intro video URL/ }), {
+    target: { value: "https://example.com/intro.mp4" },
+  });
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(screen.queryByText("Intro video URL is required.")).not.toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 

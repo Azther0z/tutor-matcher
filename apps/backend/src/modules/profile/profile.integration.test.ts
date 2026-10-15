@@ -370,6 +370,44 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
     ).toBe(initial.versionId);
   });
 
+  it("shows an approved bio and intro video edit on the public profile and keeps it through a rejected edit", async () => {
+    const initial = await approvedTutor();
+    const publicProfile = async () =>
+      (await auth(request(app).get(`/api/discovery/tutors/${initial.tutor.id}`)).expect(200)).body;
+    const updated = {
+      bio: "Updated public bio",
+      introVideoUrl: "https://example.com/updated-intro",
+    };
+    const approvedEdit = await auth(request(app).put("/api/profiles/me"))
+      .send({ tutor: { ...fields, ...updated } })
+      .expect(200);
+    expect(await publicProfile()).toMatchObject({
+      bio: fields.bio,
+      introVideoUrl: fields.introVideoUrl,
+    });
+    expect((await review(approvedEdit.body.version.id)).status).toBe(200);
+    expect(await publicProfile()).toMatchObject(updated);
+
+    const rejectedEdit = await auth(request(app).put("/api/profiles/me"))
+      .send({
+        tutor: {
+          ...fields,
+          bio: "Rejected public bio",
+          introVideoUrl: "https://example.com/rejected-intro",
+        },
+      })
+      .expect(200);
+    expect(
+      (await review(rejectedEdit.body.version.id, "REJECTED", "The video does not play")).status
+    ).toBe(200);
+    expect(await publicProfile()).toMatchObject(updated);
+    const own = await auth(request(app).get("/api/profiles/me/tutor")).expect(200);
+    expect(own.body).toMatchObject({
+      tutor: updated,
+      version: { status: "REJECTED", rejectionReason: "The video does not play" },
+    });
+  });
+
   it("serializes simultaneous reviews and creates exactly one Tutor", async () => {
     const id = await submitInitial();
     const responses = await Promise.all([review(id), review(id), review(id)]);

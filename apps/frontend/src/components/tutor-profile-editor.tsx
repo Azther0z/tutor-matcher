@@ -35,6 +35,7 @@ const buttonBase =
 const button = `${buttonBase} hover:bg-black/[.04] dark:hover:bg-white/[.08]`;
 const primaryButton = `${buttonBase} bg-foreground text-background hover:opacity-80`;
 const apiPath = "/api/profiles/me/tutor";
+const incompleteDraftMessage = "Complete this draft before submitting for review.";
 
 function ProfileLayout({ enrollment, children }: { enrollment: boolean; children: ReactNode }) {
   return (
@@ -203,7 +204,11 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
     event.preventDefault();
     const nextErrors = validateTutorDetails(details);
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length || noChanges || pending) return;
+    if (Object.keys(nextErrors).length) {
+      setActionError(incompleteDraftMessage);
+      return;
+    }
+    if (noChanges || pending) return;
     setRowSubmission(false);
     setConsent(false);
     setEditorOpen(false);
@@ -265,8 +270,8 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
   const approvedEnrollment = enrollment && !!tutor;
   const noChanges =
     !!tutor && profileContent(tutorDetailsPayload(details)) === profileContent(tutor);
-  const canSubmit =
-    Object.keys(validateTutorDetails(details)).length === 0 && !noChanges && !pending;
+  // Missing fields leave Submit enabled: pressing it highlights them instead.
+  const canSubmit = !noChanges && !pending;
 
   if (loadError)
     return (
@@ -655,7 +660,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                             setMessage(null);
                             if (Object.keys(nextErrors).length) {
                               setEditorOpen(true);
-                              setActionError("Complete this draft before submitting for review.");
+                              setActionError(incompleteDraftMessage);
                             } else {
                               setRowSubmission(true);
                               setSubmitOpen(true);
