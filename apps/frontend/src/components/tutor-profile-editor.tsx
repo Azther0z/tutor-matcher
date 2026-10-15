@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
+import { SettingsSidebar } from "@/src/components/settings-sidebar";
 import { TutorProfileSnapshot } from "@/src/components/tutor-profile-comparison";
 import { TutorRefreshButton } from "@/src/components/tutor-refresh-button";
 import { TutorSubmissionStatus } from "@/src/components/tutor-submission-status";
@@ -34,6 +35,21 @@ const buttonBase =
 const button = `${buttonBase} hover:bg-black/[.04] dark:hover:bg-white/[.08]`;
 const primaryButton = `${buttonBase} bg-foreground text-background hover:opacity-80`;
 const apiPath = "/api/profiles/me/tutor";
+
+function ProfileLayout({ enrollment, children }: { enrollment: boolean; children: ReactNode }) {
+  return (
+    <main
+      className={
+        enrollment
+          ? shell
+          : "mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row"
+      }
+    >
+      {!enrollment && <SettingsSidebar activeSection="tutor" />}
+      <div className="flex min-w-0 flex-1 flex-col gap-8">{children}</div>
+    </main>
+  );
+}
 
 function profileContent(profile: TutorProfileFields) {
   const fields = tutorDetailsPayload(tutorDetailsFromApplication(profile));
@@ -231,7 +247,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
 
   if (loadError)
     return (
-      <main className={shell}>
+      <ProfileLayout enrollment={enrollment}>
         <p role="alert">{loadError}</p>
         <button
           className={button}
@@ -242,24 +258,24 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         >
           Try again
         </button>
-      </main>
+      </ProfileLayout>
     );
   if (!data)
     return (
-      <main className={shell}>
+      <ProfileLayout enrollment={enrollment}>
         <p className="text-zinc-500">Loading your application…</p>
-      </main>
+      </ProfileLayout>
     );
 
   if (!enrollment && !tutor)
     return (
-      <main className={shell}>
+      <ProfileLayout enrollment={enrollment}>
         <p>Redirecting to your Tutor application…</p>
-      </main>
+      </ProfileLayout>
     );
 
   return (
-    <main className={shell}>
+    <ProfileLayout enrollment={enrollment}>
       <div className="flex flex-col gap-2">
         <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Tutor Matcher</p>
         <h1 className="text-4xl font-semibold tracking-tight">
@@ -790,6 +806,6 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         </p>
       )}
       {!editorOpen && message && <p role="status">{message}</p>}
-    </main>
+    </ProfileLayout>
   );
 }

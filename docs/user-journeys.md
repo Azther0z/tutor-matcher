@@ -99,7 +99,7 @@ Guards run before render, not after.
 | `/forgot-password`         | Request a password reset link                                           | Public         |
 | `/reset-password?token=…`  | Validate a reset link and choose a new password                         | Public         |
 | `/(auth)/enroll-tutor`     | Tutor application: documents, introduction video, submit, pending state | Requires login |
-| `/dashboard`               | Student dashboard                                                       | Requires login |
+| `/dashboard`               | Student and Tutor dashboards, selected with tabs                        | Requires login |
 | `/dashboard/tutor`         | Tutor dashboard — classes, earnings, bookings, subjects, availability   | Role: tutor    |
 | `/bookings`                | All bookings, tabbed by status                                          | Requires login |
 | `/bookings/s/:subjectId`   | Subject booking — pick a date and a block of slots (no booking yet)     | Requires login |
@@ -111,7 +111,7 @@ Guards run before render, not after.
 | `/settings/account`        | Email, password, deactivate account                                     | Requires login |
 | `/settings/notifications`  | Per-event email and push preferences                                    | Requires login |
 | `/settings/wallet`         | Balance shortcut and payout account details                             | Requires login |
-| `/settings/tutor`          | Public listing, verification, subjects                                  | Role: tutor    |
+| `/settings/tutor`          | Tutor profile — public listing, verification, subjects                  | Role: tutor    |
 | `/reviews/:tutorId`        | Read-only review list for a tutor                                       | Requires login |
 | `/admin/tutor-requests`    | Tutor application queue — approve or reject                             | Role: admin    |
 
@@ -352,6 +352,10 @@ Related stories: US1-4, US9-1.
 
 ## 7 · Tutor operations
 
+**Dashboard (`/dashboard`).** Student and Tutor actions are separated by tabs. The Student
+tab keeps the Student profile setup and learning links. The Tutor tab links approved Tutors
+to `/dashboard/tutor`; other users can start a Tutor application at `/enroll-tutor`.
+
 **Tutor dashboard (`/dashboard/tutor`).** Ordered by operational priority: compact stat
 cards (classes this week, earnings this month, paid bookings, rating), then the wallet
 and earnings preview, then **Upcoming classes** ("what you need to teach next", each
@@ -360,7 +364,8 @@ availability"), then subjects, then the availability editor. Long sections scrol
 inside their own card rather than pushing the page. Subject **Update** links to
 `/settings/tutor`, which owns subject editing.
 
-**Listing (`/settings/tutor`).** Published toggle, photo, display name, headline, bio,
+**Tutor profile (`/settings/tutor`).** Available from the shared Settings navigation as
+**Tutor profile**. Published toggle, photo, display name, headline, bio,
 and intro video URL, then **Verification** (document state and Replace documents), then
 **Subjects**. Listing and document changes are **submitted for review** and only go live
 once an admin approves; a rejection leaves the live listing untouched and returns a
