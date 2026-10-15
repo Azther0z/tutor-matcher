@@ -101,8 +101,8 @@ Guards run before render, not after.
 | `/forgot-password`         | Request a password reset link                                           | Public         |
 | `/reset-password?token=…`  | Validate a reset link and choose a new password                         | Public         |
 | `/(auth)/enroll-tutor`     | Tutor application: documents, introduction video, submit, pending state | Requires login |
-| `/dashboard`               | Student dashboard; approved Tutors also get a Tutor dashboard tab        | Requires login |
-| `/dashboard/tutor`         | Compatibility redirect to `/dashboard?tab=tutor`                         | Redirect       |
+| `/dashboard`               | Student dashboard; approved Tutors also get a Tutor dashboard tab       | Requires login |
+| `/dashboard/tutor`         | Compatibility redirect to `/dashboard?tab=tutor`                        | Redirect       |
 | `/bookings`                | All bookings, tabbed by status                                          | Requires login |
 | `/bookings/s/:subjectId`   | Subject booking — pick a date and a block of slots (no booking yet)     | Requires login |
 | `/bookings/:id`            | One booking — payment, confirmation, meeting link, review               | Requires login |
