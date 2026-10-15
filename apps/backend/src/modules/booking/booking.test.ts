@@ -81,73 +81,74 @@ describe("trial booking rules", () => {
 
   it("maps the backend record to the safe shared tutor and shortfall contract", () => {
     const now = new Date("2026-09-12T00:00:00.000Z");
-    const booking = mapBookingResponse(
-      {
-        id: "44444444-4444-4444-8444-444444444444",
-        userId: SUBJECT_ID,
-        subjectId: SUBJECT_ID,
-        description: "Algebra",
-        zoomMeetingUrl: null,
-        createdAt: now,
-        status: "PENDING_PAYMENT",
-        isTrial: true,
-        totalAmount: new Prisma.Decimal("75.00"),
-        startedAt: new Date("2026-09-13T02:00:00.000Z"),
-        endedAt: new Date("2026-09-13T03:00:00.000Z"),
-        paymentExpiresAt: new Date("2026-09-12T00:15:00.000Z"),
-        cancelledAt: null,
-        cancellationReason: null,
-        user: {
-          id: SUBJECT_ID,
-          firstName: "Bob",
-          lastName: "Smith",
-          balance: new Prisma.Decimal("10.00"),
-        },
-        subject: {
-          id: SUBJECT_ID,
-          name: "Mathematics",
-          description: "Math",
-          videoUrl: null,
-          hourlyRate: new Prisma.Decimal("75.00"),
-          tutorId: SLOT_A,
-          tutor: {
-            id: SLOT_A,
-            avatarUrl: null,
-            bio: null,
-            introVideoUrl: null,
-            identificationCardUrl: "fixture",
-            enrolledAt: now,
-            status: "PUBLISHED",
-            user: {
-              id: SLOT_B,
-              firstName: "Alice",
-              lastName: "Johnson",
-            },
-          },
-        },
-        availabilities: [],
-        payments: [
-          {
-            id: SLOT_B,
-            type: "TRANSFER",
-            amount: new Prisma.Decimal("75.00"),
-            status: "PENDING",
-            createdAt: now,
-            completedAt: null,
-            fromUserId: SUBJECT_ID,
-            toUserId: SLOT_B,
-            bookingId: "44444444-4444-4444-8444-444444444444",
-          },
-        ],
+    const record = {
+      id: "44444444-4444-4444-8444-444444444444",
+      userId: SUBJECT_ID,
+      subjectId: SUBJECT_ID,
+      description: "Algebra",
+      zoomMeetingUrl: null,
+      createdAt: now,
+      status: "PENDING_PAYMENT",
+      isTrial: true,
+      totalAmount: new Prisma.Decimal("75.00"),
+      startedAt: new Date("2026-09-13T02:00:00.000Z"),
+      endedAt: new Date("2026-09-13T03:00:00.000Z"),
+      paymentExpiresAt: new Date("2026-09-12T00:15:00.000Z"),
+      cancelledAt: null,
+      cancellationReason: null,
+      subjectName: null,
+      subjectDescription: null,
+      subjectHourlyRate: null,
+      subjectFormat: null,
+      user: {
+        id: SUBJECT_ID,
+        firstName: "Bob",
+        lastName: "Smith",
+        balance: new Prisma.Decimal("10.00"),
       },
-      SUBJECT_ID,
-      now
-    );
+      subject: {
+        id: SUBJECT_ID,
+        name: "Mathematics",
+        description: "Math",
+        videoUrl: null,
+        hourlyRate: new Prisma.Decimal("75.00"),
+        format: "ONLINE",
+        tutorId: SLOT_A,
+        tutor: {
+          id: SLOT_A,
+          currentProfileVersion: { avatarUrl: null, status: "APPROVED", certifications: [] },
+          currentProfileVersionId: SLOT_B,
+          enrolledAt: now,
+          status: "PUBLISHED",
+          user: {
+            id: SLOT_B,
+            firstName: "Alice",
+            lastName: "Johnson",
+          },
+        },
+      },
+      availabilities: [],
+      payments: [
+        {
+          id: SLOT_B,
+          type: "TRANSFER",
+          amount: new Prisma.Decimal("75.00"),
+          status: "PENDING",
+          createdAt: now,
+          completedAt: null,
+          fromUserId: SUBJECT_ID,
+          toUserId: SLOT_B,
+          bookingId: "44444444-4444-4444-8444-444444444444",
+        },
+      ],
+    } satisfies Parameters<typeof mapBookingResponse>[0];
+    const booking = mapBookingResponse(record, SUBJECT_ID, now);
 
     expect(booking.subject.tutor).toEqual({
       id: SLOT_A,
       name: "Alice Johnson",
       avatarUrl: null,
+      certificationUrls: [],
     });
     expect(booking.payment).toMatchObject({
       walletBalance: "10.00",
@@ -158,6 +159,31 @@ describe("trial booking rules", () => {
     expect(booking.actions.canPay).toBe(true);
     expect(JSON.stringify(booking)).not.toContain("email");
     expect(JSON.stringify(booking)).not.toContain("identificationCardUrl");
+
+    const preserved = mapBookingResponse(
+      {
+        ...record,
+        subjectName: "Originally booked offering",
+        subjectDescription: null,
+        subjectHourlyRate: new Prisma.Decimal("50.25"),
+        subjectFormat: "ONLINE",
+        subject: {
+          ...record.subject,
+          name: "Changed offering",
+          description: "New description",
+          hourlyRate: new Prisma.Decimal("999.00"),
+        },
+      },
+      SUBJECT_ID,
+      now
+    );
+    expect(preserved.subject).toMatchObject({
+      name: "Originally booked offering",
+      description: null,
+      hourlyRate: "50.25",
+      format: "ONLINE",
+    });
+    expect(preserved.totalAmount).toBe("75.00");
   });
 
   it("refunds the full credit more than 24 hours before the lesson", () => {

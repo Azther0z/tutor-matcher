@@ -23,6 +23,7 @@ export const env = {
   emailDeliveryMode: resolveEmailDeliveryMode(nodeEnv, configuredEmailDeliveryMode),
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "",
+  adminSignupKey: process.env.ADMIN_SIGNUP_KEY ?? "",
   frontendUrl: process.env.FRONTEND_URL?.trim() || "http://localhost:3000",
   frontendUrlConfigured: Boolean(process.env.FRONTEND_URL?.trim()),
 };

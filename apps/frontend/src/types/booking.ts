@@ -13,6 +13,7 @@ export type BookingSubject = {
   name: string;
   description?: string | null;
   hourlyRate: string;
+  format: "ONLINE";
   tutor: {
     id: string;
     name: string;
@@ -21,6 +22,7 @@ export type BookingSubject = {
 };
 
 export type AvailabilityResponse = {
+  acceptingBookings?: boolean;
   subject: BookingSubject;
   slots: AvailabilitySlot[];
 };

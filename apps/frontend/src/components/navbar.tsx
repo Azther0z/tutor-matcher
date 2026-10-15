@@ -53,6 +53,8 @@ export function Navbar() {
   // approved without needing a separate effect to reset it.
   const [tutorStatus, setTutorStatus] = useState<string | null>(null);
   const isApprovedTutor = status === "authenticated" && tutorStatus === "APPROVED";
+  // Hides the call to apply only; an admin can still open /enroll-tutor directly.
+  const isAdmin = status === "authenticated" && user?.isAdmin === true;
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [walletSummary, setWalletSummary] = useState<{
     owner: string;
@@ -166,7 +168,7 @@ export function Navbar() {
             </Link>
           ))}
 
-          {!isApprovedTutor && (
+          {!isApprovedTutor && !isAdmin && (
             <Link
               href="/enroll-tutor"
               className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-zinc-200"
@@ -207,6 +209,15 @@ export function Navbar() {
                   >
                     Settings
                   </Link>
+                  {user.isAdmin && (
+                    <Link
+                      href="/admin/tutor-requests"
+                      onClick={() => setMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
+                    >
+                      Tutor requests
+                    </Link>
+                  )}
                   <div className="my-2 border-t border-zinc-700" />
                   <button
                     type="button"

@@ -1,28 +1,52 @@
 # Deployment Environment
 
-Deployment environment files belong in this directory as SOPS-encrypted dotenv files. The shared
-homelab age recipient is configured in the repository root `.sops.yaml`. Doco-CD decrypts referenced
-`env_file` entries before deploying the Compose project.
+Deployment environment files belong in this directory as SOPS-encrypted dotenv files, with
+independent secrets in separate files and related Resend settings grouped together. The shared
+homelab age recipient is configured in the repository root `.sops.yaml`.
+Doco-CD automatically decrypts SOPS-encrypted files in the fetched source before deploying the
+Compose project. Compose then combines the listed `env_file` entries for each service.
 
-Create the backend and PostgreSQL dotenv files locally:
+The example files contain safe placeholder values. Copy them to ignored plaintext files, replace the
+placeholders locally, then encrypt each dotenv file with SOPS:
 
 ```bash
-cp deploy/secrets/backend.env.example deploy/secrets/backend.env
-${EDITOR:-vi} deploy/secrets/backend.env
-sops --encrypt --input-type dotenv --output-type dotenv --output deploy/secrets/backend.enc.env deploy/secrets/backend.env
-rm deploy/secrets/backend.env
+umask 077
+cp deploy/secrets/database-url.env.example deploy/secrets/database-url.env
+cp deploy/secrets/resend.env.example deploy/secrets/resend.env
+cp deploy/secrets/postgres-password.env.example deploy/secrets/postgres-password.env
+cp deploy/secrets/admin-signup-key.env.example deploy/secrets/admin-signup-key.env
+${EDITOR:-vi} deploy/secrets/database-url.env deploy/secrets/resend.env \
+  deploy/secrets/postgres-password.env deploy/secrets/admin-signup-key.env
 
-cp deploy/secrets/postgres.env.example deploy/secrets/postgres.env
-${EDITOR:-vi} deploy/secrets/postgres.env
-sops --encrypt --input-type dotenv --output-type dotenv --output deploy/secrets/postgres.enc.env deploy/secrets/postgres.env
-rm deploy/secrets/postgres.env
+sops --encrypt --input-type dotenv --output-type dotenv \
+  --output deploy/secrets/database-url.enc.env deploy/secrets/database-url.env
+sops --encrypt --input-type dotenv --output-type dotenv \
+  --output deploy/secrets/resend.enc.env deploy/secrets/resend.env
+sops --encrypt --input-type dotenv --output-type dotenv \
+  --output deploy/secrets/postgres-password.enc.env deploy/secrets/postgres-password.env
+sops --encrypt --input-type dotenv --output-type dotenv \
+  --output deploy/secrets/admin-signup-key.enc.env deploy/secrets/admin-signup-key.env
+rm deploy/secrets/database-url.env deploy/secrets/resend.env \
+  deploy/secrets/postgres-password.env deploy/secrets/admin-signup-key.env
 ```
 
-Replace both `POSTGRES_PASSWORD` placeholders with the same password. Set the `DATABASE_URL` host
-to `postgres`, use the `postgres` username and `tutor_matcher` database, and commit only the
-encrypted `deploy/secrets/backend.enc.env` and `deploy/secrets/postgres.enc.env` files. Doco-CD
-decrypts these files and Compose passes `DATABASE_URL` and `POSTGRES_PASSWORD` directly to the
-corresponding services.
+Use the same strong password in `DATABASE_URL` and `POSTGRES_PASSWORD`. Set the database host to
+`postgres`, username to `postgres`, and database name to `tutor_matcher`. `FRONTEND_URL` is ordinary
+deployment configuration supplied through Compose interpolation, not part of the encrypted secret
+files. It defaults to the public Tutor Matcher origin; override it when the frontend is hosted at a
+different public URL. All three Resend settings are kept together in `resend.env`, and
+`RESEND_FROM_EMAIL` must use a domain verified in Resend. Edit an encrypted file with
+`sops edit deploy/secrets/<name>.enc.env`; changing one independent secret does not require
+re-encrypting the other files. Commit only the encrypted `*.enc.env` files.
+
+Set `ADMIN_SIGNUP_KEY` to a random value with at least 32 bytes of entropy, for example by generating
+64 hexadecimal characters with `openssl rand -hex 32`. The signup form accepts this key only to
+create an Admin account; a missing, incorrect, or blank key creates a standard Student account.
+Keep `admin-signup-key.enc.env` present in deployment because Docker Swarm requires `env_file`
+entries to use string paths. The `ADMIN_SIGNUP_KEY` value may be blank, which leaves signup open
+only for ordinary accounts. To disable admin signups after creating the intended Admin accounts,
+encrypt an empty `ADMIN_SIGNUP_KEY` in the file. Existing Admin accounts keep their access when the
+signup key is disabled.
 
 Do not commit plaintext dotenv files.
 

@@ -1,259 +1,340 @@
+import { openTutorEditor, confirmTutorSubmission } from "@/src/test/tutor-editor-helpers";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import EnrollTutorPage from "./page";
+import {
+  approvedTutor,
+  jsonApplicationResponse as jsonResponse,
+  profileFields,
+  profileVersion,
+} from "@/src/test/tutor-profile-fixtures";
 
 const mockReplace = jest.fn();
 const fetchMock = jest.fn();
-
 jest.mock("next/navigation", () => ({
   usePathname: () => "/enroll-tutor",
-  useRouter: () => ({ push: mockReplace, replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace }),
 }));
-
 beforeEach(() => {
-  mockReplace.mockReset();
   fetchMock.mockReset();
+  mockReplace.mockReset();
   global.fetch = fetchMock;
   localStorage.clear();
   localStorage.setItem("authToken", "test-token");
 });
 
-const pendingTutor = {
-  id: "88888888-8888-4888-8888-888888888888",
-  avatarUrl: null,
-  bio: "I teach mathematics.",
-  introVideoUrl: "https://example.com/intro.mp4",
-  identificationCardUrl: "https://example.com/identification-card.pdf",
-  certificationUrl: "https://example.com/certification.pdf",
-  status: "PENDING",
-  enrolledAt: "2026-01-01T00:00:00.000Z",
-};
-
-function mockApplication(body: unknown) {
-  fetchMock.mockResolvedValueOnce({ ok: true, json: async () => body });
-}
-
-function completeRequiredFields() {
-  fireEvent.change(screen.getByLabelText("Tutor bio"), {
-    target: { value: "I teach mathematics." },
-  });
+function fillApplication() {
+  fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: profileFields.bio } });
   fireEvent.change(screen.getByLabelText("Intro video URL"), {
-    target: { value: "https://example.com/intro.mp4" },
+    target: { value: "example.com/intro.mp4" },
   });
-  fireEvent.change(screen.getByLabelText(/Identification card/), {
-    target: { value: "https://example.com/identification-card.pdf" },
+  fireEvent.change(screen.getByLabelText(/Identification card URL/), {
+    target: { value: "example.com/id.pdf" },
   });
-  fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
-    target: { value: "https://example.com/certification.pdf" },
-  });
-  fireEvent.click(screen.getByRole("checkbox"));
 }
+const none = { status: "NONE", tutor: null, version: null };
+const pending = { status: "PENDING", tutor: null, version: profileVersion };
 
-describe("EnrollTutorPage", () => {
-  it("shows the application form for a new applicant", async () => {
-    mockApplication({ status: "NONE", tutor: null });
-    render(<EnrollTutorPage />);
+it("redirects unauthenticated applicants without fetching", async () => {
+  localStorage.clear();
+  render(<EnrollTutorPage />);
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/login?next=%2Fenroll-tutor"));
+  expect(fetchMock).not.toHaveBeenCalled();
+});
 
-    expect(await screen.findByRole("button", { name: "Submit application" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Tutor bio")).toHaveValue("");
+it("loads the form under Strict Mode without getting stuck loading", async () => {
+  fetchMock.mockResolvedValue(jsonResponse(none));
+  render(
+    <StrictMode>
+      <EnrollTutorPage />
+    </StrictMode>
+  );
+  await openTutorEditor();
+  expect(await screen.findByRole("button", { name: "Submit" })).toBeInTheDocument();
+});
+
+it("validates details before confirmation and requires explicit consent before submitting", async () => {
+  fetchMock.mockResolvedValueOnce(jsonResponse(none));
+  render(<EnrollTutorPage />);
+  await openTutorEditor();
+  const submit = screen.getByRole("button", { name: "Submit" });
+  fillApplication();
+  fireEvent.change(screen.getByLabelText(/Identification card URL/), {
+    target: { value: "javascript:alert(1)" },
   });
-
-  it("blocks submitting and highlights required fields when they are empty", async () => {
-    mockApplication({ status: "NONE", tutor: null });
-    render(<EnrollTutorPage />);
-    await screen.findByRole("button", { name: "Submit application" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Submit application" }));
-
-    expect(fetchMock).toHaveBeenCalledTimes(1); // only the initial GET
-    expect(screen.getByText("Tutor bio is required.")).toBeInTheDocument();
-    expect(screen.getByText("Intro video URL is required.")).toBeInTheDocument();
-    expect(screen.getByText("Identification card URL is required.")).toBeInTheDocument();
-    expect(screen.getByText("A teaching certification document is required.")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "You must consent to the processing of your ID, teaching credentials, and payout information."
-      )
-    ).toBeInTheDocument();
+  fireEvent.click(submit);
+  expect(screen.getByLabelText(/Identification card URL/)).toHaveAttribute("aria-invalid", "true");
+  expect(screen.queryByRole("button", { name: "Confirm submit" })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText(/Identification card URL/), {
+    target: { value: "https://example.com/id.pdf" },
   });
+  fireEvent.click(submit);
+  const confirm = screen.getByRole("button", { name: "Confirm submit" });
+  expect(confirm).toBeDisabled();
+  fireEvent.click(screen.getByRole("checkbox"));
+  expect(confirm).toBeEnabled();
+  fireEvent.click(screen.getByRole("checkbox"));
+  expect(confirm).toBeDisabled();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
 
-  it("blocks submitting and highlights the requirement when consent has not been accepted", async () => {
-    mockApplication({ status: "NONE", tutor: null });
-    render(<EnrollTutorPage />);
-    await screen.findByRole("button", { name: "Submit application" });
-
-    fireEvent.change(screen.getByLabelText("Tutor bio"), {
-      target: { value: "I teach mathematics." },
-    });
-    fireEvent.change(screen.getByLabelText("Intro video URL"), {
-      target: { value: "https://example.com/intro.mp4" },
-    });
-    fireEvent.change(screen.getByLabelText(/Identification card/), {
-      target: { value: "https://example.com/identification-card.pdf" },
-    });
-    fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
-      target: { value: "https://example.com/certification.pdf" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Submit application" }));
-
-    expect(fetchMock).toHaveBeenCalledTimes(1); // only the initial GET
-    expect(
-      screen.getByText(
-        "You must consent to the processing of your ID, teaching credentials, and payout information."
-      )
-    ).toBeInTheDocument();
-  });
-
-  it("validates the identification card as a URL before submitting", async () => {
-    mockApplication({ status: "NONE", tutor: null });
-    render(<EnrollTutorPage />);
-    await screen.findByRole("button", { name: "Submit application" });
-
-    completeRequiredFields();
-    fireEvent.change(screen.getByLabelText(/Identification card/), { target: { value: "ID-123" } });
-    fireEvent.click(screen.getByRole("button", { name: "Submit application" }));
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Enter a valid identification card URL.")).toBeInTheDocument();
-  });
-
-  it("submits the Tutor details and redirects after immediate approval", async () => {
-    mockApplication({ status: "NONE", tutor: null });
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        status: "APPROVED",
-        tutor: { ...pendingTutor, status: "UNPUBLISHED" },
-      }),
-    });
-    render(<EnrollTutorPage />);
-    await screen.findByRole("button", { name: "Submit application" });
-
-    completeRequiredFields();
-    fireEvent.click(screen.getByRole("button", { name: "Submit application" }));
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    expect(fetchMock).toHaveBeenLastCalledWith("/api/profiles/me/tutor", {
-      method: "PUT",
-      headers: {
-        Authorization: "Bearer test-token",
-        "Content-Type": "application/json",
+it("saves an incomplete draft without requiring consent or submitting", async () => {
+  fetchMock.mockResolvedValueOnce(jsonResponse(none)).mockResolvedValueOnce(
+    jsonResponse({
+      status: "DRAFT",
+      tutor: null,
+      version: {
+        ...profileVersion,
+        status: "DRAFT",
+        bio: "Work in progress",
+        introVideoUrl: null,
+        identificationCardUrl: null,
+        certificationUrls: [],
       },
+    })
+  );
+  render(<EnrollTutorPage />);
+  await openTutorEditor();
+  await screen.findByRole("button", { name: "Save draft" });
+  fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: "Work in progress" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled());
+  expect(fetchMock).toHaveBeenLastCalledWith(
+    "/api/profiles/me/tutor/drafts",
+    expect.objectContaining({
+      method: "POST",
+      headers: { Authorization: "Bearer test-token", "Content-Type": "application/json" },
       body: JSON.stringify({
         avatarUrl: null,
-        bio: "I teach mathematics.",
-        introVideoUrl: "https://example.com/intro.mp4",
-        identificationCardUrl: "https://example.com/identification-card.pdf",
-        certificationUrl: "https://example.com/certification.pdf",
-        consentAccepted: true,
+        bio: "Work in progress",
+        introVideoUrl: null,
+        identificationCardUrl: null,
+        certificationUrls: [],
       }),
-    });
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard/tutor"));
-    expect(screen.queryByText("Awaiting approval")).not.toBeInTheDocument();
-  });
+    })
+  );
+  expect(screen.queryByText("Pending Verification")).not.toBeInTheDocument();
+});
 
-  it("accepts URLs without an explicit protocol during enrollment", async () => {
-    mockApplication({ status: "NONE", tutor: null });
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        status: "APPROVED",
-        tutor: { ...pendingTutor, status: "UNPUBLISHED" },
+it("submits a normalized draft and remains pending with no Tutor or dashboard redirect", async () => {
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse(none))
+    .mockResolvedValueOnce(
+      jsonResponse({
+        status: "DRAFT",
+        tutor: null,
+        version: { ...profileVersion, status: "DRAFT" },
+      })
+    )
+    .mockResolvedValueOnce(jsonResponse(pending));
+  render(<EnrollTutorPage />);
+  await openTutorEditor();
+  await screen.findByRole("button", { name: "Submit" });
+  fillApplication();
+  fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+  await confirmTutorSubmission();
+  expect(await screen.findByText("Pending Verification")).toBeInTheDocument();
+  expect(screen.getByText(/You remain a student until it is approved/)).toBeInTheDocument();
+  expect(fetchMock.mock.calls[1]).toEqual([
+    "/api/profiles/me/tutor/drafts",
+    expect.objectContaining({
+      body: JSON.stringify({
+        avatarUrl: null,
+        bio: profileFields.bio,
+        introVideoUrl: profileFields.introVideoUrl,
+        identificationCardUrl: profileFields.identificationCardUrl,
+        certificationUrls: [],
       }),
-    });
-    render(<EnrollTutorPage />);
-    await screen.findByRole("button", { name: "Submit application" });
+    }),
+  ]);
+  expect(fetchMock).toHaveBeenLastCalledWith(
+    `/api/profiles/me/tutor/drafts/${profileVersion.id}/submit`,
+    expect.objectContaining({ method: "POST", body: JSON.stringify({ consentAccepted: true }) })
+  );
+  expect(mockReplace).not.toHaveBeenCalled();
+  expect(screen.queryByRole("button", { name: "Publish profile" })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Tutor bio")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "New draft" })).toBeEnabled();
+});
 
-    completeRequiredFields();
-    fireEvent.change(screen.getByLabelText(/Avatar URL/), {
-      target: { value: "example.com/avatar.jpg" },
-    });
-    fireEvent.change(screen.getByLabelText("Intro video URL"), {
-      target: { value: "example.com/intro.mp4" },
-    });
-    fireEvent.change(screen.getByLabelText(/Identification card/), {
-      target: { value: "example.com/identification-card.pdf" },
-    });
-    fireEvent.change(screen.getByLabelText(/Teaching certification document URL/), {
-      target: { value: "example.com/certification.pdf" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Submit application" }));
+it("shows the pending application's documents and Awaiting approval", async () => {
+  fetchMock.mockResolvedValueOnce(jsonResponse({ ...pending, pendingRequest: profileVersion }));
+  render(<EnrollTutorPage />);
+  const panel = await screen.findByRole("region", { name: "Application status" });
+  expect(panel).toHaveTextContent("Awaiting approval");
+  expect(panel).toHaveTextContent(profileFields.identificationCardUrl);
+  expect(panel).toHaveTextContent(profileFields.introVideoUrl);
+  expect(screen.getByRole("button", { name: "Cancel and re-submit" })).toBeEnabled();
+});
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    expect(fetchMock.mock.calls[1][1]).toEqual(
-      expect.objectContaining({
-        body: expect.stringContaining('"avatarUrl":"https://example.com/avatar.jpg"'),
+it("cancels a pending application and opens a draft copied from it to re-submit", async () => {
+  const submission = { ...profileVersion, status: "CANCELLED" };
+  const cancelled = { status: "CANCELLED", tutor: null, version: submission };
+  const copied = {
+    ...cancelled,
+    status: "DRAFT",
+    version: { ...profileVersion, id: "new-draft", status: "DRAFT" },
+    submissions: [submission],
+  };
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse({ ...pending, pendingRequest: profileVersion }))
+    .mockResolvedValueOnce(jsonResponse(cancelled))
+    .mockResolvedValueOnce(jsonResponse(copied));
+  render(<EnrollTutorPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Cancel and re-submit" }));
+  expect(await screen.findByLabelText("Tutor bio")).toHaveValue(profileFields.bio);
+  expect(fetchMock.mock.calls[1]).toEqual([
+    "/api/profiles/me/tutor/withdraw",
+    expect.objectContaining({ method: "POST" }),
+  ]);
+  expect(fetchMock.mock.calls[2]).toEqual([
+    `/api/profiles/me/tutor/submissions/${profileVersion.id}/copy`,
+    expect.objectContaining({ method: "POST" }),
+  ]);
+  expect(screen.queryByRole("region", { name: "Application status" })).not.toBeInTheDocument();
+});
+
+it("routes an already approved Tutor to the Tutor dashboard", async () => {
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse({ status: "APPROVED", tutor: approvedTutor, version: profileVersion })
+  );
+  render(<EnrollTutorPage />);
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard/tutor"));
+});
+
+it("cancels a submission without creating a draft, then explicitly copies a new draft", async () => {
+  const submission = { ...profileVersion, status: "CANCELLED" };
+  const cancelled = { status: "CANCELLED", tutor: null, version: submission };
+  const copied = {
+    ...cancelled,
+    status: "DRAFT",
+    version: { ...profileVersion, id: "new-draft", status: "DRAFT" },
+    submissions: [submission],
+  };
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse(pending))
+    .mockResolvedValueOnce(jsonResponse(cancelled))
+    .mockResolvedValueOnce(jsonResponse(copied));
+  render(<EnrollTutorPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Withdraw request" }));
+  await screen.findByText(
+    "Request cancelled. You can create a new draft from its submission history."
+  );
+  expect(screen.getByText("No saved drafts yet.")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Create draft from cancelled submission" }));
+  expect(await screen.findByLabelText("Tutor bio")).toHaveValue(profileFields.bio);
+  expect(fetchMock.mock.calls[2]).toEqual([
+    `/api/profiles/me/tutor/submissions/${profileVersion.id}/copy`,
+    expect.objectContaining({ method: "POST" }),
+  ]);
+  expect(screen.getByLabelText("Draft status")).toHaveTextContent("Saved");
+});
+
+it("keeps a pending request locked if withdrawal fails", async () => {
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse(pending))
+    .mockResolvedValueOnce(
+      jsonResponse({ message: "Already reviewed. Refresh your status." }, 409)
+    );
+  render(<EnrollTutorPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Withdraw request" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Already reviewed");
+  expect(screen.queryByLabelText("Tutor bio")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "New draft" })).toBeEnabled();
+});
+
+it("shows the rejection reason and lets the applicant revise and resubmit", async () => {
+  fetchMock
+    .mockResolvedValueOnce(
+      jsonResponse({
+        status: "REJECTED",
+        tutor: null,
+        version: {
+          ...profileVersion,
+          status: "REJECTED",
+          rejectionReason: "Please provide a readable identification card.",
+        },
       })
-    );
-    expect(fetchMock.mock.calls[1][1]).toEqual(
-      expect.objectContaining({
-        body: expect.stringContaining('"introVideoUrl":"https://example.com/intro.mp4"'),
-      })
-    );
-    expect(fetchMock.mock.calls[1][1]).toEqual(
-      expect.objectContaining({
-        body: expect.stringContaining(
-          '"identificationCardUrl":"https://example.com/identification-card.pdf"'
-        ),
-      })
-    );
-    expect(fetchMock.mock.calls[1][1]).toEqual(
-      expect.objectContaining({
-        body: expect.stringContaining('"certificationUrl":"https://example.com/certification.pdf"'),
-      })
-    );
-    expect(screen.queryByText("Enter a valid intro video URL.")).not.toBeInTheDocument();
+    )
+    .mockResolvedValueOnce(
+      jsonResponse({ ...pending, status: "DRAFT", version: { ...profileVersion, status: "DRAFT" } })
+    )
+    .mockResolvedValueOnce(jsonResponse(pending));
+  render(<EnrollTutorPage />);
+  await openTutorEditor();
+  expect(
+    screen.getAllByText(/Please provide a readable identification card/).length
+  ).toBeGreaterThan(0);
+  fillApplication();
+  fireEvent.change(screen.getByLabelText(/Identification card URL/), {
+    target: { value: "https://example.com/readable.pdf" },
   });
+  fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+  await confirmTutorSubmission();
+  expect(await screen.findByText("Pending Verification")).toBeInTheDocument();
+  expect(fetchMock.mock.calls[1][1].body).toContain("https://example.com/readable.pdf");
+});
 
-  it("shows the awaiting-approval panel for a pending applicant and can reopen the form", async () => {
-    mockApplication({ status: "PENDING", tutor: pendingTutor });
-    render(<EnrollTutorPage />);
+it("keeps the draft available when submission fails after saving", async () => {
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse(none))
+    .mockResolvedValueOnce(
+      jsonResponse({ ...pending, status: "DRAFT", version: { ...profileVersion, status: "DRAFT" } })
+    )
+    .mockResolvedValueOnce(jsonResponse({ message: "Please try again." }, 500));
+  render(<EnrollTutorPage />);
+  await openTutorEditor();
+  await screen.findByRole("button", { name: "Submit" });
+  fillApplication();
+  fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+  await confirmTutorSubmission();
+  expect(await screen.findByRole("alert")).toHaveTextContent("Please try again.");
+  fireEvent.click(screen.getByRole("button", { name: "Edit draft" }));
+  expect(screen.getByLabelText("Tutor bio")).toHaveValue(profileFields.bio);
+});
 
-    expect(await screen.findByText("Awaiting approval")).toBeInTheDocument();
-    expect(screen.getByText(pendingTutor.certificationUrl)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Submit application" })).not.toBeInTheDocument();
+it("refreshes a pending application to approval without auto-publishing", async () => {
+  fetchMock.mockResolvedValueOnce(jsonResponse(pending)).mockResolvedValueOnce(
+    jsonResponse({
+      status: "APPROVED",
+      tutor: { ...approvedTutor, status: "UNPUBLISHED" },
+      version: { ...profileVersion, status: "APPROVED" },
+    })
+  );
+  render(<EnrollTutorPage />);
+  await screen.findByText("Pending Verification");
+  fireEvent.click(screen.getByRole("button", { name: "Refresh review status" }));
+  expect(await screen.findByText("Verified")).toBeInTheDocument();
+  expect(screen.getByText("Unpublished", { exact: true })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Manage your Tutor profile" })).toHaveAttribute(
+    "href",
+    "/settings/tutor"
+  );
+  expect(screen.queryByRole("button", { name: "Submit" })).not.toBeInTheDocument();
+});
 
-    fireEvent.click(screen.getByRole("button", { name: "Cancel & re-submit" }));
+it("retains accessible consent policy documents", async () => {
+  fetchMock.mockResolvedValueOnce(jsonResponse(none));
+  render(<EnrollTutorPage />);
+  await openTutorEditor();
+  fillApplication();
+  fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Privacy Policy" }));
+  expect(screen.getByRole("dialog", { name: "Privacy Policy" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Close Privacy Policy" }));
+  expect(screen.queryByRole("dialog", { name: "Privacy Policy" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "Draft" })).not.toBeInTheDocument();
+  expect(screen.getByRole("dialog", { name: "Submit draft for review?" })).toBeInTheDocument();
+});
 
-    expect(screen.getByRole("button", { name: "Submit application" })).toBeInTheDocument();
-    expect(screen.getByLabelText(/Identification card/)).toHaveValue(
-      "https://example.com/identification-card.pdf"
-    );
-    expect(screen.getByLabelText(/Teaching certification document URL/)).toHaveValue(
-      pendingTutor.certificationUrl
-    );
-  });
-
-  it("redirects an approved Tutor to the Tutor dashboard", async () => {
-    mockApplication({ status: "APPROVED", tutor: { ...pendingTutor, status: "PUBLISHED" } });
-    render(<EnrollTutorPage />);
-
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard/tutor"));
-    expect(screen.queryByRole("button", { name: "Submit application" })).not.toBeInTheDocument();
-  });
-
-  it("shows a rejection notice and lets a rejected applicant re-submit", async () => {
-    mockApplication({ status: "REJECTED", tutor: { ...pendingTutor, status: "REJECTED" } });
-    render(<EnrollTutorPage />);
-
-    expect(
-      await screen.findByText(
-        "Your previous application was not approved. Update your details and re-submit."
-      )
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("Tutor bio")).toHaveValue("I teach mathematics.");
-    expect(screen.getByLabelText(/Teaching certification document URL/)).toHaveValue(
-      pendingTutor.certificationUrl
-    );
-  });
-
-  it("shows an error when the application cannot be loaded", async () => {
-    fetchMock.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
-    render(<EnrollTutorPage />);
-
-    expect(
-      await screen.findByText(
-        "We could not load your Tutor application. Please refresh and try again."
-      )
-    ).toBeInTheDocument();
-  });
+it("shows load errors and retries", async () => {
+  fetchMock
+    .mockRejectedValueOnce(new Error("Server unavailable"))
+    .mockResolvedValueOnce(jsonResponse(none));
+  render(<EnrollTutorPage />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Server unavailable");
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  await openTutorEditor();
+  expect(await screen.findByRole("button", { name: "Submit" })).toBeInTheDocument();
 });

@@ -11,9 +11,8 @@ continuous block of the tutor's published 30-minute slots, and pays for it from 
 single wallet balance. Payment confirms the lesson immediately — there is no tutor
 approval step, because the tutor already published the slot.
 
-Behavioural authority for these terms is the clickable prototype captured in
-[`docs/sources/tutormatcher-prototype-readme.md`](docs/sources/tutormatcher-prototype-readme.md)
-and [`docs/sources/tutormatcher-prototype-user-stories.md`](docs/sources/tutormatcher-prototype-user-stories.md).
+Behavioural authority for these terms is [`docs/user-journeys.md`](docs/user-journeys.md),
+which overrides the historical prototype evidence preserved in `docs/sources/`.
 See [`docs/user-journeys.md`](docs/user-journeys.md) for the flows and
 [`docs/database-schema.md`](docs/database-schema.md) for the data model.
 
@@ -31,35 +30,47 @@ from sign-up; nothing has to be granted.
 _Avoid_: Learner, client, buyer
 
 **Tutor**:
-A user whose tutor application has been approved. In the current sprint, a complete
-application is approved immediately; the stored Tutor status starts as `UNPUBLISHED`
-until the public listing is configured. A tutor manages subjects and availability,
-teaches confirmed lessons, and receives earnings into the same wallet.
+A user whose initial tutor application has been approved by an admin. A tutor owns
+subjects, teaches booked lessons, and chooses whether their listing accepts new bookings.
 _Avoid_: Teacher, instructor, provider
 
 **Admin**:
 A user with elevated access who approves or rejects tutor applications and listing
 changes, moderates flagged content, resolves payment disputes, and suspends or bans
-accounts.
+accounts. The capability can be added during sign-up with a valid backend-configured
+admin signup key.
 _Avoid_: Moderator, staff, superuser
 
 **Tutor Application**:
-A student's request to gain the tutor capability, carrying an identification card URL, a
-teaching certification URL, and a bio. The current sprint approves a complete
-submission immediately; `pending` and `rejected` remain available for the future admin
-review workflow, where a pending application can be cancelled and re-submitted.
+A student's submitted profile version requesting the tutor capability, with identity,
+optional teaching credentials, introduction video, and bio for admin review.
 _Avoid_: Tutor signup, tutor registration, enrolment
 
+**Tutor Profile Version**:
+One complete proposed or approved set of tutor profile content and verification documents.
+The current approved version remains in use while a replacement awaits review.
+_Avoid_: Separate tutor account, duplicate live profile
+
+**Tutor Profile Draft**:
+A user's saved, editable profile version that has not been submitted for review.
+A user may keep several drafts while only one submitted version awaits an admin decision.
+_Avoid_: Pending application, published profile
+
 **Verification Document**:
-The URL reference for the identification card or teaching certification file attached to a
-tutor application and checked by an admin. Replacing a document re-enters admin review
-once that workflow is enabled.
+The private identification-card URL attached to a tutor application and checked by an admin.
+Replacing a document re-enters admin review
+before becoming current.
 _Avoid_: Transfer proof, attachment, credential
 
+**Tutor Portfolio Certificate**:
+An optional certificate URL showing a tutor's achievements, contest participation or qualifications.
+Certificates belong to a profile version. The Tutor form does not collect them while document
+upload and storage are deferred, and student pages do not show them.
+_Avoid_: Private identity document, mandatory teaching license
+
 **Listing**:
-The tutor's public profile content — display name, headline, bio, photo, intro video
-URL, and published state. Listing and document changes go through admin review before
-they go live.
+The tutor's approved public profile. Publication controls discovery and new bookings;
+unpublishing preserves existing lessons and conversations, independently of profile review.
 _Avoid_: Tutor page, storefront, public profile
 
 **Subject**:
@@ -72,8 +83,8 @@ _Avoid_: Class, course, category, topic
 A 30-minute window on a specific date that a tutor has opened for teaching. The slot
 belongs to the tutor, and the tutor assigns one or more of their subjects to it, so a
 student browsing a subject sees only the slots that advertise that subject. A slot is
-locked to one booking once that booking is paid.
-_Avoid_: Time slot, open slot, schedule entry, weekly availability
+locked to one booking during an active payment hold or after payment.
+_Avoid_: Time slot, open slot, schedule entry, recurring availability schedule
 
 **Booking**:
 One student and one tutor, one subject, and one continuous block of back-to-back

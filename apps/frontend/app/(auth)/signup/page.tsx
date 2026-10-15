@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [adminSignupKey, setAdminSignupKey] = useState("");
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [openDocument, setOpenDocument] = useState<PolicyDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +54,7 @@ export default function SignupPage() {
           lastName: lastName.trim(),
           email,
           password,
+          ...(adminSignupKey ? { adminSignupKey } : {}),
         }),
       });
 
@@ -143,6 +145,21 @@ export default function SignupPage() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
           />
+        </label>
+
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
+          Referral code <span className="font-normal text-zinc-500">(optional)</span>
+          <input
+            type="password"
+            name="adminSignupKey"
+            autoComplete="off"
+            value={adminSignupKey}
+            onChange={(e) => setAdminSignupKey(e.target.value)}
+            className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+          />
+          <span className="font-normal text-zinc-500">
+            For authorized administrators. Leave blank for a standard account.
+          </span>
         </label>
 
         <label className="flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300">

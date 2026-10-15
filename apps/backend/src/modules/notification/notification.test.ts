@@ -13,13 +13,14 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
 }));
 
 jest.unstable_mockModule("../../lib/email.ts", () => ({
-  // auth.service.ts also imports from this module; stand ins keep the app's
-  // module graph loadable even though no test here exercises password reset.
+  // auth.service.ts and admin.service.ts also import from this module; stand ins keep
+  // the app's module graph loadable even though no test here exercises them.
   buildPasswordResetUrl: (token: string) => `http://localhost:3000/reset-password?token=${token}`,
   sendPasswordResetEmail: jest.fn(),
   sendBookingNotificationEmail,
   sendMessageNotificationEmail,
   sendPaymentNotificationEmail,
+  sendTutorRequestRejectedEmail: jest.fn(),
 }));
 
 const { app } = await import("../../app.ts");

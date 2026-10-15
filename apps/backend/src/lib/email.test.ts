@@ -12,8 +12,12 @@ const ResendMock = jest.fn<(apiKey: string) => MockEmailClient>();
 jest.unstable_mockModule("resend", () => ({ Resend: ResendMock }));
 
 const { env, resolveEmailDeliveryMode } = await import("./env.ts");
-const { EmailConfigurationError, EmailDeliveryError, sendPasswordResetEmail } =
-  await import("./email.ts");
+const {
+  EmailConfigurationError,
+  EmailDeliveryError,
+  sendPasswordResetEmail,
+  sendTutorRequestRejectedEmail,
+} = await import("./email.ts");
 const { PASSWORD_RESET_TTL_MINUTES } = await import("./password-reset.ts");
 
 const originalEmailConfig = {
@@ -195,4 +199,43 @@ describe("sendPasswordResetEmail", () => {
     expect(payload.html).not.toContain("30 minutes");
     expect(payload.text).not.toContain("30 minutes");
   });
+});
+
+describe("sendTutorRequestRejectedEmail", () => {
+  it.each([
+    [false, "http://localhost:3000/enroll-tutor"],
+    [true, "http://localhost:3000/settings/tutor"],
+  ])(
+    "sends the escaped reason with a link to revise (approved Tutor: %s)",
+    async (hasTutor, reviseUrl) => {
+      resendSend.mockResolvedValue({ id: "email-id" });
+      Object.assign(env, {
+        emailDeliveryMode: "resend",
+        resendApiKey: "re_test_key",
+        resendFromEmail: "Tutor Matcher <onboarding@resend.dev>",
+        frontendUrlConfigured: true,
+      });
+
+      await sendTutorRequestRejectedEmail({
+        to: "ada@example.com",
+        firstName: "Ada",
+        reason: 'Use a "PDF" <not a .docx> & re-submit',
+        hasTutor,
+      });
+
+      const payload = resendSend.mock.calls[0]?.[0] as {
+        to: string[];
+        subject: string;
+        html: string;
+        text: string;
+      };
+      expect(payload.to).toEqual(["ada@example.com"]);
+      expect(payload.subject).toBe("Your Tutor Matcher tutor request was not approved");
+      expect(payload.html).toContain("Use a &quot;PDF&quot; &lt;not a .docx&gt; &amp; re-submit");
+      expect(payload.html).not.toContain("<not a .docx>");
+      expect(payload.html).toContain(`href="${reviseUrl}"`);
+      expect(payload.text).toContain('Reason: Use a "PDF" <not a .docx> & re-submit');
+      expect(payload.text).toContain(reviseUrl);
+    }
+  );
 });

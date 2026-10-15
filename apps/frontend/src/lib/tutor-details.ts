@@ -3,7 +3,6 @@ export type TutorDetails = {
   bio: string;
   introVideoUrl: string;
   identificationCardUrl: string;
-  certificationUrl: string;
 };
 
 export type TutorDetailsFieldName = keyof TutorDetails;
@@ -14,13 +13,12 @@ export const emptyTutorDetails: TutorDetails = {
   bio: "",
   introVideoUrl: "",
   identificationCardUrl: "",
-  certificationUrl: "",
 };
 
 function isValidUrl(value: string) {
   try {
     const url = new URL(normalizeHttpsUrl(value));
-    return url.protocol === "https:" && url.hostname.includes(".");
+    return url.protocol === "https:" || url.protocol === "http:";
   } catch {
     return false;
   }
@@ -55,12 +53,6 @@ export function validateTutorDetails(values: TutorDetails): TutorDetailsFieldErr
     errors.identificationCardUrl = "Identification card URL is required.";
   } else if (!isValidUrl(values.identificationCardUrl)) {
     errors.identificationCardUrl = "Enter a valid identification card URL.";
-  }
-
-  if (!values.certificationUrl.trim()) {
-    errors.certificationUrl = "A teaching certification document is required.";
-  } else if (!isValidUrl(values.certificationUrl)) {
-    errors.certificationUrl = "Enter a valid certification document URL.";
   }
 
   return errors;

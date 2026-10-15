@@ -69,3 +69,39 @@ it("refreshes availability only for a structured slot-taken error", async () => 
   expect(await screen.findByText(/just booked by someone else/i)).toBeInTheDocument();
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
 });
+
+it("keeps subject details visible but disables new bookings when unpublished", async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ ...availability, acceptingBookings: false, slots: [] }),
+  });
+  render(<SubjectBookingPage />);
+  expect(await screen.findByText("This tutor isn’t accepting bookings")).toBeInTheDocument();
+  expect(screen.getByText("English with Alice")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Confirm booking" })).toBeDisabled();
+});
+
+it("keeps certificates and ID references out of the subject booking UI", async () => {
+  const certificates = ["http://example.com/contest.pdf", "https://example.com/teaching.pdf"];
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      ...availability,
+      subject: {
+        ...availability.subject,
+        tutor: {
+          ...availability.subject.tutor,
+          certificationUrls: certificates,
+          identificationCardUrl: "https://example.com/id-private",
+        },
+      },
+    }),
+  });
+  render(<SubjectBookingPage />);
+  expect(await screen.findByText("English with Alice")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("region", { name: "Teaching certifications / portfolio" })
+  ).not.toBeInTheDocument();
+  for (const url of certificates) expect(screen.queryByText(url)).not.toBeInTheDocument();
+  expect(screen.queryByText("https://example.com/id-private")).not.toBeInTheDocument();
+});

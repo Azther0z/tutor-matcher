@@ -33,8 +33,10 @@ place.
    listing and document changes, flagged content, payment disputes, and account
    suspension.
 
-**Roles.** Every account is created as a student. Tutor and admin are capabilities
-layered onto the same account, not separate account types.
+**Roles.** Every account has the Student capability. Tutor and admin are capabilities
+layered onto the same account, not separate account types. A valid server-configured
+admin signup key can add the Admin capability during sign-up; an omitted, invalid, or
+disabled key leaves the account as a standard Student account.
 
 | Role        | What the capability adds                                                                                                               |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -99,7 +101,7 @@ Guards run before render, not after.
 | `/forgot-password`         | Request a password reset link                                           | Public         |
 | `/reset-password?token=…`  | Validate a reset link and choose a new password                         | Public         |
 | `/(auth)/enroll-tutor`     | Tutor application: documents, introduction video, submit, pending state | Requires login |
-| `/dashboard`               | Student dashboard                                                       | Requires login |
+| `/dashboard`               | Student and Tutor dashboards, selected with tabs                        | Requires login |
 | `/dashboard/tutor`         | Tutor dashboard — classes, earnings, bookings, subjects, availability   | Role: tutor    |
 | `/bookings`                | All bookings, tabbed by status                                          | Requires login |
 | `/bookings/s/:subjectId`   | Subject booking — pick a date and a block of slots (no booking yet)     | Requires login |
@@ -111,7 +113,7 @@ Guards run before render, not after.
 | `/settings/account`        | Email, password, deactivate account                                     | Requires login |
 | `/settings/notifications`  | Per-event email and push preferences                                    | Requires login |
 | `/settings/wallet`         | Balance shortcut and payout account details                             | Requires login |
-| `/settings/tutor`          | Public listing, verification, subjects                                  | Role: tutor    |
+| `/settings/tutor`          | Tutor profile — public listing, verification, subjects                  | Role: tutor    |
 | `/reviews/:tutorId`        | Read-only review list for a tutor                                       | Requires login |
 | `/admin/tutor-requests`    | Tutor application queue — approve or reject                             | Role: admin    |
 
@@ -134,8 +136,10 @@ Guards run before render, not after.
 ## 1 · Account and access
 
 **Sign up.** Full name, email, password, password confirmation, and agreement to the
-Terms and Privacy Policy. There is **no role choice at sign-up** — every new account is
-a student. A duplicate email or invalid input fails with a field-level error.
+Terms and Privacy Policy. There is **no role choice at sign-up** — every new account has
+the Student capability. An optional admin signup key adds Admin only when it matches the
+key configured by the backend; an omitted, invalid, or disabled key creates a standard
+Student account. A duplicate email or invalid input fails with a field-level error.
 
 **Log in / log out.** Email and password, or Continue with Google. Log out returns
 protected routes to the guard in rule 1 above.
@@ -188,7 +192,9 @@ student never picks the subject twice. **No booking record exists in this step.*
 
 - A month calendar marks days the tutor has free slots for this subject with a dot;
   days with no slots and days in the past are not selectable. Navigation reaches up to
-  **three months ahead**.
+  **three months ahead**. This is a student calendar-navigation rule, not a limit on how
+  far ahead Tutors may publish availability. The existing booking picker/API does not yet
+  enforce that navigation horizon; PROF-3 does not add a Tutor publishing cap.
 - Choosing a day reveals the 48 half-hour slots; only slots the tutor opened for this
   subject are selectable.
 - Slots are chosen as **one continuous block**. A tap extends the block at either end
@@ -306,23 +312,54 @@ Related stories: US6-1 … US6-3.
 ## 6 · Becoming a tutor
 
 1. A logged-in student opens **Become a tutor** → `/(auth)/enroll-tutor`.
-2. The application requires **all three**: an identification card document, a teaching
-   certification document, and an introduction video. Submit stays disabled until all three are
-   present. Subjects are not part of the application — they are added afterwards in
-   `/settings/tutor`.
-3. Submitting sets the application to **pending**. The page then shows the uploaded
-   documents, the introduction video, and _Awaiting approval_, with **Cancel & re-submit**.
+2. The application requires a bio, an identification card document and an introduction video.
+   Portfolio certifications are not collected for now, because document upload and storage
+   are deferred. Pressing Submit while a required field is missing blocks submission and
+   highlights the missing fields. Subjects are not part of the application — they are added
+   afterwards in `/settings/tutor`.
+3. A student can save multiple incomplete **drafts** and see them in a list. **New draft** starts empty; it
+   and each row's **Edit** button open a modal for one draft at a time. Each row has a
+   **Trash** icon to delete that saved draft after confirmation, an **Edit** icon and a
+   **Submit** action. Submitting asks for confirmation explaining the one-pending-request
+   limit and withdrawal, with consent inside confirmation and an Edit draft action to return
+   to the shared editor. Confirmation replaces the editor modal. The modal has a sticky
+   **Draft** header with Saved / Not saved status beside it and a close button, with
+   **Save draft** and **Submit** in its sticky footer. Fields sit directly in the modal.
+   Closing with unsaved changes replaces the editor with Save or Discard; × reopens the same form. Discard drops only unsaved
+   changes; saved drafts remain in the list. Submission saves the selected content, validates all required
+   fields and consent, then sets that version to **pending**. There is at most one
+   pending version per user. Other drafts remain editable while a request is pending,
+   but another submission is blocked until review or withdrawal. Submitted content is
+   fixed; **Withdraw request** cancels it without creating a draft. The owner sees pending,
+   approved, rejected and cancelled submissions as compact expandable rows in **Submission history**.
+   Pending Verification and its Withdraw action are inside that list, with no separate pending panel.
+   A reload icon sits at the top-right of Submission history. **Create draft from
+   cancelled submission** explicitly copies its content into a new saved draft
+   with a new ID; the cancelled submission and other drafts remain unchanged.
+   The page shows the pending documents and introduction video separately from drafts.
 4. While pending the user is still a student: `/dashboard/tutor` and `/settings/tutor`
    bounce back to the application.
-5. An admin approves or rejects at `/admin/tutor-requests`. Approval grants the tutor
-   capability; rejection notifies the applicant with a reason.
-6. After approval, `/(auth)/enroll-tutor` redirects to `/dashboard/tutor`.
+5. An admin compares proposed and current content at `/admin/tutor-requests`. Initial
+   approval creates a Tutor as **unpublished**, linked to the approved version on the
+   same User account, and grants a **Verified** badge. The tutor chooses when to publish.
+   Rejection requires a reason displayed to the applicant and emailed to them; revised
+   submissions create new versions. Review outcomes are visible in the application/settings UI.
+   Approval is blocked while the identification card URL, or a certification URL from earlier
+   data, ends in a file extension other than `.pdf`, `.jpg`, `.jpeg`, `.png` or `.webp`; the
+   admin sees which file and rejects with a reason instead. A URL without an extension is left
+   to the admin to check.
+6. After approval, the application shows the approved Tutor and links to Tutor settings
+   and the dashboard. The user chooses when to publish.
 
 Related stories: US1-4, US9-1.
 
 ---
 
 ## 7 · Tutor operations
+
+**Dashboard (`/dashboard`).** Student and Tutor actions are separated by tabs. The Student
+tab keeps the Student profile setup and learning links. The Tutor tab links approved Tutors
+to `/dashboard/tutor`; other users can start a Tutor application at `/enroll-tutor`.
 
 **Tutor dashboard (`/dashboard/tutor`).** Ordered by operational priority: compact stat
 cards (classes this week, earnings this month, paid bookings, rating), then the wallet
@@ -332,23 +369,82 @@ availability"), then subjects, then the availability editor. Long sections scrol
 inside their own card rather than pushing the page. Subject **Update** links to
 `/settings/tutor`, which owns subject editing.
 
-**Listing (`/settings/tutor`).** Published toggle, photo, display name, headline, bio,
+**Tutor profile (`/settings/tutor`).** Available from the shared Settings navigation as
+**Tutor profile**. Published toggle, photo, display name, headline, bio,
 and intro video URL, then **Verification** (document state and Replace documents), then
 **Subjects**. Listing and document changes are **submitted for review** and only go live
 once an admin approves; a rejection leaves the live listing untouched and returns a
-reason. Submit is disabled when nothing changed.
+reason. Submit is disabled when nothing changed. Approval switches the current profile
+version immediately, preserving the publication setting at that moment. The submit
+UI explains this automatic application. A draft list has Edit and Trash icons and a Submit action.
+Creating or editing a draft opens a modal with a sticky header and Save draft / Submit footer.
+Only one draft is edited at a time; closing with unsaved changes offers Save or Discard, with × to return to editing.
+Discard drops unsaved edits; the list's Trash action deletes a saved draft after confirmation.
+Portfolio certifications are not collected (see §6); saving a draft clears any it carried over.
+Other drafts stay editable during review; only a second submission is blocked. Submit
+confirmation explains the pending limit and cancellation. Withdrawal only cancels the submitted
+version; its immutable content stays visible in submission history. The tutor can explicitly
+create a separate draft from a cancelled submission, copying all content.
+Pending and approved versions remain immutable history. Account names are edited in Account settings,
+not as part of a profile review.
+
+**Unpublishing.** Hide the tutor and subjects from search/recommendations and reject
+new bookings on the backend. Direct tutor/booking-subject links show that the tutor
+is not accepting bookings. Existing subject details, conversations, booked lessons,
+and tutor management access remain available. Search/recommendation and subject
+management pages that are placeholders are not implemented by AUTH-4.
+
+**Verification privacy.** Student-facing tutor pages show approved public content and the
+Verified badge. Identification-card URLs remain restricted to their owner and authorized
+admins. The API still returns approved portfolio certification URLs from earlier data, but no
+page shows them.
 
 **Subjects.** Each subject is its own offering with a name, description, hourly rate,
-and format. Adding starts as a single **Add subject** button that opens the form;
+and format. PROF-6 currently supports **Online** only; in-person offerings and venues
+are deferred. Adding starts as a single **Add subject** button that opens the form;
 editing happens inline on the selected subject row. The Subjects section sits below
-Verification.
+Verification. Name and description are required (up to 100 and 2000 characters respectively).
+Rates are positive Thai baht amounts with at most two decimal places, up to ฿99,999,999.99.
+Duplicate names are allowed: each offering has its own identity.
 
-**Availability.** The tutor picks a day, opens the 30-minute slots they can teach, and
+Subject saves take effect immediately and independently of profile review, including
+while an approved Tutor is unpublished or has a profile edit awaiting review. Only the
+owning Tutor can create or edit their offerings. Cancel discards unsaved form changes.
+Publication continues to control discovery and new bookings.
+
+A booking captures its subject name, description, hourly rate and format when it is
+created. Later subject edits affect future bookings while existing bookings retain
+those details and their stored total price. For older bookings without snapshots, the
+first subject edit preserves the currently stored details before changing the offering;
+values already overwritten before this feature cannot be recovered.
+
+**Availability.** The tutor selects a dated cell in a seven-day calendar, opens the
+30-minute slot they can teach, and
 assigns which subject(s) each open slot covers — so one slot can advertise several
 subjects and a student browsing a subject sees only slots that carry it. Slots already
-attached to a paid booking are **locked** and cannot be closed. Subject assignment uses
+attached to a paid booking or an active payment hold are **locked** and cannot be closed
+or reassigned. Subject assignment uses
 compact toggle boxes that scroll inside their own area. Availability is per date, not a
-recurring weekly pattern.
+recurring weekly pattern. Approved Tutors can manage it while unpublished; publication
+still controls new bookings.
+
+The availability editor on `/dashboard/tutor` shows seven dated day columns with all
+48 half-hours, from `00:00` to `23:30`, in **Asia/Bangkok (UTC+7)**. A month overview
+summarizes availability; clicking a date opens its week for slot editing. Tutors may
+open any future date, close free future
+slots, and change their subject assignments. An open slot requires at least one owned
+subject. The same Tutor cannot have overlapping slots, including across different subjects.
+Past slots are read-only. Expired payment holds release through the booking lifecycle.
+
+Each slot has its own **Save slot** and **Close slot** actions. There is no day or week
+save step. If another edit or booking changes that slot, its save is rejected and its draft
+stays in the editor. The Tutor can review the latest value and explicitly retry if it is
+still free and in the future. Changes to a different slot do not invalidate this slot's
+revision. Changing the selected slot or calendar view requires saving or explicitly
+discarding its unsaved edits. Save and network errors preserve the draft.
+
+PROF-3 delivers this editor and APIs for existing booking and later discovery integration.
+It does not deliver the search or subject-detail pages, nor the rest of the Tutor dashboard.
 
 Related stories: US2-3, US2-4, US2-5, US2-7, US10-2, US10-3.
 
@@ -402,6 +498,17 @@ Related stories: US8-1 … US8-4.
 Related stories: US9-1 … US9-5.
 
 ---
+
+**Admin submission history.** `/admin/tutor-requests` uses compact expandable rows showing
+applicant name/email, status and submission date. The list box has a reload icon on the
+left and status filter on the top-right. It defaults to Pending and can filter
+Approved, Rejected, Cancelled or All submissions. Unsent drafts are never included.
+Past submissions show their exact content, submitted/review dates and rejection reason
+where applicable, with no approval or rejection controls. Pending requests retain the
+current-versus-proposed comparison and review actions when expanded; a pending request
+with an unsupported verification file lists those files and disables Approve. Owner and admin
+lists share status badges: amber for Pending Verification, green for Approved, red for
+Rejected and gray for Cancelled. Reload icons have accessible labels and tooltips.
 
 ## Invariants
 

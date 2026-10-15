@@ -95,21 +95,29 @@ type TutorDetailsFieldsProps = {
   onChange: (name: TutorDetailsFieldName, value: string) => void;
   title?: string;
   description?: string;
+  unframed?: boolean;
 };
 
 export function TutorDetailsFields({
   values,
   errors,
   onChange,
+  unframed = false,
   title = "Public Tutor details",
   description = "Information shown on your Tutor profile.",
 }: TutorDetailsFieldsProps) {
   return (
-    <section className="rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
-      <div className="mb-5">
-        <h2 className="text-xl font-semibold">{title}</h2>
-        <p className="mt-1 text-sm text-zinc-500">{description}</p>
-      </div>
+    <section
+      className={
+        unframed ? undefined : "rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]"
+      }
+    >
+      {!unframed && (
+        <div className="mb-5">
+          <h2 className="text-xl font-semibold">{title}</h2>
+          <p className="mt-1 text-sm text-zinc-500">{description}</p>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4">
         <TutorField
@@ -149,17 +157,7 @@ export function TutorDetailsFields({
           type="url"
           placeholder="https://example.com/identification-card.pdf"
           maxLength={255}
-          helper="Used for Tutor verification and not displayed publicly."
-        />
-        <TutorField
-          name="certificationUrl"
-          label="Teaching certification document URL"
-          value={values.certificationUrl}
-          onChange={onChange}
-          error={errors.certificationUrl}
-          type="url"
-          placeholder="https://example.com/certification.pdf"
-          helper="Used for Tutor verification and not displayed publicly."
+          helper="Used for Tutor verification. Visible only to you and administrators."
         />
       </div>
     </section>

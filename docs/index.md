@@ -13,18 +13,20 @@ disagree.
 
 ## Where to find things
 
-| You need...                              | Go to                                                        |
-| ---------------------------------------- | ------------------------------------------------------------ |
-| Product behaviour (routes, rules, flows) | [`user-journeys.md`](user-journeys.md) — the source of truth |
-| Product goals, roles, and scope          | [`user-journeys.md`](user-journeys.md#overview-and-scope)    |
-| What work is planned or in progress      | The GitHub issues and Project board                          |
-| The database schema and its known gaps   | [`database-schema.md`](database-schema.md)                   |
-| Tech stack, repo layout, deployment      | [`../README.md`](../README.md#architecture)                  |
-| How to run and write tests               | [`testing.md`](testing.md)                                   |
-| Why a technical decision was made        | [`adr/`](adr/)                                               |
-| Setup and common commands                | [`../README.md`](../README.md)                               |
-| Domain vocabulary                        | [`CONTEXT.md`](../CONTEXT.md)                                |
-| Raw evidence a doc above was built from  | [`sources/`](sources/) — read-only, see below                |
+| You need...                                | Go to                                                                     |
+| ------------------------------------------ | ------------------------------------------------------------------------- |
+| Product behaviour (routes, rules, flows)   | [`user-journeys.md`](user-journeys.md) — the source of truth              |
+| Product goals, roles, and scope            | [`user-journeys.md`](user-journeys.md#overview-and-scope)                 |
+| What work is planned or in progress        | The GitHub issues and Project board                                       |
+| PROF-6 implementation decisions and checks | [Subject management change](change/implement-prof-6-subjects/proposal.md) |
+| PROF-3 implementation decisions and checks | [Availability change](change/implement-prof-3-availability/proposal.md)   |
+| The database schema and its known gaps     | [`database-schema.md`](database-schema.md)                                |
+| Tech stack, repo layout, deployment        | [`../README.md`](../README.md#architecture)                               |
+| How to run and write tests                 | [`testing.md`](testing.md)                                                |
+| Why a technical decision was made          | [`adr/`](adr/)                                                            |
+| Setup and common commands                  | [`../README.md`](../README.md)                                            |
+| Domain vocabulary                          | [`CONTEXT.md`](../CONTEXT.md)                                             |
+| Raw evidence a doc above was built from    | [`sources/`](sources/) — read-only, see below                             |
 
 ## What is authoritative
 
@@ -65,5 +67,5 @@ Things the product needs but does not yet have an answer for:
   [`user-journeys.md`](user-journeys.md#4--money).
 - Whether lesson rescheduling is in scope at all is still open.
 - File storage for tutor verification documents is not chosen yet.
-- Most product flows have no automated behaviour-test coverage yet — see
+- Most product flows have no Gherkin behaviour-test coverage yet — see
   [`testing.md`](testing.md#current-coverage-boundary).

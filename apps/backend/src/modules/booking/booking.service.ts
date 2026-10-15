@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
+import { isTransactionConflict } from "../../lib/transaction-conflict.ts";
+import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
+import { subjectSnapshot } from "../subject/subject.public.ts";
 import type {
   CancelBookingInput,
   CreateBookingInput,
@@ -100,7 +103,10 @@ const detailInclude = {
   subject: {
     include: {
       tutor: {
-        include: { user: { select: { id: true, firstName: true, lastName: true } } },
+        include: {
+          user: { select: { id: true, firstName: true, lastName: true } },
+          currentProfileVersion: { select: { avatarUrl: true, ...publicPortfolioSelect } },
+        },
       },
     },
   },
@@ -249,15 +255,18 @@ export function mapBookingResponse(
     },
     subject: {
       id: booking.subject.id,
-      name: booking.subject.name,
-      description: booking.subject.description,
-      hourlyRate: decimalString(booking.subject.hourlyRate),
+      name: booking.subjectName ?? booking.subject.name,
+      description:
+        booking.subjectName == null ? booking.subject.description : booking.subjectDescription,
+      hourlyRate: decimalString(booking.subjectHourlyRate ?? booking.subject.hourlyRate),
+      format: booking.subjectFormat ?? booking.subject.format,
       tutor: {
         id: booking.subject.tutor.id,
         name: booking.subject.tutor.user
           ? `${booking.subject.tutor.user.firstName} ${booking.subject.tutor.user.lastName}`
           : "Tutor",
-        avatarUrl: booking.subject.tutor.avatarUrl,
+        avatarUrl: booking.subject.tutor.currentProfileVersion.avatarUrl,
+        certificationUrls: publicCertificationUrls(booking.subject.tutor.currentProfileVersion),
       },
     },
     availabilities: booking.availabilities.map((slot) => ({
@@ -277,7 +286,7 @@ export function mapBookingResponse(
 }
 
 function isSerializationError(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
+  return isTransactionConflict(error);
 }
 
 async function loadDetail(id: string) {
@@ -287,15 +296,17 @@ async function loadDetail(id: string) {
 // Lazily expires abandoned payment-due bookings before relevant reads and writes.
 export async function releaseExpiredBookings(
   now = new Date(),
-  filter: { id?: string; userId?: string; subjectId?: string } = {}
+  filter: { id?: string; userId?: string; subjectId?: string; tutorId?: string } = {}
 ) {
+  const { tutorId, ...bookingFilter } = filter;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       return await prisma.$transaction(
         async (tx) => {
           const expired = await tx.booking.findMany({
             where: {
-              ...filter,
+              ...bookingFilter,
+              ...(tutorId ? { subject: { tutorId } } : {}),
               status: "PENDING_PAYMENT",
               OR: [{ paymentExpiresAt: { lte: now } }, { paymentExpiresAt: null }],
             },
@@ -344,30 +355,37 @@ export async function getSubjectAvailability(subjectId: string) {
   const subject = await prisma.subject.findUnique({
     where: { id: subjectId },
     include: {
-      tutor: { include: { user: { select: { firstName: true, lastName: true } } } },
+      tutor: {
+        include: {
+          user: { select: { firstName: true, lastName: true } },
+          currentProfileVersion: { select: { avatarUrl: true, ...publicPortfolioSelect } },
+        },
+      },
       availabilitySubjects: {
-        where: { availability: { bookingId: null, startedAt: { gt: now } } },
+        where: { availability: { isOpen: true, bookingId: null, startedAt: { gt: now } } },
         include: { availability: true },
       },
     },
   });
-  if (!subject || subject.tutor.status !== "PUBLISHED")
-    throw new BookingNotFoundError("Subject not found", "SUBJECT_NOT_FOUND");
+  if (!subject) throw new BookingNotFoundError("Subject not found", "SUBJECT_NOT_FOUND");
   return {
     subject: {
       id: subject.id,
       name: subject.name,
       description: subject.description,
       hourlyRate: decimalString(subject.hourlyRate),
+      format: subject.format,
       tutor: {
         id: subject.tutor.id,
         name: subject.tutor.user
           ? `${subject.tutor.user.firstName} ${subject.tutor.user.lastName}`
           : "Tutor",
-        avatarUrl: subject.tutor.avatarUrl,
+        avatarUrl: subject.tutor.currentProfileVersion.avatarUrl,
+        certificationUrls: publicCertificationUrls(subject.tutor.currentProfileVersion),
       },
     },
-    slots: subject.availabilitySubjects
+    acceptingBookings: subject.tutor.status === "PUBLISHED",
+    slots: (subject.tutor.status === "PUBLISHED" ? subject.availabilitySubjects : [])
       .map(({ availability }) => ({
         id: availability.id,
         startedAt: availability.startedAt.toISOString(),
@@ -387,6 +405,7 @@ async function eligibleSlots(
     where: {
       id: { in: ids },
       bookingId: null,
+      isOpen: true,
       startedAt: { gt: now },
       availabilitySubjects: { some: { subjectId } },
     },
@@ -427,6 +446,7 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
           data: {
             userId,
             subjectId: input.subjectId,
+            ...subjectSnapshot(subject),
             description: input.description,
             isTrial: input.isTrial,
             totalAmount: amount,
