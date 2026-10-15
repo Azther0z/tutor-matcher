@@ -19,6 +19,7 @@ disagree.
 | Product goals, roles, and scope            | [`user-journeys.md`](user-journeys.md#overview-and-scope)                 |
 | What work is planned or in progress        | The GitHub issues and Project board                                       |
 | PROF-6 implementation decisions and checks | [Subject management change](change/implement-prof-6-subjects/proposal.md) |
+| PROF-3 implementation decisions and checks | [Availability change](change/implement-prof-3-availability/proposal.md)   |
 | The database schema and its known gaps     | [`database-schema.md`](database-schema.md)                                |
 | Tech stack, repo layout, deployment        | [`../README.md`](../README.md#architecture)                               |
 | How to run and write tests                 | [`testing.md`](testing.md)                                                |

@@ -97,9 +97,9 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     const invalidExpiryStartsAt = new Date(Date.now() + 72 * 60 * 60_000);
     await prisma.availability.createMany({
       data: [
-        { id: PENDING_SLOT_ID, startedAt: pendingStartsAt },
-        { id: PAID_SLOT_ID, startedAt: paidStartsAt },
-        { id: INVALID_EXPIRY_SLOT_ID, startedAt: invalidExpiryStartsAt },
+        { id: PENDING_SLOT_ID, startedAt: pendingStartsAt, tutorId: TUTOR_ID },
+        { id: PAID_SLOT_ID, startedAt: paidStartsAt, tutorId: TUTOR_ID },
+        { id: INVALID_EXPIRY_SLOT_ID, startedAt: invalidExpiryStartsAt, tutorId: TUTOR_ID },
       ],
     });
     await prisma.availabilitySubject.createMany({

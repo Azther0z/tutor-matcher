@@ -33,18 +33,19 @@
 
 ### Project Description
 - Tutor Matcher is a 1-1 tutoring marketplace: subject-scoped booking of a tutor's published 30-minute slots, confirmed instantly by paying from one wallet balance.
-- The clickable prototype (`tutormatcher-prototype`) is the source of truth for product behaviour, not for code. Its material is preserved in `docs/sources/tutormatcher-prototype-*`.
+- `docs/user-journeys.md` is the source of truth for product behaviour and overrides the clickable prototype. Prototype material in `docs/sources/tutormatcher-prototype-*` is historical evidence.
 - The database-course Final Report describes an earlier, different design. It is historical evidence, not the product schema.
 
 ### Goals
-- Keep `docs/user-journeys.md`, `docs/database-schema.md`, and `CONTEXT.md` in sync with the prototype whenever product behaviour changes.
+- Keep `docs/database-schema.md` and `CONTEXT.md` aligned with canonical `docs/user-journeys.md` whenever product behaviour changes.
 
 ### Preferences
 - For AI-assisted Sprint delivery, assign the entire story, including design integration and automated testing, to one fixed two-person pair.
-- Treat the prototype as behavioural authority and `apps/backend/prisma/schema.prisma` as the authority for what the database currently contains.
+- Treat `docs/user-journeys.md` as behavioural authority and `apps/backend/prisma/schema.prisma` as the authority for what the database currently contains.
 - While Tutor Matcher has no real production database, do not maintain Prisma migration history; synchronize disposable databases from `schema.prisma` with `prisma db push`.
 - Tutor applications and edits use reviewed profile versions. Initial approval creates an unpublished Tutor; edit approval switches its current version while preserving publication and existing lesson/conversation access. Verification documents remain URL references; normal file upload and storage are deferred.
 - Subject management is online-only for now. Subject saves are immediate and separate from profile review; allow duplicate names and positive THB rates with at most two decimals. Existing bookings must retain their agreed subject details when an offering changes.
+- Tutors create availability in a seven-day dated calendar with a month overview that opens the selected date's week. Each slot saves individually; there is no day or week save. Tutors may create, close and reassign free future slots on any future date. Paid slots and active payment holds are locked; conflicts preserve the slot draft. The three-month rule applies to student calendar navigation, not Tutor publishing.
 
 ### Open Threads
 - Question: Is rescheduling a booking in scope?
@@ -52,7 +53,7 @@
   Next step: The prototype implements cancel only, while BOOK-3, BOOK-4, and US4-8 mention reschedule. Decide before building the booking slice.
 - Question: When do the schema gaps that block documented journeys get closed?
   Status: open
-  Next step: `bookings` has no status column and a booking can hold only one 30-minute slot; see gaps G1-G7 in `docs/database-schema.md`.
+  Next step: Review remaining gaps against the current schema before implementing the next journey; see `docs/database-schema.md`.
 
 Open threads use this format:
 
