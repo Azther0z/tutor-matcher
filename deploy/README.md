@@ -14,8 +14,9 @@ umask 077
 cp deploy/secrets/database-url.env.example deploy/secrets/database-url.env
 cp deploy/secrets/resend.env.example deploy/secrets/resend.env
 cp deploy/secrets/postgres-password.env.example deploy/secrets/postgres-password.env
+cp deploy/secrets/admin-signup-key.env.example deploy/secrets/admin-signup-key.env
 ${EDITOR:-vi} deploy/secrets/database-url.env deploy/secrets/resend.env \
-  deploy/secrets/postgres-password.env
+  deploy/secrets/postgres-password.env deploy/secrets/admin-signup-key.env
 
 sops --encrypt --input-type dotenv --output-type dotenv \
   --output deploy/secrets/database-url.enc.env deploy/secrets/database-url.env
@@ -23,8 +24,10 @@ sops --encrypt --input-type dotenv --output-type dotenv \
   --output deploy/secrets/resend.enc.env deploy/secrets/resend.env
 sops --encrypt --input-type dotenv --output-type dotenv \
   --output deploy/secrets/postgres-password.enc.env deploy/secrets/postgres-password.env
+sops --encrypt --input-type dotenv --output-type dotenv \
+  --output deploy/secrets/admin-signup-key.enc.env deploy/secrets/admin-signup-key.env
 rm deploy/secrets/database-url.env deploy/secrets/resend.env \
-  deploy/secrets/postgres-password.env
+  deploy/secrets/postgres-password.env deploy/secrets/admin-signup-key.env
 ```
 
 Use the same strong password in `DATABASE_URL` and `POSTGRES_PASSWORD`. Set the database host to
@@ -35,6 +38,15 @@ different public URL. All three Resend settings are kept together in `resend.env
 `RESEND_FROM_EMAIL` must use a domain verified in Resend. Edit an encrypted file with
 `sops edit deploy/secrets/<name>.enc.env`; changing one independent secret does not require
 re-encrypting the other files. Commit only the encrypted `*.enc.env` files.
+
+Set `ADMIN_SIGNUP_KEY` to a random value with at least 32 bytes of entropy, for example by generating
+64 hexadecimal characters with `openssl rand -hex 32`. The signup form accepts this key only to
+create an Admin account; a missing, incorrect, or blank key creates a standard Student account.
+Production Compose treats `admin-signup-key.enc.env` as optional, so deployments remain usable
+before the key is configured. Optional `env_file` entries require Docker Compose 2.24.0 or later.
+The shared key authorizes every matching signup, so disable further admin signups by encrypting an
+empty `ADMIN_SIGNUP_KEY` after creating the intended Admin accounts. Existing Admin accounts keep
+their access when the signup key is disabled.
 
 Do not commit plaintext dotenv files.
 

@@ -21,6 +21,14 @@ import {
 
 export const authRouter = Router();
 
+export const signupRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many signup attempts. Please try again later." },
+});
+
 export const passwordResetRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 5,
@@ -31,7 +39,7 @@ export const passwordResetRateLimiter = rateLimit({
   },
 });
 
-authRouter.post("/signup", validate(signupSchema), signup);
+authRouter.post("/signup", signupRateLimiter, validate(signupSchema), signup);
 authRouter.post("/login", validate(loginSchema), login);
 authRouter.get("/me", requireAuth, getCurrentUser);
 authRouter.post(

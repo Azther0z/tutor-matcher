@@ -6,6 +6,7 @@ import { apiRouter } from "./routes.ts";
 
 export const app = express();
 
+app.set("trust proxy", ["loopback", "uniquelocal"]);
 app.use(express.json());
 app.use("/api", apiRouter);
 

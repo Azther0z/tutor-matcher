@@ -37,7 +37,8 @@ _Avoid_: Teacher, instructor, provider
 **Admin**:
 A user with elevated access who approves or rejects tutor applications and listing
 changes, moderates flagged content, resolves payment disputes, and suspends or bans
-accounts.
+accounts. The capability can be added during sign-up with a valid backend-configured
+admin signup key.
 _Avoid_: Moderator, staff, superuser
 
 **Tutor Application**:

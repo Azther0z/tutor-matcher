@@ -1,7 +1,8 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "../../lib/db.ts";
 import { buildPasswordResetUrl, sendPasswordResetEmail } from "../../lib/email.ts";
+import { env } from "../../lib/env.ts";
 import {
   GENERIC_PASSWORD_RESET_MESSAGE,
   PASSWORD_RESET_TTL_MINUTES,
@@ -42,7 +43,21 @@ export class InvalidPasswordResetTokenError extends Error {
   }
 }
 
-export async function signup({ firstName, lastName, email, password }: SignupInput) {
+function hasValidAdminSignupKey(providedKey?: string) {
+  if (!env.adminSignupKey || !providedKey) return false;
+
+  const configuredKeyHash = createHash("sha256").update(env.adminSignupKey).digest();
+  const providedKeyHash = createHash("sha256").update(providedKey).digest();
+  return timingSafeEqual(configuredKeyHash, providedKeyHash);
+}
+
+export async function signup({
+  firstName,
+  lastName,
+  email,
+  password,
+  adminSignupKey,
+}: SignupInput) {
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
   if (existing) {
@@ -57,6 +72,7 @@ export async function signup({ firstName, lastName, email, password }: SignupInp
         lastName,
         email,
         password: passwordHash,
+        isAdmin: hasValidAdminSignupKey(adminSignupKey),
       },
     });
 
