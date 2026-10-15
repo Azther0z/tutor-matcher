@@ -2,7 +2,6 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { TutorCertificationLinks } from "@/src/components/tutor-certification-links";
 import { RequireAuth } from "@/src/components/require-auth";
 import { getAuthToken } from "@/src/lib/auth";
 
@@ -16,7 +15,6 @@ type TutorSummary = {
   introVideoUrl: string | null;
   status: "PUBLISHED" | "UNPUBLISHED";
   verified: boolean;
-  certificationUrls: string[];
 };
 
 export default function TutorDetailPage() {
@@ -134,13 +132,6 @@ function TutorDetailView() {
           </a>
         )}
       </div>
-
-      {tutor.certificationUrls?.length > 0 && (
-        <section className="flex flex-col gap-3" aria-label="Teaching certifications / portfolio">
-          <h2 className="text-xl font-semibold">Teaching certifications / portfolio</h2>
-          <TutorCertificationLinks urls={tutor.certificationUrls} />
-        </section>
-      )}
 
       <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
         <h2 className="text-xl font-semibold">Message {tutor.firstName}</h2>

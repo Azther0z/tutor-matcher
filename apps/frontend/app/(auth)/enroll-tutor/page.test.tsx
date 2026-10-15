@@ -31,10 +31,6 @@ function fillApplication() {
   fireEvent.change(screen.getByLabelText(/Identification card URL/), {
     target: { value: "example.com/id.pdf" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Add certification" }));
-  fireEvent.change(screen.getByLabelText(/Certification \/ portfolio URL/), {
-    target: { value: "example.com/certificate.pdf" },
-  });
 }
 const none = { status: "NONE", tutor: null, version: null };
 const pending = { status: "PENDING", tutor: null, version: profileVersion };
@@ -147,7 +143,7 @@ it("submits a normalized draft and remains pending with no Tutor or dashboard re
         bio: profileFields.bio,
         introVideoUrl: profileFields.introVideoUrl,
         identificationCardUrl: profileFields.identificationCardUrl,
-        certificationUrls: profileFields.certificationUrls,
+        certificationUrls: [],
       }),
     }),
   ]);
@@ -203,18 +199,6 @@ it("keeps a pending request locked if withdrawal fails", async () => {
   expect(screen.getByRole("button", { name: "New draft" })).toBeEnabled();
 });
 
-it("shows all portfolio certificates in a pending application without a Tutor", async () => {
-  const urls = [profileVersion.certificationUrl!, "https://example.com/extra-certificate.pdf"];
-  fetchMock.mockResolvedValueOnce(
-    jsonResponse({ ...pending, version: { ...profileVersion, certificationUrls: urls } })
-  );
-  render(<EnrollTutorPage />);
-  await screen.findByText("Pending Verification");
-  for (const url of urls) {
-    expect(screen.getByRole("link", { name: url })).toHaveAttribute("href", url);
-  }
-});
-
 it("shows the rejection reason and lets the applicant revise and resubmit", async () => {
   fetchMock
     .mockResolvedValueOnce(
@@ -224,7 +208,7 @@ it("shows the rejection reason and lets the applicant revise and resubmit", asyn
         version: {
           ...profileVersion,
           status: "REJECTED",
-          rejectionReason: "Please provide a readable certificate.",
+          rejectionReason: "Please provide a readable identification card.",
         },
       })
     )
@@ -234,9 +218,11 @@ it("shows the rejection reason and lets the applicant revise and resubmit", asyn
     .mockResolvedValueOnce(jsonResponse(pending));
   render(<EnrollTutorPage />);
   await openTutorEditor();
-  expect(screen.getAllByText(/Please provide a readable certificate/).length).toBeGreaterThan(0);
+  expect(
+    screen.getAllByText(/Please provide a readable identification card/).length
+  ).toBeGreaterThan(0);
   fillApplication();
-  fireEvent.change(screen.getByLabelText(/Certification \/ portfolio URL/), {
+  fireEvent.change(screen.getByLabelText(/Identification card URL/), {
     target: { value: "https://example.com/readable.pdf" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Submit" }));

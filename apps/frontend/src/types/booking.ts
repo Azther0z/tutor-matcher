@@ -18,7 +18,6 @@ export type BookingSubject = {
     id: string;
     name: string;
     avatarUrl?: string | null;
-    certificationUrls?: string[];
   };
 };
 

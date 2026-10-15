@@ -70,208 +70,25 @@ it("keeps the approved profile and publication controls while an edit is pending
     "href",
     profileVersion.identificationCardUrl
   );
-  expect(screen.getByRole("link", { name: profileVersion.certificationUrl! })).toHaveAttribute(
-    "href",
-    profileVersion.certificationUrl
-  );
+  expect(
+    screen.queryByRole("link", { name: profileVersion.certificationUrl! })
+  ).not.toBeInTheDocument();
 });
 
-it("shows every portfolio certificate in the owner's pending edit", async () => {
-  const urls = [profileVersion.certificationUrl!, "https://example.com/extra-certificate.pdf"];
-  fetchMock.mockResolvedValueOnce(
-    jsonResponse({ ...pendingEdit, version: { ...pendingEdit.version, certificationUrls: urls } })
-  );
-  render(<TutorSettingsPage />);
-  const pending = await screen.findByRole("region", { name: "Submission history" });
-  for (const url of urls) {
-    expect(within(pending).getByRole("link", { name: url })).toHaveAttribute("href", url);
-  }
-});
-
-it("edits all certificates and preserves them through bio-only saves", async () => {
-  const extra = "https://example.com/extra.pdf";
-  const tutor = { ...approvedTutor, certificationUrls: [profileVersion.certificationUrl!, extra] };
-  const version = {
-    ...profileVersion,
-    status: "DRAFT",
-    certificationUrls: tutor.certificationUrls,
-    bio: "Updated bio.",
-  };
-  fetchMock
-    .mockResolvedValueOnce(
-      jsonResponse({
-        ...approved,
-        tutor,
-        version: { ...profileVersion, ...tutor, id: profileVersion.id, status: "DRAFT" },
-      })
-    )
-    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }));
-  render(<TutorSettingsPage />);
-  await openTutorEditor();
-  expect(await screen.findByLabelText("Certification / portfolio URL 2")).toHaveValue(extra);
-  fireEvent.change(screen.getByLabelText("Tutor bio"), { target: { value: "Updated bio." } });
-  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
-  await waitFor(() => expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled());
-  const payload = JSON.parse(fetchMock.mock.calls[1][1].body);
-  expect(payload.bio).toBe("Updated bio.");
-  expect(payload).not.toHaveProperty("certificationUrl");
-  expect(payload.certificationUrls).toEqual(tutor.certificationUrls);
-  expect(screen.getByLabelText("Certification / portfolio URL 2")).toHaveValue(extra);
-});
-
-it("retries a replacement with the same collection and adopts the saved ordering", async () => {
-  const original = "https://example.com/a.pdf";
-  const extra = "https://example.com/m.pdf";
-  const replacement = "https://example.com/z.pdf";
-  const tutor = { ...approvedTutor, certificationUrls: [original, extra] };
-  const version = { ...profileVersion, status: "DRAFT", certificationUrls: [extra, replacement] };
-  fetchMock
-    .mockResolvedValueOnce(
-      jsonResponse({
-        ...approved,
-        tutor,
-        version: { ...profileVersion, ...tutor, id: profileVersion.id, status: "DRAFT" },
-      })
-    )
-    .mockRejectedValueOnce(new Error("Response lost after saving"))
-    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }))
-    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }));
-  render(<TutorSettingsPage />);
-  await openTutorEditor();
-  fireEvent.change(await screen.findByLabelText("Certification / portfolio URL 1"), {
-    target: { value: replacement },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("Response lost after saving");
-  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
-  await waitFor(() => expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled());
-  expect(JSON.parse(fetchMock.mock.calls[1][1].body).certificationUrls).toEqual([
-    replacement,
-    extra,
-  ]);
-  expect(fetchMock.mock.calls[2][1].body).toBe(fetchMock.mock.calls[1][1].body);
-  expect(screen.getByLabelText("Certification / portfolio URL 1")).toHaveValue(extra);
-  expect(screen.getByLabelText("Certification / portfolio URL 2")).toHaveValue(replacement);
-  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
-  expect(fetchMock.mock.calls[3][0]).toBe(`/api/profiles/me/tutor/drafts/${profileVersion.id}`);
-  expect(JSON.parse(fetchMock.mock.calls[3][1].body).certificationUrls).toEqual([
-    extra,
-    replacement,
-  ]);
-});
-
-it("removes exactly one certificate and permits an empty saved draft", async () => {
-  const extra = "https://example.com/extra.pdf";
-  const tutor = { ...approvedTutor, certificationUrls: [profileVersion.certificationUrl!, extra] };
-  const version = { ...profileVersion, status: "DRAFT", certificationUrls: [extra] };
-  fetchMock
-    .mockResolvedValueOnce(
-      jsonResponse({
-        ...approved,
-        tutor,
-        version: { ...profileVersion, ...tutor, id: profileVersion.id, status: "DRAFT" },
-      })
-    )
-    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }))
-    .mockResolvedValueOnce(
-      jsonResponse({ ...approved, tutor, version: { ...version, certificationUrls: [] } })
-    );
-  render(<TutorSettingsPage />);
-  await openTutorEditor();
-  fireEvent.click(await screen.findByRole("button", { name: "Remove certification 1" }));
-  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
-  await waitFor(() => expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled());
-  expect(JSON.parse(fetchMock.mock.calls[1][1].body).certificationUrls).toEqual([extra]);
-  fireEvent.click(screen.getByRole("button", { name: "Remove certification 1" }));
-  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-  expect(JSON.parse(fetchMock.mock.calls[2][1].body).certificationUrls).toEqual([]);
-});
-
-it("deduplicates replacement URLs on save and retry without resurrecting removed certificates", async () => {
-  const original = "https://example.com/a.pdf";
-  const retained = "https://example.com/b.pdf";
-  const tutor = { ...approvedTutor, certificationUrls: [original, retained] };
-  const version = { ...profileVersion, status: "DRAFT", certificationUrls: [retained] };
-  fetchMock
-    .mockResolvedValueOnce(
-      jsonResponse({
-        ...approved,
-        tutor,
-        version: { ...profileVersion, ...tutor, id: profileVersion.id, status: "DRAFT" },
-      })
-    )
-    .mockRejectedValueOnce(new Error("Response lost after saving"))
-    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }))
-    .mockResolvedValueOnce(
-      jsonResponse({ ...approved, tutor, version: { ...version, certificationUrls: [] } })
-    );
-  render(<TutorSettingsPage />);
-  await openTutorEditor();
-  fireEvent.change(await screen.findByLabelText("Certification / portfolio URL 1"), {
-    target: { value: retained },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("Response lost after saving");
-  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
-  await waitFor(() => expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled());
-  expect(JSON.parse(fetchMock.mock.calls[1][1].body).certificationUrls).toEqual([retained]);
-  expect(fetchMock.mock.calls[2][1].body).toBe(fetchMock.mock.calls[1][1].body);
-  fireEvent.click(screen.getByRole("button", { name: "Remove certification 1" }));
-  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
-  expect(JSON.parse(fetchMock.mock.calls[3][1].body).certificationUrls).toEqual([]);
-});
-
-it("allows submission when only an extra certificate differs from the approved collection", async () => {
-  const primary = profileVersion.certificationUrl!;
-  const currentExtra = "https://example.com/b-certificate.pdf";
-  const proposedExtra = "https://example.com/z-certificate.pdf";
-  const tutor = { ...approvedTutor, certificationUrls: [primary, currentExtra] };
-  const version = {
-    ...approved.version,
-    status: "DRAFT",
-    certificationUrls: [primary, proposedExtra],
-  };
-  fetchMock
-    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }))
-    .mockResolvedValueOnce(jsonResponse({ ...approved, tutor, version }))
-    .mockResolvedValueOnce(
-      jsonResponse({ ...approved, tutor, version: { ...version, status: "PENDING" } })
-    );
-  render(<TutorSettingsPage />);
-  await openTutorEditor();
-  await screen.findByLabelText("Tutor bio");
-  const submit = screen.getByRole("button", { name: "Submit" });
-  expect(submit).toBeEnabled();
-  fireEvent.click(submit);
-  await confirmTutorSubmission();
-  await screen.findByText("Pending Verification");
-  expect(JSON.parse(fetchMock.mock.calls[1][1].body).certificationUrls).toEqual([
-    primary,
-    proposedExtra,
-  ]);
-});
-
-it("keeps submission disabled for reordered certificates even with a different singular selection", async () => {
-  const primary = profileVersion.certificationUrl!;
-  const extra = "https://example.com/extra-certificate.pdf";
+it("keeps submission disabled when a draft differs from the approved profile only in certificates", async () => {
   fetchMock.mockResolvedValueOnce(
     jsonResponse({
       ...approved,
-      tutor: { ...approvedTutor, certificationUrls: [primary, extra] },
-      version: {
-        ...approved.version,
-        status: "DRAFT",
-        certificationUrl: extra,
-        certificationUrls: [extra, primary],
+      tutor: {
+        ...approvedTutor,
+        certificationUrls: ["https://example.com/a.pdf", "https://example.com/b.pdf"],
       },
+      version: { ...approved.version, status: "DRAFT", certificationUrls: [] },
     })
   );
   render(<TutorSettingsPage />);
   await openTutorEditor();
-  expect(await screen.findByLabelText("Certification / portfolio URL 1")).toHaveValue(extra);
+  await screen.findByLabelText("Tutor bio");
   expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });

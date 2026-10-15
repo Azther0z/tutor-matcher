@@ -1,14 +1,13 @@
-import { getTutorCertificationUrls, type TutorProfileFields } from "@/src/lib/tutor-application";
-import { TutorCertificationLinks } from "@/src/components/tutor-certification-links";
+import type { TutorProfileFields } from "@/src/lib/tutor-application";
 
-type ProfileFieldName = Exclude<keyof TutorProfileFields, "certificationUrls">;
+// The form no longer collects certifications, so they are not compared or shown.
+type ProfileFieldName = Exclude<keyof TutorProfileFields, "certificationUrl" | "certificationUrls">;
 
 const fields: { name: ProfileFieldName; label: string; private?: boolean }[] = [
   { name: "avatarUrl", label: "Avatar URL" },
   { name: "bio", label: "Bio" },
   { name: "introVideoUrl", label: "Introduction video URL" },
   { name: "identificationCardUrl", label: "Identification card URL", private: true },
-  { name: "certificationUrl", label: "Teaching certifications / portfolio" },
 ];
 
 function ProfileValue({ name, value }: { name: ProfileFieldName; value: string | null }) {
@@ -47,11 +46,7 @@ export function TutorProfileComparison({
         </thead>
         <tbody>
           {fields.map((field) => {
-            const certificationField = field.name === "certificationUrl";
-            const changed = certificationField
-              ? JSON.stringify([...getTutorCertificationUrls(current)].sort()) !==
-                JSON.stringify([...getTutorCertificationUrls(proposed)].sort())
-              : (current?.[field.name] ?? null) !== (proposed[field.name] ?? null);
+            const changed = (current?.[field.name] ?? null) !== (proposed[field.name] ?? null);
             return (
               <tr
                 key={field.name}
@@ -75,18 +70,10 @@ export function TutorProfileComparison({
                   )}
                 </th>
                 <td className="p-3 align-top">
-                  {certificationField ? (
-                    <TutorCertificationLinks urls={getTutorCertificationUrls(current)} />
-                  ) : (
-                    <ProfileValue name={field.name} value={current?.[field.name] ?? null} />
-                  )}
+                  <ProfileValue name={field.name} value={current?.[field.name] ?? null} />
                 </td>
                 <td className="p-3 align-top">
-                  {certificationField ? (
-                    <TutorCertificationLinks urls={getTutorCertificationUrls(proposed)} />
-                  ) : (
-                    <ProfileValue name={field.name} value={proposed[field.name] ?? null} />
-                  )}
+                  <ProfileValue name={field.name} value={proposed[field.name] ?? null} />
                 </td>
               </tr>
             );
@@ -107,11 +94,7 @@ export function TutorProfileSnapshot({ profile }: { profile: TutorProfileFields 
             {field.private && " (private)"}
           </dt>
           <dd className="mt-1">
-            {field.name === "certificationUrl" ? (
-              <TutorCertificationLinks urls={getTutorCertificationUrls(profile)} />
-            ) : (
-              <ProfileValue name={field.name} value={profile[field.name] ?? null} />
-            )}
+            <ProfileValue name={field.name} value={profile[field.name] ?? null} />
           </dd>
         </div>
       ))}

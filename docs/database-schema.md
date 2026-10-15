@@ -129,10 +129,11 @@ and the current approved profile remain unchanged. Approved history is retained;
 | profile_version_id | UUID | NOT NULL, FK → tutor_profile_versions, ON DELETE CASCADE | Version-specific certificate                                           |
 | file_url           | TEXT | NOT NULL                                                 | Portfolio certificate URL; public only in the current approved version |
 
-The form supports multiple certification URLs per version. Draft saves replace only
-that draft's complete certificate collection, including explicit removals. Certificates
-in the current approved version remain unchanged until review approves a replacement;
-historical certificates stay attached to the version that was reviewed.
+The Tutor form no longer collects certifications: each draft save sends an empty list, so new
+versions carry none. The table and API remain for earlier data and a later upload story. Draft
+saves replace only that draft's complete certificate collection, including explicit removals.
+Certificates in the current approved version remain unchanged until review approves a
+replacement; historical certificates stay attached to the version that was reviewed.
 
 ### subjects
 

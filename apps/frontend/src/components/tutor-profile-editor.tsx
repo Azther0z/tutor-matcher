@@ -14,7 +14,6 @@ import { TutorSubjectsManager } from "@/src/components/tutor-subjects-manager";
 import type { SubjectOffering } from "@/src/lib/subjects";
 import {
   tutorApi,
-  getTutorCertificationUrls,
   tutorDetailsFromApplication,
   tutorDetailsPayload,
   type TutorApplicationResponse,
@@ -43,7 +42,6 @@ function profileContent(profile: TutorProfileFields) {
     fields.bio,
     fields.introVideoUrl,
     fields.identificationCardUrl,
-    [...new Set(getTutorCertificationUrls(profile))].sort(),
   ]);
 }
 
@@ -685,9 +683,6 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                 values={details}
                 errors={errors}
                 onChange={(name, value) => updateDetails({ ...details, [name]: value })}
-                onCertificationsChange={(certificationUrls) =>
-                  updateDetails({ ...details, certificationUrls })
-                }
               />
             </fieldset>
           </form>

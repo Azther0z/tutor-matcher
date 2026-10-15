@@ -307,11 +307,9 @@ Related stories: US6-1 … US6-3.
 
 1. A logged-in student opens **Become a tutor** → `/(auth)/enroll-tutor`.
 2. The application requires a bio, an identification card document and an introduction video.
-   Portfolio certifications are optional evidence of achievements, contests or qualifications
-   that students can view once approved. Multiple certifications can be added or removed in a
-   draft; every supplied URL must be valid. Submit stays disabled until required fields are
-   present. Subjects are not part of the application — they are added afterwards in
-   `/settings/tutor`.
+   Portfolio certifications are not collected for now, because document upload and storage
+   are deferred. Submit stays disabled until required fields are present. Subjects are not part
+   of the application — they are added afterwards in `/settings/tutor`.
 3. A student can save multiple incomplete **drafts** and see them in a list. **New draft** starts empty; it
    and each row's **Edit** button open a modal for one draft at a time. Each row has a
    **Trash** icon to delete that saved draft after confirmation, an **Edit** icon and a
@@ -329,7 +327,7 @@ Related stories: US6-1 … US6-3.
    approved, rejected and cancelled submissions as compact expandable rows in **Submission history**.
    Pending Verification and its Withdraw action are inside that list, with no separate pending panel.
    A reload icon sits at the top-right of Submission history. **Create draft from
-   cancelled submission** explicitly copies its content and certificates into a new saved draft
+   cancelled submission** explicitly copies its content into a new saved draft
    with a new ID; the cancelled submission and other drafts remain unchanged.
    The page shows the pending documents and introduction video separately from drafts.
 4. While pending the user is still a student: `/dashboard/tutor` and `/settings/tutor`
@@ -339,9 +337,10 @@ Related stories: US6-1 … US6-3.
    same User account, and grants a **Verified** badge. The tutor chooses when to publish.
    Rejection requires a reason displayed to the applicant and emailed to them; revised
    submissions create new versions. Review outcomes are visible in the application/settings UI.
-   Approval is blocked while the identification card or a certification URL ends in a file
-   extension other than `.pdf`, `.jpg`, `.jpeg`, `.png` or `.webp`; the admin sees which file
-   and rejects with a reason instead. A URL without an extension is left to the admin to check.
+   Approval is blocked while the identification card URL, or a certification URL from earlier
+   data, ends in a file extension other than `.pdf`, `.jpg`, `.jpeg`, `.png` or `.webp`; the
+   admin sees which file and rejects with a reason instead. A URL without an extension is left
+   to the admin to check.
 6. After approval, the application shows the approved Tutor and links to Tutor settings
    and the dashboard. The user chooses when to publish.
 
@@ -369,12 +368,11 @@ UI explains this automatic application. A draft list has Edit and Trash icons an
 Creating or editing a draft opens a modal with a sticky header and Save draft / Submit footer.
 Only one draft is edited at a time; closing with unsaved changes offers Save or Discard, with × to return to editing.
 Discard drops unsaved edits; the list's Trash action deletes a saved draft after confirmation.
-Multiple optional portfolio certification URLs can be added, edited or removed from each draft.
-Students see only the current approved portfolio; proposed and rejected certificates remain private.
+Portfolio certifications are not collected (see §6); saving a draft clears any it carried over.
 Other drafts stay editable during review; only a second submission is blocked. Submit
 confirmation explains the pending limit and cancellation. Withdrawal only cancels the submitted
 version; its immutable content stays visible in submission history. The tutor can explicitly
-create a separate draft from a cancelled submission, copying all content and certificates.
+create a separate draft from a cancelled submission, copying all content.
 Pending and approved versions remain immutable history. Account names are edited in Account settings,
 not as part of a profile review.
 
@@ -384,10 +382,10 @@ is not accepting bookings. Existing subject details, conversations, booked lesso
 and tutor management access remain available. Search/recommendation and subject
 management pages that are placeholders are not implemented by AUTH-4.
 
-**Verification privacy and portfolio.** Student-facing tutor responses include approved public
-content, portfolio certification URLs and the Verified badge. Identification-card URLs
-remain restricted to their owner and authorized admins. Draft, pending, rejected and
-cancelled portfolios are not shown to students.
+**Verification privacy.** Student-facing tutor pages show approved public content and the
+Verified badge. Identification-card URLs remain restricted to their owner and authorized
+admins. The API still returns approved portfolio certification URLs from earlier data, but no
+page shows them.
 
 **Subjects.** Each subject is its own offering with a name, description, hourly rate,
 and format. PROF-6 currently supports **Online** only; in-person offerings and venues

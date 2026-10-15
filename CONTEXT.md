@@ -64,7 +64,8 @@ _Avoid_: Transfer proof, attachment, credential
 
 **Tutor Portfolio Certificate**:
 An optional certificate URL showing a tutor's achievements, contest participation or qualifications.
-Certificates belong to a profile version and are visible to students only from its current approved version.
+Certificates belong to a profile version. The Tutor form does not collect them while document
+upload and storage are deferred, and student pages do not show them.
 _Avoid_: Private identity document, mandatory teaching license
 
 **Listing**:
