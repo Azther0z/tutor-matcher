@@ -11,6 +11,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { faker } from "@faker-js/faker";
 
 import { PrismaClient } from "../src/generated/prisma/client.ts";
+import { appendWalletMovement } from "../src/modules/wallet/wallet-ledger.ts";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -210,32 +211,22 @@ async function main() {
     data: { booking: { connect: { id: booking.id } } },
   });
 
-  const existingPayment = await prisma.payment.findFirst({
-    where: { bookingId: booking.id, type: "TRANSFER" },
-  });
-  if (existingPayment) {
-    await prisma.payment.update({
-      where: { id: existingPayment.id },
-      data: {
+  await prisma.$transaction(
+    async (tx) => {
+      const existing = await tx.walletTransaction.findUnique({
+        where: { bookingId_type: { bookingId: booking.id, type: "LESSON_PAYMENT" } },
+      });
+      if (existing) return;
+      await appendWalletMovement(tx, { userId: bob.id, type: "TOP_UP", amount: "75.00" });
+      await appendWalletMovement(tx, {
+        userId: bob.id,
+        type: "LESSON_PAYMENT",
         amount: "75.00",
-        status: "COMPLETED",
-        completedAt: FIXTURE_AVAILABILITY,
-        fromUserId: bob.id,
-        toUserId: null,
-      },
-    });
-  } else {
-    await prisma.payment.create({
-      data: {
-        type: "TRANSFER",
-        amount: "75.00",
-        status: "COMPLETED",
-        completedAt: FIXTURE_AVAILABILITY,
-        fromUser: { connect: { id: bob.id } },
-        booking: { connect: { id: booking.id } },
-      },
-    });
-  }
+        bookingId: booking.id,
+      });
+    },
+    { isolationLevel: "Serializable" }
+  );
 
   const existingReview = await prisma.review.findFirst({
     where: { userId: bob.id, subjectId: subject.id, bookingId: booking.id },

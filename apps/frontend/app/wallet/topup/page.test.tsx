@@ -32,7 +32,7 @@ describe("wallet top-up", () => {
     jest.restoreAllMocks();
   });
 
-  it("confirms a PromptPay transfer, updates the balance, and returns to the booking", async () => {
+  it("confirms a simulated transfer, updates the balance, and returns to the booking", async () => {
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ balance: "250.00" }) })
@@ -42,12 +42,12 @@ describe("wallet top-up", () => {
           balance: "1000.00",
           transaction: {
             id: reference,
-            type: "TOPUP",
-            method: "PROMPTPAY",
+            type: "TOP_UP",
             amount: "750.00",
-            status: "COMPLETED",
+            balanceAfter: "1000.00",
+            userId: "student-1",
+            bookingId: null,
             createdAt: "2026-10-11T04:00:00.000Z",
-            completedAt: "2026-10-11T04:00:00.000Z",
           },
         }),
       });
@@ -58,7 +58,7 @@ describe("wallet top-up", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Show PromptPay QR" }));
     expect(screen.getByRole("img", { name: "PromptPay QR code" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "I've completed the transfer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Simulate successful transfer" }));
 
     expect(await screen.findByRole("heading", { name: "Wallet topped up" })).toBeInTheDocument();
     expect(screen.getByText(/new balance ฿1,000\.00/)).toBeInTheDocument();
@@ -70,7 +70,7 @@ describe("wallet top-up", () => {
       "/api/wallet/topups/confirm",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ amount: 750, reference }),
+        body: JSON.stringify({ amount: 750, reference, simulation: "confirmed" }),
       })
     );
   });
@@ -87,11 +87,17 @@ describe("wallet top-up", () => {
     render(<WalletTopupPage />);
     expect(await screen.findByText("฿250.00")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Show PromptPay QR" }));
-    fireEvent.click(screen.getByRole("button", { name: "I've completed the transfer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Simulate failed transfer" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("The transfer was not confirmed.");
     expect(screen.getByText("฿250.00")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Wallet topped up" })).not.toBeInTheDocument();
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      "/api/wallet/topups/confirm",
+      expect.objectContaining({
+        body: JSON.stringify({ amount: 750, reference, simulation: "failed" }),
+      })
+    );
   });
 
   it("redirects guests before loading wallet data", async () => {

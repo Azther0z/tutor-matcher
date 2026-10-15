@@ -101,19 +101,20 @@ _Avoid_: Session, meeting, appointment
 
 **Wallet**:
 One balance per user holding topped-up money and cleared tutor earnings together. It
-funds lesson payments and payouts, and it is the only place money is held. A user who
+funds lesson payments and payouts. Paid lesson funds are held by the platform for the booking until refunded or settled. A user who
 is both a student and a tutor has one wallet, not two.
 _Avoid_: Credits, account balance, points, tutor balance
 
 **Wallet Transaction**:
-One movement of money in or out of a wallet, carrying a type, direction, status,
-amount, and resulting balance. The transaction ledger is the source of truth for every
-balance. Types are top-up, lesson payment, class earning, refund, and payout.
+One completed movement for exactly one user's wallet, carrying a type, positive amount,
+resulting balance and timestamp. Rows are append-only, with no status or direction.
+TOP_UP, LESSON_EARNING and REFUND add; LESSON_PAYMENT and PAYOUT subtract.
+The signed ledger reconciles to the user's available balance; unpaid bookings have no row.
 _Avoid_: Payment record, ledger line, charge
 
 **Top-up**:
-Real money entering a wallet, paid by PromptPay QR. Top-ups are the only way outside
-money enters the platform.
+Money entering a wallet, intended to be paid by PromptPay QR. PAY-1 currently simulates
+confirmation only; no real transfer is accepted. A successful confirmation appends TOP_UP.
 _Avoid_: Deposit, recharge, buying credits
 
 **Lesson Payment**:
@@ -122,9 +123,11 @@ booking. If the balance is short, the booking page sends the student to top up t
 difference and come back; the slot stays locked to the booking meanwhile.
 _Avoid_: Checkout, transfer proof, invoice
 
-**Earning**:
-The tutor's share of a completed lesson, credited to the tutor's wallet after the
-platform fee. It is held as pending until it clears, then becomes available balance.
+**Lesson Earning**:
+The tutor's share after the platform fee. The planned settlement appends LESSON_EARNING
+when the student confirms delivery or the clearing deadline passes. Until then, pending
+earnings are calculated from CONFIRMED bookings, with no tutor ledger row. Settlement
+is outside PAY-1; see the approved ledger design in docs/user-journeys.md §4.
 _Avoid_: Income, revenue, salary
 
 **Payout**:

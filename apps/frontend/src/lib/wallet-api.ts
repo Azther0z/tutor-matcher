@@ -4,12 +4,12 @@ export type WalletSummary = { balance: string };
 export type ConfirmedTopup = WalletSummary & {
   transaction: {
     id: string;
-    type: "TOPUP";
-    method: "PROMPTPAY";
+    type: "TOP_UP";
     amount: string;
-    status: string;
+    balanceAfter: string;
+    userId: string;
+    bookingId: string | null;
     createdAt: string;
-    completedAt: string | null;
   };
 };
 
@@ -44,10 +44,14 @@ export function getWallet() {
   return walletRequest<WalletSummary>("");
 }
 
-export async function confirmTopup(amount: number, reference: string) {
+export async function confirmTopup(
+  amount: number,
+  reference: string,
+  simulation: "confirmed" | "failed" = "confirmed"
+) {
   const confirmed = await walletRequest<ConfirmedTopup>("/topups/confirm", {
     method: "POST",
-    body: JSON.stringify({ amount, reference }),
+    body: JSON.stringify({ amount, reference, simulation }),
   });
 
   window.dispatchEvent(

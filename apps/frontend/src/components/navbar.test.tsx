@@ -51,12 +51,12 @@ function mockAuthedUser(
           balance: "1750.50",
           transaction: {
             id: "topup-1",
-            type: "TOPUP",
-            method: "PROMPTPAY",
+            type: "TOP_UP",
             amount: "500.00",
-            status: "COMPLETED",
+            balanceAfter: "1750.50",
+            userId: "student-1",
+            bookingId: null,
             createdAt: "2026-10-12T00:00:00.000Z",
-            completedAt: "2026-10-12T00:00:00.000Z",
           },
         }),
       });

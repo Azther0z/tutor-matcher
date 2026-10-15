@@ -2,150 +2,139 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { Prisma } from "../../generated/prisma/client.ts";
 import request from "supertest";
 
-const paymentFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
-const userFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
-const userUpdate = jest.fn<(args: unknown) => Promise<unknown>>();
-const paymentCreate = jest.fn<(args: unknown) => Promise<unknown>>();
-type MockTransaction = {
-  user: { update: typeof userUpdate };
-  payment: { create: typeof paymentCreate };
+const findEntry = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const findUser = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const updateUser = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const createEntry = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const tx = {
+  walletTransaction: { findUnique: findEntry, create: createEntry },
+  user: { updateMany: updateUser, findUniqueOrThrow: findUser },
 };
-const runTransaction =
-  jest.fn<(callback: (tx: MockTransaction) => Promise<unknown>) => Promise<unknown>>();
-
+const transaction =
+  jest.fn<(callback: (client: typeof tx) => Promise<unknown>) => Promise<unknown>>();
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
-    payment: { findUnique: paymentFindUnique },
-    user: { findUnique: userFindUnique },
-    $transaction: runTransaction,
+    user: { findUnique: findUser },
+    $transaction: transaction,
   },
 }));
-
 const { app } = await import("../../app.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");
-
 const userId = "11111111-1111-4111-8111-111111111111";
 const reference = "22222222-2222-4222-8222-222222222222";
-const completedAt = new Date("2026-10-11T04:00:00.000Z");
-
-function token() {
-  return signAuthToken({ sub: userId, email: "student@example.com", isAdmin: false });
+const entry = {
+  id: reference,
+  type: "TOP_UP",
+  amount: new Prisma.Decimal(500),
+  balanceAfter: new Prisma.Decimal(750),
+  userId,
+  bookingId: null,
+  createdAt: new Date("2026-10-11T04:00:00Z"),
+};
+function post(body: object = {}) {
+  return request(app)
+    .post("/api/wallet/topups/confirm")
+    .set(
+      "Authorization",
+      `Bearer ${signAuthToken({ sub: userId, email: "test@example.com", isAdmin: false })}`
+    )
+    .send({ amount: 500, reference, simulation: "confirmed", ...body });
 }
+beforeEach(() => {
+  jest.clearAllMocks();
+  findEntry.mockReset().mockResolvedValue(null);
+  findUser.mockReset().mockResolvedValue({ balance: new Prisma.Decimal(750) });
+  updateUser.mockReset().mockResolvedValue({ count: 1 });
+  createEntry.mockReset().mockResolvedValue(entry);
+  transaction.mockReset().mockImplementation((callback) => callback(tx));
+});
 
-describe("wallet top-up API", () => {
-  beforeEach(() => {
-    paymentFindUnique.mockReset();
-    userFindUnique.mockReset();
-    userUpdate.mockReset();
-    paymentCreate.mockReset();
-    runTransaction.mockReset();
-    runTransaction.mockImplementation(async (callback) =>
-      callback({ user: { update: userUpdate }, payment: { create: paymentCreate } })
-    );
-  });
-
+describe("simulated wallet top-up", () => {
   it("requires authentication", async () => {
-    await request(app).get("/api/wallet").expect(401);
     await request(app)
       .post("/api/wallet/topups/confirm")
-      .send({ amount: 500, reference })
+      .send({ amount: 500, reference, simulation: "confirmed" })
       .expect(401);
-    expect(userFindUnique).not.toHaveBeenCalled();
-    expect(runTransaction).not.toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
   });
-
-  it("returns the current wallet balance", async () => {
-    userFindUnique.mockResolvedValue({ balance: new Prisma.Decimal("250") });
-
-    const response = await request(app)
-      .get("/api/wallet")
-      .set("Authorization", `Bearer ${token()}`)
-      .expect(200);
-
-    expect(response.body).toEqual({ balance: "250.00" });
-  });
-
-  it("credits a confirmed PromptPay top-up and records its transaction atomically", async () => {
-    paymentFindUnique.mockResolvedValue(null);
-    userUpdate.mockResolvedValue({ balance: new Prisma.Decimal("750") });
-    paymentCreate.mockResolvedValue({
-      id: reference,
-      type: "TRANSFER",
-      amount: new Prisma.Decimal("500"),
-      status: "COMPLETED",
-      createdAt: completedAt,
-      completedAt,
-      fromUserId: null,
-      toUserId: userId,
-      bookingId: null,
-    });
-
-    const response = await request(app)
-      .post("/api/wallet/topups/confirm")
-      .set("Authorization", `Bearer ${token()}`)
-      .send({ amount: 500, reference })
-      .expect(201);
-
-    expect(userUpdate).toHaveBeenCalledWith({
-      where: { id: userId },
-      data: { balance: { increment: 500 } },
-      select: { balance: true },
-    });
-    expect(paymentCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        id: reference,
-        type: "TRANSFER",
-        amount: 500,
-        status: "COMPLETED",
-        fromUserId: null,
-        toUserId: userId,
-      }),
-    });
-    expect(response.body).toMatchObject({
+  it("appends one TOP_UP with its balanceAfter in the same transaction as the credit", async () => {
+    const result = await post().expect(201);
+    expect(result.body).toMatchObject({
       balance: "750.00",
+      simulated: true,
       transaction: {
-        id: reference,
-        type: "TOPUP",
-        method: "PROMPTPAY",
+        type: "TOP_UP",
         amount: "500.00",
-        status: "COMPLETED",
+        balanceAfter: "750.00",
+        userId,
+        bookingId: null,
+      },
+    });
+    expect(result.body.transaction).not.toHaveProperty("status");
+    expect(result.body.transaction).not.toHaveProperty("direction");
+    expect(updateUser).toHaveBeenCalledWith({
+      where: { id: userId },
+      data: { balance: { increment: new Prisma.Decimal(500) } },
+    });
+    expect(createEntry).toHaveBeenCalledWith({
+      data: {
+        id: reference,
+        userId,
+        type: "TOP_UP",
+        amount: new Prisma.Decimal(500),
+        balanceAfter: new Prisma.Decimal(750),
       },
     });
   });
-
-  it("does not credit the same confirmation reference twice", async () => {
-    paymentFindUnique.mockResolvedValue({
-      id: reference,
-      type: "TRANSFER",
-      amount: new Prisma.Decimal("500"),
-      status: "COMPLETED",
-      createdAt: completedAt,
-      completedAt,
-      fromUserId: null,
-      toUserId: userId,
-      bookingId: null,
-    });
-    userFindUnique.mockResolvedValue({ balance: new Prisma.Decimal("750") });
-
-    const response = await request(app)
-      .post("/api/wallet/topups/confirm")
-      .set("Authorization", `Bearer ${token()}`)
-      .send({ amount: 500, reference })
-      .expect(201);
-
-    expect(response.body.balance).toBe("750.00");
-    expect(runTransaction).not.toHaveBeenCalled();
+  it("returns the original balanceAfter on retry without adding money again", async () => {
+    findEntry.mockResolvedValue(entry);
+    findUser.mockResolvedValue({ balance: new Prisma.Decimal(900) });
+    const result = await post().expect(201);
+    expect(result.body.balance).toBe("900.00");
+    expect(result.body.transaction.balanceAfter).toBe("750.00");
+    expect(updateUser).not.toHaveBeenCalled();
+    expect(createEntry).not.toHaveBeenCalled();
   });
-
-  it("rejects invalid amounts without adding balance or recording a transaction", async () => {
-    await request(app)
-      .post("/api/wallet/topups/confirm")
-      .set("Authorization", `Bearer ${token()}`)
-      .send({ amount: 0, reference })
-      .expect(400);
-
-    expect(runTransaction).not.toHaveBeenCalled();
-    expect(userUpdate).not.toHaveBeenCalled();
-    expect(paymentCreate).not.toHaveBeenCalled();
+  it("rejects a reference for another user or amount", async () => {
+    findEntry.mockResolvedValue({ ...entry, userId: reference });
+    await post().expect(409);
+    findEntry.mockResolvedValue(entry);
+    await post({ amount: 501 }).expect(409);
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+  it("failed simulation leaves no balance mutation or row", async () => {
+    await post({ simulation: "failed" }).expect(402);
+    expect(transaction).not.toHaveBeenCalled();
+    expect(createEntry).not.toHaveBeenCalled();
+  });
+  it("does not expose simulated credits in production", async () => {
+    const environment = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const response = await post().expect(503);
+      expect(response.body.code).toBe("MOCK_PAYMENT_DISABLED");
+      expect(transaction).not.toHaveBeenCalled();
+    } finally {
+      process.env.NODE_ENV = environment;
+    }
+  });
+  it.each([0, -1, 100001, 1.001])("rejects invalid amount %s", async (amount) => {
+    await post({ amount }).expect(400);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+  it("does not accept a confirmation without an explicit simulation outcome", async () => {
+    await post({ simulation: null }).expect(400);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+  it("retries a competing duplicate and returns its committed ledger row", async () => {
+    transaction.mockRejectedValueOnce({ code: "P2002" });
+    findEntry.mockResolvedValue(entry);
+    await post().expect(201);
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+  it("propagates ledger write failure instead of reporting success", async () => {
+    createEntry.mockRejectedValueOnce(new Error("ledger unavailable"));
+    await post().expect(500);
   });
 });

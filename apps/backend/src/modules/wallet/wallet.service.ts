@@ -1,5 +1,7 @@
-import { Prisma } from "../../generated/prisma/client.ts";
+import { Prisma, type WalletTransaction } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
+import { isTransactionConflict } from "../../lib/transaction-conflict.ts";
+import { appendWalletMovement } from "./wallet-ledger.ts";
 import type { ConfirmTopupInput } from "./wallet.schema.ts";
 
 export class WalletDomainError extends Error {
@@ -12,109 +14,91 @@ export class WalletDomainError extends Error {
   }
 }
 
-function money(value: Prisma.Decimal | string | number) {
-  return new Prisma.Decimal(value).toFixed(2);
-}
-
-function topupResponse(
-  payment: {
-    id: string;
-    amount: Prisma.Decimal;
-    status: string;
-    createdAt: Date;
-    completedAt: Date | null;
-  },
-  balance: Prisma.Decimal
-) {
+function topupResponse(entry: WalletTransaction, balance: Prisma.Decimal) {
   return {
     transaction: {
-      id: payment.id,
-      type: "TOPUP" as const,
-      method: "PROMPTPAY" as const,
-      amount: money(payment.amount),
-      status: payment.status,
-      createdAt: payment.createdAt.toISOString(),
-      completedAt: payment.completedAt?.toISOString() ?? null,
+      id: entry.id,
+      type: entry.type,
+      amount: entry.amount.toFixed(2),
+      balanceAfter: entry.balanceAfter.toFixed(2),
+      userId: entry.userId,
+      bookingId: entry.bookingId,
+      createdAt: entry.createdAt.toISOString(),
     },
-    balance: money(balance),
+    balance: balance.toFixed(2),
+    simulated: true,
   };
 }
 
-async function existingTopup(userId: string, reference: string) {
-  const payment = await prisma.payment.findUnique({ where: { id: reference } });
-  if (!payment) return null;
-  if (
-    payment.type !== "TRANSFER" ||
-    payment.fromUserId !== null ||
-    payment.toUserId !== userId ||
-    payment.status !== "COMPLETED"
-  ) {
-    throw new WalletDomainError(
-      "TOPUP_REFERENCE_CONFLICT",
-      "Top-up reference is already in use",
-      409
-    );
-  }
+export async function getWallet(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { balance: true } });
   if (!user) throw new WalletDomainError("WALLET_NOT_FOUND", "Wallet not found", 404);
-  return topupResponse(payment, user.balance);
+  return { balance: user.balance.toFixed(2) };
 }
 
-export async function getWallet(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { balance: true },
-  });
-  if (!user) throw new WalletDomainError("WALLET_NOT_FOUND", "Wallet not found", 404);
-  return { balance: money(user.balance) };
+// Explicit simulated provider: no bank transfer is asserted or accepted by this endpoint.
+function confirmMockPayment(input: ConfirmTopupInput) {
+  if (process.env.NODE_ENV === "production") {
+    throw new WalletDomainError(
+      "MOCK_PAYMENT_DISABLED",
+      "Simulated payments are disabled in production",
+      503
+    );
+  }
+  if (input.simulation === "failed") {
+    throw new WalletDomainError(
+      "TOPUP_NOT_CONFIRMED",
+      "The simulated transfer failed. Your balance was not changed.",
+      402
+    );
+  }
 }
 
 export async function confirmTopup(userId: string, input: ConfirmTopupInput) {
-  const previous = await existingTopup(userId, input.reference);
-  if (previous) {
-    if (previous.transaction.amount !== money(input.amount)) {
-      throw new WalletDomainError(
-        "TOPUP_REFERENCE_CONFLICT",
-        "Top-up reference was confirmed for a different amount",
-        409
-      );
-    }
-    return previous;
-  }
-
-  const completedAt = new Date();
-  try {
-    return await prisma.$transaction(
-      async (tx) => {
-        const user = await tx.user.update({
-          where: { id: userId },
-          data: { balance: { increment: input.amount } },
-          select: { balance: true },
-        });
-        const payment = await tx.payment.create({
-          data: {
+  confirmMockPayment(input);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          const previous = await tx.walletTransaction.findUnique({
+            where: { id: input.reference },
+          });
+          if (previous) {
+            if (
+              previous.type !== "TOP_UP" ||
+              previous.userId !== userId ||
+              !previous.amount.equals(input.amount)
+            ) {
+              throw new WalletDomainError(
+                "TOPUP_REFERENCE_CONFLICT",
+                "Top-up reference is already in use",
+                409
+              );
+            }
+            const user = await tx.user.findUniqueOrThrow({
+              where: { id: userId },
+              select: { balance: true },
+            });
+            return topupResponse(previous, user.balance);
+          }
+          const entry = await appendWalletMovement(tx, {
             id: input.reference,
-            type: "TRANSFER",
+            userId,
+            type: "TOP_UP",
             amount: input.amount,
-            status: "COMPLETED",
-            completedAt,
-            fromUserId: null,
-            toUserId: userId,
-          },
-        });
-        return topupResponse(payment, user.balance);
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-    );
-  } catch (error) {
-    const code = (error as { code?: string }).code;
-    if (code === "P2002") {
-      const racedTopup = await existingTopup(userId, input.reference);
-      if (racedTopup && racedTopup.transaction.amount === money(input.amount)) return racedTopup;
+          });
+          if (!entry) throw new WalletDomainError("INVALID_AMOUNT", "Enter a positive amount");
+          return topupResponse(entry, entry.balanceAfter);
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      );
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (attempt < 2 && (isTransactionConflict(error) || code === "P2002")) continue;
+      if (code === "P2025")
+        throw new WalletDomainError("WALLET_NOT_FOUND", "Wallet not found", 404);
+      throw error;
     }
-    if (code === "P2025") {
-      throw new WalletDomainError("WALLET_NOT_FOUND", "Wallet not found", 404);
-    }
-    throw error;
   }
+  throw new WalletDomainError("TOPUP_RETRY", "Please retry the top-up", 409);
 }

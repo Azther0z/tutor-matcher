@@ -43,3 +43,11 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Updated: Tutor Matcher Database Operations And Integrity
 - Updated: Tutor Matcher Query Performance And Reporting
 - Updated: Tutor Matcher Document Database Model
+
+## [2026-10-16] ingest | Wallet ledger decision
+
+- Disposition: Update; supersedes the former Payment/status design by explicit user approval
+- Raw: docs/sources/tutormatcher-wallet-ledger-decision.md
+- Raw: docs/sources/tutormatcher-wallet-ledger-implementation.md
+- Updated: docs/database-schema.md, docs/user-journeys.md, CONTEXT.md, docs/index.md
+- Scope: PAY-1 simulation and necessary booking compatibility; settlement/payout workflows deferred

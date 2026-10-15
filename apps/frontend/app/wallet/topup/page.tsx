@@ -18,7 +18,7 @@ function money(value: number) {
 
 function safeAmount(value: string | null) {
   const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 1 && parsed <= 100_000 ? parsed : 500;
+  return Number.isFinite(parsed) && parsed >= 0.01 && parsed <= 100_000 ? parsed : 500;
 }
 
 function safeReturnTo(value: string | null) {
@@ -89,8 +89,13 @@ function TopupContent() {
   }, []);
 
   function showQr() {
-    if (!Number.isFinite(amount) || amount < 1 || amount > 100_000) {
-      setError("Enter an amount between ฿1 and ฿100,000.");
+    if (
+      !Number.isFinite(amount) ||
+      amount < 0.01 ||
+      amount > 100_000 ||
+      Math.abs(amount * 100 - Math.round(amount * 100)) > 0.000001
+    ) {
+      setError("Enter an amount between ฿0.01 and ฿100,000 with at most two decimals.");
       return;
     }
     setError(null);
@@ -98,11 +103,11 @@ function TopupContent() {
     setStage("qr");
   }
 
-  async function completeTransfer() {
+  async function completeTransfer(simulation: "confirmed" | "failed" = "confirmed") {
     setConfirming(true);
     setError(null);
     try {
-      const confirmed = await confirmTopup(amount, reference);
+      const confirmed = await confirmTopup(amount, reference, simulation);
       setResult(confirmed);
       setBalance(confirmed.balance);
       setStage("done");
@@ -123,6 +128,9 @@ function TopupContent() {
       <h1 className="mt-2 text-4xl font-bold tracking-tight">Top up your wallet</h1>
       <p className="mt-3 text-zinc-500">
         Add Thai baht to the same balance you use to confirm lessons.
+      </p>
+      <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+        Demo payment only. This QR cannot receive money. Do not transfer real funds.
       </p>
 
       <section className="mt-8 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm dark:border-white/15 dark:bg-zinc-950">
@@ -163,9 +171,9 @@ function TopupContent() {
             <input
               id="topup-amount"
               type="number"
-              min="1"
+              min="0.01"
               max="100000"
-              step="1"
+              step="0.01"
               value={amount}
               onChange={(event) => setAmount(Number(event.target.value))}
               className="mt-2 h-12 w-full rounded-2xl border border-black/15 bg-transparent px-4 text-lg outline-none focus:border-violet-600 dark:border-white/20"
@@ -185,7 +193,9 @@ function TopupContent() {
           <div className="flex flex-col items-center p-6 text-center sm:p-8">
             <PromptPayQr value={`promptpay:${reference}:${amount.toFixed(2)}`} />
             <h2 className="mt-5 text-2xl font-bold">Add {money(amount)}</h2>
-            <p className="mt-2 text-zinc-500">Open a Thai banking app → Scan → PromptPay</p>
+            <p className="mt-2 text-zinc-500">
+              Simulate a successful or failed PromptPay transfer below.
+            </p>
             <p className="mt-1 text-xs text-zinc-400">Merchant: TutorMatcher Wallet</p>
             <button
               type="button"
@@ -193,7 +203,15 @@ function TopupContent() {
               onClick={() => void completeTransfer()}
               className="mt-6 h-12 w-full rounded-full bg-violet-600 font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50"
             >
-              {confirming ? "Confirming transfer…" : "I've completed the transfer"}
+              {confirming ? "Confirming transfer…" : "Simulate successful transfer"}
+            </button>
+            <button
+              type="button"
+              disabled={confirming}
+              onClick={() => void completeTransfer("failed")}
+              className="mt-3 h-11 font-semibold text-red-700 disabled:opacity-50"
+            >
+              Simulate failed transfer
             </button>
             <button
               type="button"
