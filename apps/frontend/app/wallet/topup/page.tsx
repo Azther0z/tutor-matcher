@@ -129,9 +129,6 @@ function TopupContent() {
       <p className="mt-3 text-zinc-500">
         Add Thai baht to the same balance you use to confirm lessons.
       </p>
-      <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
-        Demo payment only. This QR cannot receive money. Do not transfer real funds.
-      </p>
 
       <section className="mt-8 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm dark:border-white/15 dark:bg-zinc-950">
         <div className="flex items-center justify-between border-b border-black/10 px-6 py-5 dark:border-white/15">
