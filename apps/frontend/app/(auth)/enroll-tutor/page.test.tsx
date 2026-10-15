@@ -157,6 +157,51 @@ it("submits a normalized draft and remains pending with no Tutor or dashboard re
   expect(screen.getByRole("button", { name: "New draft" })).toBeEnabled();
 });
 
+it("shows the pending application's documents and Awaiting approval", async () => {
+  fetchMock.mockResolvedValueOnce(jsonResponse({ ...pending, pendingRequest: profileVersion }));
+  render(<EnrollTutorPage />);
+  const panel = await screen.findByRole("region", { name: "Application status" });
+  expect(panel).toHaveTextContent("Awaiting approval");
+  expect(panel).toHaveTextContent(profileFields.identificationCardUrl);
+  expect(panel).toHaveTextContent(profileFields.introVideoUrl);
+  expect(screen.getByRole("button", { name: "Cancel and re-submit" })).toBeEnabled();
+});
+
+it("cancels a pending application and opens a draft copied from it to re-submit", async () => {
+  const submission = { ...profileVersion, status: "CANCELLED" };
+  const cancelled = { status: "CANCELLED", tutor: null, version: submission };
+  const copied = {
+    ...cancelled,
+    status: "DRAFT",
+    version: { ...profileVersion, id: "new-draft", status: "DRAFT" },
+    submissions: [submission],
+  };
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse({ ...pending, pendingRequest: profileVersion }))
+    .mockResolvedValueOnce(jsonResponse(cancelled))
+    .mockResolvedValueOnce(jsonResponse(copied));
+  render(<EnrollTutorPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Cancel and re-submit" }));
+  expect(await screen.findByLabelText("Tutor bio")).toHaveValue(profileFields.bio);
+  expect(fetchMock.mock.calls[1]).toEqual([
+    "/api/profiles/me/tutor/withdraw",
+    expect.objectContaining({ method: "POST" }),
+  ]);
+  expect(fetchMock.mock.calls[2]).toEqual([
+    `/api/profiles/me/tutor/submissions/${profileVersion.id}/copy`,
+    expect.objectContaining({ method: "POST" }),
+  ]);
+  expect(screen.queryByRole("region", { name: "Application status" })).not.toBeInTheDocument();
+});
+
+it("routes an already approved Tutor to the Tutor dashboard", async () => {
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse({ status: "APPROVED", tutor: approvedTutor, version: profileVersion })
+  );
+  render(<EnrollTutorPage />);
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard/tutor"));
+});
+
 it("cancels a submission without creating a draft, then explicitly copies a new draft", async () => {
   const submission = { ...profileVersion, status: "CANCELLED" };
   const cancelled = { status: "CANCELLED", tutor: null, version: submission };

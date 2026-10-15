@@ -85,6 +85,11 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         if (!enrollment && !result.tutor) {
           replace("/enroll-tutor");
         }
+        // An approved Tutor has no application to manage. Only the initial load redirects, so a
+        // pending applicant who refreshes into approval still sees the approved result here.
+        if (enrollment && result.tutor && reload === 0) {
+          replace("/dashboard/tutor");
+        }
         setData(result);
         setSubjects(result.tutor?.subjects ?? []);
         const draft = result.drafts[0];
@@ -202,6 +207,24 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
     if (!rowSubmission) setEditorOpen(true);
   }
 
+  function cancelAndResubmit(submissionId: string) {
+    requestTransition(() => {
+      void runAction(async () => {
+        await tutorApi<TutorApplicationResponse>(`${apiPath}/withdraw`, { method: "POST" });
+        const result = await tutorApi<TutorApplicationResponse>(
+          `${apiPath}/submissions/${submissionId}/copy`,
+          { method: "POST" }
+        );
+        setData(result);
+        loadDetails(tutorDetailsFromApplication(result.version), result.version!.id);
+        setEditorOpen(true);
+        setMessage(
+          "Application cancelled. Edit the new draft copied from it, then submit it again."
+        );
+      });
+    });
+  }
+
   function confirmSubmit() {
     if (!consent || pending || noChanges || Object.keys(validateTutorDetails(details)).length)
       return;
@@ -282,6 +305,26 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           .
         </p>
       </div>
+
+      {enrollment && !tutor && pending && (
+        <section className={panel} aria-label="Application status">
+          <h2 className="text-xl font-semibold">Awaiting approval</h2>
+          <p className="mt-2 text-sm text-zinc-500">
+            An admin is reviewing the documents and introduction video you submitted. You can cancel
+            this application and re-submit corrected details.
+          </p>
+          <div className="mt-4">
+            <TutorProfileSnapshot profile={pending} />
+          </div>
+          <button
+            className={`${button} mt-4`}
+            disabled={busy}
+            onClick={() => cancelAndResubmit(pending.id)}
+          >
+            Cancel and re-submit
+          </button>
+        </section>
+      )}
 
       {tutor && (
         <section className={panel} aria-label="Current approved profile">
