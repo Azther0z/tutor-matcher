@@ -1,10 +1,11 @@
 import Link from "next/link";
 
-type SettingsSection = "account" | "student" | "notifications";
+type SettingsSection = "account" | "student" | "tutor" | "notifications";
 
 const settingsLinks: Array<{ section: SettingsSection; href: string; label: string }> = [
   { section: "account", href: "/settings/account", label: "Account" },
   { section: "student", href: "/settings/student", label: "Student profile" },
+  { section: "tutor", href: "/settings/tutor", label: "Tutor profile" },
   { section: "notifications", href: "/settings/notifications", label: "Notifications" },
 ];
 
