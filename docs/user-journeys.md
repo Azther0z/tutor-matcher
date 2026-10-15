@@ -33,8 +33,10 @@ place.
    listing and document changes, flagged content, payment disputes, and account
    suspension.
 
-**Roles.** Every account is created as a student. Tutor and admin are capabilities
-layered onto the same account, not separate account types.
+**Roles.** Every account has the Student capability. Tutor and admin are capabilities
+layered onto the same account, not separate account types. A valid server-configured
+admin signup key can add the Admin capability during sign-up; an omitted, invalid, or
+disabled key leaves the account as a standard Student account.
 
 | Role        | What the capability adds                                                                                                               |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -134,8 +136,10 @@ Guards run before render, not after.
 ## 1 · Account and access
 
 **Sign up.** Full name, email, password, password confirmation, and agreement to the
-Terms and Privacy Policy. There is **no role choice at sign-up** — every new account is
-a student. A duplicate email or invalid input fails with a field-level error.
+Terms and Privacy Policy. There is **no role choice at sign-up** — every new account has
+the Student capability. An optional admin signup key adds Admin only when it matches the
+key configured by the backend; an omitted, invalid, or disabled key creates a standard
+Student account. A duplicate email or invalid input fails with a field-level error.
 
 **Log in / log out.** Email and password, or Continue with Google. Log out returns
 protected routes to the guard in rule 1 above.

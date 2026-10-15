@@ -5,6 +5,7 @@ export const signupSchema = z.object({
   lastName: z.string().trim().min(1).max(100),
   email: z.email(),
   password: z.string().min(8).max(100),
+  adminSignupKey: z.string().max(256).optional(),
 });
 
 export type SignupInput = z.infer<typeof signupSchema>;
