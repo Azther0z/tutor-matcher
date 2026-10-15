@@ -47,6 +47,7 @@
 - Subject management is online-only for now. Subject saves are immediate and separate from profile review; allow duplicate names and positive THB rates with at most two decimals. Existing bookings must retain their agreed subject details when an offering changes.
 - Tutors create availability in a seven-day dated calendar with a month overview that opens the selected date's week. Each slot saves individually; there is no day or week save. Tutors may create, close and reassign free future slots on any future date. Paid slots and active payment holds are locked; conflicts preserve the slot draft. The three-month rule applies to student calendar navigation, not Tutor publishing.
 - Production admin provisioning uses an optional backend-only referral code. A match adds Admin during sign-up; a missing, invalid, or disabled code creates a standard Student account.
+- Docker Swarm production Compose uses string-form `env_file` entries. Keep `admin-signup-key.enc.env` present and use a blank `ADMIN_SIGNUP_KEY` to disable Admin signup.
 
 ### Open Threads
 - Question: Is rescheduling a booking in scope?

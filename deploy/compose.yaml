@@ -58,8 +58,7 @@ services:
     env_file:
       - ./secrets/database-url.enc.env
       - ./secrets/resend.enc.env
-      - path: ./secrets/admin-signup-key.enc.env
-        required: false
+      - ./secrets/admin-signup-key.enc.env
     environment:
       PORT: "8000"
       FRONTEND_URL: "${FRONTEND_URL:-https://tutor-matcher.azther0z.online}"
