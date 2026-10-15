@@ -148,7 +148,7 @@ export default function SignupPage() {
         </label>
 
         <label className="flex flex-col gap-1.5 text-sm font-medium">
-          Admin signup key <span className="font-normal text-zinc-500">(optional)</span>
+          Referral code <span className="font-normal text-zinc-500">(optional)</span>
           <input
             type="password"
             name="adminSignupKey"
