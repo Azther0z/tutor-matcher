@@ -283,4 +283,86 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
       await prisma.tutor.update({ where: { id: TUTOR_ID }, data: { status: "PUBLISHED" } });
     }
   });
+
+  it("preserves new and legacy booked details when a Tutor edits only one offering", async () => {
+    const tutorToken = signAuthToken({
+      sub: TUTOR_USER_ID,
+      email: "booking-integration-tutor@example.com",
+      isAdmin: false,
+    });
+    const asTutor = (test: request.Test) => test.set("Authorization", `Bearer ${tutorToken}`);
+    const path = "/api/profiles/me/tutor/subjects";
+    const original = await prisma.subject.findUniqueOrThrow({ where: { id: SUBJECT_ID } });
+    const existing = await prisma.booking.findFirstOrThrow({ where: { subjectId: SUBJECT_ID } });
+    const legacy = await prisma.booking.create({
+      data: {
+        userId: STUDENT_ID,
+        subjectId: SUBJECT_ID,
+        status: "CONFIRMED",
+        totalAmount: "75.00",
+        startedAt: existing.startedAt,
+        endedAt: existing.endedAt,
+      },
+    });
+    const sibling = await asTutor(
+      request(app).post(path).send({
+        name: original.name,
+        description: "Another independent offering",
+        hourlyRate: "120.50",
+        format: "ONLINE",
+      })
+    ).expect(201);
+    try {
+      await authorize(
+        request(app).put(`${path}/${SUBJECT_ID}`).send({
+          name: "Unauthorized",
+          description: "No change",
+          hourlyRate: "1.00",
+          format: "ONLINE",
+        })
+      ).expect(403);
+      const updated = await asTutor(
+        request(app).put(`${path}/${SUBJECT_ID}`).send({
+          name: "Advanced Mathematics",
+          description: "Updated offering",
+          hourlyRate: "199.50",
+          format: "ONLINE",
+        })
+      ).expect(200);
+      expect(updated.body.subject.name).toBe("Advanced Mathematics");
+      const list = await asTutor(request(app).get(path)).expect(200);
+      expect(list.body.subjects).toEqual(
+        expect.arrayContaining([sibling.body.subject, updated.body.subject])
+      );
+      const ownerProfile = await asTutor(request(app).get("/api/profiles/me/tutor")).expect(200);
+      expect(ownerProfile.body.tutor.subjects).toEqual(list.body.subjects);
+
+      for (const booking of [existing, legacy]) {
+        const detail = await authorize(request(app).get(`/api/bookings/${booking.id}`)).expect(200);
+        expect(detail.body.booking.subject).toMatchObject({
+          name: original.name,
+          description: original.description,
+          hourlyRate: original.hourlyRate.toFixed(2),
+          format: "ONLINE",
+        });
+        expect(detail.body.booking.totalAmount).toBe(booking.totalAmount.toFixed(2));
+        const stored = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+        expect(stored.subjectName).toBe(original.name);
+      }
+      const created = await authorize(
+        request(app)
+          .post("/api/bookings")
+          .send({ subjectId: SUBJECT_ID, availabilityIds: [INVALID_EXPIRY_SLOT_ID], isTrial: true })
+      ).expect(201);
+      expect(created.body.booking.subject).toMatchObject({
+        name: "Advanced Mathematics",
+        description: "Updated offering",
+        hourlyRate: "199.50",
+        format: "ONLINE",
+      });
+      expect(created.body.booking.totalAmount).toBe("99.75");
+    } finally {
+      await prisma.subject.delete({ where: { id: sibling.body.subject.id } });
+    }
+  });
 });

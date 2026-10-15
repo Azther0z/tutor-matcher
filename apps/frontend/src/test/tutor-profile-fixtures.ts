@@ -29,6 +29,7 @@ export const approvedTutor: TutorApplication = {
   status: "PUBLISHED",
   enrolledAt: "2026-10-01T12:00:00.000Z",
   verified: true,
+  subjects: [],
 };
 export const reviewRequest: TutorReviewRequest = {
   ...profileVersion,

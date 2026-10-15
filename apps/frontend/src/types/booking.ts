@@ -13,6 +13,7 @@ export type BookingSubject = {
   name: string;
   description?: string | null;
   hourlyRate: string;
+  format: "ONLINE";
   tutor: {
     id: string;
     name: string;

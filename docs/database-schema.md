@@ -137,16 +137,23 @@ replacement; historical certificates stay attached to the version that was revie
 
 ### subjects
 
-| Column      | Type          | Constraints                                        | Notes                             |
-| ----------- | ------------- | -------------------------------------------------- | --------------------------------- |
-| subject_id  | SERIAL        | PK                                                 |                                   |
-| name        | TEXT          | NOT NULL                                           |                                   |
-| description | TEXT          | NULL                                               |                                   |
-| video_url   | TEXT          | NULL                                               |                                   |
-| hourly_rate | NUMERIC(10,2) | NOT NULL                                           | Lesson price is derived from this |
-| tutor_id    | INT           | NOT NULL, FK → tutors.tutor_id, ON DELETE RESTRICT |                                   |
+| Column      | Type          | Constraints                                        | Notes                                |
+| ----------- | ------------- | -------------------------------------------------- | ------------------------------------ |
+| subject_id  | UUID          | PK                                                 |                                      |
+| name        | TEXT          | NOT NULL                                           |                                      |
+| description | TEXT          | NULL                                               |                                      |
+| video_url   | TEXT          | NULL                                               |                                      |
+| hourly_rate | NUMERIC(10,2) | NOT NULL                                           | Lesson price is derived from this    |
+| format      | SubjectFormat | NOT NULL, DEFAULT `ONLINE`                         | Only `ONLINE` is currently supported |
+| tutor_id    | UUID          | NOT NULL, FK → tutors.tutor_id, ON DELETE RESTRICT |                                      |
 
 Index: `tutor_id`.
+
+PROF-6 requires a nonempty name and description on create/update, with limits of 100
+and 2000 characters. Description remains nullable in storage for legacy offerings.
+The API accepts positive THB rate strings with at most two decimals within the column's
+precision. Subject names are not unique. Saves are owner-only and immediate, independent
+of Tutor profile review and publication; no subject review or removal lifecycle is added.
 
 ### availabilities
 
@@ -178,6 +185,21 @@ subject page show subject-filtered availability.
 | subject_id       | INT       | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Identifies the tutor through the subject       |
 
 Indexes: `user_id`, `subject_id`.
+
+PROF-6 also adds the following nullable subject snapshot columns to `bookings`:
+
+| Column              | Type          | Purpose                                      |
+| ------------------- | ------------- | -------------------------------------------- |
+| subject_name        | TEXT          | Agreed offering name; marks a saved snapshot |
+| subject_description | TEXT          | Agreed description, including legacy NULL    |
+| subject_hourly_rate | NUMERIC(10,2) | Agreed hourly rate                           |
+| subject_format      | SubjectFormat | Agreed `ONLINE` format                       |
+
+New bookings capture these values at creation. Before a subject changes, its existing
+bookings without snapshots capture the previously stored details in the same serializable
+transaction. Existing snapshots and booking totals are never rewritten by a subject edit.
+Booking responses fall back to the live subject only for legacy bookings until their
+first subject edit. Values overwritten before this feature are not reconstructible.
 
 ### payments
 

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { validate } from "../../middleware/validate.ts";
+import { subjectRouter } from "../subject/subject.routes.ts";
 import {
   enrollTutorForCurrentUser,
   getAccountForCurrentUser,
@@ -32,6 +33,8 @@ import {
 } from "./profile.schema.ts";
 
 export const profileRouter = Router();
+
+profileRouter.use("/me/tutor/subjects", subjectRouter);
 
 profileRouter.put("/me", validate(profileRequestSchema), updateProfile);
 profileRouter.get("/me/tutor", getTutorApplicationForCurrentUser);

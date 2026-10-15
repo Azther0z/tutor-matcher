@@ -41,6 +41,10 @@ enum BookingStatus {
   COMPLETED
 }
 
+enum SubjectFormat {
+  ONLINE
+}
+
 enum StudentEducationLevel {
   PRIMARY_SCHOOL
   LOWER_SECONDARY_SCHOOL
@@ -185,11 +189,12 @@ model PasswordResetToken {
 }
 
 model Subject {
-  id          String  @id @default(uuid()) @map("subject_id") @db.Uuid
+  id          String        @id @default(uuid()) @map("subject_id") @db.Uuid
   name        String
   description String?
-  videoUrl    String? @map("video_url")
-  hourlyRate  Decimal @map("hourly_rate") @db.Decimal(10, 2)
+  videoUrl    String?       @map("video_url")
+  hourlyRate  Decimal       @map("hourly_rate") @db.Decimal(10, 2)
+  format      SubjectFormat @default(ONLINE)
 
   tutorId String @map("tutor_id") @db.Uuid
   tutor   Tutor  @relation(fields: [tutorId], references: [id], onDelete: Restrict)
@@ -238,6 +243,12 @@ model Booking {
   paymentExpiresAt   DateTime?     @map("payment_expires_at")
   cancelledAt        DateTime?     @map("cancelled_at")
   cancellationReason String?       @map("cancellation_reason")
+
+  // Legacy bookings are captured before their subject's first edit.
+  subjectName        String?        @map("subject_name")
+  subjectDescription String?        @map("subject_description")
+  subjectHourlyRate  Decimal?       @map("subject_hourly_rate") @db.Decimal(10, 2)
+  subjectFormat      SubjectFormat? @map("subject_format")
 
   userId String @map("user_id") @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
