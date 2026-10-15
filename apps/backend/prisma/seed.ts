@@ -147,12 +147,12 @@ async function main() {
       });
 
   const existingAvailability = await prisma.availability.findFirst({
-    where: { startedAt: FIXTURE_AVAILABILITY },
+    where: { startedAt: FIXTURE_AVAILABILITY, tutorId: tutor.id },
   });
   const availability = existingAvailability
     ? existingAvailability
     : await prisma.availability.create({
-        data: { startedAt: FIXTURE_AVAILABILITY },
+        data: { startedAt: FIXTURE_AVAILABILITY, tutorId: tutor.id },
       });
 
   await prisma.availabilitySubject.upsert({

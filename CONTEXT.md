@@ -11,9 +11,8 @@ continuous block of the tutor's published 30-minute slots, and pays for it from 
 single wallet balance. Payment confirms the lesson immediately — there is no tutor
 approval step, because the tutor already published the slot.
 
-Behavioural authority for these terms is the clickable prototype captured in
-[`docs/sources/tutormatcher-prototype-readme.md`](docs/sources/tutormatcher-prototype-readme.md)
-and [`docs/sources/tutormatcher-prototype-user-stories.md`](docs/sources/tutormatcher-prototype-user-stories.md).
+Behavioural authority for these terms is [`docs/user-journeys.md`](docs/user-journeys.md),
+which overrides the historical prototype evidence preserved in `docs/sources/`.
 See [`docs/user-journeys.md`](docs/user-journeys.md) for the flows and
 [`docs/database-schema.md`](docs/database-schema.md) for the data model.
 
@@ -82,8 +81,8 @@ _Avoid_: Class, course, category, topic
 A 30-minute window on a specific date that a tutor has opened for teaching. The slot
 belongs to the tutor, and the tutor assigns one or more of their subjects to it, so a
 student browsing a subject sees only the slots that advertise that subject. A slot is
-locked to one booking once that booking is paid.
-_Avoid_: Time slot, open slot, schedule entry, weekly availability
+locked to one booking during an active payment hold or after payment.
+_Avoid_: Time slot, open slot, schedule entry, recurring availability schedule
 
 **Booking**:
 One student and one tutor, one subject, and one continuous block of back-to-back

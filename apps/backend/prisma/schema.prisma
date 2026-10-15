@@ -144,6 +144,7 @@ model Tutor {
   currentProfileVersion TutorProfileVersion @relation(fields: [currentProfileVersionId], references: [id], onDelete: Restrict)
   user                  User?
   subjects              Subject[]
+  availabilities        Availability[]
 
   @@map("tutors")
 }
@@ -210,12 +211,16 @@ model Subject {
 model Availability {
   id        String   @id @default(uuid()) @map("availability_id") @db.Uuid
   startedAt DateTime @map("started_at")
+  isOpen    Boolean  @default(true) @map("is_open")
+  tutorId   String   @map("tutor_id") @db.Uuid
+  tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Restrict)
 
   bookingId String?  @map("booking_id") @db.Uuid
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   availabilitySubjects AvailabilitySubject[]
 
+  @@unique([tutorId, startedAt])
   @@index([bookingId])
   @@map("availabilities")
 }

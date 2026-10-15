@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
+import { isTransactionConflict } from "../../lib/transaction-conflict.ts";
 import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
 import { subjectSnapshot } from "../subject/subject.public.ts";
 import type {
@@ -285,7 +286,7 @@ export function mapBookingResponse(
 }
 
 function isSerializationError(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
+  return isTransactionConflict(error);
 }
 
 async function loadDetail(id: string) {
@@ -295,15 +296,17 @@ async function loadDetail(id: string) {
 // Lazily expires abandoned payment-due bookings before relevant reads and writes.
 export async function releaseExpiredBookings(
   now = new Date(),
-  filter: { id?: string; userId?: string; subjectId?: string } = {}
+  filter: { id?: string; userId?: string; subjectId?: string; tutorId?: string } = {}
 ) {
+  const { tutorId, ...bookingFilter } = filter;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       return await prisma.$transaction(
         async (tx) => {
           const expired = await tx.booking.findMany({
             where: {
-              ...filter,
+              ...bookingFilter,
+              ...(tutorId ? { subject: { tutorId } } : {}),
               status: "PENDING_PAYMENT",
               OR: [{ paymentExpiresAt: { lte: now } }, { paymentExpiresAt: null }],
             },
@@ -359,7 +362,7 @@ export async function getSubjectAvailability(subjectId: string) {
         },
       },
       availabilitySubjects: {
-        where: { availability: { bookingId: null, startedAt: { gt: now } } },
+        where: { availability: { isOpen: true, bookingId: null, startedAt: { gt: now } } },
         include: { availability: true },
       },
     },
@@ -402,6 +405,7 @@ async function eligibleSlots(
     where: {
       id: { in: ids },
       bookingId: null,
+      isOpen: true,
       startedAt: { gt: now },
       availabilitySubjects: { some: { subjectId } },
     },

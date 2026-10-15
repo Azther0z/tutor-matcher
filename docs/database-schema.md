@@ -156,32 +156,49 @@ of Tutor profile review and publication; no subject review or removal lifecycle 
 
 ### availabilities
 
-| Column          | Type      | Constraints                                                | Notes                                   |
-| --------------- | --------- | ---------------------------------------------------------- | --------------------------------------- |
-| availability_id | SERIAL    | PK                                                         |                                         |
-| started_at      | TIMESTAMP | NOT NULL                                                   | Start of a 30-minute slot               |
-| booking_id      | INT       | UNIQUE, NULL, FK → bookings.booking_id, ON DELETE SET NULL | NULL = open · set = locked to a booking |
+| Column          | Type      | Constraints                                        | Notes                                     |
+| --------------- | --------- | -------------------------------------------------- | ----------------------------------------- |
+| availability_id | UUID      | PK                                                 |                                           |
+| started_at      | TIMESTAMP | NOT NULL                                           | Start of a 30-minute slot                 |
+| tutor_id        | UUID      | NOT NULL, FK → tutors.tutor_id, ON DELETE RESTRICT | Explicit slot owner                       |
+| is_open         | BOOLEAN   | NOT NULL, DEFAULT true                             | Tutor permits new bookings when true      |
+| booking_id      | UUID      | NULL, FK → bookings.booking_id, ON DELETE SET NULL | Set = locked to a booking or payment hold |
+
+PROF-3 adds a unique `(tutor_id, started_at)` constraint and retains the `booking_id` index.
+The application enforces Bangkok-local :00/:30 starts, so unique Tutor/start also prevents
+overlapping half-hours. One booking may hold multiple slots. Closed slots keep their ID and
+subject assignments; booking reads and eligibility require `is_open`, no claim and a future start.
+Owner day saves validate subject ownership, immutable held/paid/past slots and a revision of
+the loaded state inside a serializable transaction. Conflicts roll back every submitted edit.
 
 ### availability_subjects
 
 | Column          | Type | Constraints                                                             |
 | --------------- | ---- | ----------------------------------------------------------------------- |
-| availability_id | INT  | PK (composite), FK → availabilities.availability_id, ON DELETE RESTRICT |
-| subject_id      | INT  | PK (composite), FK → subjects.subject_id, ON DELETE RESTRICT            |
+| availability_id | UUID | PK (composite), FK → availabilities.availability_id, ON DELETE RESTRICT |
+| subject_id      | UUID | PK (composite), FK → subjects.subject_id, ON DELETE RESTRICT            |
 
 Which of the tutor's subjects that slot is offered for. This join is what makes a
 subject page show subject-filtered availability.
 
 ### bookings
 
-| Column           | Type      | Constraints                                            | Notes                                          |
-| ---------------- | --------- | ------------------------------------------------------ | ---------------------------------------------- |
-| booking_id       | SERIAL    | PK                                                     |                                                |
-| description      | TEXT      | NULL                                                   | The student's "what do you want to learn" note |
-| zoom_meeting_url | TEXT      | NOT NULL                                               | Meeting link for the lesson                    |
-| created_at       | TIMESTAMP | NOT NULL, DEFAULT now()                                |                                                |
-| user_id          | INT       | NOT NULL, FK → users.user_id, ON DELETE RESTRICT       | The student                                    |
-| subject_id       | INT       | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Identifies the tutor through the subject       |
+| Column              | Type          | Constraints                                            | Notes                                                        |
+| ------------------- | ------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
+| booking_id          | UUID          | PK                                                     |                                                              |
+| description         | TEXT          | NULL                                                   | The student's "what do you want to learn" note               |
+| zoom_meeting_url    | TEXT          | NULL                                                   | Meeting link for the lesson                                  |
+| created_at          | TIMESTAMP     | NOT NULL, DEFAULT now()                                |                                                              |
+| user_id             | UUID          | NOT NULL, FK → users.user_id, ON DELETE RESTRICT       | The student                                                  |
+| subject_id          | UUID          | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Identifies the tutor through the subject                     |
+| status              | BookingStatus | NOT NULL, DEFAULT `PENDING_PAYMENT`                    | `PENDING_PAYMENT`, `CONFIRMED`, `COMPLETED`, `CANCELLED`     |
+| started_at          | TIMESTAMP     | NOT NULL                                               | Agreed first-slot start                                      |
+| ended_at            | TIMESTAMP     | NOT NULL                                               | Agreed last-slot end                                         |
+| total_amount        | NUMERIC(12,2) | NOT NULL                                               | Agreed price                                                 |
+| payment_expires_at  | TIMESTAMP     | NULL                                                   | Active payment-hold deadline                                 |
+| cancelled_at        | TIMESTAMP     | NULL                                                   | Cancellation time                                            |
+| cancellation_reason | TEXT          | NULL                                                   | Cancellation reason                                          |
+| is_trial            | BOOLEAN       | NOT NULL, DEFAULT true                                 | Existing booking API field; no trial flow is added by PROF-3 |
 
 Indexes: `user_id`, `subject_id`.
 
@@ -279,42 +296,42 @@ These come from [`user-journeys.md`](user-journeys.md#invariants). Each one has 
 enforced somewhere — a constraint, a transaction, or a service-layer check — and the
 "Enforced today" column says where it stands.
 
-| #   | Rule                                                                                 | Enforced today                                                 |
-| --- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
-| 1   | A rating is between 1 and 5                                                          | ✅ CHECK `reviews_rating_stars_range`                          |
-| 2   | An availability slot is locked to at most one booking                                | ✅ `availabilities.booking_id` UNIQUE                          |
-| 3   | A booking has at most one lesson payment                                             | ✅ `payments.booking_id` UNIQUE                                |
-| 4   | A user's subjects, bookings, and payments survive referential deletes                | ✅ `ON DELETE RESTRICT` across the domain                      |
-| 5   | A booking occupies a **continuous run** of slots for one subject                     | ❌ not modelled — see gap G1                                   |
-| 6   | A booking carries a lifecycle status (payment due → confirmed → completed/cancelled) | ❌ not modelled — see gap G2                                   |
-| 7   | Booking price is fixed at creation from the subject rate and the slot count          | ❌ not modelled — see gap G3                                   |
-| 8   | A slot cannot be double-sold — the check happens before payment capture              | ⚠️ relies on rule 2 plus a transaction that does not exist yet |
-| 9   | Exactly one review per booking                                                       | ❌ `reviews.booking_id` is not UNIQUE                          |
-| 10  | Every money movement records direction, status, and resulting balance                | ⚠️ partial — see gap G4                                        |
-| 11  | Available and pending balance are distinguishable                                    | ❌ single `users.balance` — see gap G5                         |
-| 12  | A tutor cannot open two overlapping slots                                            | ❌ no uniqueness on (tutor, `started_at`)                      |
+| #   | Rule                                                                                 | Enforced today                                                              |
+| --- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| 1   | A rating is between 1 and 5                                                          | ✅ CHECK `reviews_rating_stars_range`                                       |
+| 2   | An availability slot is locked to at most one booking                                | ✅ one nullable booking FK per slot; atomic serializable claims             |
+| 3   | A booking has at most one lesson payment                                             | ✅ `payments.booking_id` UNIQUE                                             |
+| 4   | A user's subjects, bookings, and payments survive referential deletes                | ✅ `ON DELETE RESTRICT` across the domain                                   |
+| 5   | A booking occupies a **continuous run** of slots for one subject                     | ✅ booking service validates assigned, consecutive slots on one Bangkok day |
+| 6   | A booking carries a lifecycle status (payment due → confirmed → completed/cancelled) | ✅ `BookingStatus`; completion processing remains separate work             |
+| 7   | Booking price is fixed at creation from the subject rate and the slot count          | ✅ stored total and PROF-6 subject snapshots                                |
+| 8   | A slot cannot be double-sold — the check happens before payment capture              | ✅ serializable booking claims and payment confirmation                     |
+| 9   | Exactly one review per booking                                                       | ❌ `reviews.booking_id` is not UNIQUE                                       |
+| 10  | Every money movement records direction, status, and resulting balance                | ⚠️ partial — see gap G4                                                     |
+| 11  | Available and pending balance are distinguishable                                    | ❌ single `users.balance` — see gap G5                                      |
+| 12  | A tutor cannot open two overlapping slots                                            | ✅ PROF-3: unique Tutor/start plus half-hour grid validation                |
 
 ---
 
 ## Reconciliation: Requirement vs Implementation
 
-The requirement model is the prototype's data sketch,
-[`sources/tutormatcher-prototype.dbml`](sources/tutormatcher-prototype.dbml). The gaps
-below are the difference between it and the schema in `schema.prisma` today. They are
+The requirements come from canonical [`user-journeys.md`](user-journeys.md). The prototype's
+[`data sketch`](sources/tutormatcher-prototype.dbml) is historical evidence. The gaps
+below compare documented journeys with `schema.prisma`; resolved entries are identified. They are
 recorded here so the next schema change is deliberate; nothing in this list is a claim
 that the current schema is wrong to have shipped.
 
 ### Gaps that block a documented journey
 
-| ID  | Gap                                                                                                                                                                                                                         | Journey it blocks                                       |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| G1  | `availabilities.booking_id` is UNIQUE and `bookings` has no slot collection, so a booking can hold **exactly one 30-minute slot**. The product books a continuous run of slots.                                             | §3 Booking — multi-slot blocks, duration, price         |
-| G2  | `bookings` has **no status column**. Payment due, confirmed, completed, and cancelled cannot be represented or queried.                                                                                                     | §3 Booking, `/bookings` tabs, §5 completion, §9 reviews |
-| G3  | `bookings` has no `starts_at`, `ends_at`, `duration_minutes`, or `price`. Schedule and amount are only reachable through the linked slot and the subject's current rate, so a later rate change rewrites historical prices. | §3 Payment due, §4 ledger amounts                       |
-| G4  | `PaymentType` has no `TOPUP` or `EARNING` value, and there is no `direction` or `balance_after`. A PromptPay top-up and a bank payout also have no counterparty user to put in `to_user_id` / `from_user_id`.               | §4 Money — the whole `/wallet` ledger                   |
-| G5  | One `users.balance` column, so pending earnings cannot be separated from available balance. (`PaymentStatus.HOLDING` looks intended for this but is not wired to a balance split.)                                          | §4 pending earnings, payout eligibility                 |
-| G6  | `bookings.zoom_meeting_url` is NOT NULL, but a booking exists in payment-due state before any lesson is scheduled to be delivered.                                                                                          | §3 Step 2                                               |
-| G7  | `availabilities` has no tutor reference. A slot's owner is reachable only through `availability_subjects → subjects.tutor_id`, so a slot with no subject assigned has no owner.                                             | §7 Availability editor                                  |
+| ID  | Gap                                                                                                                                                                                                           | Journey it blocks                               |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| G1  | Resolved in existing booking code: a Booking has multiple Availability rows and validates a continuous block.                                                                                                 | §3 Booking — multi-slot blocks, duration, price |
+| G2  | Status storage is implemented by `BookingStatus`; automatic completion remains separate work.                                                                                                                 | §3 Booking, `/bookings` tabs, §5 completion     |
+| G3  | Resolved in existing booking/PROF-6 code: stored start, end, total and subject snapshots preserve the agreement.                                                                                              | §3 Payment due, §4 ledger amounts               |
+| G4  | `PaymentType` has no `TOPUP` or `EARNING` value, and there is no `direction` or `balance_after`. A PromptPay top-up and a bank payout also have no counterparty user to put in `to_user_id` / `from_user_id`. | §4 Money — the whole `/wallet` ledger           |
+| G5  | One `users.balance` column, so pending earnings cannot be separated from available balance. (`PaymentStatus.HOLDING` looks intended for this but is not wired to a balance split.)                            | §4 pending earnings, payout eligibility         |
+| G6  | Resolved in existing booking code: `zoom_meeting_url` is nullable while awaiting lesson delivery.                                                                                                             | §3 Step 2                                       |
+| G7  | Resolved by PROF-3: every availability has a required Tutor owner, an open state and unique Tutor/start.                                                                                                      | §7 Availability editor                          |
 
 ### Entities the product needs that do not exist yet
 
@@ -342,14 +359,14 @@ Present today: `subjects(tutor_id)`, `bookings(user_id)`, `bookings(subject_id)`
 `reports(reporter_user_id)`, `reports(reported_user_id)`, plus the unique indexes on
 `users(email)`, `users(tutor_id)`, `tutors(current_profile_version_id)`, `password_reset_tokens(token_hash)`,
 `password_reset_tokens(user_id)`,
-`availabilities(booking_id)`, and
+`availabilities(tutor_id, started_at)` (unique), and
 `payments(booking_id)`.
 
 Access patterns from the journeys that are not covered yet:
 
 | Query                                      | Suggested index                                                                     |
 | ------------------------------------------ | ----------------------------------------------------------------------------------- |
-| Subject page availability for a date range | `availabilities(started_at)`, and a tutor column first once G7 is closed            |
+| Subject page availability for a date range | Covered for Tutor/date by PROF-3's unique `availabilities(tutor_id, started_at)`    |
 | Open slots offered for one subject         | `availability_subjects(subject_id)`                                                 |
 | A user's wallet ledger, newest first       | `payments(from_user_id, created_at DESC)` / `payments(to_user_id, created_at DESC)` |
 | `/bookings` tabs by status                 | `bookings(user_id, status)` once G2 is closed                                       |

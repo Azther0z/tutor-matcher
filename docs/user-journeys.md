@@ -188,7 +188,9 @@ student never picks the subject twice. **No booking record exists in this step.*
 
 - A month calendar marks days the tutor has free slots for this subject with a dot;
   days with no slots and days in the past are not selectable. Navigation reaches up to
-  **three months ahead**.
+  **three months ahead**. This is a student calendar-navigation rule, not a limit on how
+  far ahead Tutors may publish availability. The existing booking picker/API does not yet
+  enforce that navigation horizon; PROF-3 does not add a Tutor publishing cap.
 - Choosing a day reveals the 48 half-hour slots; only slots the tutor opened for this
   subject are selectable.
 - Slots are chosen as **one continuous block**. A tap extends the block at either end
@@ -408,12 +410,33 @@ those details and their stored total price. For older bookings without snapshots
 first subject edit preserves the currently stored details before changing the offering;
 values already overwritten before this feature cannot be recovered.
 
-**Availability.** The tutor picks a day, opens the 30-minute slots they can teach, and
+**Availability.** The tutor selects a dated cell in a seven-day calendar, opens the
+30-minute slot they can teach, and
 assigns which subject(s) each open slot covers — so one slot can advertise several
 subjects and a student browsing a subject sees only slots that carry it. Slots already
-attached to a paid booking are **locked** and cannot be closed. Subject assignment uses
+attached to a paid booking or an active payment hold are **locked** and cannot be closed
+or reassigned. Subject assignment uses
 compact toggle boxes that scroll inside their own area. Availability is per date, not a
-recurring weekly pattern.
+recurring weekly pattern. Approved Tutors can manage it while unpublished; publication
+still controls new bookings.
+
+The availability editor on `/dashboard/tutor` shows seven dated day columns with all
+48 half-hours, from `00:00` to `23:30`, in **Asia/Bangkok (UTC+7)**. A month overview
+summarizes availability; clicking a date opens its week for slot editing. Tutors may
+open any future date, close free future
+slots, and change their subject assignments. An open slot requires at least one owned
+subject. The same Tutor cannot have overlapping slots, including across different subjects.
+Past slots are read-only. Expired payment holds release through the booking lifecycle.
+
+Each slot has its own **Save slot** and **Close slot** actions. There is no day or week
+save step. If another edit or booking changes that slot, its save is rejected and its draft
+stays in the editor. The Tutor can review the latest value and explicitly retry if it is
+still free and in the future. Changes to a different slot do not invalidate this slot's
+revision. Changing the selected slot or calendar view requires saving or explicitly
+discarding its unsaved edits. Save and network errors preserve the draft.
+
+PROF-3 delivers this editor and APIs for existing booking and later discovery integration.
+It does not deliver the search or subject-detail pages, nor the rest of the Tutor dashboard.
 
 Related stories: US2-3, US2-4, US2-5, US2-7, US10-2, US10-3.
 
