@@ -8,9 +8,11 @@ import {
   filtersFromParams,
   filtersToQuery,
   getLearningAreas,
+  getPriceRange,
   searchTutors,
   sortOptions,
   type LearningArea,
+  type PriceRange,
   type SubjectSearchResult,
   type TutorSearchFilters,
   type TutorSearchResponse,
@@ -40,7 +42,7 @@ const draftOf = (filters: TutorSearchFilters): Draft => ({
 });
 
 // Round the real price range outward, to hundreds or to thousands once prices pass ฿10,000.
-function sliderBounds(range: TutorSearchResponse["priceRange"]) {
+function sliderBounds(range: PriceRange) {
   if (!range) return null;
   const max = Number(range.max);
   const unit = max >= 10_000 ? 1000 : 100;
@@ -93,6 +95,10 @@ export function TutorSearch() {
     getLearningAreas()
       .then(setLearningAreas)
       .catch(() => setLearningAreas([]));
+    // Without a range the slider just stays hidden.
+    getPriceRange()
+      .then((range) => setBounds(sliderBounds(range)))
+      .catch(() => setBounds(null));
   }, []);
 
   // Runs with the filters current when the timer fires, so a filter picked while typing stays.
@@ -108,10 +114,7 @@ export function TutorSearch() {
   useEffect(() => {
     const controller = new AbortController();
     searchTutors(filters, controller.signal)
-      .then((data) => {
-        setLoaded({ key: requestKey, data, error: null });
-        setBounds(sliderBounds(data.priceRange));
-      })
+      .then((data) => setLoaded({ key: requestKey, data, error: null }))
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
         setLoaded({
@@ -127,6 +130,13 @@ export function TutorSearch() {
   const loading = loaded?.key !== requestKey;
   const result = loaded?.data ?? null;
   const error = loading ? null : (loaded?.error ?? null);
+
+  // A page past the end (an old link, or fewer results now) goes to the last page instead.
+  const goToPage = useEffectEvent((page: number) => apply({ page }));
+  const lastPage = !loading && result && result.total > 0 ? result.totalPages : null;
+  useEffect(() => {
+    if (lastPage !== null && filters.page > lastPage) goToPage(lastPage);
+  }, [lastPage, filters.page]);
 
   const lowPrice = bounds ? Number(draft.minPrice || bounds.low) : 0;
   const highPrice = bounds ? Number(draft.maxPrice || bounds.high) : 0;
@@ -175,7 +185,7 @@ export function TutorSearch() {
         </p>
       </header>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[17rem_1fr]">
+      <div className="mt-8 grid gap-8 lg:grid-cols-[18.5rem_1fr]">
         <aside className="lg:sticky lg:top-6 lg:self-start">
           <form
             role="search"
@@ -423,11 +433,12 @@ export function TutorSearch() {
 function RatingStars({ value, onChange }: { value: number; onChange: (value: number) => void }) {
   return (
     <div className="mt-1">
-      <div className="flex gap-1">
+      <div className="flex gap-0.5">
         {[1, 2, 3, 4, 5].map((star) => {
           const fill = Math.min(Math.max(value - (star - 1), 0), 1);
           return (
-            <span key={star} className="relative inline-block h-7 w-7 text-2xl leading-7">
+            // 48px stars make each half-star button 24px wide, the WCAG 2.2 minimum target.
+            <span key={star} className="relative inline-block h-12 w-12 text-5xl leading-[3rem]">
               <span aria-hidden className="text-zinc-300 dark:text-zinc-700">
                 ★
               </span>

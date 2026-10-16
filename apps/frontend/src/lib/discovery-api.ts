@@ -30,8 +30,9 @@ export type TutorSearchResponse = {
   pageSize: number;
   total: number;
   totalPages: number;
-  priceRange: { min: string; max: string } | null;
 };
+
+export type PriceRange = { min: string; max: string } | null;
 
 export const sortOptions: Array<{ value: TutorSort; label: string }> = [
   { value: "recommended", label: "Recommended" },
@@ -102,6 +103,12 @@ export async function getLearningAreas() {
     "/api/discovery/learning-areas"
   );
   return learningAreas;
+}
+
+// The slider's range covers every listed subject, so the page loads it once.
+export async function getPriceRange() {
+  const { priceRange } = await publicGet<{ priceRange: PriceRange }>("/api/discovery/price-range");
+  return priceRange;
 }
 
 export function searchTutors(filters: TutorSearchFilters, signal?: AbortSignal) {

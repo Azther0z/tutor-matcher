@@ -44,16 +44,20 @@ function page(results: SubjectSearchResult[], extra: Partial<TutorSearchResponse
     pageSize: 12,
     total: results.length,
     totalPages: 1,
-    priceRange: { min: "75.00", max: "860.00" },
     ...extra,
   };
 }
+
+let priceRange: { min: string; max: string } | null = { min: "75.00", max: "860.00" };
 
 function respondWith(...responses: Array<ReturnType<typeof jsonResponse>>) {
   const queue = [...responses];
   fetchMock.mockImplementation((path: string) => {
     if (path === "/api/discovery/learning-areas") {
       return Promise.resolve(jsonResponse({ learningAreas: [mathematics, physics] }));
+    }
+    if (path === "/api/discovery/price-range") {
+      return Promise.resolve(jsonResponse({ priceRange }));
     }
     return Promise.resolve(queue.length > 1 ? queue.shift() : queue[0]);
   });
@@ -66,6 +70,7 @@ const searchCalls = () =>
 
 beforeEach(() => {
   mockParams = new URLSearchParams();
+  priceRange = { min: "75.00", max: "860.00" };
   mockReplace.mockReset();
   fetchMock.mockReset();
   global.fetch = fetchMock;
@@ -216,9 +221,8 @@ describe("SearchPage (DISC-1)", () => {
   });
 
   it("rounds the slider to thousands once prices pass ฿10,000", async () => {
-    respondWith(
-      jsonResponse(page([subject()], { priceRange: { min: "1500.00", max: "12400.00" } }))
-    );
+    priceRange = { min: "1500.00", max: "12400.00" };
+    respondWith(jsonResponse(page([subject()])));
     render(<SearchPage />);
     await screen.findByText("1 subject found");
     expect(screen.getByText("฿1,000 to ฿13,000 / hr")).toBeInTheDocument();
@@ -309,13 +313,47 @@ describe("SearchPage (DISC-1)", () => {
   });
 
   it("says no tutors are listed yet when there are no filters to broaden", async () => {
-    respondWith(jsonResponse(page([], { priceRange: null })));
+    priceRange = null;
+    respondWith(jsonResponse(page([])));
     render(<SearchPage />);
     expect(
       await screen.findByText("No tutors are listed yet. Check back soon.")
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Clear all filters" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Minimum price")).not.toBeInTheDocument();
+  });
+
+  it("loads the price range once, not on every search", async () => {
+    respondWith(jsonResponse(page([subject()])));
+    const { rerender } = render(<SearchPage />);
+    await screen.findByText("1 subject found");
+    mockParams = new URLSearchParams("q=calculus");
+    rerender(<SearchPage />);
+    await waitFor(() => expect(searchCalls()).toHaveLength(2));
+    const rangeCalls = fetchMock.mock.calls.filter(
+      ([path]) => path === "/api/discovery/price-range"
+    );
+    expect(rangeCalls).toHaveLength(1);
+  });
+
+  it("goes to the last page when the URL points past the end", async () => {
+    mockParams = new URLSearchParams("q=math&page=99");
+    respondWith(jsonResponse(page([], { page: 99, total: 30, totalPages: 3 })));
+    render(<SearchPage />);
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith("/search?q=math&page=3", { scroll: false })
+    );
+    expect(screen.queryByText("No tutors match these filters")).not.toBeInTheDocument();
+  });
+
+  it("gives each half star a tap target of at least 24px", async () => {
+    respondWith(jsonResponse(page([subject()])));
+    render(<SearchPage />);
+    await screen.findByText("1 subject found");
+    // Each star is 48px (h-12 w-12) and every button covers half of it.
+    const half = screen.getByRole("button", { name: "2.5 stars and up" });
+    expect(half.parentElement).toHaveClass("h-12", "w-12");
+    expect(half).toHaveClass("w-1/2", "inset-y-0");
   });
 
   it("pages through results", async () => {
