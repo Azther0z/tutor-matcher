@@ -31,7 +31,9 @@ just setup
 `just setup` creates missing `.env` files from their `.env.example` templates,
 starts Postgres and waits for it, installs all dependencies, syncs `schema.prisma`
 with the disposable database using `prisma db push`,
-and seeds mock data. It is safe to re-run. Start the complete local Compose stack
+and seeds mock data. It is safe to re-run. Reference data that every environment needs
+(the learning areas) lives in `apps/backend/prisma/seed-prod.ts`; the mock seed runs it first,
+and a built backend runs it alone with `npm run db:seed:prod`. Start the complete local Compose stack
 with `just up` (see [Development](#development)).
 
 `just` recipes work the same on macOS, Linux, and Windows. Recipes that only wrap
@@ -224,7 +226,7 @@ apps/
       modules/    one folder per domain area (see "Backend modules" below)
       routes.ts   aggregates module routers, mounted at /api by app.ts
     features/     Cucumber.js features, support code, and step definitions
-    prisma/       schema.prisma, seed.ts
+    prisma/       schema.prisma, seed-prod.ts, seed-mock.ts
   frontend/       Next.js app (TypeScript, Tailwind CSS)
     app/          App Router pages and layouts
 docs/             User journeys, schema, testing guide, ADRs, sources
