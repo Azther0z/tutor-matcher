@@ -8,6 +8,15 @@ import {
 import type { SubjectOffering } from "@/src/lib/subjects";
 
 const fetchMock = jest.fn();
+const areasPath = "/api/discovery/learning-areas";
+const mathematics = { id: "area-math", name: "Mathematics" };
+const english = { id: "area-english", name: "English" };
+const learningAreas = [
+  english,
+  mathematics,
+  { id: "area-physics", name: "Physics" },
+  { id: "area-other", name: "Other" },
+];
 const mockReplace = jest.fn();
 jest.mock("next/navigation", () => ({
   usePathname: () => "/settings/tutor",
@@ -19,6 +28,7 @@ const first: SubjectOffering = {
   description: "Speaking practice",
   hourlyRate: "125.50",
   format: "ONLINE",
+  learningAreas: [english],
 };
 const second: SubjectOffering = {
   ...first,
@@ -26,6 +36,7 @@ const second: SubjectOffering = {
   name: "Mathematics",
   description: "Algebra",
   hourlyRate: "99.99",
+  learningAreas: [mathematics],
 };
 const subjectsPath = "/api/profiles/me/tutor/subjects";
 function profile(subjects: SubjectOffering[] = []) {
@@ -41,6 +52,7 @@ async function load(subjects: SubjectOffering[] = []) {
   await screen.findByRole("region", { name: "Subjects" });
   return rendered;
 }
+const area = (name: string) => screen.getByRole("button", { name });
 function fill(values = first) {
   fireEvent.change(screen.getByLabelText("Subject name"), { target: { value: values.name } });
   fireEvent.change(screen.getByLabelText("Subject description"), {
@@ -53,7 +65,10 @@ function fill(values = first) {
 
 beforeEach(() => {
   fetchMock.mockReset();
-  global.fetch = fetchMock;
+  // The public learning-area list is answered separately, so fetchMock sees only tutor calls.
+  global.fetch = jest.fn((path: string, init?: RequestInit) =>
+    path === areasPath ? Promise.resolve(jsonResponse({ learningAreas })) : fetchMock(path, init)
+  ) as jest.Mock;
   localStorage.clear();
   localStorage.setItem("authToken", "token");
 });
@@ -70,6 +85,7 @@ it("starts with one Add subject button below Verification and persists a duplica
   expect(screen.getByLabelText("Format")).toHaveValue("ONLINE");
   expect(screen.getAllByRole("option")).toHaveLength(1);
   fill({ ...first, name: " English " });
+  fireEvent.click(await screen.findByRole("button", { name: "English" }));
   const duplicate = { ...first, id: "subject-c" };
   fetchMock.mockResolvedValueOnce(jsonResponse({ subject: duplicate }, 201));
   fireEvent.submit(screen.getByRole("form", { name: "Add subject" }));
@@ -84,6 +100,7 @@ it("starts with one Add subject button below Verification and persists a duplica
         description: first.description,
         hourlyRate: first.hourlyRate,
         format: "ONLINE",
+        learningAreaIds: [english.id],
       }),
       headers: { Authorization: "Bearer token", "Content-Type": "application/json" },
     })
@@ -99,6 +116,10 @@ it("edits only the selected row inline and reloads the saved values", async () =
   fireEvent.click(within(firstRow).getByRole("button", { name: "Edit" }));
   expect(within(firstRow).getByRole("form", { name: "Edit subject" })).toBeInTheDocument();
   expect(screen.getByLabelText("Subject name")).toHaveValue(first.name);
+  expect(await screen.findByRole("button", { name: "English" })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
   const changed = { ...first, name: "IELTS Speaking", hourlyRate: "0.01" };
   fill(changed);
   fetchMock.mockResolvedValueOnce(jsonResponse({ subject: changed }));
@@ -128,6 +149,7 @@ it("rejects missing content, zero and excess decimals without sending a save", a
   fireEvent.submit(screen.getByRole("form", { name: "Add subject" }));
   expect(screen.getByText("Enter a subject name.")).toBeInTheDocument();
   expect(screen.getByText("Enter a subject description.")).toBeInTheDocument();
+  expect(screen.getByText("Choose at least one learning area.")).toBeInTheDocument();
   for (const hourlyRate of ["0", "-1", "1.001", "100000000", "1e2"]) {
     fill({ ...first, hourlyRate });
     fireEvent.submit(screen.getByRole("form", { name: "Add subject" }));
@@ -168,6 +190,7 @@ it("prevents repeated submission while a save is pending", async () => {
   await load();
   fireEvent.click(screen.getByRole("button", { name: "Add subject" }));
   fill();
+  fireEvent.click(await screen.findByRole("button", { name: "English" }));
   let resolveSave!: (response: ReturnType<typeof jsonResponse>) => void;
   fetchMock.mockReturnValueOnce(
     new Promise((resolve) => {
@@ -181,4 +204,32 @@ it("prevents repeated submission while a save is pending", async () => {
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   resolveSave(jsonResponse({ subject: first }, 201));
   expect(await screen.findByText("Subject added.")).toBeInTheDocument();
+});
+
+it("tags a subject with at most three learning areas and shows them in the list", async () => {
+  await load();
+  fireEvent.click(screen.getByRole("button", { name: "Add subject" }));
+  fill(second);
+  fireEvent.click(await screen.findByRole("button", { name: "Mathematics" }));
+  fireEvent.click(area("Physics"));
+  fireEvent.click(area("Other"));
+  expect(area("English")).toBeDisabled();
+  fireEvent.click(area("Other"));
+  expect(area("English")).toBeEnabled();
+  expect(area("Physics")).toHaveAttribute("aria-pressed", "true");
+
+  const saved = {
+    ...second,
+    learningAreas: [mathematics, { id: "area-physics", name: "Physics" }],
+  };
+  fetchMock.mockResolvedValueOnce(jsonResponse({ subject: saved }, 201));
+  fireEvent.submit(screen.getByRole("form", { name: "Add subject" }));
+  expect(await screen.findByText("Subject added.")).toBeInTheDocument();
+  expect(JSON.parse(fetchMock.mock.lastCall[1].body).learningAreaIds).toEqual([
+    "area-math",
+    "area-physics",
+  ]);
+  expect(screen.getByRole("listitem", { name: "Subject: Mathematics" })).toHaveTextContent(
+    "Mathematics, Physics"
+  );
 });
