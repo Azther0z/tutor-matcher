@@ -436,7 +436,9 @@ comparisons, and the embedded-document schema — read the immutable source dire
 ## Changing This Schema
 
 1. Change `apps/backend/prisma/schema.prisma`, synchronize disposable databases with
-   `prisma db push`, and update the seed in `apps/backend/prisma/seed.ts`.
+   `prisma db push`, and update the seeds: reference data every environment needs in
+   `apps/backend/prisma/seed-prod.ts` (run on every backend start), local fixtures in
+   `apps/backend/prisma/seed-mock.ts`.
 2. Update the tables above and close the matching gap row in the same change.
 3. If the change alters product behaviour rather than only storage, update
    [`user-journeys.md`](user-journeys.md) and [`CONTEXT.md`](../CONTEXT.md) too.
