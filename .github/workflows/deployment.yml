@@ -6,10 +6,14 @@ on:
     paths:
       - "deploy/**"
       - ".doco-cd.yaml"
+      - ".github/workflows/deployment.yml"
+      - ".github/scripts/validate-deploy-compose.sh"
   pull_request:
     paths:
       - "deploy/**"
       - ".doco-cd.yaml"
+      - ".github/workflows/deployment.yml"
+      - ".github/scripts/validate-deploy-compose.sh"
   workflow_dispatch:
 
 jobs:
@@ -18,18 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate Compose and image references
-        working-directory: deploy
         run: |
-          docker compose -f compose.yaml config --no-env-resolution --quiet
-          config=$(docker compose -f compose.yaml config --no-env-resolution --format json)
-          jq -e '
-            .services.frontend.image == "docker.io/azther0z/tutor-matcher-frontend:latest" and
-            .services.frontend.build.args.BACKEND_URL == "http://backend:8000" and
-            .services.frontend.ports[0].target == 3000 and
-            .services.frontend.ports[0].published == "3333" and
-            .services.backend.image == "docker.io/azther0z/tutor-matcher-backend:latest" and
-            ([.services.backend.env_file[].path | split("/")[-1]] == ["database-url.enc.env", "resend.enc.env"]) and
-            ([.services.postgres.env_file[].path | split("/")[-1]] == ["postgres-password.enc.env"]) and
-            .services.backend.ports[0].target == 8000 and
-            .services.backend.ports[0].published == "8000"
-          ' >/dev/null <<< "$config"
+          docker compose version
+          yq --version
+          .github/scripts/validate-deploy-compose.sh
