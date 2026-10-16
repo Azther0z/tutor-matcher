@@ -157,26 +157,31 @@ Related stories: US1-1 … US1-5.
 ## 2 · Discovery
 
 **Search (`/search`).** Public: logged-out visitors can search, and opening a result
-asks them to log in and returns them to that tutor. Filters are keyword, learning
-area, maximum hourly price, minimum rating, and format (any / online; in-person is
-deferred with PROF-6). The keyword matches every word against the tutor's name, bio,
-and subject names and descriptions, ignoring case. A tutor matches when at least one of
-their subjects has the learning area, is within the price, and has the format; the
-card shows those matching subjects and the cheapest matching rate.
+asks them to log in and returns them to that tutor. Each result is **one tutor's subject**,
+so a tutor with three subjects shows as three cards; filtering, sorting, counting and
+paging all work per subject.
+
+Filters are keyword, tutor name, learning area, price range, minimum rating, and format
+(any / online; in-person is deferred with PROF-6). The keyword matches every word against
+the subject's name and description; the tutor name matches every word against the tutor's
+first or last name. The price range is a two-thumb slider covering the cheapest to the
+most expensive listed subject, rounded outward to hundreds (thousands once prices pass
+฿10,000); at either end it stops limiting that side. Minimum rating is five stars picked in
+half steps, and picking the selected value again clears it.
 
 Sorting is Recommended (classes taught, then review count, then rating), Price low to
-high, Price high to low, and Top rated. A class counts as taught when its booking is
-completed, or confirmed and already over. Rating is the average of all reviews on the
-tutor's subjects; tutors without reviews show as New and drop out once a minimum rating
-is set. Results show the tutor's name, the start of the bio as the headline, rating and
-review count, classes taught, subject tags, learning areas, format, the rate, and the
-**Verified** badge. Only published tutors with an approved profile and at least one
-subject are listed.
+high, Price high to low, and Top rated, all using the subject's own numbers. A class counts
+as taught when its booking is completed, or confirmed and already over. A subject without
+reviews shows as New and drops out once a minimum rating is set. Each card shows the
+subject name, the tutor's name and **Verified** badge, rating and review count, classes
+taught, the start of the subject description, its learning areas, format, and hourly rate.
+Only subjects of published tutors with an approved profile are listed.
 
-Changing a filter re-filters immediately (typed fields wait for a short pause) and
-returns to page 1. Results come 12 per page with Previous and Next, and the filters and
-page live in the URL. No match shows an empty state with one suggestion per active
-filter to broaden the search, plus Clear all filters. The filter rail stays visible
+Changing a filter re-filters immediately (typed and dragged fields wait for a short pause)
+and returns to page 1; a filter picked during that pause is kept. Results come 12 per page
+with Previous and Next, and every filter and the page live in the URL. No match shows an
+empty state with one suggestion per active filter to broaden the search, plus Clear all
+filters, which also resets the name, price range and rating. The filter rail stays visible
 beside the results on desktop.
 
 **Tutor profile (`/tutors/:id`).** Bio, experience, intro video, aggregate rating and
