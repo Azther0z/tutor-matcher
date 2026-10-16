@@ -147,13 +147,16 @@ current approved version since DISC-1 (see below), so an approved edit shows the
 
 ## DISC-1 acceptance coverage
 
+Search runs as one SQL query: Postgres filters, counts each subject's reviews and classes taught,
+sorts and returns only the requested page, and a second query counts every match. The price
+slider's range comes from `GET /api/discovery/price-range`, which the page loads once.
 Search API tests (`discovery.test.ts`) mock Prisma. They cover the public routes, invalid query
 rejection before any query (including half-star ratings and a minimum price above the maximum),
 one result per subject with that subject's own price, rating and classes taught, every keyword
 word against the subject and every name word against the tutor, the price range, each sort
 order, the minimum-rating filter, and pagination after filtering. The PostgreSQL suite
 (`discovery.integration.test.ts`, opt-in like AUTH-4) runs the real query: case-insensitive and
-Thai matches, a tutor's subjects as separate results, each subject's own areas and price, ranking,
+Thai matches, `%` and `_` typed literally, paging and a page past the end, the price range, a tutor's subjects as separate results, each subject's own areas and price, ranking,
 the rating filter, unpublished tutors hidden, and no results. Subject tests cover the
 one-to-three learning-area rule and unknown areas. Frontend tests cover URL filters, one card
 per subject, immediate and debounced re-filtering (keeping a filter picked during the pause),
