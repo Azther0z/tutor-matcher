@@ -146,6 +146,27 @@ describe("SearchPage (DISC-1)", () => {
     expect(mockReplace).toHaveBeenCalledWith("/search?q=calculus&maxPrice=500", { scroll: false });
   });
 
+  it("keeps a filter picked while the keyword is still waiting to apply", async () => {
+    respondWith(jsonResponse(page([tutor()])));
+    const { rerender } = render(<SearchPage />);
+    await screen.findByRole("option", { name: "Physics" });
+
+    jest.useFakeTimers();
+    fireEvent.change(screen.getByLabelText("Keyword"), { target: { value: "calculus" } });
+    act(() => jest.advanceTimersByTime(100));
+    fireEvent.change(screen.getByLabelText("Learning area"), { target: { value: "area-physics" } });
+    expect(mockReplace).toHaveBeenLastCalledWith("/search?learningAreaId=area-physics", {
+      scroll: false,
+    });
+    // The router has applied the area before the keyword timer fires.
+    mockParams = new URLSearchParams("learningAreaId=area-physics");
+    rerender(<SearchPage />);
+    act(() => jest.advanceTimersByTime(300));
+    expect(mockReplace).toHaveBeenLastCalledWith("/search?q=calculus&learningAreaId=area-physics", {
+      scroll: false,
+    });
+  });
+
   it("shows a no-results state with suggestions that broaden the search", async () => {
     mockParams = new URLSearchParams("q=quantum&learningAreaId=area-math&maxPrice=100");
     respondWith(jsonResponse(page([])));

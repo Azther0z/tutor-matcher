@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import {
   defaultFilters,
   filtersFromParams,
@@ -75,12 +75,13 @@ export function TutorSearch() {
       .catch(() => setLearningAreas([]));
   }, []);
 
+  // Runs with the filters current when the timer fires, so a filter picked while typing stays.
+  const applyTyped = useEffectEvent(() => apply({ q: keyword, maxPrice: maxPrice.trim() }));
+
   useEffect(() => {
     if (keyword.trim() === filters.q && maxPrice.trim() === filters.maxPrice) return;
-    const timer = setTimeout(() => apply({ q: keyword, maxPrice: maxPrice.trim() }), TYPING_DELAY);
+    const timer = setTimeout(applyTyped, TYPING_DELAY);
     return () => clearTimeout(timer);
-    // apply reads the latest filters; re-running on its identity would reset the timer.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyword, maxPrice, filters.q, filters.maxPrice]);
 
   const requestKey = `${query}#${attempt}`;
