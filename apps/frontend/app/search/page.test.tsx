@@ -346,14 +346,15 @@ describe("SearchPage (DISC-1)", () => {
     expect(screen.queryByText("No tutors match these filters")).not.toBeInTheDocument();
   });
 
-  it("gives each half star a tap target of at least 24px", async () => {
+  it("splits each star into two half-star buttons", async () => {
     respondWith(jsonResponse(page([subject()])));
     render(<SearchPage />);
     await screen.findByText("1 subject found");
-    // Each star is 48px (h-12 w-12) and every button covers half of it.
     const half = screen.getByRole("button", { name: "2.5 stars and up" });
-    expect(half.parentElement).toHaveClass("h-12", "w-12");
+    // Each star's slot takes an equal share of the row and its two buttons fill it.
+    expect(half.parentElement).toHaveClass("flex-1");
     expect(half).toHaveClass("w-1/2", "inset-y-0");
+    expect(screen.getAllByRole("button", { name: /stars and up$/ })).toHaveLength(10);
   });
 
   it("pages through results", async () => {

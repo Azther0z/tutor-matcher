@@ -185,7 +185,7 @@ export function TutorSearch() {
         </p>
       </header>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[18.5rem_1fr]">
+      <div className="mt-8 grid gap-8 lg:grid-cols-[18rem_1fr]">
         <aside className="lg:sticky lg:top-6 lg:self-start">
           <form
             role="search"
@@ -433,21 +433,21 @@ export function TutorSearch() {
 function RatingStars({ value, onChange }: { value: number; onChange: (value: number) => void }) {
   return (
     <div className="mt-1">
-      <div className="flex gap-0.5">
+      <div className="flex">
         {[1, 2, 3, 4, 5].map((star) => {
           const fill = Math.min(Math.max(value - (star - 1), 0), 1);
           return (
-            // 48px stars make each half-star button 24px wide, the WCAG 2.2 minimum target.
-            <span key={star} className="relative inline-block h-12 w-12 text-5xl leading-[3rem]">
-              <span aria-hidden className="text-zinc-300 dark:text-zinc-700">
-                ★
-              </span>
-              <span
-                aria-hidden
-                className="absolute inset-y-0 left-0 overflow-hidden text-amber-400"
-                style={{ width: `${fill * 100}%` }}
-              >
-                ★
+            // Each star gets an equal share of the row, and its two half-star buttons fill that
+            // share, so the buttons cover the whole row in ten even parts.
+            <span key={star} className="relative flex h-7 flex-1 justify-center">
+              <span aria-hidden className="relative h-7 w-7 text-[28px] leading-7">
+                <span className="text-zinc-300 dark:text-zinc-700">★</span>
+                <span
+                  className="absolute inset-y-0 left-0 overflow-hidden text-amber-400"
+                  style={{ width: `${fill * 100}%` }}
+                >
+                  ★
+                </span>
               </span>
               {[star - 0.5, star].map((stars, half) => (
                 <button
