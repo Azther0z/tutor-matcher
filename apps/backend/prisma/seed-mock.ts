@@ -34,7 +34,8 @@ const GENERATED_USERS = 20;
 const FIXTURE_TUTOR_IDENTIFICATION_CARD_URL =
   "https://example.com/development-identification-card.pdf";
 const FIXTURE_SUBJECT_NAME = "Mathematics";
-const FIXTURE_SUBJECT_LEARNING_AREA = "Mathematics";
+// A subject is tagged with 1 to 3 learning areas.
+const FIXTURE_SUBJECT_LEARNING_AREAS = ["Mathematics"];
 const FIXTURE_AVAILABILITY = new Date("2026-09-01T10:00:00.000Z");
 const FIXTURE_BOOKING_DESCRIPTION = "Development booking fixture";
 const FIXTURE_CERTIFICATION_URL = "https://example.com/development-certificate.pdf";
@@ -117,16 +118,16 @@ async function main() {
         },
       });
 
-  const mathematics = await prisma.learningArea.findUniqueOrThrow({
-    where: { name: FIXTURE_SUBJECT_LEARNING_AREA },
-  });
-  await prisma.subjectLearningArea.upsert({
-    where: {
-      subjectId_learningAreaId: { subjectId: subject.id, learningAreaId: mathematics.id },
-    },
-    update: {},
-    create: { subjectId: subject.id, learningAreaId: mathematics.id },
-  });
+  for (const name of FIXTURE_SUBJECT_LEARNING_AREAS) {
+    const learningArea = await prisma.learningArea.findUniqueOrThrow({ where: { name } });
+    await prisma.subjectLearningArea.upsert({
+      where: {
+        subjectId_learningAreaId: { subjectId: subject.id, learningAreaId: learningArea.id },
+      },
+      update: {},
+      create: { subjectId: subject.id, learningAreaId: learningArea.id },
+    });
+  }
 
   const existingAvailability = await prisma.availability.findFirst({
     where: { startedAt: FIXTURE_AVAILABILITY, tutorId: tutor.id },
