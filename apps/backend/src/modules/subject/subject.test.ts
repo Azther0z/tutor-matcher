@@ -230,6 +230,18 @@ describe("PROF-6 owned subjects", () => {
     expect(result.body.subject.learningAreas).toEqual([MATHEMATICS, PHYSICS]);
   });
 
+  it("caps a subject at three learning areas before checking the list", async () => {
+    countLearningAreas.mockResolvedValue(4);
+    const fourAreas = {
+      ...input,
+      learningAreaIds: [1, 2, 3, 4].map((n) => `11000000-0000-4000-8000-00000000010${n}`),
+    };
+    await auth(request(app).post(base).send(fourAreas)).expect(400);
+    await auth(request(app).put(`${base}/${SUBJECT_ID}`).send(fourAreas)).expect(400);
+    expect(countLearningAreas).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("rejects learning areas that are not in the list without writes", async () => {
     const unknown = { ...input, learningAreaIds: [MATHEMATICS.id, SUBJECT_ID] };
     const created = await auth(request(app).post(base).send(unknown)).expect(400);
