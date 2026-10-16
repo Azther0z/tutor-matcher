@@ -11,19 +11,12 @@ import {
   searchTutors,
   sortOptions,
   type LearningArea,
+  type SubjectSearchResult,
   type TutorSearchFilters,
   type TutorSearchResponse,
-  type TutorSearchResult,
 } from "@/src/lib/discovery-api";
 
 const TYPING_DELAY = 300;
-
-const ratingOptions = [
-  { value: "", label: "Any rating" },
-  { value: "3", label: "3.0 and up" },
-  { value: "4", label: "4.0 and up" },
-  { value: "4.5", label: "4.5 and up" },
-];
 
 const formatOptions = [
   { value: "", label: "Any" },
@@ -33,6 +26,31 @@ const formatOptions = [
 const field =
   "mt-1 w-full rounded-xl border border-black/15 bg-transparent px-3 py-2 outline-none focus:border-violet-500 dark:border-white/20";
 
+const thumb =
+  "pointer-events-none absolute inset-0 h-6 w-full appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-violet-600 [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-violet-600";
+
+// Fields that are typed or dragged wait for a pause before they search.
+type Draft = Pick<TutorSearchFilters, "q" | "tutorName" | "minPrice" | "maxPrice">;
+const draftKeys = ["q", "tutorName", "minPrice", "maxPrice"] as const;
+const draftOf = (filters: TutorSearchFilters): Draft => ({
+  q: filters.q,
+  tutorName: filters.tutorName,
+  minPrice: filters.minPrice,
+  maxPrice: filters.maxPrice,
+});
+
+// Round the real price range outward, to hundreds or to thousands once prices pass ฿10,000.
+function sliderBounds(range: TutorSearchResponse["priceRange"]) {
+  if (!range) return null;
+  const max = Number(range.max);
+  const unit = max >= 10_000 ? 1000 : 100;
+  const low = Math.floor(Number(range.min) / unit) * unit;
+  const high = Math.max(Math.ceil(max / unit) * unit, low + unit);
+  return { low, high, step: unit / 10 };
+}
+
+const baht = (amount: number) => `฿${amount.toLocaleString("en-US")}`;
+
 export function TutorSearch() {
   const router = useRouter();
   const pathname = usePathname();
@@ -40,10 +58,8 @@ export function TutorSearch() {
   const query = searchParams.toString();
   const filters = useMemo(() => filtersFromParams(new URLSearchParams(query)), [query]);
 
-  const [keyword, setKeyword] = useState(filters.q);
-  const [maxPrice, setMaxPrice] = useState(filters.maxPrice);
-  const [syncedQ, setSyncedQ] = useState(filters.q);
-  const [syncedMaxPrice, setSyncedMaxPrice] = useState(filters.maxPrice);
+  const [draft, setDraft] = useState<Draft>(() => draftOf(filters));
+  const [syncedDraft, setSyncedDraft] = useState<Draft>(() => draftOf(filters));
   const [learningAreas, setLearningAreas] = useState<LearningArea[]>([]);
   const [loaded, setLoaded] = useState<{
     key: string;
@@ -51,16 +67,20 @@ export function TutorSearch() {
     error: string | null;
   } | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [bounds, setBounds] = useState<ReturnType<typeof sliderBounds>>(null);
 
   // Keep the typed fields in step when the URL changes from elsewhere (back, clear filters),
   // without undoing what is still being typed.
-  if (filters.q !== syncedQ) {
-    setSyncedQ(filters.q);
-    if (keyword.trim() !== filters.q) setKeyword(filters.q);
-  }
-  if (filters.maxPrice !== syncedMaxPrice) {
-    setSyncedMaxPrice(filters.maxPrice);
-    if (maxPrice.trim() !== filters.maxPrice) setMaxPrice(filters.maxPrice);
+  const fromUrl = draftOf(filters);
+  if (draftKeys.some((key) => fromUrl[key] !== syncedDraft[key])) {
+    setSyncedDraft(fromUrl);
+    const next = { ...draft };
+    for (const key of draftKeys) {
+      if (fromUrl[key] !== syncedDraft[key] && draft[key].trim() !== fromUrl[key]) {
+        next[key] = fromUrl[key];
+      }
+    }
+    setDraft(next);
   }
 
   function apply(changes: Partial<TutorSearchFilters>) {
@@ -76,19 +96,22 @@ export function TutorSearch() {
   }, []);
 
   // Runs with the filters current when the timer fires, so a filter picked while typing stays.
-  const applyTyped = useEffectEvent(() => apply({ q: keyword, maxPrice: maxPrice.trim() }));
+  const applyDraft = useEffectEvent(() => apply(draft));
 
   useEffect(() => {
-    if (keyword.trim() === filters.q && maxPrice.trim() === filters.maxPrice) return;
-    const timer = setTimeout(applyTyped, TYPING_DELAY);
+    if (draftKeys.every((key) => draft[key].trim() === filters[key])) return;
+    const timer = setTimeout(applyDraft, TYPING_DELAY);
     return () => clearTimeout(timer);
-  }, [keyword, maxPrice, filters.q, filters.maxPrice]);
+  }, [draft, filters]);
 
   const requestKey = `${query}#${attempt}`;
   useEffect(() => {
     const controller = new AbortController();
     searchTutors(filters, controller.signal)
-      .then((data) => setLoaded({ key: requestKey, data, error: null }))
+      .then((data) => {
+        setLoaded({ key: requestKey, data, error: null });
+        setBounds(sliderBounds(data.priceRange));
+      })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
         setLoaded({
@@ -105,16 +128,38 @@ export function TutorSearch() {
   const result = loaded?.data ?? null;
   const error = loading ? null : (loaded?.error ?? null);
 
+  const lowPrice = bounds ? Number(draft.minPrice || bounds.low) : 0;
+  const highPrice = bounds ? Number(draft.maxPrice || bounds.high) : 0;
+  function setPrice(low: number, high: number) {
+    if (!bounds) return;
+    // At either end of the slider the price is not limited on that side.
+    setDraft({
+      ...draft,
+      minPrice: low > bounds.low ? String(low) : "",
+      maxPrice: high < bounds.high ? String(high) : "",
+    });
+  }
+  const percent = (value: number) =>
+    bounds ? ((value - bounds.low) / (bounds.high - bounds.low)) * 100 : 0;
+
   const areaName = learningAreas.find(({ id }) => id === filters.learningAreaId)?.name;
   const suggestions: Array<{ label: string; changes: Partial<TutorSearchFilters> }> = [];
   if (filters.q) suggestions.push({ label: `Remove keyword "${filters.q}"`, changes: { q: "" } });
+  if (filters.tutorName)
+    suggestions.push({
+      label: `Any tutor, not just "${filters.tutorName}"`,
+      changes: { tutorName: "" },
+    });
   if (filters.learningAreaId)
     suggestions.push({
       label: areaName ? `Search all areas, not just ${areaName}` : "Search all learning areas",
       changes: { learningAreaId: "" },
     });
-  if (filters.maxPrice)
-    suggestions.push({ label: "Remove the price limit", changes: { maxPrice: "" } });
+  if (filters.minPrice || filters.maxPrice)
+    suggestions.push({
+      label: "Remove the price range",
+      changes: { minPrice: "", maxPrice: "" },
+    });
   if (filters.minRating) suggestions.push({ label: "Any rating", changes: { minRating: "" } });
   if (filters.format) suggestions.push({ label: "Any format", changes: { format: "" } });
 
@@ -126,7 +171,7 @@ export function TutorSearch() {
         </p>
         <h1 className="mt-2 text-4xl font-bold tracking-tight">Find a tutor</h1>
         <p className="mt-2 text-zinc-500">
-          Filter by learning area, price, rating and format, then open a tutor to see more.
+          Filter by subject, tutor, price, rating and format, then open a tutor to see more.
         </p>
       </header>
 
@@ -146,10 +191,24 @@ export function TutorSearch() {
                 id="search-keyword"
                 type="search"
                 className={field}
-                placeholder="Name, subject or topic"
+                placeholder="Subject or topic"
                 maxLength={100}
-                value={keyword}
-                onChange={(event) => setKeyword(event.target.value)}
+                value={draft.q}
+                onChange={(event) => setDraft({ ...draft, q: event.target.value })}
+              />
+            </div>
+            <div>
+              <label htmlFor="search-tutor-name" className="text-sm font-semibold">
+                Tutor name
+              </label>
+              <input
+                id="search-tutor-name"
+                type="search"
+                className={field}
+                placeholder="First or last name"
+                maxLength={100}
+                value={draft.tutorName}
+                onChange={(event) => setDraft({ ...draft, tutorName: event.target.value })}
               />
             </div>
             <div>
@@ -170,38 +229,52 @@ export function TutorSearch() {
                 ))}
               </select>
             </div>
-            <div>
-              <label htmlFor="search-max-price" className="text-sm font-semibold">
-                Max price (฿ / hr)
-              </label>
-              <input
-                id="search-max-price"
-                type="number"
-                inputMode="decimal"
-                min={1}
-                className={field}
-                placeholder="Any price"
-                value={maxPrice}
-                onChange={(event) => setMaxPrice(event.target.value)}
+            {bounds && (
+              <fieldset>
+                <legend className="text-sm font-semibold">Price (฿ / hr)</legend>
+                <p className="mt-1 text-sm text-zinc-500" aria-live="polite">
+                  {baht(lowPrice)} to {baht(highPrice)} / hr
+                </p>
+                <div className="relative mt-2 h-6">
+                  <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-black/10 dark:bg-white/15" />
+                  <div
+                    className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-violet-600"
+                    style={{ left: `${percent(lowPrice)}%`, right: `${100 - percent(highPrice)}%` }}
+                  />
+                  <input
+                    type="range"
+                    aria-label="Minimum price"
+                    className={thumb}
+                    min={bounds.low}
+                    max={bounds.high}
+                    step={bounds.step}
+                    value={lowPrice}
+                    onChange={(event) =>
+                      setPrice(Math.min(Number(event.target.value), highPrice), highPrice)
+                    }
+                  />
+                  <input
+                    type="range"
+                    aria-label="Maximum price"
+                    className={thumb}
+                    min={bounds.low}
+                    max={bounds.high}
+                    step={bounds.step}
+                    value={highPrice}
+                    onChange={(event) =>
+                      setPrice(lowPrice, Math.max(Number(event.target.value), lowPrice))
+                    }
+                  />
+                </div>
+              </fieldset>
+            )}
+            <fieldset>
+              <legend className="text-sm font-semibold">Minimum rating</legend>
+              <RatingStars
+                value={Number(filters.minRating) || 0}
+                onChange={(value) => apply({ minRating: value ? String(value) : "" })}
               />
-            </div>
-            <div>
-              <label htmlFor="search-rating" className="text-sm font-semibold">
-                Minimum rating
-              </label>
-              <select
-                id="search-rating"
-                className={field}
-                value={filters.minRating}
-                onChange={(event) => apply({ minRating: event.target.value })}
-              >
-                {ratingOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            </fieldset>
             <fieldset>
               <legend className="text-sm font-semibold">Format</legend>
               <div className="mt-1 flex gap-2">
@@ -237,7 +310,7 @@ export function TutorSearch() {
             <p className="text-sm text-zinc-500" role="status">
               {loading
                 ? "Searching…"
-                : result && `${result.total} ${result.total === 1 ? "tutor" : "tutors"} found`}
+                : result && `${result.total} ${result.total === 1 ? "subject" : "subjects"} found`}
             </p>
             <label className="flex items-center gap-2 text-sm text-zinc-500">
               Sort
@@ -307,11 +380,11 @@ export function TutorSearch() {
             </section>
           )}
 
-          {result && result.tutors.length > 0 && (
+          {result && result.results.length > 0 && (
             <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-              {result.tutors.map((tutor) => (
-                <li key={tutor.id}>
-                  <TutorCard tutor={tutor} />
+              {result.results.map((subject) => (
+                <li key={subject.id}>
+                  <SubjectCard subject={subject} />
                 </li>
               ))}
             </ul>
@@ -346,66 +419,102 @@ export function TutorSearch() {
   );
 }
 
-function TutorCard({ tutor }: { tutor: TutorSearchResult }) {
-  const name = `${tutor.firstName} ${tutor.lastName}`;
-  const areas = [
-    ...new Set(tutor.subjects.flatMap(({ learningAreas }) => learningAreas.map((a) => a.name))),
-  ];
+// Five stars in half steps; picking the selected value again clears the filter.
+function RatingStars({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  return (
+    <div className="mt-1">
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((star) => {
+          const fill = Math.min(Math.max(value - (star - 1), 0), 1);
+          return (
+            <span key={star} className="relative inline-block h-7 w-7 text-2xl leading-7">
+              <span aria-hidden className="text-zinc-300 dark:text-zinc-700">
+                ★
+              </span>
+              <span
+                aria-hidden
+                className="absolute inset-y-0 left-0 overflow-hidden text-amber-400"
+                style={{ width: `${fill * 100}%` }}
+              >
+                ★
+              </span>
+              {[star - 0.5, star].map((stars, half) => (
+                <button
+                  key={stars}
+                  type="button"
+                  aria-label={`${stars} stars and up`}
+                  aria-pressed={value === stars}
+                  onClick={() => onChange(value === stars ? 0 : stars)}
+                  className={`absolute inset-y-0 w-1/2 cursor-pointer ${half ? "right-0" : "left-0"}`}
+                />
+              ))}
+            </span>
+          );
+        })}
+      </div>
+      <p className="mt-1 text-sm text-zinc-500">
+        {value ? `${value.toFixed(1)} and up` : "Any rating"}
+      </p>
+    </div>
+  );
+}
+
+function SubjectCard({ subject }: { subject: SubjectSearchResult }) {
+  const tutorName = `${subject.tutor.firstName} ${subject.tutor.lastName}`;
   return (
     <Link
-      href={`/tutors/${tutor.id}`}
-      aria-label={name}
-      className="flex h-full flex-col gap-4 rounded-3xl border border-black/10 p-5 transition hover:-translate-y-0.5 hover:border-violet-500 hover:shadow-lg dark:border-white/15"
+      href={`/tutors/${subject.tutor.id}`}
+      aria-label={`${subject.name} with ${tutorName}`}
+      className="flex h-full flex-col gap-3 rounded-3xl border border-black/10 p-5 transition hover:-translate-y-0.5 hover:border-violet-500 hover:shadow-lg dark:border-white/15"
     >
       <div className="flex items-start gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-lg font-bold text-violet-700 dark:bg-violet-950 dark:text-violet-300">
-          {tutor.firstName.charAt(0).toUpperCase()}
-          {tutor.lastName.charAt(0).toUpperCase()}
+          {subject.tutor.firstName.charAt(0).toUpperCase()}
+          {subject.tutor.lastName.charAt(0).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="truncate text-lg font-bold">{name}</h2>
-            {tutor.verified && (
+          <h2 className="truncate text-lg font-bold">{subject.name}</h2>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="truncate">{tutorName}</span>
+            {subject.tutor.verified && (
               <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
                 Verified
               </span>
             )}
           </div>
-          <p className="text-sm text-zinc-500">
-            {tutor.rating === null ? (
-              "New tutor"
-            ) : (
-              <>
-                <span className="font-semibold text-foreground">★ {tutor.rating.toFixed(1)}</span> (
-                {tutor.reviewCount} {tutor.reviewCount === 1 ? "review" : "reviews"})
-              </>
-            )}
-            {tutor.classesTaught > 0 &&
-              ` · ${tutor.classesTaught} ${tutor.classesTaught === 1 ? "class" : "classes"} taught`}
-          </p>
         </div>
       </div>
-      {tutor.bio && (
-        <p className="line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">{tutor.bio}</p>
+      <p className="text-sm text-zinc-500">
+        {subject.rating === null ? (
+          "New subject"
+        ) : (
+          <>
+            <span className="font-semibold text-foreground">★ {subject.rating.toFixed(1)}</span> (
+            {subject.reviewCount} {subject.reviewCount === 1 ? "review" : "reviews"})
+          </>
+        )}
+        {subject.classesTaught > 0 &&
+          ` · ${subject.classesTaught} ${subject.classesTaught === 1 ? "class" : "classes"} taught`}
+      </p>
+      {subject.description && (
+        <p className="line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
+          {subject.description}
+        </p>
       )}
       <div className="flex flex-wrap gap-1.5">
-        {tutor.subjects.slice(0, 3).map((subject) => (
+        {subject.learningAreas.map((area) => (
           <span
-            key={subject.id}
+            key={area.id}
             className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium dark:bg-zinc-800"
           >
-            {subject.name}
+            {area.name}
           </span>
         ))}
-        {tutor.subjects.length > 3 && (
-          <span className="px-1 py-1 text-xs text-zinc-500">+{tutor.subjects.length - 3} more</span>
-        )}
       </div>
       <div className="mt-auto flex items-end justify-between gap-3 text-sm">
-        <span className="text-zinc-500">{areas.join(", ")} · Online</span>
+        <span className="text-zinc-500">Online</span>
         <span className="shrink-0">
-          <span className="text-zinc-500">from </span>
-          <span className="text-lg font-bold">฿{tutor.fromHourlyRate}</span>
+          <span className="text-lg font-bold">฿{subject.hourlyRate}</span>
           <span className="text-zinc-500"> / hr</span>
         </span>
       </div>

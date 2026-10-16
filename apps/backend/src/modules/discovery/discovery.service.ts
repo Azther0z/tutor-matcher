@@ -60,36 +60,45 @@ export async function listLearningAreas() {
   ];
 }
 
-function keywordFilter(term: string): Prisma.TutorWhereInput {
-  const contains = { contains: term, mode: "insensitive" as const };
+const words = (text?: string) => text?.split(/\s+/).filter(Boolean).slice(0, 5) ?? [];
+const containing = (word: string) => ({ contains: word, mode: "insensitive" as const });
+
+// The keyword searches the subject itself; the tutor's name has its own filter.
+function keywordFilter(word: string): Prisma.SubjectWhereInput {
+  return { OR: [{ name: containing(word) }, { description: containing(word) }] };
+}
+
+function tutorNameFilter(word: string): Prisma.SubjectWhereInput {
   return {
-    OR: [
-      { user: { is: { firstName: contains } } },
-      { user: { is: { lastName: contains } } },
-      { currentProfileVersion: { bio: contains } },
-      { subjects: { some: { OR: [{ name: contains }, { description: contains }] } } },
-    ],
+    tutor: {
+      user: {
+        is: { OR: [{ firstName: containing(word) }, { lastName: containing(word) }] },
+      },
+    },
   };
 }
 
-type TutorStats = { reviewCount: number; ratingSum: number; classesTaught: number };
+const listedSubject = {
+  tutor: {
+    status: "PUBLISHED",
+    user: { isNot: null },
+    currentProfileVersion: { status: "APPROVED" },
+  },
+} satisfies Prisma.SubjectWhereInput;
 
-// Ratings and taught classes are counted per subject, then added up per tutor.
-async function statsByTutor(tutorIds: string[], now: Date) {
-  const stats = new Map<string, TutorStats>(
-    tutorIds.map((id) => [id, { reviewCount: 0, ratingSum: 0, classesTaught: 0 }])
+type SubjectStats = { reviewCount: number; ratingSum: number; classesTaught: number };
+
+// Each card is one subject, so its rating and classes taught are that subject's own.
+async function statsBySubject(subjectIds: string[], now: Date) {
+  const stats = new Map<string, SubjectStats>(
+    subjectIds.map((id) => [id, { reviewCount: 0, ratingSum: 0, classesTaught: 0 }])
   );
-  if (tutorIds.length === 0) return stats;
+  if (subjectIds.length === 0) return stats;
 
-  const ofTheseTutors = { subject: { tutorId: { in: tutorIds } } };
-  const [subjects, reviews, taught] = await Promise.all([
-    prisma.subject.findMany({
-      where: { tutorId: { in: tutorIds } },
-      select: { id: true, tutorId: true },
-    }),
+  const [reviews, taught] = await Promise.all([
     prisma.review.groupBy({
       by: ["subjectId"],
-      where: ofTheseTutors,
+      where: { subjectId: { in: subjectIds } },
       _sum: { ratingStars: true },
       _count: { _all: true },
     }),
@@ -97,74 +106,77 @@ async function statsByTutor(tutorIds: string[], now: Date) {
     prisma.booking.groupBy({
       by: ["subjectId"],
       where: {
-        ...ofTheseTutors,
+        subjectId: { in: subjectIds },
         OR: [{ status: "COMPLETED" }, { status: "CONFIRMED", endedAt: { lte: now } }],
       },
       _count: { _all: true },
     }),
   ]);
 
-  const tutorOf = new Map(subjects.map(({ id, tutorId }) => [id, tutorId]));
   for (const row of reviews) {
-    const tutor = stats.get(tutorOf.get(row.subjectId) ?? "");
-    if (!tutor) continue;
-    tutor.reviewCount += row._count._all;
-    tutor.ratingSum += row._sum.ratingStars ?? 0;
+    const subject = stats.get(row.subjectId);
+    if (!subject) continue;
+    subject.reviewCount = row._count._all;
+    subject.ratingSum = row._sum.ratingStars ?? 0;
   }
   for (const row of taught) {
-    const tutor = stats.get(tutorOf.get(row.subjectId) ?? "");
-    if (tutor) tutor.classesTaught += row._count._all;
+    const subject = stats.get(row.subjectId);
+    if (subject) subject.classesTaught = row._count._all;
   }
   return stats;
 }
 
-export async function searchTutors(query: TutorSearchQuery, now = new Date()) {
-  // Area, price and format must all hold for the same subject.
-  const subjectWhere: Prisma.SubjectWhereInput = {
-    ...(query.learningAreaId && {
-      learningAreas: { some: { learningAreaId: query.learningAreaId } },
-    }),
-    ...(query.maxPrice !== undefined && { hourlyRate: { lte: query.maxPrice } }),
-    ...(query.format && { format: query.format }),
-  };
-  const terms = query.q?.split(/\s+/).filter(Boolean).slice(0, 5) ?? [];
-
-  const tutors = await prisma.tutor.findMany({
+// DISC-1: one result per tutor + subject, so every card shows one subject's own price.
+export async function searchTutorSubjects(query: TutorSearchQuery, now = new Date()) {
+  const subjects = await prisma.subject.findMany({
     where: {
-      status: "PUBLISHED",
-      user: { isNot: null },
-      currentProfileVersion: { status: "APPROVED" },
-      subjects: { some: subjectWhere },
-      AND: terms.map(keywordFilter),
+      ...listedSubject,
+      ...(query.learningAreaId && {
+        learningAreas: { some: { learningAreaId: query.learningAreaId } },
+      }),
+      hourlyRate: {
+        ...(query.minPrice !== undefined && { gte: query.minPrice }),
+        ...(query.maxPrice !== undefined && { lte: query.maxPrice }),
+      },
+      ...(query.format && { format: query.format }),
+      AND: [...words(query.q).map(keywordFilter), ...words(query.tutorName).map(tutorNameFilter)],
     },
     select: {
-      id: true,
-      user: { select: { firstName: true, lastName: true } },
-      currentProfileVersion: { select: { bio: true } },
-      subjects: {
-        where: subjectWhere,
-        select: subjectSelect,
-        orderBy: [{ hourlyRate: "asc" }, { name: "asc" }, { id: "asc" }],
+      ...subjectSelect,
+      tutor: {
+        select: {
+          id: true,
+          user: { select: { firstName: true, lastName: true } },
+          currentProfileVersion: { select: { bio: true } },
+        },
       },
     },
   });
 
-  const stats = await statsByTutor(
-    tutors.map(({ id }) => id),
-    now
-  );
-  const results = tutors.flatMap((tutor) => {
-    const { reviewCount, ratingSum, classesTaught } = stats.get(tutor.id)!;
-    const cheapest = tutor.subjects[0];
-    if (!tutor.user || !cheapest) return [];
+  // The slider covers every listed subject, so it doesn't shrink as filters change.
+  const [stats, prices] = await Promise.all([
+    statsBySubject(
+      subjects.map(({ id }) => id),
+      now
+    ),
+    prisma.subject.aggregate({
+      where: listedSubject,
+      _min: { hourlyRate: true },
+      _max: { hourlyRate: true },
+    }),
+  ]);
+  const results = subjects.flatMap((subject) => {
+    const { reviewCount, ratingSum, classesTaught } = stats.get(subject.id)!;
+    const user = subject.tutor.user;
+    if (!user) return [];
     return [
       {
-        tutor,
-        name: `${tutor.user.firstName} ${tutor.user.lastName}`,
+        subject,
+        user,
+        tutorName: `${user.firstName} ${user.lastName}`,
         rating: reviewCount ? ratingSum / reviewCount : null,
         reviewCount,
         classesTaught,
-        fromHourlyRate: cheapest.hourlyRate,
       },
     ];
   });
@@ -177,31 +189,40 @@ export async function searchTutors(query: TutorSearchQuery, now = new Date()) {
     recommended: (a: Result, b: Result) =>
       b.classesTaught - a.classesTaught || b.reviewCount - a.reviewCount || byRating(a, b),
     rating: (a: Result, b: Result) => byRating(a, b) || b.reviewCount - a.reviewCount,
-    price_asc: (a: Result, b: Result) => a.fromHourlyRate.cmp(b.fromHourlyRate),
-    price_desc: (a: Result, b: Result) => b.fromHourlyRate.cmp(a.fromHourlyRate),
+    price_asc: (a: Result, b: Result) => a.subject.hourlyRate.cmp(b.subject.hourlyRate),
+    price_desc: (a: Result, b: Result) => b.subject.hourlyRate.cmp(a.subject.hourlyRate),
   }[query.sort];
-  // Name and id break ties so the same search always pages the same way.
+  // Subject, tutor and id break ties so the same search always pages the same way.
   matching.sort(
-    (a, b) => compare(a, b) || a.name.localeCompare(b.name) || a.tutor.id.localeCompare(b.tutor.id)
+    (a, b) =>
+      compare(a, b) ||
+      a.subject.name.localeCompare(b.subject.name) ||
+      a.tutorName.localeCompare(b.tutorName) ||
+      a.subject.id.localeCompare(b.subject.id)
   );
 
   const start = (query.page - 1) * query.pageSize;
   return {
-    tutors: matching.slice(start, start + query.pageSize).map((result) => ({
-      id: result.tutor.id,
-      firstName: result.tutor.user!.firstName,
-      lastName: result.tutor.user!.lastName,
-      bio: result.tutor.currentProfileVersion.bio,
-      verified: true,
+    results: matching.slice(start, start + query.pageSize).map((result) => ({
+      ...mapSubject(result.subject),
       rating: result.rating === null ? null : Math.round(result.rating * 10) / 10,
       reviewCount: result.reviewCount,
       classesTaught: result.classesTaught,
-      fromHourlyRate: result.fromHourlyRate.toFixed(2),
-      subjects: result.tutor.subjects.map(mapSubject),
+      tutor: {
+        id: result.subject.tutor.id,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        bio: result.subject.tutor.currentProfileVersion.bio,
+        verified: true,
+      },
     })),
     page: query.page,
     pageSize: query.pageSize,
     total: matching.length,
     totalPages: Math.max(1, Math.ceil(matching.length / query.pageSize)),
+    priceRange:
+      prices._min.hourlyRate && prices._max.hourlyRate
+        ? { min: prices._min.hourlyRate.toFixed(2), max: prices._max.hourlyRate.toFixed(2) }
+        : null,
   };
 }

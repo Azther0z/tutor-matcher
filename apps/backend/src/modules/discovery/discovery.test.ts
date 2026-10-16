@@ -2,8 +2,8 @@ import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import request from "supertest";
 
 const tutorFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
-const tutorFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const subjectFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
+const subjectAggregate = jest.fn<(args: unknown) => Promise<unknown>>();
 const reviewGroupBy = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const bookingGroupBy = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const learningAreaFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
@@ -11,8 +11,7 @@ const learningAreaFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
     user: { findUnique: tutorFindUnique },
-    tutor: { findMany: tutorFindMany },
-    subject: { findMany: subjectFindMany },
+    subject: { findMany: subjectFindMany, aggregate: subjectAggregate },
     review: { groupBy: reviewGroupBy },
     booking: { groupBy: bookingGroupBy },
     learningArea: { findMany: learningAreaFindMany },
@@ -141,39 +140,42 @@ const PHYSICS = { id: "00000000-0000-4000-8000-000000000102", name: "Physics" };
 
 type Fixture = {
   id: string;
-  firstName: string;
-  rates: string[];
+  name: string;
+  tutor: string;
+  rate: string;
   reviews?: number[];
   taught?: number;
 };
 
-function tutorRow({ id, firstName, rates }: Fixture) {
+function subjectRow({ id, name, tutor, rate }: Fixture) {
   return {
     id,
-    user: { firstName, lastName: "Tutor" },
-    currentProfileVersion: { bio: `${firstName} teaches maths.` },
-    subjects: rates.map((rate, index) => ({
-      id: `${id}-subject-${index}`,
-      name: `${firstName} subject ${index}`,
-      description: "Description",
-      hourlyRate: new Prisma.Decimal(rate),
-      format: "ONLINE",
-      learningAreas: [{ learningArea: MATHEMATICS }],
-    })),
+    name,
+    description: `${name} lessons`,
+    hourlyRate: new Prisma.Decimal(rate),
+    format: "ONLINE",
+    learningAreas: [{ learningArea: MATHEMATICS }],
+    tutor: {
+      id: `tutor-${tutor}`,
+      user: { firstName: tutor, lastName: "Tutor" },
+      currentProfileVersion: { bio: `${tutor} teaches.` },
+    },
   };
 }
 
-// Mirrors Prisma: one row per subject, grouped as the service asks for them.
-function useTutors(fixtures: Fixture[]) {
-  tutorFindMany.mockResolvedValue(fixtures.map(tutorRow));
-  subjectFindMany.mockResolvedValue(
-    fixtures.map(({ id }) => ({ id: `${id}-subject-0`, tutorId: id }))
-  );
+// Mirrors Prisma: stats come back one row per subject.
+function useSubjects(fixtures: Fixture[]) {
+  subjectFindMany.mockResolvedValue(fixtures.map(subjectRow));
+  const rates = fixtures.map(({ rate }) => new Prisma.Decimal(rate));
+  subjectAggregate.mockResolvedValue({
+    _min: { hourlyRate: rates.length ? Prisma.Decimal.min(...rates) : null },
+    _max: { hourlyRate: rates.length ? Prisma.Decimal.max(...rates) : null },
+  });
   reviewGroupBy.mockResolvedValue(
     fixtures
       .filter(({ reviews }) => reviews?.length)
       .map(({ id, reviews }) => ({
-        subjectId: `${id}-subject-0`,
+        subjectId: id,
         _sum: { ratingStars: reviews!.reduce((sum, stars) => sum + stars, 0) },
         _count: { _all: reviews!.length },
       }))
@@ -181,20 +183,27 @@ function useTutors(fixtures: Fixture[]) {
   bookingGroupBy.mockResolvedValue(
     fixtures
       .filter(({ taught }) => taught)
-      .map(({ id, taught }) => ({ subjectId: `${id}-subject-0`, _count: { _all: taught } }))
+      .map(({ id, taught }) => ({ subjectId: id, _count: { _all: taught } }))
   );
 }
 
-const tutorIds = (body: { tutors: { firstName: string }[] }) =>
-  body.tutors.map(({ firstName }) => firstName);
+const names = (body: { results: { name: string }[] }) => body.results.map(({ name }) => name);
 
 describe("DISC-1 tutor search", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useTutors([
-      { id: "a", firstName: "Anong", rates: ["500.00"], reviews: [5, 4], taught: 1 },
-      { id: "b", firstName: "Daniel", rates: ["300.00", "900.00"], reviews: [3] },
-      { id: "c", firstName: "Sirinya", rates: ["750.00"], taught: 4 },
+    useSubjects([
+      {
+        id: "calculus",
+        name: "Calculus",
+        tutor: "Anong",
+        rate: "500.00",
+        reviews: [5, 4],
+        taught: 1,
+      },
+      { id: "algebra", name: "Algebra", tutor: "Daniel", rate: "300.00", reviews: [3] },
+      { id: "physics", name: "Physics", tutor: "Daniel", rate: "900.00", reviews: [5] },
+      { id: "python", name: "Python", tutor: "Sirinya", rate: "750.00", taught: 4 },
     ]);
   });
 
@@ -211,6 +220,8 @@ describe("DISC-1 tutor search", () => {
     ["maxPrice", "-5"],
     ["maxPrice", "abc"],
     ["minRating", "6"],
+    ["minRating", "3.7"],
+    ["minPrice", "-1"],
     ["learningAreaId", "maths"],
     ["format", "IN_PERSON"],
     ["page", "0"],
@@ -221,102 +232,141 @@ describe("DISC-1 tutor search", () => {
       .get("/api/discovery/tutors")
       .query({ [key]: value })
       .expect(400);
-    expect(tutorFindMany).not.toHaveBeenCalled();
+    expect(subjectFindMany).not.toHaveBeenCalled();
   });
 
-  it("applies area, price and format to the same subject and every keyword word", async () => {
+  it("rejects a minimum price above the maximum", async () => {
+    await request(app)
+      .get("/api/discovery/tutors")
+      .query({ minPrice: "700", maxPrice: "600" })
+      .expect(400);
+    expect(subjectFindMany).not.toHaveBeenCalled();
+  });
+
+  it("filters subjects of published tutors by area, price, format, keyword and tutor name", async () => {
     await request(app)
       .get("/api/discovery/tutors")
       .query({
-        q: "  anong   calculus ",
+        q: "  limits   calculus ",
+        tutorName: "anong",
         learningAreaId: MATHEMATICS.id,
+        minPrice: "200",
         maxPrice: "600",
         format: "ONLINE",
         minRating: "",
       })
       .expect(200);
 
-    const subjectWhere = {
-      learningAreas: { some: { learningAreaId: MATHEMATICS.id } },
-      hourlyRate: { lte: 600 },
-      format: "ONLINE",
-    };
-    const args = tutorFindMany.mock.calls[0][0] as {
+    const args = subjectFindMany.mock.calls[0][0] as {
       where: Record<string, unknown> & { AND: unknown[] };
-      select: { subjects: { where: unknown } };
     };
     expect(args.where).toMatchObject({
-      status: "PUBLISHED",
-      user: { isNot: null },
-      currentProfileVersion: { status: "APPROVED" },
-      subjects: { some: subjectWhere },
+      tutor: {
+        status: "PUBLISHED",
+        user: { isNot: null },
+        currentProfileVersion: { status: "APPROVED" },
+      },
+      learningAreas: { some: { learningAreaId: MATHEMATICS.id } },
+      hourlyRate: { gte: 200, lte: 600 },
+      format: "ONLINE",
     });
-    expect(args.where.AND).toHaveLength(2);
+    // Two keyword words search the subject; the name searches the tutor.
+    expect(args.where.AND).toHaveLength(3);
+    expect(JSON.stringify(args.where.AND[0])).toContain('"contains":"limits"');
+    expect(JSON.stringify(args.where.AND[0])).not.toContain("firstName");
     expect(JSON.stringify(args.where.AND[1])).toContain('"contains":"calculus"');
-    // The card lists only the subjects that passed the filters.
-    expect(args.select.subjects.where).toEqual(subjectWhere);
+    expect(JSON.stringify(args.where.AND[2])).toContain('"firstName":{"contains":"anong"');
   });
 
-  it("returns public listing data with rating, classes taught and the cheapest matching rate", async () => {
+  it("returns one card per subject with that subject's own price, rating and classes taught", async () => {
     const response = await request(app).get("/api/discovery/tutors").expect(200);
-    const daniel = response.body.tutors.find(
-      ({ firstName }: { firstName: string }) => firstName === "Daniel"
-    );
-    expect(daniel).toEqual({
-      id: "b",
-      firstName: "Daniel",
-      lastName: "Tutor",
-      bio: "Daniel teaches maths.",
-      verified: true,
-      rating: 3,
+    expect(response.body.total).toBe(4);
+    const physics = response.body.results.find(({ id }: { id: string }) => id === "physics");
+    expect(physics).toEqual({
+      id: "physics",
+      name: "Physics",
+      description: "Physics lessons",
+      hourlyRate: "900.00",
+      format: "ONLINE",
+      learningAreas: [MATHEMATICS],
+      rating: 5,
       reviewCount: 1,
       classesTaught: 0,
-      fromHourlyRate: "300.00",
-      subjects: [
-        expect.objectContaining({ hourlyRate: "300.00", learningAreas: [MATHEMATICS] }),
-        expect.objectContaining({ hourlyRate: "900.00" }),
-      ],
+      tutor: {
+        id: "tutor-Daniel",
+        firstName: "Daniel",
+        lastName: "Tutor",
+        bio: "Daniel teaches.",
+        verified: true,
+      },
     });
-    expect(response.body.tutors[0]).toMatchObject({ firstName: "Sirinya", rating: null });
+    // Daniel's two subjects are rated on their own, not averaged together.
+    const algebra = response.body.results.find(({ id }: { id: string }) => id === "algebra");
+    expect(algebra.rating).toBe(3);
     expect(JSON.stringify(response.body)).not.toContain("identificationCard");
   });
 
   it.each([
-    ["recommended", ["Sirinya", "Anong", "Daniel"]],
-    ["rating", ["Anong", "Daniel", "Sirinya"]],
-    ["price_asc", ["Daniel", "Anong", "Sirinya"]],
-    ["price_desc", ["Sirinya", "Anong", "Daniel"]],
-  ])("sorts by %s", async (sort, order) => {
+    ["recommended", ["Python", "Calculus", "Physics", "Algebra"]],
+    ["rating", ["Physics", "Calculus", "Algebra", "Python"]],
+    ["price_asc", ["Algebra", "Calculus", "Python", "Physics"]],
+    ["price_desc", ["Physics", "Python", "Calculus", "Algebra"]],
+  ])("sorts subjects by %s", async (sort, order) => {
     const response = await request(app).get("/api/discovery/tutors").query({ sort }).expect(200);
-    expect(tutorIds(response.body)).toEqual(order);
+    expect(names(response.body)).toEqual(order);
   });
 
-  it("drops unrated and lower-rated tutors once a minimum rating is set", async () => {
+  it("returns the price range of every listed subject, whatever the filters", async () => {
+    const response = await request(app)
+      .get("/api/discovery/tutors")
+      .query({ maxPrice: "400" })
+      .expect(200);
+    expect(response.body.priceRange).toEqual({ min: "300.00", max: "900.00" });
+    const args = subjectAggregate.mock.calls[0][0] as { where: Record<string, unknown> };
+    expect(args.where).not.toHaveProperty("hourlyRate");
+  });
+
+  it("accepts half-star minimum ratings", async () => {
+    const response = await request(app)
+      .get("/api/discovery/tutors")
+      .query({ minRating: "4.5" })
+      .expect(200);
+    expect(names(response.body)).toEqual(["Calculus", "Physics"]);
+  });
+
+  it("drops unrated and lower-rated subjects once a minimum rating is set", async () => {
     const response = await request(app)
       .get("/api/discovery/tutors")
       .query({ minRating: "4" })
       .expect(200);
-    expect(tutorIds(response.body)).toEqual(["Anong"]);
-    expect(response.body.tutors[0].rating).toBe(4.5);
-    expect(response.body.total).toBe(1);
+    expect(names(response.body)).toEqual(["Calculus", "Physics"]);
+    expect(response.body.results[0].rating).toBe(4.5);
+    expect(response.body.total).toBe(2);
   });
 
-  it("paginates after filtering and sorting", async () => {
+  it("counts and paginates subjects after filtering and sorting", async () => {
     const response = await request(app)
       .get("/api/discovery/tutors")
-      .query({ sort: "price_asc", page: "2", pageSize: "2" })
+      .query({ sort: "price_asc", page: "2", pageSize: "3" })
       .expect(200);
-    expect(tutorIds(response.body)).toEqual(["Sirinya"]);
-    expect(response.body).toMatchObject({ page: 2, pageSize: 2, total: 3, totalPages: 2 });
+    expect(names(response.body)).toEqual(["Physics"]);
+    expect(response.body).toMatchObject({ page: 2, pageSize: 3, total: 4, totalPages: 2 });
   });
 
   it("returns an empty page without counting stats when nothing matches", async () => {
-    useTutors([]);
+    useSubjects([]);
     const response = await request(app)
       .get("/api/discovery/tutors")
       .query({ q: "nobody" })
       .expect(200);
-    expect(response.body).toEqual({ tutors: [], page: 1, pageSize: 12, total: 0, totalPages: 1 });
+    expect(response.body).toEqual({
+      results: [],
+      page: 1,
+      pageSize: 12,
+      total: 0,
+      totalPages: 1,
+      priceRange: null,
+    });
     expect(reviewGroupBy).not.toHaveBeenCalled();
   });
 
@@ -324,8 +374,9 @@ describe("DISC-1 tutor search", () => {
     const now = Date.now();
     await request(app).get("/api/discovery/tutors").expect(200);
     const args = bookingGroupBy.mock.calls[0][0] as {
-      where: { OR: [unknown, { endedAt: { lte: Date } }] };
+      where: { subjectId: { in: string[] }; OR: [unknown, { endedAt: { lte: Date } }] };
     };
+    expect(args.where.subjectId.in).toEqual(["calculus", "algebra", "physics", "python"]);
     expect(args.where.OR[0]).toEqual({ status: "COMPLETED" });
     expect(args.where.OR[1]).toMatchObject({ status: "CONFIRMED" });
     expect(args.where.OR[1].endedAt.lte.getTime()).toBeGreaterThanOrEqual(now);

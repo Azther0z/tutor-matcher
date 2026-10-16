@@ -20,7 +20,7 @@ if (process.env.RUN_DATABASE_INTEGRATION === "true") {
 }
 const describeDatabase = process.env.RUN_DATABASE_INTEGRATION === "true" ? describe : describe.skip;
 
-// Every fixture bio carries this token, so searches ignore other rows in the database.
+// Every fixture subject description carries this token, so searches ignore other rows.
 const token = `disc1${randomUUID().slice(0, 8)}`;
 const userIds: string[] = [];
 const tutorIds: string[] = [];
@@ -56,7 +56,7 @@ async function createTutor(
       await prisma.subject.create({
         data: {
           name: subject.name,
-          description: `${subject.name} lessons`,
+          description: `${subject.name} lessons ${token}`,
           hourlyRate: subject.rate,
           tutorId: tutor.id,
           learningAreas: {
@@ -89,8 +89,7 @@ function search(query: Record<string, string>) {
     .query({ ...query, q: `${token} ${query.q ?? ""}` })
     .expect(200);
 }
-const names = (body: { tutors: { firstName: string }[] }) =>
-  body.tutors.map(({ firstName }) => firstName);
+const names = (body: { results: { name: string }[] }) => body.results.map(({ name }) => name);
 
 describeDatabase("DISC-1 search on PostgreSQL", () => {
   beforeAll(async () => {
@@ -151,46 +150,67 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
     await prisma.$disconnect();
   });
 
-  it("matches published tutors by name or subject in any case, including Thai", async () => {
-    expect(names((await search({ q: "ANONG" })).body)).toEqual(["Anong"]);
-    expect(names((await search({ q: "แคลคูลัส" })).body)).toEqual(["Anong"]);
-    expect(names((await search({ q: "algebra" })).body)).toEqual(["Sirinya"]);
+  it("matches subjects by tutor name or subject in any case, including Thai", async () => {
+    expect(names((await search({ tutorName: "ANONG" })).body)).toEqual(["แคลคูลัส ม.ปลาย"]);
+    expect(names((await search({ q: "แคลคูลัส" })).body)).toEqual(["แคลคูลัส ม.ปลาย"]);
+    expect(names((await search({ q: "algebra" })).body)).toEqual(["Algebra"]);
+    // One card per subject, so a tutor with two subjects shows twice.
+    expect(names((await search({ tutorName: "daniel" })).body)).toEqual([
+      "IELTS Speaking",
+      "SAT Physics",
+    ]);
+    // The keyword no longer matches tutor names.
+    expect(names((await search({ q: "daniel" })).body)).toEqual([]);
   });
 
-  it("requires area, price and format to hold for the same subject", async () => {
+  it("filters each subject by its own areas, price and format", async () => {
     const physicsUnder500 = await search({ learningAreaId: areas.Physics, maxPrice: "500" });
     expect(names(physicsUnder500.body)).toEqual([]);
 
     const mathematics = await search({ learningAreaId: areas.Mathematics, format: "ONLINE" });
-    expect(names(mathematics.body).sort()).toEqual(["Anong", "Daniel", "Sirinya"]);
-    const daniel = mathematics.body.tutors.find(
-      ({ firstName }: { firstName: string }) => firstName === "Daniel"
+    expect(names(mathematics.body).sort()).toEqual(["Algebra", "SAT Physics", "แคลคูลัส ม.ปลาย"]);
+    const physics = mathematics.body.results.find(
+      ({ name }: { name: string }) => name === "SAT Physics"
     );
-    expect(daniel.subjects.map(({ name }: { name: string }) => name)).toEqual(["SAT Physics"]);
-    expect(daniel.fromHourlyRate).toBe("900.00");
+    expect(physics).toMatchObject({
+      hourlyRate: "900.00",
+      tutor: { firstName: "Daniel" },
+      learningAreas: expect.arrayContaining([
+        expect.objectContaining({ name: "Physics" }),
+        expect.objectContaining({ name: "Mathematics" }),
+      ]),
+    });
   });
 
-  it("ranks by classes taught, then reviews, and filters by average rating", async () => {
+  it("ranks subjects by their own classes taught, then reviews, and filters by rating", async () => {
     const recommended = await search({});
-    expect(names(recommended.body)).toEqual(["Sirinya", "Anong", "Daniel"]);
-    expect(recommended.body.tutors[0].classesTaught).toBe(3);
-    expect(recommended.body.tutors[1]).toMatchObject({
+    expect(names(recommended.body)).toEqual([
+      "Algebra",
+      "แคลคูลัส ม.ปลาย",
+      "IELTS Speaking",
+      "SAT Physics",
+    ]);
+    expect(recommended.body.results[0].classesTaught).toBe(3);
+    expect(recommended.body.results[1]).toMatchObject({
       rating: 4.5,
       reviewCount: 2,
       classesTaught: 1,
     });
 
-    expect(names((await search({ minRating: "4.5" })).body)).toEqual(["Anong"]);
+    expect(names((await search({ minRating: "4.5" })).body)).toEqual(["แคลคูลัส ม.ปลาย"]);
     expect(names((await search({ sort: "price_asc" })).body)).toEqual([
-      "Daniel",
-      "Anong",
-      "Sirinya",
+      "IELTS Speaking",
+      "แคลคูลัส ม.ปลาย",
+      "Algebra",
+      "SAT Physics",
     ]);
   });
 
-  it("never lists an unpublished tutor and returns an empty page when nothing matches", async () => {
-    expect(names((await search({ q: "hidden" })).body)).toEqual([]);
+  it("never lists an unpublished tutor's subjects and returns an empty page when nothing matches", async () => {
+    expect(names((await search({ tutorName: "hidden" })).body)).toEqual([]);
+    const between = await search({ minPrice: "400", maxPrice: "800" });
+    expect(names(between.body).sort()).toEqual(["Algebra", "แคลคูลัส ม.ปลาย"]);
     const none = await search({ maxPrice: "50" });
-    expect(none.body).toMatchObject({ tutors: [], total: 0, totalPages: 1 });
+    expect(none.body).toMatchObject({ results: [], total: 0, totalPages: 1 });
   });
 });

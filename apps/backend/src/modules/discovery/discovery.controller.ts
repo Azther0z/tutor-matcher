@@ -4,12 +4,12 @@ import { tutorSearchQuerySchema } from "./discovery.schema.ts";
 import {
   getTutorSummary,
   listLearningAreas,
-  searchTutors,
+  searchTutorSubjects,
   TutorNotFoundError,
 } from "./discovery.service.ts";
 
 export async function getTutorSearch(req: Request, res: Response) {
-  res.status(200).json(await searchTutors(tutorSearchQuerySchema.parse(req.query)));
+  res.status(200).json(await searchTutorSubjects(tutorSearchQuerySchema.parse(req.query)));
 }
 
 export async function getLearningAreas(_req: Request, res: Response) {

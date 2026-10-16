@@ -6,7 +6,9 @@ export type TutorSort = "recommended" | "price_asc" | "price_desc" | "rating";
 
 export type TutorSearchFilters = {
   q: string;
+  tutorName: string;
   learningAreaId: string;
+  minPrice: string;
   maxPrice: string;
   minRating: string;
   format: string;
@@ -14,25 +16,21 @@ export type TutorSearchFilters = {
   page: number;
 };
 
-export type TutorSearchResult = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  bio: string | null;
-  verified: boolean;
+// DISC-1: one result per tutor + subject, with that subject's own price and rating.
+export type SubjectSearchResult = SubjectOffering & {
   rating: number | null;
   reviewCount: number;
   classesTaught: number;
-  fromHourlyRate: string;
-  subjects: SubjectOffering[];
+  tutor: { id: string; firstName: string; lastName: string; bio: string | null; verified: boolean };
 };
 
 export type TutorSearchResponse = {
-  tutors: TutorSearchResult[];
+  results: SubjectSearchResult[];
   page: number;
   pageSize: number;
   total: number;
   totalPages: number;
+  priceRange: { min: string; max: string } | null;
 };
 
 export const sortOptions: Array<{ value: TutorSort; label: string }> = [
@@ -44,7 +42,9 @@ export const sortOptions: Array<{ value: TutorSort; label: string }> = [
 
 export const defaultFilters: TutorSearchFilters = {
   q: "",
+  tutorName: "",
   learningAreaId: "",
+  minPrice: "",
   maxPrice: "",
   minRating: "",
   format: "",
@@ -58,7 +58,9 @@ export function filtersFromParams(params: Pick<URLSearchParams, "get">): TutorSe
   const page = Number(params.get("page"));
   return {
     q: params.get("q") ?? "",
+    tutorName: params.get("tutorName") ?? "",
     learningAreaId: params.get("learningAreaId") ?? "",
+    minPrice: params.get("minPrice") ?? "",
     maxPrice: params.get("maxPrice") ?? "",
     minRating: params.get("minRating") ?? "",
     format: params.get("format") ?? "",
@@ -70,7 +72,9 @@ export function filtersFromParams(params: Pick<URLSearchParams, "get">): TutorSe
 export function filtersToQuery(filters: TutorSearchFilters) {
   const params = new URLSearchParams();
   if (filters.q.trim()) params.set("q", filters.q.trim());
+  if (filters.tutorName.trim()) params.set("tutorName", filters.tutorName.trim());
   if (filters.learningAreaId) params.set("learningAreaId", filters.learningAreaId);
+  if (filters.minPrice.trim()) params.set("minPrice", filters.minPrice.trim());
   if (filters.maxPrice.trim()) params.set("maxPrice", filters.maxPrice.trim());
   if (filters.minRating) params.set("minRating", filters.minRating);
   if (filters.format) params.set("format", filters.format);
