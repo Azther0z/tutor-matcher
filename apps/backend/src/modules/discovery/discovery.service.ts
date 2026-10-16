@@ -1,4 +1,4 @@
-import type { Prisma } from "../../generated/prisma/client.ts";
+import { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
 import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
 import { mapSubject, subjectSelect } from "../subject/subject.public.ts";
@@ -61,168 +61,134 @@ export async function listLearningAreas() {
 }
 
 const words = (text?: string) => text?.split(/\s+/).filter(Boolean).slice(0, 5) ?? [];
-const containing = (word: string) => ({ contains: word, mode: "insensitive" as const });
+// Typed words are matched literally, so % and _ don't act as LIKE wildcards.
+const likePattern = (word: string) => `%${word.replace(/[\\%_]/g, "\\$&")}%`;
+const ilike = (column: Prisma.Sql, word: string) =>
+  Prisma.sql`${column} ILIKE ${likePattern(word)} ESCAPE '\\'`;
 
-// The keyword searches the subject itself; the tutor's name has its own filter.
-function keywordFilter(word: string): Prisma.SubjectWhereInput {
-  return { OR: [{ name: containing(word) }, { description: containing(word) }] };
+// Only subjects of published tutors with an approved current profile are listed.
+const listedSubjects = Prisma.sql`
+  subjects s
+  JOIN tutors t ON t.tutor_id = s.tutor_id AND t.status = 'PUBLISHED'
+  JOIN users u ON u.tutor_id = t.tutor_id
+  JOIN tutor_profile_versions v
+    ON v.profile_version_id = t.current_profile_version_id AND v.status = 'APPROVED'`;
+
+// Filters, per-subject stats, sorting and paging all run in Postgres, so a page costs one page.
+function matchingSubjects(query: TutorSearchQuery, now: Date) {
+  const conditions: Prisma.Sql[] = [];
+  if (query.learningAreaId)
+    conditions.push(Prisma.sql`EXISTS (
+      SELECT 1 FROM subject_learning_areas x
+      WHERE x.subject_id = s.subject_id AND x.learning_area_id = ${query.learningAreaId}::uuid)`);
+  if (query.minPrice !== undefined) conditions.push(Prisma.sql`s.hourly_rate >= ${query.minPrice}`);
+  if (query.maxPrice !== undefined) conditions.push(Prisma.sql`s.hourly_rate <= ${query.maxPrice}`);
+  if (query.format) conditions.push(Prisma.sql`s.format = ${query.format}::"SubjectFormat"`);
+  // The keyword searches the subject itself; the tutor's name has its own filter.
+  for (const word of words(query.q))
+    conditions.push(
+      Prisma.sql`(${ilike(Prisma.sql`s.name`, word)} OR ${ilike(Prisma.sql`s.description`, word)})`
+    );
+  for (const word of words(query.tutorName))
+    conditions.push(
+      Prisma.sql`(${ilike(Prisma.sql`u.first_name`, word)} OR ${ilike(Prisma.sql`u.last_name`, word)})`
+    );
+  if (query.minRating) conditions.push(Prisma.sql`r.rating >= ${query.minRating}`);
+
+  // Nothing marks bookings COMPLETED yet, so a confirmed lesson that has ended counts too.
+  return Prisma.sql`
+    SELECT s.subject_id, s.name, s.hourly_rate, u.first_name, u.last_name,
+      COALESCE(r.review_count, 0)::int AS review_count,
+      r.rating,
+      COALESCE(b.classes_taught, 0)::int AS classes_taught
+    FROM ${listedSubjects}
+    LEFT JOIN (
+      SELECT subject_id, COUNT(*) AS review_count, AVG(rating_stars)::float8 AS rating
+      FROM reviews GROUP BY subject_id
+    ) r ON r.subject_id = s.subject_id
+    LEFT JOIN (
+      SELECT subject_id, COUNT(*) AS classes_taught FROM bookings
+      WHERE status = 'COMPLETED' OR (status = 'CONFIRMED' AND ended_at <= ${now.toISOString()}::timestamp)
+      GROUP BY subject_id
+    ) b ON b.subject_id = s.subject_id
+    ${conditions.length ? Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}` : Prisma.empty}`;
 }
 
-function tutorNameFilter(word: string): Prisma.SubjectWhereInput {
-  return {
-    tutor: {
-      user: {
-        is: { OR: [{ firstName: containing(word) }, { lastName: containing(word) }] },
-      },
-    },
-  };
-}
+// Subject, tutor and id break ties so the same search always pages the same way.
+const sortOrder = {
+  recommended: Prisma.sql`classes_taught DESC, review_count DESC, rating DESC NULLS LAST`,
+  rating: Prisma.sql`rating DESC NULLS LAST, review_count DESC`,
+  price_asc: Prisma.sql`hourly_rate ASC`,
+  price_desc: Prisma.sql`hourly_rate DESC`,
+} satisfies Record<TutorSearchQuery["sort"], Prisma.Sql>;
 
-const listedSubject = {
+type SearchRow = {
+  subject_id: string;
+  review_count: number;
+  rating: number | null;
+  classes_taught: number;
+};
+
+const resultSelect = {
+  ...subjectSelect,
   tutor: {
-    status: "PUBLISHED",
-    user: { isNot: null },
-    currentProfileVersion: { status: "APPROVED" },
+    select: {
+      id: true,
+      user: { select: { firstName: true, lastName: true } },
+      currentProfileVersion: { select: { bio: true } },
+    },
   },
-} satisfies Prisma.SubjectWhereInput;
-
-type SubjectStats = { reviewCount: number; ratingSum: number; classesTaught: number };
-
-// Each card is one subject, so its rating and classes taught are that subject's own.
-async function statsBySubject(subjectIds: string[], now: Date) {
-  const stats = new Map<string, SubjectStats>(
-    subjectIds.map((id) => [id, { reviewCount: 0, ratingSum: 0, classesTaught: 0 }])
-  );
-  if (subjectIds.length === 0) return stats;
-
-  const [reviews, taught] = await Promise.all([
-    prisma.review.groupBy({
-      by: ["subjectId"],
-      where: { subjectId: { in: subjectIds } },
-      _sum: { ratingStars: true },
-      _count: { _all: true },
-    }),
-    // Nothing marks bookings COMPLETED yet, so a confirmed lesson that has ended counts too.
-    prisma.booking.groupBy({
-      by: ["subjectId"],
-      where: {
-        subjectId: { in: subjectIds },
-        OR: [{ status: "COMPLETED" }, { status: "CONFIRMED", endedAt: { lte: now } }],
-      },
-      _count: { _all: true },
-    }),
-  ]);
-
-  for (const row of reviews) {
-    const subject = stats.get(row.subjectId);
-    if (!subject) continue;
-    subject.reviewCount = row._count._all;
-    subject.ratingSum = row._sum.ratingStars ?? 0;
-  }
-  for (const row of taught) {
-    const subject = stats.get(row.subjectId);
-    if (subject) subject.classesTaught = row._count._all;
-  }
-  return stats;
-}
+} satisfies Prisma.SubjectSelect;
 
 // DISC-1: one result per tutor + subject, so every card shows one subject's own price.
 export async function searchTutorSubjects(query: TutorSearchQuery, now = new Date()) {
-  const subjects = await prisma.subject.findMany({
-    where: {
-      ...listedSubject,
-      ...(query.learningAreaId && {
-        learningAreas: { some: { learningAreaId: query.learningAreaId } },
-      }),
-      hourlyRate: {
-        ...(query.minPrice !== undefined && { gte: query.minPrice }),
-        ...(query.maxPrice !== undefined && { lte: query.maxPrice }),
-      },
-      ...(query.format && { format: query.format }),
-      AND: [...words(query.q).map(keywordFilter), ...words(query.tutorName).map(tutorNameFilter)],
-    },
-    select: {
-      ...subjectSelect,
-      tutor: {
-        select: {
-          id: true,
-          user: { select: { firstName: true, lastName: true } },
-          currentProfileVersion: { select: { bio: true } },
-        },
-      },
-    },
-  });
-
-  // The slider covers every listed subject, so it doesn't shrink as filters change.
-  const [stats, prices] = await Promise.all([
-    statsBySubject(
-      subjects.map(({ id }) => id),
-      now
-    ),
-    prisma.subject.aggregate({
-      where: listedSubject,
-      _min: { hourlyRate: true },
-      _max: { hourlyRate: true },
-    }),
+  const matching = matchingSubjects(query, now);
+  const [rows, [{ total }]] = await Promise.all([
+    prisma.$queryRaw<SearchRow[]>`
+      SELECT subject_id, review_count, rating, classes_taught FROM (${matching}) m
+      ORDER BY ${sortOrder[query.sort]}, name, first_name, last_name, subject_id
+      LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize}`,
+    prisma.$queryRaw<[{ total: number }]>`SELECT COUNT(*)::int AS total FROM (${matching}) m`,
   ]);
-  const results = subjects.flatMap((subject) => {
-    const { reviewCount, ratingSum, classesTaught } = stats.get(subject.id)!;
-    const user = subject.tutor.user;
-    if (!user) return [];
-    return [
-      {
-        subject,
-        user,
-        tutorName: `${user.firstName} ${user.lastName}`,
-        rating: reviewCount ? ratingSum / reviewCount : null,
-        reviewCount,
-        classesTaught,
-      },
-    ];
+
+  const details = await prisma.subject.findMany({
+    where: { id: { in: rows.map((row) => row.subject_id) } },
+    select: resultSelect,
   });
+  const byId = new Map(details.map((subject) => [subject.id, subject]));
 
-  type Result = (typeof results)[number];
-  const minRating = query.minRating ?? 0;
-  const matching = results.filter(({ rating }) => minRating === 0 || (rating ?? 0) >= minRating);
-  const byRating = (a: Result, b: Result) => (b.rating ?? -1) - (a.rating ?? -1);
-  const compare = {
-    recommended: (a: Result, b: Result) =>
-      b.classesTaught - a.classesTaught || b.reviewCount - a.reviewCount || byRating(a, b),
-    rating: (a: Result, b: Result) => byRating(a, b) || b.reviewCount - a.reviewCount,
-    price_asc: (a: Result, b: Result) => a.subject.hourlyRate.cmp(b.subject.hourlyRate),
-    price_desc: (a: Result, b: Result) => b.subject.hourlyRate.cmp(a.subject.hourlyRate),
-  }[query.sort];
-  // Subject, tutor and id break ties so the same search always pages the same way.
-  matching.sort(
-    (a, b) =>
-      compare(a, b) ||
-      a.subject.name.localeCompare(b.subject.name) ||
-      a.tutorName.localeCompare(b.tutorName) ||
-      a.subject.id.localeCompare(b.subject.id)
-  );
-
-  const start = (query.page - 1) * query.pageSize;
   return {
-    results: matching.slice(start, start + query.pageSize).map((result) => ({
-      ...mapSubject(result.subject),
-      rating: result.rating === null ? null : Math.round(result.rating * 10) / 10,
-      reviewCount: result.reviewCount,
-      classesTaught: result.classesTaught,
-      tutor: {
-        id: result.subject.tutor.id,
-        firstName: result.user.firstName,
-        lastName: result.user.lastName,
-        bio: result.subject.tutor.currentProfileVersion.bio,
-        verified: true,
-      },
-    })),
+    results: rows.flatMap((row) => {
+      const subject = byId.get(row.subject_id);
+      if (!subject?.tutor.user) return [];
+      return [
+        {
+          ...mapSubject(subject),
+          rating: row.rating === null ? null : Math.round(row.rating * 10) / 10,
+          reviewCount: row.review_count,
+          classesTaught: row.classes_taught,
+          tutor: {
+            id: subject.tutor.id,
+            firstName: subject.tutor.user.firstName,
+            lastName: subject.tutor.user.lastName,
+            bio: subject.tutor.currentProfileVersion.bio,
+            verified: true,
+          },
+        },
+      ];
+    }),
     page: query.page,
     pageSize: query.pageSize,
-    total: matching.length,
-    totalPages: Math.max(1, Math.ceil(matching.length / query.pageSize)),
-    priceRange:
-      prices._min.hourlyRate && prices._max.hourlyRate
-        ? { min: prices._min.hourlyRate.toFixed(2), max: prices._max.hourlyRate.toFixed(2) }
-        : null,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
   };
+}
+
+// The price slider covers every listed subject, so the page asks for it once, not per search.
+export async function getPriceRange() {
+  const [range] = await prisma.$queryRaw<[{ min: string | null; max: string | null }]>`
+    SELECT MIN(s.hourly_rate)::text AS min, MAX(s.hourly_rate)::text AS max FROM ${listedSubjects}`;
+  return range.min && range.max
+    ? { min: Number(range.min).toFixed(2), max: Number(range.max).toFixed(2) }
+    : null;
 }

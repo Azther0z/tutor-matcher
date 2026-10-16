@@ -1,7 +1,12 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { validate } from "../../middleware/validate.ts";
-import { getLearningAreas, getTutorById, getTutorSearch } from "./discovery.controller.ts";
+import {
+  getLearningAreas,
+  getSearchPriceRange,
+  getTutorById,
+  getTutorSearch,
+} from "./discovery.controller.ts";
 import { tutorSearchQuerySchema } from "./discovery.schema.ts";
 
 // DISC-1: /search is public, so these routes are mounted before the login check.
@@ -22,6 +27,7 @@ publicDiscoveryRouter.get(
   getTutorSearch
 );
 publicDiscoveryRouter.get("/learning-areas", discoverySearchRateLimiter, getLearningAreas);
+publicDiscoveryRouter.get("/price-range", discoverySearchRateLimiter, getSearchPriceRange);
 
 export const discoveryRouter = Router();
 

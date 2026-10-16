@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { tutorSearchQuerySchema } from "./discovery.schema.ts";
 import {
+  getPriceRange,
   getTutorSummary,
   listLearningAreas,
   searchTutorSubjects,
@@ -10,6 +11,10 @@ import {
 
 export async function getTutorSearch(req: Request, res: Response) {
   res.status(200).json(await searchTutorSubjects(tutorSearchQuerySchema.parse(req.query)));
+}
+
+export async function getSearchPriceRange(_req: Request, res: Response) {
+  res.status(200).json({ priceRange: await getPriceRange() });
 }
 
 export async function getLearningAreas(_req: Request, res: Response) {

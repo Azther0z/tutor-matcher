@@ -206,6 +206,27 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
     ]);
   });
 
+  it("pages in the database and reports the total of every match", async () => {
+    const second = await search({ sort: "price_asc", pageSize: "2", page: "2" });
+    expect(names(second.body)).toEqual(["Algebra", "SAT Physics"]);
+    expect(second.body).toMatchObject({ page: 2, pageSize: 2, total: 4, totalPages: 2 });
+
+    // A page past the end has no results but still says how many there are.
+    const beyond = await search({ pageSize: "2", page: "9" });
+    expect(beyond.body).toMatchObject({ results: [], total: 4, totalPages: 2 });
+  });
+
+  it("matches % and _ typed in the keyword literally", async () => {
+    expect(names((await search({ q: "%" })).body)).toEqual([]);
+    expect(names((await search({ q: "_" })).body)).toEqual([]);
+  });
+
+  it("returns the price range of listed subjects from its own endpoint", async () => {
+    const response = await request(app).get("/api/discovery/price-range").expect(200);
+    expect(Number(response.body.priceRange.min)).toBeLessThanOrEqual(300);
+    expect(Number(response.body.priceRange.max)).toBeGreaterThanOrEqual(900);
+  });
+
   it("never lists an unpublished tutor's subjects and returns an empty page when nothing matches", async () => {
     expect(names((await search({ tutorName: "hidden" })).body)).toEqual([]);
     const between = await search({ minPrice: "400", maxPrice: "800" });
