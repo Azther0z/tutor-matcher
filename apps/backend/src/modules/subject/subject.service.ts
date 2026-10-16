@@ -22,6 +22,15 @@ async function ownedTutorId(tx: Prisma.TransactionClient, userId: string) {
   return user.tutorId;
 }
 
+async function assertLearningAreasExist(tx: Prisma.TransactionClient, ids: string[]) {
+  const found = await tx.learningArea.count({ where: { id: { in: ids } } });
+  if (found !== ids.length) throw new SubjectError(400, "Choose learning areas from the list");
+}
+
+function learningAreaLinks(ids: string[]) {
+  return ids.map((id) => ({ learningArea: { connect: { id } } }));
+}
+
 export async function listSubjects(userId: string) {
   const tutorId = await ownedTutorId(prisma, userId);
   return (
@@ -35,8 +44,10 @@ export async function listSubjects(userId: string) {
 
 export async function createSubject(userId: string, input: SubjectRequest) {
   const tutorId = await ownedTutorId(prisma, userId);
+  const { learningAreaIds, ...offering } = input;
+  await assertLearningAreasExist(prisma, learningAreaIds);
   const subject = await prisma.subject.create({
-    data: { ...input, tutorId },
+    data: { ...offering, tutorId, learningAreas: { create: learningAreaLinks(learningAreaIds) } },
     select: subjectSelect,
   });
   return mapSubject(subject);
@@ -52,6 +63,8 @@ export async function updateSubject(userId: string, subjectId: string, input: Su
           select: subjectSelect,
         });
         if (!subject) throw new SubjectError(404, "Subject not found");
+        const { learningAreaIds, ...offering } = input;
+        await assertLearningAreasExist(tx, learningAreaIds);
 
         // Preserve all legacy booked details before changing the live offering.
         await tx.booking.updateMany({
@@ -61,7 +74,10 @@ export async function updateSubject(userId: string, subjectId: string, input: Su
         return mapSubject(
           await tx.subject.update({
             where: { id: subjectId, tutorId },
-            data: input,
+            data: {
+              ...offering,
+              learningAreas: { deleteMany: {}, create: learningAreaLinks(learningAreaIds) },
+            },
             select: subjectSelect,
           })
         );

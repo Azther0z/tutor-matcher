@@ -8,11 +8,23 @@ import {
   type SetStateAction,
   type SubmitEvent,
 } from "react";
+import { getLearningAreas, type LearningArea } from "@/src/lib/discovery-api";
 import { tutorApi } from "@/src/lib/tutor-application";
-import { validateSubject, type SubjectInput, type SubjectOffering } from "@/src/lib/subjects";
+import {
+  MAX_SUBJECT_LEARNING_AREAS,
+  validateSubject,
+  type SubjectInput,
+  type SubjectOffering,
+} from "@/src/lib/subjects";
 
 const apiPath = "/api/profiles/me/tutor/subjects";
-const emptySubject: SubjectInput = { name: "", description: "", hourlyRate: "", format: "ONLINE" };
+const emptySubject: SubjectInput = {
+  name: "",
+  description: "",
+  hourlyRate: "",
+  format: "ONLINE",
+  learningAreaIds: [],
+};
 const button =
   "rounded-full border border-black/[.12] px-5 py-2 text-sm font-medium hover:bg-black/[.04] disabled:opacity-60 dark:border-white/[.18] dark:hover:bg-white/[.08]";
 const field =
@@ -37,14 +49,41 @@ export function TutorSubjectsManager({
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
   const nameInput = useRef<HTMLInputElement>(null);
+  const [learningAreas, setLearningAreas] = useState<LearningArea[]>([]);
+  const [areasError, setAreasError] = useState<string | null>(null);
+  const areasRequested = useRef(false);
+
+  // The area list is only needed once the editor opens.
+  function loadLearningAreas() {
+    if (areasRequested.current) return;
+    areasRequested.current = true;
+    getLearningAreas()
+      .then(setLearningAreas)
+      .catch(() => {
+        areasRequested.current = false;
+        setAreasError("Could not load learning areas. Close and reopen the form to try again.");
+      });
+  }
 
   useEffect(() => {
     if (editing !== null) nameInput.current?.focus();
   }, [editing]);
 
   function openEditor(subject?: SubjectOffering) {
+    loadLearningAreas();
+    setAreasError(null);
     setEditing(subject?.id ?? "new");
-    setInput(subject ? { ...subject, description: subject.description ?? "" } : emptySubject);
+    setInput(
+      subject
+        ? {
+            name: subject.name,
+            description: subject.description ?? "",
+            hourlyRate: subject.hourlyRate,
+            format: subject.format,
+            learningAreaIds: subject.learningAreas.map(({ id }) => id),
+          }
+        : emptySubject
+    );
     setErrors({});
     setError(null);
     setMessage(null);
@@ -72,6 +111,7 @@ export function TutorSubjectsManager({
             description: input.description.trim(),
             hourlyRate: input.hourlyRate.trim(),
             format: input.format,
+            learningAreaIds: input.learningAreaIds,
           }),
         }
       );
@@ -184,6 +224,54 @@ export function TutorSubjectsManager({
               </select>
             </div>
           </div>
+          <fieldset
+            aria-describedby={errors.learningAreaIds ? "subject-areas-error" : "subject-areas-hint"}
+          >
+            <legend className="font-medium">Learning areas</legend>
+            <p id="subject-areas-hint" className="mt-1 text-sm text-zinc-500">
+              Pick 1 to {MAX_SUBJECT_LEARNING_AREAS}. Students find this subject by these areas in
+              search.
+            </p>
+            {areasError && (
+              <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">
+                {areasError}
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {learningAreas.map((area) => {
+                const selected = input.learningAreaIds.includes(area.id);
+                const full = input.learningAreaIds.length >= MAX_SUBJECT_LEARNING_AREAS;
+                return (
+                  <button
+                    key={area.id}
+                    type="button"
+                    aria-pressed={selected}
+                    disabled={!selected && full}
+                    onClick={() =>
+                      setInput({
+                        ...input,
+                        learningAreaIds: selected
+                          ? input.learningAreaIds.filter((id) => id !== area.id)
+                          : [...input.learningAreaIds, area.id],
+                      })
+                    }
+                    className={`rounded-full border px-3 py-1 text-sm transition disabled:opacity-40 ${
+                      selected
+                        ? "border-violet-600 bg-violet-600 text-white"
+                        : "border-black/[.15] hover:border-violet-500 dark:border-white/[.2]"
+                    }`}
+                  >
+                    {area.name}
+                  </button>
+                );
+              })}
+            </div>
+            {errors.learningAreaIds && (
+              <p id="subject-areas-error" className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.learningAreaIds}
+              </p>
+            )}
+          </fieldset>
           <div className="flex justify-end gap-3">
             <button
               type="button"
@@ -242,6 +330,11 @@ export function TutorSubjectsManager({
                   <h3 className="font-semibold break-words">{subject.name}</h3>
                   <span>฿{subject.hourlyRate} / hr · Online</span>
                 </div>
+                {subject.learningAreas.length > 0 && (
+                  <p className="mt-1 text-sm text-violet-700 dark:text-violet-300">
+                    {subject.learningAreas.map(({ name }) => name).join(", ")}
+                  </p>
+                )}
                 <p className="mt-2 whitespace-pre-wrap break-words text-sm text-zinc-600 dark:text-zinc-400">
                   {subject.description}
                 </p>

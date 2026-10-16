@@ -5,7 +5,7 @@ import { authRouter } from "./modules/auth/auth.routes.ts";
 import { bookingRouter } from "./modules/booking/booking.routes.ts";
 import { classroomRouter } from "./modules/classroom/classroom.routes.ts";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes.ts";
-import { discoveryRouter } from "./modules/discovery/discovery.routes.ts";
+import { discoveryRouter, publicDiscoveryRouter } from "./modules/discovery/discovery.routes.ts";
 import { healthRouter } from "./modules/health/health.routes.ts";
 import { messagingRouter } from "./modules/messaging/messaging.routes.ts";
 import { notificationRouter } from "./modules/notification/notification.routes.ts";
@@ -18,6 +18,7 @@ export const apiRouter = Router();
 // Public routes
 apiRouter.use("/health", healthRouter);
 apiRouter.use("/auth", authRouter);
+apiRouter.use("/discovery", publicDiscoveryRouter);
 
 // Protected routes — require a valid Bearer token
 apiRouter.use("/admin", requireAuth, adminRouter);
