@@ -142,5 +142,18 @@ A database integration test edits an approved Tutor's bio and introduction video
 public profile (`GET /api/discovery/tutors/:id`) before and after review: approval shows the new
 content, and a later rejected edit leaves it unchanged while the owner sees the rejection reason.
 Frontend tests cover the submit gate: pressing Submit with required fields missing is blocked,
-highlights those fields, and clears each error once it is fixed. Search results are not covered:
-`/search` is a placeholder until DISC-1, which should read each Tutor's current approved version.
+highlights those fields, and clears each error once it is fixed. Search results read each Tutor's
+current approved version since DISC-1 (see below), so an approved edit shows there too.
+
+## DISC-1 acceptance coverage
+
+Search API tests (`discovery.test.ts`) mock Prisma. They cover the public routes, invalid query
+rejection before any query, area, price and format applied to the same subject, every keyword
+word required, rating and classes-taught counts, each sort order, the minimum-rating filter,
+pagination after filtering, and the empty page. The PostgreSQL suite
+(`discovery.integration.test.ts`, opt-in like AUTH-4) runs the real query: case-insensitive and
+Thai keyword matches, the same-subject rule, ranking, rating filter, unpublished tutors hidden,
+and no results. Subject tests cover the one-to-three learning-area rule and unknown areas.
+Frontend tests cover URL filters, immediate and debounced re-filtering, paging, the
+no-results state with its broadening suggestions, retry after an error, and the learning-area
+picker in the subject form.

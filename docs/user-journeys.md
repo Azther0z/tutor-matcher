@@ -156,12 +156,28 @@ Related stories: US1-1 … US1-5.
 
 ## 2 · Discovery
 
-**Search (`/search`).** Filters are keyword, subject, maximum hourly price, minimum
-rating, and format (any / online / in-person). Sorting is Recommended, Price low to
-high, Price high to low, and Top rated. Results show the tutor's name, headline,
-rating and review count, subject tags, format, hourly rate, and either a **Verified**
-badge or a location tag. Changing a filter re-filters immediately; no match shows an
-empty state. The filter rail stays visible beside the results on desktop.
+**Search (`/search`).** Public: logged-out visitors can search, and opening a result
+asks them to log in and returns them to that tutor. Filters are keyword, learning
+area, maximum hourly price, minimum rating, and format (any / online; in-person is
+deferred with PROF-6). The keyword matches every word against the tutor's name, bio,
+and subject names and descriptions, ignoring case. A tutor matches when at least one of
+their subjects has the learning area, is within the price, and has the format; the
+card shows those matching subjects and the cheapest matching rate.
+
+Sorting is Recommended (classes taught, then review count, then rating), Price low to
+high, Price high to low, and Top rated. A class counts as taught when its booking is
+completed, or confirmed and already over. Rating is the average of all reviews on the
+tutor's subjects; tutors without reviews show as New and drop out once a minimum rating
+is set. Results show the tutor's name, the start of the bio as the headline, rating and
+review count, classes taught, subject tags, learning areas, format, the rate, and the
+**Verified** badge. Only published tutors with an approved profile and at least one
+subject are listed.
+
+Changing a filter re-filters immediately (typed fields wait for a short pause) and
+returns to page 1. Results come 12 per page with Previous and Next, and the filters and
+page live in the URL. No match shows an empty state with one suggestion per active
+filter to broaden the search, plus Clear all filters. The filter rail stays visible
+beside the results on desktop.
 
 **Tutor profile (`/tutors/:id`).** Bio, experience, intro video, aggregate rating and
 review count, the tutor's subject list with per-subject rate and next opening, and
@@ -400,7 +416,9 @@ admins. The API still returns approved portfolio certification URLs from earlier
 page shows them.
 
 **Subjects.** Each subject is its own offering with a name, description, hourly rate,
-and format. PROF-6 currently supports **Online** only; in-person offerings and venues
+format, and one to three learning areas. The name is free text; the learning areas come
+from the same fixed list students pick at onboarding (including **Other**) and are how
+search finds the subject. PROF-6 currently supports **Online** only; in-person offerings and venues
 are deferred. Adding starts as a single **Add subject** button that opens the form;
 editing happens inline on the selected subject row. The Subjects section sits below
 Verification. Name and description are required (up to 100 and 2000 characters respectively).
