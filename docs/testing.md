@@ -78,6 +78,12 @@ The validation matrix installs each app independently. Both apps run their Jest 
 matrix entry additionally runs `npm run test:bdd` before the backend build. A failing Gherkin
 scenario therefore fails pull-request validation.
 
+Changes to `deploy/`, `.doco-cd.yaml` or the check itself run the Deployment Configuration check,
+`.github/scripts/validate-deploy-compose.sh`. It reads env files from `deploy/compose.yaml` itself,
+because Compose v2 and v5 print them differently, and names each setting that doesn't match. Run
+it locally from the repository root with Docker Compose, `jq` and `yq` installed. The Convention
+check explains which part of a PR title or branch name is wrong and suggests a fixed one.
+
 ## Current Coverage Boundary
 
 The Gherkin setup currently proves the test wiring through the backend root endpoint. None of the
