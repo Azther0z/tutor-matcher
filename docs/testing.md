@@ -151,6 +151,24 @@ Frontend tests cover the submit gate: pressing Submit with required fields missi
 highlights those fields, and clears each error once it is fixed. Search results read each Tutor's
 current approved version since DISC-1 (see below), so an approved edit shows there too.
 
+## DISC-3 acceptance coverage
+
+Profile API tests (`discovery.test.ts`, Prisma mocked) cover the public route, the bio, rating,
+per-subject rates and next openings, only the next two weeks of free open slots, recent reviews
+shown as first name and last initial, and no private verification data. An unpublished tutor,
+one without an approved current profile, a missing tutor and a non-UUID id all return 404 and
+read no reviews or slots. Frontend tests (`app/tutors/[id]/page.test.tsx`) cover every section
+rendering, inline YouTube and video-file playback, non-http(s) video links being dropped, empty
+states, the unavailable message with no details, retry after an error, and messaging for
+signed-in and signed-out visitors.
+
+PR #202 review regressions also assert that profile GET never starts booking cleanup,
+the detailed slot query is bounded to 14 days, and the parameterized next-opening query
+groups the existing 92-day horizon into one row per subject. Unicode initials preserve
+non-BMP characters and omit punctuation for empty surnames. Header/card rates share
+two-decimal formatting; embeds use lazy loading, sandbox and referrer restrictions,
+HTTPS video files do not preload or autoplay, and HTTP files remain external links.
+
 ## DISC-1 acceptance coverage
 
 Search runs as one SQL query: Postgres filters, counts each subject's reviews and classes taught,

@@ -48,6 +48,138 @@ export async function getTutorSummary(tutorId: string) {
   };
 }
 
+export class TutorUnavailableError extends Error {
+  constructor() {
+    super("This tutor profile is unavailable");
+    this.name = "TutorUnavailableError";
+  }
+}
+
+const RECENT_REVIEW_LIMIT = 10;
+// Students browse up to three months ahead; the profile lists the next two weeks in detail.
+const OPENINGS_WINDOW_DAYS = 92;
+const OPENINGS_LISTED_DAYS = 14;
+const DAY_MS = 86_400_000;
+
+// DISC-3: the public profile page. Only a published tutor with an approved current profile
+// is shown; anything else is "unavailable" and leaks none of its details.
+export async function getTutorProfile(tutorId: string, now = new Date()) {
+  const tutor = await prisma.tutor.findUnique({
+    where: { id: tutorId },
+    select: {
+      id: true,
+      status: true,
+      user: { select: { id: true, firstName: true, lastName: true } },
+      currentProfileVersion: {
+        select: { status: true, bio: true, avatarUrl: true, introVideoUrl: true },
+      },
+      subjects: { select: subjectSelect, orderBy: [{ name: "asc" }, { id: "asc" }] },
+    },
+  });
+
+  if (
+    !tutor?.user ||
+    tutor.status !== "PUBLISHED" ||
+    tutor.currentProfileVersion.status !== "APPROVED"
+  ) {
+    throw new TutorUnavailableError();
+  }
+
+  // This public read does not mutate bookings. Existing booking flows release expired holds.
+  const listedUntil = new Date(now.getTime() + OPENINGS_LISTED_DAYS * DAY_MS);
+  const openingsUntil = new Date(now.getTime() + OPENINGS_WINDOW_DAYS * DAY_MS);
+  const reviewWhere = { subject: { tutorId } };
+  const [aggregate, reviews, slots, subjectRatings, nextOpenings] = await Promise.all([
+    prisma.review.aggregate({ where: reviewWhere, _avg: { ratingStars: true }, _count: true }),
+    prisma.review.findMany({
+      where: reviewWhere,
+      select: {
+        id: true,
+        ratingStars: true,
+        text: true,
+        createdAt: true,
+        subject: { select: { name: true } },
+        user: { select: { firstName: true, lastName: true } },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+      take: RECENT_REVIEW_LIMIT,
+    }),
+    prisma.availability.findMany({
+      where: {
+        tutorId,
+        isOpen: true,
+        bookingId: null,
+        startedAt: { gt: now, lt: listedUntil },
+        availabilitySubjects: { some: {} },
+      },
+      select: { startedAt: true, availabilitySubjects: { select: { subjectId: true } } },
+      orderBy: { startedAt: "asc" },
+    }),
+    prisma.review.groupBy({
+      by: ["subjectId"],
+      where: reviewWhere,
+      _avg: { ratingStars: true },
+      _count: true,
+    }),
+    // Return one timestamp per subject, not every slot/link across the 92-day horizon.
+    prisma.$queryRaw<Array<{ subjectId: string; startedAt: Date }>>`
+      SELECT links.subject_id AS "subjectId", MIN(slots.started_at) AS "startedAt"
+      FROM availabilities slots
+      JOIN availability_subjects links ON links.availability_id = slots.availability_id
+      WHERE slots.tutor_id = ${tutorId}::uuid
+        AND slots.is_open = TRUE AND slots.booking_id IS NULL
+        AND slots.started_at > ${now} AND slots.started_at < ${openingsUntil}
+      GROUP BY links.subject_id
+    `,
+  ]);
+
+  const ratingBySubject = new Map(subjectRatings.map((row) => [row.subjectId, row]));
+  const nextOpening = new Map(nextOpenings.map((slot) => [slot.subjectId, slot.startedAt]));
+
+  const average = aggregate._avg.ratingStars;
+
+  return {
+    id: tutor.id,
+    userId: tutor.user.id,
+    firstName: tutor.user.firstName,
+    lastName: tutor.user.lastName,
+    verified: true,
+    bio: tutor.currentProfileVersion.bio,
+    avatarUrl: tutor.currentProfileVersion.avatarUrl,
+    introVideoUrl: tutor.currentProfileVersion.introVideoUrl,
+    rating: average === null ? null : Math.round(average * 10) / 10,
+    reviewCount: aggregate._count,
+    subjects: tutor.subjects.map((subject) => {
+      const stats = ratingBySubject.get(subject.id);
+      const subjectAverage = stats?._avg.ratingStars ?? null;
+      return {
+        ...mapSubject(subject),
+        rating: subjectAverage === null ? null : Math.round(subjectAverage * 10) / 10,
+        reviewCount: stats?._count ?? 0,
+        nextOpening: nextOpening.get(subject.id)?.toISOString() ?? null,
+      };
+    }),
+    availability: slots
+      .filter((slot) => slot.startedAt.getTime() < listedUntil.getTime())
+      .map((slot) => ({
+        startedAt: slot.startedAt.toISOString(),
+        subjectIds: slot.availabilitySubjects.map(({ subjectId }) => subjectId).sort(),
+      })),
+    reviews: reviews.map((review) => {
+      const lastInitial = Array.from(review.user.lastName.trim())[0];
+      return {
+        id: review.id,
+        rating: review.ratingStars,
+        text: review.text,
+        createdAt: review.createdAt.toISOString(),
+        subjectName: review.subject.name,
+        // Reviewers appear as first name and last initial only.
+        reviewer: `${review.user.firstName}${lastInitial ? ` ${lastInitial}.` : ""}`.trim(),
+      };
+    }),
+  };
+}
+
 // Keep "Other" at the end so the real areas read alphabetically first.
 export async function listLearningAreas() {
   const areas = await prisma.learningArea.findMany({
