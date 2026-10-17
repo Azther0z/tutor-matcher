@@ -6,13 +6,27 @@ const subjectFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const queryRaw =
   jest.fn<(strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>>();
 const learningAreaFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
+const profileTutorFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
+const reviewAggregate = jest.fn<(args: unknown) => Promise<unknown>>();
+const reviewFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
+const reviewGroupBy = jest.fn<(args: unknown) => Promise<unknown[]>>();
+const availabilityFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
+// Releasing expired payment holds runs for real, against a transaction with nothing expired.
+const bookingFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
+const transaction = jest.fn(async (run: (tx: unknown) => unknown) =>
+  run({ booking: { findMany: bookingFindMany } })
+);
 
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
     user: { findUnique: tutorFindUnique },
     subject: { findMany: subjectFindMany },
     $queryRaw: queryRaw,
+    $transaction: transaction,
     learningArea: { findMany: learningAreaFindMany },
+    tutor: { findUnique: profileTutorFindUnique },
+    review: { aggregate: reviewAggregate, findMany: reviewFindMany, groupBy: reviewGroupBy },
+    availability: { findMany: availabilityFindMany },
   },
 }));
 
@@ -351,5 +365,207 @@ describe("DISC-1 tutor search", () => {
       "Physics",
       "Other",
     ]);
+  });
+});
+
+describe("DISC-3 tutor profile", () => {
+  const url = `/api/discovery/tutors/${TUTOR_ID}/profile`;
+  const soon = new Date(Date.now() + 2 * 86_400_000);
+  const later = new Date(Date.now() + 40 * 86_400_000);
+
+  function publishedTutor(overrides: Record<string, unknown> = {}) {
+    return {
+      id: TUTOR_ID,
+      status: "PUBLISHED",
+      user: { id: USER_ID, firstName: "Anong", lastName: "Pattanakul" },
+      currentProfileVersion: {
+        status: "APPROVED",
+        bio: "Approved bio",
+        avatarUrl: null,
+        introVideoUrl: "https://www.youtube.com/watch?v=abc",
+      },
+      subjects: [
+        {
+          id: "calculus",
+          name: "Calculus",
+          description: "Limits and derivatives",
+          hourlyRate: new Prisma.Decimal("500"),
+          format: "ONLINE",
+          learningAreas: [{ learningArea: MATHEMATICS }],
+        },
+        {
+          id: "physics",
+          name: "Physics",
+          description: null,
+          hourlyRate: new Prisma.Decimal("650.5"),
+          format: "ONLINE",
+          learningAreas: [],
+        },
+      ],
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    bookingFindMany.mockResolvedValue([]);
+    profileTutorFindUnique.mockResolvedValue(publishedTutor());
+    reviewAggregate.mockResolvedValue({ _avg: { ratingStars: 4.25 }, _count: 4 });
+    reviewGroupBy.mockResolvedValue([
+      { subjectId: "calculus", _avg: { ratingStars: 4.5 }, _count: 2 },
+    ]);
+    reviewFindMany.mockResolvedValue([
+      {
+        id: "review-1",
+        ratingStars: 5,
+        text: "Clear explanations.",
+        createdAt: new Date("2026-09-01T10:00:00.000Z"),
+        subject: { name: "Calculus" },
+        user: { firstName: "Bob", lastName: "Student" },
+      },
+    ]);
+    availabilityFindMany.mockResolvedValue([
+      {
+        startedAt: soon,
+        availabilitySubjects: [{ subjectId: "physics" }, { subjectId: "calculus" }],
+      },
+      { startedAt: later, availabilitySubjects: [{ subjectId: "physics" }] },
+    ]);
+  });
+
+  it("is public and shows bio, rating, rates, availability, video and reviews", async () => {
+    const response = await request(app).get(url).expect(200);
+
+    expect(response.body).toMatchObject({
+      id: TUTOR_ID,
+      userId: USER_ID,
+      firstName: "Anong",
+      lastName: "Pattanakul",
+      verified: true,
+      bio: "Approved bio",
+      introVideoUrl: "https://www.youtube.com/watch?v=abc",
+      rating: 4.3,
+      reviewCount: 4,
+    });
+    expect(response.body.subjects).toEqual([
+      expect.objectContaining({
+        id: "calculus",
+        hourlyRate: "500.00",
+        rating: 4.5,
+        reviewCount: 2,
+        nextOpening: soon.toISOString(),
+      }),
+      expect.objectContaining({
+        id: "physics",
+        hourlyRate: "650.50",
+        rating: null,
+        reviewCount: 0,
+        nextOpening: soon.toISOString(),
+      }),
+    ]);
+    expect(response.body.reviews).toEqual([
+      {
+        id: "review-1",
+        rating: 5,
+        text: "Clear explanations.",
+        createdAt: "2026-09-01T10:00:00.000Z",
+        subjectName: "Calculus",
+        reviewer: "Bob S.",
+      },
+    ]);
+  });
+
+  it("lists only the next two weeks of openings, each with its subjects", async () => {
+    const response = await request(app).get(url).expect(200);
+
+    expect(response.body.availability).toEqual([
+      { startedAt: soon.toISOString(), subjectIds: ["calculus", "physics"] },
+    ]);
+  });
+
+  it("asks only for future open slots that are not held or booked", async () => {
+    await request(app).get(url).expect(200);
+
+    expect(bookingFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          subject: { tutorId: TUTOR_ID },
+          status: "PENDING_PAYMENT",
+        }),
+      })
+    );
+    expect(availabilityFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tutorId: TUTOR_ID,
+          isOpen: true,
+          bookingId: null,
+          availabilitySubjects: { some: {} },
+        }),
+      })
+    );
+  });
+
+  it("shows no rating for a tutor without reviews", async () => {
+    reviewAggregate.mockResolvedValue({ _avg: { ratingStars: null }, _count: 0 });
+    reviewGroupBy.mockResolvedValue([]);
+    reviewFindMany.mockResolvedValue([]);
+
+    const response = await request(app).get(url).expect(200);
+
+    expect(response.body).toMatchObject({ rating: null, reviewCount: 0, reviews: [] });
+  });
+
+  it("never exposes private verification details", async () => {
+    profileTutorFindUnique.mockResolvedValue(
+      publishedTutor({
+        currentProfileVersion: {
+          status: "APPROVED",
+          bio: "Bio",
+          avatarUrl: null,
+          introVideoUrl: null,
+          identificationCardUrl: "https://example.com/private-id.pdf",
+        },
+      })
+    );
+
+    const response = await request(app).get(url).expect(200);
+
+    expect(JSON.stringify(response.body)).not.toContain("private-id");
+    expect(response.body).not.toHaveProperty("identificationCardUrl");
+  });
+
+  it.each([
+    ["unpublished", { status: "UNPUBLISHED" }],
+    [
+      "without an approved current profile",
+      {
+        currentProfileVersion: {
+          status: "PENDING",
+          bio: "Draft bio",
+          avatarUrl: null,
+          introVideoUrl: null,
+        },
+      },
+    ],
+    ["without an account", { user: null }],
+  ])("is unavailable and shows no details when the tutor is %s", async (_label, overrides) => {
+    profileTutorFindUnique.mockResolvedValue(publishedTutor(overrides));
+
+    const response = await request(app).get(url).expect(404);
+
+    expect(response.body).toEqual({ message: "This tutor profile is unavailable" });
+    expect(reviewFindMany).not.toHaveBeenCalled();
+    expect(availabilityFindMany).not.toHaveBeenCalled();
+  });
+
+  it("is unavailable when the tutor does not exist or the id is not a UUID", async () => {
+    profileTutorFindUnique.mockResolvedValue(null);
+    await request(app).get(url).expect(404);
+
+    profileTutorFindUnique.mockClear();
+    const response = await request(app).get("/api/discovery/tutors/not-a-uuid/profile").expect(404);
+    expect(response.body).toEqual({ message: "This tutor profile is unavailable" });
+    expect(profileTutorFindUnique).not.toHaveBeenCalled();
   });
 });

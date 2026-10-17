@@ -190,6 +190,13 @@ review count, the tutor's subject list with per-subject rate and next opening, a
 recent reviews. Each subject links to its own page. Booking cannot start here — the
 call to action is **Choose a subject**.
 
+The page is public (`GET /api/discovery/tutors/:id/profile`) and shows the approved
+current profile only: bio, rating, each subject's rate, open 30-minute slots over the next
+two weeks (Bangkok time), the ten most recent reviews, and the introduction video (YouTube
+and Vimeo play inline, video files use a player, other links open separately). A tutor who
+is unpublished, has no approved current profile, or does not exist shows an unavailable
+message and none of their details. Messaging stays available to logged-in visitors.
+
 **Subject page (`/tutors/:id/:subjectId`).** The bookable unit. It shows that
 subject's description, hourly rate, format, and next opening; a calendar; the
 availability table for the selected day; and **only that subject's reviews**.
