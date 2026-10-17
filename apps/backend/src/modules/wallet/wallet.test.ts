@@ -19,6 +19,7 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
   },
 }));
 const { app } = await import("../../app.ts");
+const { topupRateLimiter } = await import("./wallet.routes.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");
 const userId = "11111111-1111-4111-8111-111111111111";
 const reference = "22222222-2222-4222-8222-222222222222";
@@ -41,6 +42,8 @@ function post(body: object = {}) {
     .send({ amount: 500, reference, simulation: "confirmed", ...body });
 }
 beforeEach(() => {
+  topupRateLimiter.resetKey(userId);
+  topupRateLimiter.resetKey("33333333-3333-4333-8333-333333333333");
   jest.clearAllMocks();
   findEntry.mockReset().mockResolvedValue(null);
   findUser.mockReset().mockResolvedValue({ balance: new Prisma.Decimal(750) });
@@ -50,6 +53,37 @@ beforeEach(() => {
 });
 
 describe("simulated wallet top-up", () => {
+  it("limits each account to ten attempts without blocking reads or another account", async () => {
+    for (let i = 0; i < 10; i++) {
+      await post().expect(201);
+    }
+    transaction.mockClear();
+    createEntry.mockClear();
+    updateUser.mockClear();
+    const blocked = await post().expect(429);
+    expect(blocked.body.code).toBe("TOPUP_RATE_LIMITED");
+    expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+    expect(transaction).not.toHaveBeenCalled();
+    expect(createEntry).not.toHaveBeenCalled();
+    expect(updateUser).not.toHaveBeenCalled();
+
+    await request(app)
+      .get("/api/wallet")
+      .set(
+        "Authorization",
+        `Bearer ${signAuthToken({ sub: userId, email: "test@example.com", isAdmin: false })}`
+      )
+      .expect(200);
+    await request(app)
+      .post("/api/wallet/topups/confirm")
+      .set(
+        "Authorization",
+        `Bearer ${signAuthToken({ sub: "33333333-3333-4333-8333-333333333333", email: "other@example.com", isAdmin: false })}`
+      )
+      .send({ amount: 500, reference, simulation: "confirmed" })
+      .expect(201);
+  });
+
   it("requires authentication", async () => {
     await request(app)
       .post("/api/wallet/topups/confirm")
