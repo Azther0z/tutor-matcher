@@ -146,7 +146,11 @@ export async function sendBookingNotificationEmail({
   subjectName,
   scheduledAt,
 }: BookingNotificationEmail) {
-  const when = scheduledAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+  const when = `${scheduledAt.toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Bangkok",
+  })} (Asia/Bangkok, UTC+7)`;
 
   if (getEmailDeliveryMode() === "log") {
     console.info(`[notification:booking] ${to}: ${subjectName} at ${when}`);
@@ -158,7 +162,7 @@ export async function sendBookingNotificationEmail({
       from: env.resendFromEmail,
       to: [to],
       subject: "Booking update on Tutor Matcher",
-      html: `<p>Your booking for <strong>${subjectName}</strong> on ${when} has an update.</p>`,
+      html: `<p>Your booking for <strong>${escapeHtml(subjectName)}</strong> on ${when} has an update.</p>`,
       text: `Your booking for ${subjectName} on ${when} has an update.`,
     },
     "Could not send booking notification email"

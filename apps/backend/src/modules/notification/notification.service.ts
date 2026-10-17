@@ -60,10 +60,8 @@ type NotifyUserEvent =
   | { eventType: "message"; details: MessageNotificationDetails }
   | { eventType: "payment"; details: PaymentNotificationDetails };
 
-// TODO: nothing calls this yet. Once real booking, messaging, and payment
-// flows exist, have them call notifyUser() after the event they represent
-// actually happens (a booking is confirmed, a message is sent, a payment
-// completes) so the member is notified according to their preferences.
+// Booking payment confirmation calls this after its transaction commits.
+// Other event producers should also notify only after their event succeeds.
 export async function notifyUser(userId: string, event: NotifyUserEvent) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

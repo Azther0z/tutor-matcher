@@ -18,20 +18,76 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const epic = "(?:AUTH|PROF|DISC|BOOK|PAY|CLASS|MSG|REV|SAFE)";
+            const epics = ["AUTH", "PROF", "DISC", "BOOK", "PAY", "CLASS", "MSG", "REV", "SAFE"];
+            const titleTypes = ["build", "chore", "ci", "docs", "feat", "fix", "perf", "refactor", "revert", "style", "test"];
+            const branchTypes = [...titleTypes, "hotfix", "release"].sort();
             const storyNumber = "(?:0|[1-9][0-9]*)";
-            const workItemId = `(?:${epic}-${storyNumber}|OPS-0)`;
+            const workItemId = `(?:(?:${epics.join("|")})-${storyNumber}|OPS-0)`;
             const slug = "[a-z0-9]+(?:-[a-z0-9]+)*";
-            const titleType =
-              "build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test";
-            const branchType =
-              "build|chore|ci|docs|feat|fix|hotfix|perf|refactor|release|revert|style|test";
             const pullRequestTitlePattern = new RegExp(
-              `^(${titleType})\\[(${workItemId})\\]: ${slug}$`,
+              `^(${titleTypes.join("|")})\\[(${workItemId})\\]: ${slug}$`,
             );
             const branchPattern = new RegExp(
-              `^(${branchType})\\/(${workItemId})-${slug}$`,
+              `^(${branchTypes.join("|")})\\/(${workItemId})-${slug}$`,
             );
+            const isWorkItemId = (id) => new RegExp(`^${workItemId}$`).test(id);
+            const isSlug = (text) => new RegExp(`^${slug}$`).test(text);
+            const toSlug = (text) =>
+              text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+            const idRule =
+              `Use <EPIC>-N with EPIC one of ${epics.join(", ")} (for example DISC-1), ` +
+              "<EPIC>-0 for a story without a backlog entry, or OPS-0 for non-story work";
+            const slugRule =
+              "lowercase letters and digits, with words joined by single hyphens " +
+              "(no spaces, capitals or underscores)";
+
+            // Says which part of the title is wrong and suggests a fixed title.
+            function explainTitle(title) {
+              const parts = title.match(/^([^[\s]*)\[([^\]]*)\]:\s*(.*)$/);
+              if (!parts) {
+                return [
+                  `PR title "${title}" must start with <type>[<ID>]: and then the slug.`,
+                  "Example: feat[DISC-1]: search-tutors-with-filters",
+                ];
+              }
+              const [, type, id, rest] = parts;
+              const lines = [`PR title "${title}" doesn't follow <type>[<ID>]: <slug>.`];
+              if (!titleTypes.includes(type))
+                lines.push(`- "${type}" isn't a type. Use one of: ${titleTypes.join(", ")}.`);
+              if (!isWorkItemId(id)) lines.push(`- "${id}" isn't a work-item ID. ${idRule}.`);
+              if (!isSlug(rest)) lines.push(`- "${rest}" isn't a slug. Use ${slugRule}.`);
+              if (lines.length === 1)
+                lines.push('- Put exactly a colon and one space ("]: ") between the ID and the slug.');
+              // Only suggest a fix when the slug is the one thing left to change.
+              if (titleTypes.includes(type) && isWorkItemId(id) && toSlug(rest))
+                lines.push(`Try: ${type}[${id}]: ${toSlug(rest)}`);
+              lines.push("Example: feat[DISC-1]: search-tutors-with-filters");
+              return lines;
+            }
+
+            // Says which part of the branch name is wrong and suggests a fixed name.
+            function explainBranch(branch) {
+              const parts = branch.match(/^([^/]*)\/(.*)$/);
+              const lines = [`PR branch "${branch}" doesn't follow <type>/<ID>-<slug>.`];
+              if (!parts) {
+                lines.push("- It needs the type, a slash, then the work-item ID, a hyphen and the slug.");
+              } else {
+                const [, type, rest] = parts;
+                if (!branchTypes.includes(type))
+                  lines.push(`- "${type}" isn't a type. Use one of: ${branchTypes.join(", ")}.`);
+                const idAndSlug = rest.match(new RegExp(`^(${workItemId})-(.*)$`));
+                if (!idAndSlug) {
+                  lines.push(`- After "${type}/" it must start with the work-item ID and a hyphen. ${idRule}.`);
+                } else if (!isSlug(idAndSlug[2])) {
+                  lines.push(`- "${idAndSlug[2]}" isn't a slug. Use ${slugRule}.`);
+                  if (branchTypes.includes(type) && toSlug(idAndSlug[2]))
+                    lines.push(`Try: ${type}/${idAndSlug[1]}-${toSlug(idAndSlug[2])}`);
+                }
+              }
+              lines.push("Example: feat/DISC-1-search-tutors-with-filters");
+              return lines;
+            }
+
             const errors = [];
 
             if (context.eventName === "pull_request") {
@@ -39,27 +95,18 @@ jobs:
               const titleMatch = pullRequest.title.match(pullRequestTitlePattern);
               const branchMatch = pullRequest.head.ref.match(branchPattern);
 
-              if (!titleMatch) {
-                errors.push(
-                  "PR titles must use <type>[<EPIC>-N]: slug or <type>[OPS-0]: slug.",
-                );
-              }
-
-              if (!branchMatch) {
-                errors.push(
-                  "PR branches must use <type>/<EPIC>-N-slug or <type>/OPS-0-slug.",
-                );
-              }
+              if (!titleMatch) errors.push(explainTitle(pullRequest.title).join("\n"));
+              if (!branchMatch) errors.push(explainBranch(pullRequest.head.ref).join("\n"));
 
               const titleId = titleMatch && titleMatch[2];
               const branchId = branchMatch && branchMatch[2];
               if (titleId && branchId && titleId !== branchId) {
                 errors.push(
-                  `PR title uses ${titleId}, but the branch uses ${branchId}.`,
+                  `PR title uses ${titleId}, but the branch uses ${branchId}. Use the same work-item ID in both.`,
                 );
               }
             }
 
             if (errors.length > 0) {
-              core.setFailed(errors.join("\n"));
+              core.setFailed(errors.join("\n\n"));
             }

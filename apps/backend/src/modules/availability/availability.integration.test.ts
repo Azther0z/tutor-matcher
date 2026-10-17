@@ -70,7 +70,7 @@ async function clearDays() {
     where: { tutorId: { in: [TUTOR, OTHER_TUTOR] } },
     data: { bookingId: null },
   });
-  await prisma.payment.deleteMany({
+  await prisma.walletTransaction.deleteMany({
     where: { booking: { subjectId: { in: [MATH, ENGLISH, FOREIGN] } } },
   });
   await prisma.booking.deleteMany({ where: { subjectId: { in: [MATH, ENGLISH, FOREIGN] } } });

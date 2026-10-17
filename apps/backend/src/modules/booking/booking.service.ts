@@ -4,11 +4,37 @@ import { prisma } from "../../lib/db.ts";
 import { isTransactionConflict } from "../../lib/transaction-conflict.ts";
 import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
 import { subjectSnapshot } from "../subject/subject.public.ts";
+import { notifyUser } from "../notification/notification.service.ts";
+import { setTimeout, clearTimeout } from "node:timers";
+import { appendWalletMovement, InsufficientWalletBalance } from "../wallet/wallet-ledger.ts";
 import type {
   CancelBookingInput,
   CreateBookingInput,
   RescheduleBookingInput,
 } from "./booking.schema.ts";
+
+// Best-effort notifications may continue after the response, but cannot delay it indefinitely.
+// allSettled also consumes late rejections after the timeout; this is not a durable queue.
+export async function waitForBookingNotifications(notifications: Promise<unknown>[]) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.allSettled(notifications).then((results) => {
+        for (const [index, result] of results.entries()) {
+          if (result.status === "rejected") {
+            // Do not log recipient data or raw errors that may contain private details.
+            console.warn("[notification:booking] Notification failed", { recipientIndex: index });
+          }
+        }
+      }),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, 1000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 const SLOT_MS = 30 * 60_000;
 const BANGKOK_TIME_ZONE = "Asia/Bangkok";
@@ -111,13 +137,13 @@ const detailInclude = {
     },
   },
   availabilities: { orderBy: { startedAt: "asc" as const } },
-  payments: { orderBy: { createdAt: "asc" as const } },
+  walletTransactions: { orderBy: { createdAt: "asc" as const } },
 } satisfies Prisma.BookingInclude;
 
 type BookingDetailRecord = Prisma.BookingGetPayload<{ include: typeof detailInclude }>;
 type QuoteSource = Pick<
   BookingDetailRecord,
-  "id" | "status" | "totalAmount" | "startedAt" | "payments"
+  "id" | "status" | "totalAmount" | "startedAt" | "walletTransactions"
 >;
 
 function decimalString(value: Prisma.Decimal) {
@@ -169,9 +195,7 @@ export function cancellationRefund(amount: Prisma.Decimal, startsAt: Date, now =
 }
 
 function quoteFor(booking: QuoteSource, now: Date) {
-  const transfer = booking.payments.find(
-    (payment) => payment.type === "TRANSFER" && payment.status === "COMPLETED"
-  );
+  const transfer = booking.walletTransactions.find((payment) => payment.type === "LESSON_PAYMENT");
   const originalAmount = transfer?.amount ?? ZERO;
   const late =
     booking.startedAt.getTime() - now.getTime() <= CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
@@ -186,7 +210,6 @@ function quoteFor(booking: QuoteSource, now: Date) {
         booking.status,
         booking.startedAt.toISOString(),
         transfer?.id ?? "unpaid",
-        transfer?.status ?? "none",
         decimalString(originalAmount),
         decimalString(policy.amount),
         String(policy.rate),
@@ -213,19 +236,18 @@ export function mapBookingResponse(
   now = new Date()
 ) {
   const isStudent = booking.userId === viewerUserId;
-  const transfer = booking.payments.find((payment) => payment.type === "TRANSFER");
-  const amountDue =
-    booking.status === "PENDING_PAYMENT" ? (transfer?.amount ?? booking.totalAmount) : ZERO;
+  const transfer = booking.walletTransactions.find((payment) => payment.type === "LESSON_PAYMENT");
+  const amountDue = booking.status === "PENDING_PAYMENT" ? booking.totalAmount : ZERO;
   const walletBalance = booking.user.balance;
   const shortfall = amountDue.greaterThan(walletBalance) ? amountDue.minus(walletBalance) : ZERO;
-  // A paid booking always has a deadline; a legacy/null pending row is never payable.
+  // A pending paid lesson needs a deadline; a legacy/null pending row is never payable.
   const beforeDeadline =
     booking.paymentExpiresAt !== null && booking.paymentExpiresAt.getTime() > now.getTime();
   const beforeLesson = booking.startedAt.getTime() > now.getTime();
   const payEligible =
     isStudent &&
     booking.status === "PENDING_PAYMENT" &&
-    transfer?.status === "PENDING" &&
+    !transfer &&
     beforeDeadline &&
     beforeLesson;
   const canPay = payEligible && shortfall.isZero();
@@ -274,7 +296,8 @@ export function mapBookingResponse(
       startedAt: slot.startedAt.toISOString(),
     })),
     payment: {
-      status: transfer?.status ?? null,
+      // Compatibility display value only; ledger rows have no status.
+      status: transfer ? "COMPLETED" : booking.status === "PENDING_PAYMENT" ? "PENDING" : null,
       amountDue: decimalString(amountDue),
       walletBalance: isStudent ? decimalString(walletBalance) : null,
       shortfall: isStudent ? decimalString(shortfall) : null,
@@ -327,10 +350,6 @@ export async function releaseExpiredBookings(
               },
             });
             if (claimed.count !== 1) continue;
-            await tx.payment.updateMany({
-              where: { bookingId: candidate.id, type: "TRANSFER", status: "PENDING" },
-              data: { status: "CANCELLED" },
-            });
             await tx.availability.updateMany({
               where: { bookingId: candidate.id },
               data: { bookingId: null },
@@ -452,6 +471,7 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
             totalAmount: amount,
             startedAt: slots[0]!.startedAt,
             endedAt: new Date(slots.at(-1)!.startedAt.getTime() + SLOT_MS),
+            // Zero-priced legacy bookings bypass payment and its notifications; new rates are positive.
             status: requiresPayment ? "PENDING_PAYMENT" : "CONFIRMED",
             paymentExpiresAt: expiresAt,
           },
@@ -467,18 +487,6 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
         if (claimed.count !== input.availabilityIds.length)
           throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable", {
             subjectId: input.subjectId,
-          });
-        if (requiresPayment)
-          await tx.payment.create({
-            data: {
-              type: "TRANSFER",
-              amount,
-              status: "PENDING",
-              fromUserId: userId,
-              // The platform holds payment until completion; the tutor is the booking beneficiary.
-              toUserId: null,
-              bookingId: booking.id,
-            },
           });
         const detailed = await tx.booking.findUniqueOrThrow({
           where: { id: booking.id },
@@ -522,11 +530,10 @@ export async function confirmBookingPayment(userId: string, id: string) {
 
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      return await prisma.$transaction(
+      const confirmed = await prisma.$transaction(
         async (tx) => {
           const booking = await tx.booking.findUnique({
             where: { id },
-            include: { payments: true },
           });
           // Capture time inside the serializable transaction so cleanup cannot leave a stale deadline.
           const transactionNow = new Date();
@@ -549,12 +556,6 @@ export async function confirmBookingPayment(userId: string, id: string) {
           )
             throw new BookingConflictError("BOOKING_EXPIRED", "The payment hold has expired");
 
-          const transfer = booking.payments.find(
-            (payment) => payment.type === "TRANSFER" && payment.status === "PENDING"
-          );
-          if (!transfer)
-            throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Pending payment not found");
-
           const claimed = await tx.booking.updateMany({
             where: {
               id,
@@ -567,37 +568,49 @@ export async function confirmBookingPayment(userId: string, id: string) {
           if (claimed.count !== 1)
             throw new BookingConflictError("BOOKING_EXPIRED", "The payment hold has expired");
 
-          const debited = await tx.user.updateMany({
-            where: { id: userId, balance: { gte: transfer.amount } },
-            data: { balance: { decrement: transfer.amount } },
-          });
-          if (debited.count !== 1) {
-            const user = await tx.user.findUniqueOrThrow({
-              where: { id: userId },
-              select: { balance: true },
+          try {
+            await appendWalletMovement(tx, {
+              userId,
+              type: "LESSON_PAYMENT",
+              amount: booking.totalAmount,
+              bookingId: id,
             });
+          } catch (error) {
+            if (!(error instanceof InsufficientWalletBalance)) throw error;
             throw new BookingPaymentError("INSUFFICIENT_BALANCE", "Insufficient balance", {
-              walletBalance: decimalString(user.balance),
-              amountDue: decimalString(transfer.amount),
-              shortfall: decimalString(transfer.amount.minus(user.balance)),
+              walletBalance: decimalString(error.balance),
+              amountDue: decimalString(error.amount),
+              shortfall: decimalString(error.amount.minus(error.balance)),
             });
           }
-          // The Student payment completes into platform custody; Tutor earnings settle separately.
-          const paymentClaimed = await tx.payment.updateMany({
-            where: { id: transfer.id, status: "PENDING" },
-            data: { status: "COMPLETED", completedAt: transactionNow },
-          });
-          if (paymentClaimed.count !== 1)
-            throw new BookingConflictError("BOOKING_ALREADY_PAID", "Booking is already paid");
 
           const detailed = await tx.booking.findUniqueOrThrow({
             where: { id },
             include: detailInclude,
           });
-          return mapBookingResponse(detailed, userId, transactionNow);
+          return {
+            response: mapBookingResponse(detailed, userId, transactionNow),
+            recipientIds: [detailed.user.id, detailed.subject.tutor.user?.id].filter(
+              (recipientId): recipientId is string => recipientId !== undefined
+            ),
+          };
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
       );
+      // Notify only after commit, never from a transaction that can roll back or retry.
+      // Lookup/delivery failures must not turn a successful payment into a failed response.
+      await waitForBookingNotifications(
+        confirmed.recipientIds.map((recipientId) =>
+          notifyUser(recipientId, {
+            eventType: "booking",
+            details: {
+              subjectName: confirmed.response.subject.name,
+              scheduledAt: new Date(confirmed.response.startedAt),
+            },
+          })
+        )
+      );
+      return confirmed.response;
     } catch (error) {
       if (!isSerializationError(error)) throw error;
       const latest = await prisma.booking.findUnique({
@@ -694,9 +707,8 @@ export async function getCancellationQuote(userId: string, id: string) {
     throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
   if (
     booking.status === "CONFIRMED" &&
-    !booking.payments.some(
-      (payment) => payment.type === "TRANSFER" && payment.status === "COMPLETED"
-    )
+    booking.totalAmount.gt(0) &&
+    !booking.walletTransactions.some((movement) => movement.type === "LESSON_PAYMENT")
   )
     throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
   return quoteFor(booking, now);
@@ -720,10 +732,12 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
           throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
 
         const quote = quoteFor(booking, transactionNow);
-        const transfer = booking.payments.find((payment) => payment.type === "TRANSFER");
-        if (booking.status === "CONFIRMED" && transfer?.status !== "COMPLETED")
+        const transfer = booking.walletTransactions.find(
+          (payment) => payment.type === "LESSON_PAYMENT"
+        );
+        if (booking.status === "CONFIRMED" && !booking.totalAmount.isZero() && !transfer)
           throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
-        if (transfer?.status === "COMPLETED" && input.quoteToken !== quote.token)
+        if (transfer && input.quoteToken !== quote.token)
           throw new BookingConflictError(
             "CANCELLATION_QUOTE_CHANGED",
             "The cancellation amount changed. Review the latest quote before confirming.",
@@ -747,29 +761,14 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
           throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
 
         let refund = ZERO;
-        if (transfer?.status === "PENDING")
-          await tx.payment.updateMany({
-            where: { id: transfer.id, status: "PENDING" },
-            data: { status: "CANCELLED" },
-          });
-        if (transfer?.status === "COMPLETED") {
+        if (transfer) {
           // Keep the original payment immutable; refund from Platform and retain the quoted fee.
           refund = new Prisma.Decimal(quote.refundAmount);
-          await tx.user.update({
-            where: { id: userId },
-            data: { balance: { increment: refund } },
-          });
-          await tx.payment.create({
-            data: {
-              type: "REFUND",
-              amount: refund,
-              status: "COMPLETED",
-              completedAt: transactionNow,
-              // Release the refundable portion from platform escrow, not from the tutor wallet.
-              fromUserId: null,
-              toUserId: userId,
-              bookingId: id,
-            },
+          await appendWalletMovement(tx, {
+            userId,
+            type: "REFUND",
+            amount: refund,
+            bookingId: id,
           });
         }
         await tx.availability.updateMany({

@@ -20,8 +20,8 @@
 
 - Discovery API suite: 47 passed.
 - Profile page suite: 14 passed.
-- Full backend Jest suite: 244 passed; 69 opt-in integration tests skipped.
-- Full frontend Jest suite: 196 passed.
+- Full backend Jest suite after synchronizing `origin/main` (`cce66b8`): 268 passed; 76 opt-in integration tests skipped.
+- Full frontend Jest suite on that synchronized base: 201 passed.
 - Backend/frontend ESLint and backend TypeScript build: passed.
 - Existing backend BDD smoke suite: 1 scenario / 3 steps passed; this is not profile-specific Gherkin coverage.
 - Frontend production build and typecheck: passed with `npm.cmd --prefix apps/frontend run build -- --webpack`. Default Turbopack rejected the temporary worktree's dependency junction outside its root; no application/configuration change was made to work around that local setup restriction. The normal default build remains part of remote CI.
@@ -35,6 +35,7 @@
 - Booking cleanup can briefly leave an expired hold hidden; public profile reads intentionally do not mutate booking state.
 - Original commit `feat: tutor detail` is retained without rewriting its author/history. The new review-fix commit follows the current naming convention.
 - Remote check results belong to PR #202 after publication; this report records local verification.
+- The first push exposed a merge conflict with the newer `main` in `docs/index.md`. Upstream changes were merged without rewriting history; the index preserves both PAY-1 and DISC-3 entries. Full tests/build/lint and the read-only PostgreSQL smoke check were rerun on the synchronized base. Upstream DevOps/schema changes are inherited unchanged from `main`, not authored by this review fix.
 
 ## Final Assessment
 
