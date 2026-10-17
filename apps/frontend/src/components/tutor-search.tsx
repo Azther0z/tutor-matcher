@@ -17,6 +17,7 @@ import {
   type TutorSearchFilters,
   type TutorSearchResponse,
 } from "@/src/lib/discovery-api";
+import { getAuthToken, subscribeToAuth } from "@/src/lib/auth";
 
 const TYPING_DELAY = 300;
 
@@ -70,6 +71,7 @@ export function TutorSearch() {
   } | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [bounds, setBounds] = useState<ReturnType<typeof sliderBounds>>(null);
+  const [authRevision, setAuthRevision] = useState(0);
 
   // Keep the typed fields in step when the URL changes from elsewhere (back, clear filters),
   // without undoing what is still being typed.
@@ -91,6 +93,19 @@ export function TutorSearch() {
     router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
   }
 
+  useEffect(
+    () =>
+      subscribeToAuth(() => {
+        setLoaded(null);
+        setAuthRevision((revision) => revision + 1);
+        if (filters.page > 1) {
+          const nextQuery = filtersToQuery({ ...filters, page: 1 });
+          router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+        }
+      }),
+    [filters, pathname, router]
+  );
+
   useEffect(() => {
     getLearningAreas()
       .then(setLearningAreas)
@@ -110,13 +125,16 @@ export function TutorSearch() {
     return () => clearTimeout(timer);
   }, [draft, filters]);
 
-  const requestKey = `${query}#${attempt}`;
+  const requestKey = `${query}#${attempt}#${authRevision}`;
   useEffect(() => {
     const controller = new AbortController();
     searchTutors(filters, controller.signal)
-      .then((data) => setLoaded({ key: requestKey, data, error: null }))
+      .then((data) => {
+        if (!controller.signal.aborted) setLoaded({ key: requestKey, data, error: null });
+      })
       .catch((reason: unknown) => {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || (reason instanceof Error && reason.name === "AuthError"))
+          return;
         setLoaded({
           key: requestKey,
           data: null,
@@ -124,7 +142,7 @@ export function TutorSearch() {
         });
       });
     return () => controller.abort();
-  }, [filters, requestKey]);
+  }, [filters, requestKey, authRevision]);
 
   // The previous results stay on screen until the new page arrives.
   const loading = loaded?.key !== requestKey;
@@ -316,6 +334,23 @@ export function TutorSearch() {
         </aside>
 
         <section aria-label="Search results" aria-busy={loading}>
+          {filters.sort === "recommended" && !loading && result && (
+            <div className="mb-4 rounded-2xl bg-violet-50 p-4 text-sm dark:bg-violet-950/30">
+              <p className="font-semibold">
+                {result.recommendationMode === "personalized"
+                  ? "Recommended for you"
+                  : "Recommended tutors"}
+              </p>
+              {result.recommendationMode === "fallback" && getAuthToken() && (
+                <p className="mt-1 text-zinc-600 dark:text-zinc-300">
+                  <Link className="font-semibold underline" href="/settings/student">
+                    Add learning areas to your profile
+                  </Link>{" "}
+                  for recommendations tailored to you.
+                </p>
+              )}
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-zinc-500" role="status">
               {loading
@@ -506,6 +541,15 @@ function SubjectCard({ subject }: { subject: SubjectSearchResult }) {
         )}
         {subject.classesTaught > 0 &&
           ` · ${subject.classesTaught} ${subject.classesTaught === 1 ? "class" : "classes"} taught`}
+      </p>
+      <p className="text-sm text-zinc-500">
+        {subject.nextAvailableAt
+          ? `Next available ${new Intl.DateTimeFormat("en", {
+              timeZone: "Asia/Bangkok",
+              dateStyle: "medium",
+              timeStyle: "short",
+            }).format(new Date(subject.nextAvailableAt))} (Bangkok time)`
+          : "No availability in the next 30 days"}
       </p>
       {subject.description && (
         <p className="line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">

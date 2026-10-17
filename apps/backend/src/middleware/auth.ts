@@ -18,3 +18,26 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     res.status(401).json({ message: "Invalid or expired token" });
   }
 }
+
+// Public discovery can use a verified identity for personalization without requiring sign-in.
+export function optionalAuth(req: Request, res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+
+  if (!header) {
+    next();
+    return;
+  }
+
+  const [scheme, token] = header.split(" ");
+  if (scheme !== "Bearer" || !token) {
+    res.status(401).json({ message: "Invalid or expired token" });
+    return;
+  }
+
+  try {
+    req.user = verifyAuthToken(token);
+    next();
+  } catch {
+    res.status(401).json({ message: "Invalid or expired token" });
+  }
+}
