@@ -349,6 +349,15 @@ export function TutorSearch() {
                   for recommendations tailored to you.
                 </p>
               )}
+              {result.recommendationMode === "fallback" && !getAuthToken() && (
+                <p className="mt-1 text-zinc-600 dark:text-zinc-300">
+                  Ranked by rating and upcoming availability.{" "}
+                  <Link className="font-semibold underline" href="/login">
+                    Log in
+                  </Link>{" "}
+                  to get recommendations based on your learning areas.
+                </p>
+              )}
             </div>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">

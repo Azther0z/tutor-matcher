@@ -30,7 +30,7 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
 
   const [scheme, token] = header.split(" ");
   if (scheme !== "Bearer" || !token) {
-    res.status(401).json({ message: "Invalid or expired token" });
+    next();
     return;
   }
 
@@ -38,6 +38,6 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
     req.user = verifyAuthToken(token);
     next();
   } catch {
-    res.status(401).json({ message: "Invalid or expired token" });
+    next();
   }
 }

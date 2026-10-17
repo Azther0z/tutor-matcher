@@ -30,6 +30,8 @@ const tutorIds: string[] = [];
 const studentIds: string[] = [];
 const areas: Record<string, string> = {};
 let searchNow: Date;
+let boundaryTutorId: string;
+let boundarySubjectId: string;
 
 async function createTutor(
   firstName: string,
@@ -207,7 +209,8 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
     );
     await publishAvailability(sirinya.tutor.id, algebra.id, new Date(now + 31 * 24 * 60 * 60_000));
     const ielts = daniel.subjects[1];
-    await publishAvailability(daniel.tutor.id, ielts.id, new Date(now + 30 * 24 * 60 * 60_000));
+    boundaryTutorId = daniel.tutor.id;
+    boundarySubjectId = ielts.id;
     await publishAvailability(daniel.tutor.id, ielts.id, new Date(now + 31 * 24 * 60 * 60_000));
   });
 
@@ -231,7 +234,7 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
     expect(names((await search({ q: "แคลคูลัส" })).body)).toEqual(["แคลคูลัส ม.ปลาย"]);
     expect(names((await search({ q: "algebra" })).body)).toEqual(["Algebra"]);
     // One card per subject, so a tutor with two subjects shows twice.
-    expect(names((await search({ tutorName: "daniel" })).body)).toEqual([
+    expect(names((await search({ tutorName: "daniel", sort: "rating" })).body)).toEqual([
       "IELTS Speaking",
       "SAT Physics",
     ]);
@@ -267,13 +270,19 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
       "IELTS Speaking",
     ]);
     expect(recommended.body.recommendationMode).toBe("fallback");
-    expect(recommended.body.results[2].classesTaught).toBe(3);
-    expect(recommended.body.results[1]).toMatchObject({
+    const algebra = recommended.body.results.find(
+      ({ name }: { name: string }) => name === "Algebra"
+    );
+    const calculus = recommended.body.results.find(
+      ({ name }: { name: string }) => name === "แคลคูลัส ม.ปลาย"
+    );
+    expect(algebra?.classesTaught).toBe(3);
+    expect(calculus).toMatchObject({
       rating: 4.5,
       reviewCount: 2,
       classesTaught: 1,
     });
-    expect(recommended.body.results[0].nextAvailableAt).toEqual(expect.any(String));
+    expect(calculus?.nextAvailableAt).toEqual(expect.any(String));
 
     expect(names((await search({ minRating: "4.5" })).body)).toEqual(["แคลคูลัส ม.ปลาย"]);
     expect(names((await search({ sort: "price_asc" })).body)).toEqual([
@@ -300,18 +309,30 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
   });
 
   it("uses one fixed request time and includes the exact 30-day boundary only", async () => {
-    const response = await searchTutorSubjects(
-      tutorSearchQuerySchema.parse({ q: token }),
-      searchNow,
-      studentIds[0]
-    );
-    const ielts = response.results.find(({ name }) => name === "IELTS Speaking");
-    const algebra = response.results.find(({ name }) => name === "Algebra");
+    const boundary = new Date(searchNow.getTime() + 30 * 24 * 60 * 60_000);
+    const slot = await prisma.availability.create({
+      data: {
+        tutorId: boundaryTutorId,
+        startedAt: boundary,
+        isOpen: true,
+        availabilitySubjects: { create: [{ subjectId: boundarySubjectId }] },
+      },
+    });
+    try {
+      const response = await searchTutorSubjects(
+        tutorSearchQuerySchema.parse({ q: token }),
+        searchNow,
+        studentIds[0]
+      );
+      const ielts = response.results.find(({ name }) => name === "IELTS Speaking");
+      const algebra = response.results.find(({ name }) => name === "Algebra");
 
-    expect(ielts?.nextAvailableAt).toBe(
-      new Date(searchNow.getTime() + 30 * 24 * 60 * 60_000).toISOString()
-    );
-    expect(algebra?.nextAvailableAt).toBeNull();
+      expect(ielts?.nextAvailableAt).toBe(boundary.toISOString());
+      expect(algebra?.nextAvailableAt).toBeNull();
+    } finally {
+      await prisma.availabilitySubject.deleteMany({ where: { availabilityId: slot.id } });
+      await prisma.availability.delete({ where: { id: slot.id } });
+    }
   });
 
   it("pages in the database and reports the total of every match", async () => {
