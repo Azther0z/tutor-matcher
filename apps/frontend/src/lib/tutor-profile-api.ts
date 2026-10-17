@@ -50,8 +50,8 @@ export async function getTutorProfile(tutorId: string, signal?: AbortSignal) {
 export type VideoSource =
   { kind: "embed"; src: string } | { kind: "file"; src: string } | { kind: "link"; src: string };
 
-// Only http(s) links are used. YouTube and Vimeo play inline, video files use a player,
-// and any other address stays a plain link.
+// Only http(s) links are used. Known providers embed over HTTPS, HTTPS video files
+// use a player, and other addresses (including HTTP files) stay plain links.
 export function videoSource(url: string | null): VideoSource | null {
   if (!url) return null;
   let parsed: URL;
@@ -78,7 +78,8 @@ export function videoSource(url: string | null): VideoSource | null {
   const vimeoId = host === "vimeo.com" ? parsed.pathname.match(/^\/(\d+)/)?.[1] : null;
   if (vimeoId) return { kind: "embed", src: `https://player.vimeo.com/video/${vimeoId}` };
 
-  if (/\.(mp4|webm|ogg)$/i.test(parsed.pathname)) return { kind: "file", src: parsed.href };
+  if (parsed.protocol === "https:" && /\.(mp4|webm|ogg)$/i.test(parsed.pathname))
+    return { kind: "file", src: parsed.href };
   return { kind: "link", src: parsed.href };
 }
 

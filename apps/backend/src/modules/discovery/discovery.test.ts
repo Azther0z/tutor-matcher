@@ -11,7 +11,7 @@ const reviewAggregate = jest.fn<(args: unknown) => Promise<unknown>>();
 const reviewFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const reviewGroupBy = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const availabilityFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
-// Releasing expired payment holds runs for real, against a transaction with nothing expired.
+// Assert that public profile reads never invoke booking cleanup or its write transaction.
 const bookingFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const transaction = jest.fn(async (run: (tx: unknown) => unknown) =>
   run({ booking: { findMany: bookingFindMany } })
@@ -409,6 +409,10 @@ describe("DISC-3 tutor profile", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     bookingFindMany.mockResolvedValue([]);
+    queryRaw.mockReset().mockResolvedValue([
+      { subjectId: "calculus", startedAt: soon },
+      { subjectId: "physics", startedAt: soon },
+    ]);
     profileTutorFindUnique.mockResolvedValue(publishedTutor());
     reviewAggregate.mockResolvedValue({ _avg: { ratingStars: 4.25 }, _count: 4 });
     reviewGroupBy.mockResolvedValue([
@@ -486,14 +490,8 @@ describe("DISC-3 tutor profile", () => {
   it("asks only for future open slots that are not held or booked", async () => {
     await request(app).get(url).expect(200);
 
-    expect(bookingFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          subject: { tutorId: TUTOR_ID },
-          status: "PENDING_PAYMENT",
-        }),
-      })
-    );
+    expect(bookingFindMany).not.toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
     expect(availabilityFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -505,6 +503,54 @@ describe("DISC-3 tutor profile", () => {
       })
     );
   });
+
+  it("bounds detailed slots to 14 days and groups the 92-day next openings in SQL", async () => {
+    queryRaw.mockResolvedValue([
+      { subjectId: "calculus", startedAt: soon },
+      { subjectId: "physics", startedAt: later },
+    ]);
+    const response = await request(app).get(url).expect(200);
+    const details = availabilityFindMany.mock.calls[0][0] as {
+      where: { startedAt: { gt: Date; lt: Date } };
+    };
+    expect(details.where.startedAt.lt.getTime() - details.where.startedAt.gt.getTime()).toBe(
+      14 * 86_400_000
+    );
+    expect(queryRaw).toHaveBeenCalledTimes(1);
+    const grouped = rawQuery();
+    expect(grouped.sql).toContain("MIN(slots.started_at)");
+    expect(grouped.sql).toContain("GROUP BY links.subject_id");
+    expect(grouped.sql).toContain("slots.is_open = TRUE AND slots.booking_id IS NULL");
+    expect(grouped.sql).not.toContain(TUTOR_ID);
+    const [tutorId, from, until] = grouped.values as [string, Date, Date];
+    expect(tutorId).toBe(TUTOR_ID);
+    expect(until.getTime() - from.getTime()).toBe(92 * 86_400_000);
+    expect(response.body.subjects[1].nextOpening).toBe(later.toISOString());
+    expect(response.body.availability).toHaveLength(1);
+  });
+
+  it.each([
+    ["😀Name", "Anna 😀."],
+    ["\u{10400}Name", "Anna \u{10400}."],
+    ["", "Anna"],
+    ["   ", "Anna"],
+  ])(
+    "formats reviewer surname %s without splitting code points or adding empty punctuation",
+    async (lastName, expected) => {
+      reviewFindMany.mockResolvedValue([
+        {
+          id: "unicode",
+          ratingStars: 5,
+          text: null,
+          createdAt: soon,
+          subject: { name: "Calculus" },
+          user: { firstName: "Anna", lastName },
+        },
+      ]);
+      const response = await request(app).get(url).expect(200);
+      expect(response.body.reviews[0].reviewer).toBe(expected);
+    }
+  );
 
   it("shows no rating for a tutor without reviews", async () => {
     reviewAggregate.mockResolvedValue({ _avg: { ratingStars: null }, _count: 0 });

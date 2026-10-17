@@ -1,6 +1,5 @@
 import { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
-import { releaseExpiredBookings } from "../booking/booking.service.ts";
 import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
 import { mapSubject, subjectSelect } from "../subject/subject.public.ts";
 import type { TutorSearchQuery } from "./discovery.schema.ts";
@@ -86,11 +85,11 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
     throw new TutorUnavailableError();
   }
 
-  // An expired payment hold must not keep hiding a slot that is free again.
-  await releaseExpiredBookings(now, { tutorId });
-
+  // This public read does not mutate bookings. Existing booking flows release expired holds.
+  const listedUntil = new Date(now.getTime() + OPENINGS_LISTED_DAYS * DAY_MS);
+  const openingsUntil = new Date(now.getTime() + OPENINGS_WINDOW_DAYS * DAY_MS);
   const reviewWhere = { subject: { tutorId } };
-  const [aggregate, reviews, slots, subjectRatings] = await Promise.all([
+  const [aggregate, reviews, slots, subjectRatings, nextOpenings] = await Promise.all([
     prisma.review.aggregate({ where: reviewWhere, _avg: { ratingStars: true }, _count: true }),
     prisma.review.findMany({
       where: reviewWhere,
@@ -110,7 +109,7 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
         tutorId,
         isOpen: true,
         bookingId: null,
-        startedAt: { gt: now, lt: new Date(now.getTime() + OPENINGS_WINDOW_DAYS * DAY_MS) },
+        startedAt: { gt: now, lt: listedUntil },
         availabilitySubjects: { some: {} },
       },
       select: { startedAt: true, availabilitySubjects: { select: { subjectId: true } } },
@@ -122,17 +121,21 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
       _avg: { ratingStars: true },
       _count: true,
     }),
+    // Return one timestamp per subject, not every slot/link across the 92-day horizon.
+    prisma.$queryRaw<Array<{ subjectId: string; startedAt: Date }>>`
+      SELECT links.subject_id AS "subjectId", MIN(slots.started_at) AS "startedAt"
+      FROM availabilities slots
+      JOIN availability_subjects links ON links.availability_id = slots.availability_id
+      WHERE slots.tutor_id = ${tutorId}::uuid
+        AND slots.is_open = TRUE AND slots.booking_id IS NULL
+        AND slots.started_at > ${now} AND slots.started_at < ${openingsUntil}
+      GROUP BY links.subject_id
+    `,
   ]);
 
   const ratingBySubject = new Map(subjectRatings.map((row) => [row.subjectId, row]));
-  const nextOpening = new Map<string, Date>();
-  for (const slot of slots) {
-    for (const { subjectId } of slot.availabilitySubjects) {
-      if (!nextOpening.has(subjectId)) nextOpening.set(subjectId, slot.startedAt);
-    }
-  }
+  const nextOpening = new Map(nextOpenings.map((slot) => [slot.subjectId, slot.startedAt]));
 
-  const listedUntil = now.getTime() + OPENINGS_LISTED_DAYS * DAY_MS;
   const average = aggregate._avg.ratingStars;
 
   return {
@@ -157,20 +160,23 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
       };
     }),
     availability: slots
-      .filter((slot) => slot.startedAt.getTime() < listedUntil)
+      .filter((slot) => slot.startedAt.getTime() < listedUntil.getTime())
       .map((slot) => ({
         startedAt: slot.startedAt.toISOString(),
         subjectIds: slot.availabilitySubjects.map(({ subjectId }) => subjectId).sort(),
       })),
-    reviews: reviews.map((review) => ({
-      id: review.id,
-      rating: review.ratingStars,
-      text: review.text,
-      createdAt: review.createdAt.toISOString(),
-      subjectName: review.subject.name,
-      // Reviewers appear as first name and last initial only.
-      reviewer: `${review.user.firstName} ${review.user.lastName.slice(0, 1)}.`.trim(),
-    })),
+    reviews: reviews.map((review) => {
+      const lastInitial = Array.from(review.user.lastName.trim())[0];
+      return {
+        id: review.id,
+        rating: review.ratingStars,
+        text: review.text,
+        createdAt: review.createdAt.toISOString(),
+        subjectName: review.subject.name,
+        // Reviewers appear as first name and last initial only.
+        reviewer: `${review.user.firstName}${lastInitial ? ` ${lastInitial}.` : ""}`.trim(),
+      };
+    }),
   };
 }
 

@@ -18,6 +18,11 @@ import {
 
 const card = "flex flex-col gap-4 rounded-3xl border border-black/10 p-6 dark:border-white/15";
 const shell = "mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-12";
+const rateFormat = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const formatRate = (rate: string | number) => `฿${rateFormat.format(Number(rate))}`;
 
 export default function TutorDetailPage() {
   const params = useParams<{ id: string }>();
@@ -150,7 +155,7 @@ function ProfileView({ profile }: { profile: TutorProfile }) {
           {lowestRate !== null && (
             <p>
               <span className="text-sm text-zinc-500">From </span>
-              <span className="text-2xl font-bold">฿{lowestRate.toLocaleString("en-US")}</span>
+              <span className="text-2xl font-bold">{formatRate(lowestRate)}</span>
               <span className="text-zinc-500"> / hr</span>
             </p>
           )}
@@ -192,6 +197,9 @@ function AboutSection({ profile }: { profile: TutorProfile }) {
       )}
       {video?.kind === "embed" && (
         <iframe
+          loading="lazy"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
+          referrerPolicy="strict-origin-when-cross-origin"
           src={video.src}
           title={`${profile.firstName}’s introduction video`}
           allow="encrypted-media; picture-in-picture"
@@ -202,7 +210,7 @@ function AboutSection({ profile }: { profile: TutorProfile }) {
       {video?.kind === "file" && (
         <video
           controls
-          preload="metadata"
+          preload="none"
           aria-label={`${profile.firstName}’s introduction video`}
           src={video.src}
           className="aspect-video w-full rounded-2xl bg-black"
@@ -236,7 +244,7 @@ function SubjectsSection({ tutorId, subjects }: { tutorId: string; subjects: Pro
                 <span className="flex items-start justify-between gap-3">
                   <span className="text-lg font-bold">{subject.name}</span>
                   <span className="shrink-0">
-                    <span className="text-lg font-bold">฿{subject.hourlyRate}</span>
+                    <span className="text-lg font-bold">{formatRate(subject.hourlyRate)}</span>
                     <span className="text-zinc-500"> / hr</span>
                   </span>
                 </span>

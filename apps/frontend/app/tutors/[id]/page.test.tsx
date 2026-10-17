@@ -123,6 +123,10 @@ describe("DISC-3 tutor profile page", () => {
       "src",
       "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
     );
+    const embed = screen.getByTitle("Anong’s introduction video");
+    expect(embed).toHaveAttribute("loading", "lazy");
+    expect(embed).toHaveAttribute("sandbox", "allow-scripts allow-same-origin allow-presentation");
+    expect(embed).toHaveAttribute("referrerpolicy", "strict-origin-when-cross-origin");
   });
 
   it("points to the subject list from Choose a subject", async () => {
@@ -143,6 +147,9 @@ describe("DISC-3 tutor profile page", () => {
       "src",
       "https://example.com/intro.mp4"
     );
+    const video = screen.getByLabelText("Anong’s introduction video");
+    expect(video).toHaveAttribute("preload", "none");
+    expect(video).not.toHaveAttribute("autoplay");
     unmount();
 
     respondWith({ ...profile, introVideoUrl: "https://example.com/watch/1" });
@@ -151,6 +158,27 @@ describe("DISC-3 tutor profile page", () => {
       "href",
       "https://example.com/watch/1"
     );
+  });
+
+  it.each(["250.50", "1250.50"])(
+    "uses the same two-decimal %s rate in the header and subject card",
+    async (rate) => {
+      respondWith({ ...profile, subjects: [{ ...profile.subjects[0], hourlyRate: rate }] });
+      render(<TutorDetailPage />);
+      await screen.findByText("Approved teaching bio.");
+      const expected = rate === "250.50" ? "฿250.50" : "฿1,250.50";
+      expect(screen.getAllByText(expected)).toHaveLength(2);
+    }
+  );
+
+  it("keeps insecure video-file URLs as external links rather than mixed-content players", async () => {
+    respondWith({ ...profile, introVideoUrl: "http://example.com/intro.mp4" });
+    render(<TutorDetailPage />);
+    const link = await screen.findByRole("link", { name: "Watch introduction video" });
+    expect(link).toHaveAttribute("href", "http://example.com/intro.mp4");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.queryByLabelText("Anong’s introduction video")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Anong’s introduction video")).not.toBeInTheDocument();
   });
 
   it("never renders a video that is not an http(s) link", async () => {
