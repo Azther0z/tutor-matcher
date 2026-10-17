@@ -75,6 +75,23 @@ describe("wallet top-up", () => {
     );
   });
 
+  it("prefills the booking shortfall and lets the student change it before topping up", async () => {
+    amountParam = "50.25";
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ balance: "49.75" }),
+    });
+
+    render(<WalletTopupPage />);
+    expect(await screen.findByText("฿49.75")).toBeInTheDocument();
+    const amount = screen.getByLabelText("Or enter an amount (฿)");
+    expect(amount).toHaveValue(50.25);
+
+    fireEvent.change(amount, { target: { value: "125.50" } });
+    fireEvent.click(screen.getByRole("button", { name: "Show PromptPay QR" }));
+    expect(screen.getByRole("heading", { name: "Add ฿125.50" })).toBeInTheDocument();
+  });
+
   it("shows a failed confirmation and leaves the displayed balance unchanged", async () => {
     global.fetch = jest
       .fn()
