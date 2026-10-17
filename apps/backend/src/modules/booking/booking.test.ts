@@ -13,8 +13,9 @@ const SUBJECT_ID = "11111111-1111-4111-8111-111111111111";
 const SLOT_A = "22222222-2222-4222-8222-222222222222";
 const SLOT_B = "33333333-3333-4333-8333-333333333333";
 
-it("bounds notification waiting and consumes late lookup failures", async () => {
+it("bounds notification waiting and logs late lookup failures without private details", async () => {
   jest.useFakeTimers();
+  const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
   try {
     let reject!: (error: Error) => void;
     const pending = new Promise<void>((_resolve, rejectPromise) => {
@@ -26,11 +27,38 @@ it("bounds notification waiting and consumes late lookup failures", async () => 
     ]);
     await jest.advanceTimersByTimeAsync(1000);
     await expect(waiting).resolves.toBeUndefined();
+    expect(warn).not.toHaveBeenCalled();
     reject(new Error("late DB failure"));
-    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(0);
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledWith("[notification:booking] Notification failed", {
+      recipientIndex: 0,
+    });
+    expect(warn).toHaveBeenCalledWith("[notification:booking] Notification failed", {
+      recipientIndex: 1,
+    });
     expect(jest.getTimerCount()).toBe(0);
   } finally {
+    warn.mockRestore();
     jest.useRealTimers();
+  }
+});
+
+it("logs immediate notification rejection but not successful delivery", async () => {
+  const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+  try {
+    await expect(
+      waitForBookingNotifications([
+        Promise.resolve(),
+        Promise.reject(new Error("private recipient details")),
+      ])
+    ).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith("[notification:booking] Notification failed", {
+      recipientIndex: 1,
+    });
+  } finally {
+    warn.mockRestore();
   }
 });
 
