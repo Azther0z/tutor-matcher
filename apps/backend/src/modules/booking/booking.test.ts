@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
 import { Prisma } from "../../generated/prisma/client.ts";
 import { createBookingSchema } from "./booking.schema.ts";
 import {
@@ -6,11 +6,61 @@ import {
   BookingDomainError,
   cancellationRefund,
   mapBookingResponse,
+  waitForBookingNotifications,
 } from "./booking.service.ts";
 
 const SUBJECT_ID = "11111111-1111-4111-8111-111111111111";
 const SLOT_A = "22222222-2222-4222-8222-222222222222";
 const SLOT_B = "33333333-3333-4333-8333-333333333333";
+
+it("bounds notification waiting and logs late lookup failures without private details", async () => {
+  jest.useFakeTimers();
+  const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+  try {
+    let reject!: (error: Error) => void;
+    const pending = new Promise<void>((_resolve, rejectPromise) => {
+      reject = rejectPromise;
+    });
+    const waiting = waitForBookingNotifications([
+      pending,
+      Promise.reject(new Error("missing user")),
+    ]);
+    await jest.advanceTimersByTimeAsync(1000);
+    await expect(waiting).resolves.toBeUndefined();
+    expect(warn).not.toHaveBeenCalled();
+    reject(new Error("late DB failure"));
+    await jest.advanceTimersByTimeAsync(0);
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledWith("[notification:booking] Notification failed", {
+      recipientIndex: 0,
+    });
+    expect(warn).toHaveBeenCalledWith("[notification:booking] Notification failed", {
+      recipientIndex: 1,
+    });
+    expect(jest.getTimerCount()).toBe(0);
+  } finally {
+    warn.mockRestore();
+    jest.useRealTimers();
+  }
+});
+
+it("logs immediate notification rejection but not successful delivery", async () => {
+  const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+  try {
+    await expect(
+      waitForBookingNotifications([
+        Promise.resolve(),
+        Promise.reject(new Error("private recipient details")),
+      ])
+    ).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith("[notification:booking] Notification failed", {
+      recipientIndex: 1,
+    });
+  } finally {
+    warn.mockRestore();
+  }
+});
 
 describe("trial booking rules", () => {
   it("rejects duplicate slots before creating a booking", () => {

@@ -4,12 +4,37 @@ import { prisma } from "../../lib/db.ts";
 import { isTransactionConflict } from "../../lib/transaction-conflict.ts";
 import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
 import { subjectSnapshot } from "../subject/subject.public.ts";
+import { notifyUser } from "../notification/notification.service.ts";
+import { setTimeout, clearTimeout } from "node:timers";
 import { appendWalletMovement, InsufficientWalletBalance } from "../wallet/wallet-ledger.ts";
 import type {
   CancelBookingInput,
   CreateBookingInput,
   RescheduleBookingInput,
 } from "./booking.schema.ts";
+
+// Best-effort notifications may continue after the response, but cannot delay it indefinitely.
+// allSettled also consumes late rejections after the timeout; this is not a durable queue.
+export async function waitForBookingNotifications(notifications: Promise<unknown>[]) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.allSettled(notifications).then((results) => {
+        for (const [index, result] of results.entries()) {
+          if (result.status === "rejected") {
+            // Do not log recipient data or raw errors that may contain private details.
+            console.warn("[notification:booking] Notification failed", { recipientIndex: index });
+          }
+        }
+      }),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, 1000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 const SLOT_MS = 30 * 60_000;
 const BANGKOK_TIME_ZONE = "Asia/Bangkok";
@@ -446,6 +471,7 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
             totalAmount: amount,
             startedAt: slots[0]!.startedAt,
             endedAt: new Date(slots.at(-1)!.startedAt.getTime() + SLOT_MS),
+            // Zero-priced legacy bookings bypass payment and its notifications; new rates are positive.
             status: requiresPayment ? "PENDING_PAYMENT" : "CONFIRMED",
             paymentExpiresAt: expiresAt,
           },
@@ -504,7 +530,7 @@ export async function confirmBookingPayment(userId: string, id: string) {
 
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      return await prisma.$transaction(
+      const confirmed = await prisma.$transaction(
         async (tx) => {
           const booking = await tx.booking.findUnique({
             where: { id },
@@ -562,10 +588,29 @@ export async function confirmBookingPayment(userId: string, id: string) {
             where: { id },
             include: detailInclude,
           });
-          return mapBookingResponse(detailed, userId, transactionNow);
+          return {
+            response: mapBookingResponse(detailed, userId, transactionNow),
+            recipientIds: [detailed.user.id, detailed.subject.tutor.user?.id].filter(
+              (recipientId): recipientId is string => recipientId !== undefined
+            ),
+          };
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
       );
+      // Notify only after commit, never from a transaction that can roll back or retry.
+      // Lookup/delivery failures must not turn a successful payment into a failed response.
+      await waitForBookingNotifications(
+        confirmed.recipientIds.map((recipientId) =>
+          notifyUser(recipientId, {
+            eventType: "booking",
+            details: {
+              subjectName: confirmed.response.subject.name,
+              scheduledAt: new Date(confirmed.response.startedAt),
+            },
+          })
+        )
+      );
+      return confirmed.response;
     } catch (error) {
       if (!isSerializationError(error)) throw error;
       const latest = await prisma.booking.findUnique({

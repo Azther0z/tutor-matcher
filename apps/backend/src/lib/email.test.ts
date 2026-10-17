@@ -17,6 +17,7 @@ const {
   EmailDeliveryError,
   sendPasswordResetEmail,
   sendTutorRequestRejectedEmail,
+  sendBookingNotificationEmail,
 } = await import("./email.ts");
 const { PASSWORD_RESET_TTL_MINUTES } = await import("./password-reset.ts");
 
@@ -46,6 +47,32 @@ afterEach(() => {
 });
 
 describe("email delivery mode configuration", () => {
+  it("escapes booking HTML and displays Bangkok time even on a UTC server", async () => {
+    Object.assign(env, {
+      emailDeliveryMode: "resend",
+      resendApiKey: "re_test_key",
+      resendFromEmail: "Tutor Matcher <onboarding@resend.dev>",
+      frontendUrlConfigured: true,
+    });
+    resendSend.mockResolvedValue({ id: "booking-email" });
+    await sendBookingNotificationEmail({
+      to: "student@example.com",
+      subjectName: '<img src=x> & "Math"',
+      scheduledAt: new Date("2026-10-20T03:00:00Z"),
+    });
+    expect(resendSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        html: expect.stringContaining("&lt;img src=x&gt; &amp; &quot;Math&quot;"),
+        text: expect.stringContaining("10:00 AM (Asia/Bangkok, UTC+7)"),
+      })
+    );
+    expect(resendSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        html: expect.stringContaining("10:00 AM (Asia/Bangkok, UTC+7)"),
+        text: expect.stringContaining('<img src=x> & "Math"'),
+      })
+    );
+  });
   it("defaults development and test to log and production to resend", () => {
     expect(resolveEmailDeliveryMode("development")).toBe("log");
     expect(resolveEmailDeliveryMode("test")).toBe("log");
