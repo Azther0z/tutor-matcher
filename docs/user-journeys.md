@@ -262,8 +262,11 @@ the tutor's LESSON_EARNING after the fee; see §4. Completion is not implemented
 
 Cancelling removes the lesson from the schedule; an eligible refund is credited back to
 the student's wallet. The applicable policy is shown before confirmation when the
-cancellation falls inside the penalty window. The product's stated default is free
-cancellation up to 12 hours before the lesson.
+cancellation falls inside the penalty window. The approved BOOK-3 default refunds 100%
+when the lesson is more than 24 hours away, and 70% at exactly 24 hours or less, before
+the lesson starts. The confirmation shows the server-calculated fee and refund; if
+the terms change, the Student must review and confirm the new quote. See the
+[policy confirmation](sources/book-3-policy-confirmation.md).
 
 ### `/bookings`
 
@@ -322,9 +325,10 @@ not in the tutor's available wallet.
 
 **Refunds.** Paid cancellation appends REFUND and leaves LESSON_PAYMENT unchanged.
 PAY-1 retains the existing configurable cancellation window and late-refund rate,
-whose defaults are 24 hours and 70%. No late-cancellation tutor share is implemented.
-The earlier prototype described a 12-hour free-cancellation window; final values and
-late-cancellation allocation still need product sign-off.
+whose approved defaults are 24 hours and 70%. No late-cancellation tutor share is implemented.
+The earlier prototype's 12-hour window is superseded for BOOK-3 by the
+[user confirmation](sources/book-3-policy-confirmation.md); late-cancellation allocation
+remains separate work.
 
 **Payouts (planned, outside PAY-1).** Any user with available balance can withdraw to a
 saved payout account, not just tutors. A successful payout appends PAYOUT and debits
