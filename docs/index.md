@@ -13,20 +13,21 @@ disagree.
 
 ## Where to find things
 
-| You need...                                | Go to                                                                     |
-| ------------------------------------------ | ------------------------------------------------------------------------- |
-| Product behaviour (routes, rules, flows)   | [`user-journeys.md`](user-journeys.md) — the source of truth              |
-| Product goals, roles, and scope            | [`user-journeys.md`](user-journeys.md#overview-and-scope)                 |
-| What work is planned or in progress        | The GitHub issues and Project board                                       |
-| PROF-6 implementation decisions and checks | [Subject management change](change/implement-prof-6-subjects/proposal.md) |
-| PROF-3 implementation decisions and checks | [Availability change](change/implement-prof-3-availability/proposal.md)   |
-| The database schema and its known gaps     | [`database-schema.md`](database-schema.md)                                |
-| Tech stack, repo layout, deployment        | [`../README.md`](../README.md#architecture)                               |
-| How to run and write tests                 | [`testing.md`](testing.md)                                                |
-| Why a technical decision was made          | [`adr/`](adr/)                                                            |
-| Setup and common commands                  | [`../README.md`](../README.md)                                            |
-| Domain vocabulary                          | [`CONTEXT.md`](../CONTEXT.md)                                             |
-| Raw evidence a doc above was built from    | [`sources/`](sources/) — read-only, see below                             |
+| You need...                                  | Go to                                                                     |
+| -------------------------------------------- | ------------------------------------------------------------------------- |
+| Product behaviour (routes, rules, flows)     | [`user-journeys.md`](user-journeys.md) — the source of truth              |
+| Product goals, roles, and scope              | [`user-journeys.md`](user-journeys.md#overview-and-scope)                 |
+| What work is planned or in progress          | The GitHub issues and Project board                                       |
+| PAY-1 ledger implementation and safe rollout | [Wallet ledger change](change/pay-1-wallet-ledger/proposal.md)            |
+| PROF-6 implementation decisions and checks   | [Subject management change](change/implement-prof-6-subjects/proposal.md) |
+| PROF-3 implementation decisions and checks   | [Availability change](change/implement-prof-3-availability/proposal.md)   |
+| The database schema and its known gaps       | [`database-schema.md`](database-schema.md)                                |
+| Tech stack, repo layout, deployment          | [`../README.md`](../README.md#architecture)                               |
+| How to run and write tests                   | [`testing.md`](testing.md)                                                |
+| Why a technical decision was made            | [`adr/`](adr/)                                                            |
+| Setup and common commands                    | [`../README.md`](../README.md)                                            |
+| Domain vocabulary                            | [`CONTEXT.md`](../CONTEXT.md)                                             |
+| Raw evidence a doc above was built from      | [`sources/`](sources/) — read-only, see below                             |
 
 ## What is authoritative
 
@@ -40,7 +41,9 @@ disagree.
 ## What is historical, not current
 
 [`sources/`](sources/) is immutable evidence: the clickable prototype, the original
-backlog export, and the database-course Final Report. Do not build features from it —
+backlog export, the database-course Final Report and the supplied wallet-ledger Markdown
+sources. The ledger sources are preserved approved design evidence, compiled into the
+canonical money and schema pages; they are not the superseded PDF. Do not build features from it —
 read the "authoritative" list above instead. It is never edited, only read; the Final
 Report's design reasoning (not its schema) is summarized in
 [`database-schema.md`](database-schema.md#historical-the-final-report).

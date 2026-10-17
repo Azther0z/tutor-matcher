@@ -237,7 +237,10 @@ locked to this booking while payment is outstanding.
   accepts payment.
 - If the balance is short, the page states the shortfall, disables **Pay**, and offers
   **Top up ฿<shortfall>**, returning the student to this booking afterwards.
-- Paying deducts the amount and confirms the booking immediately.
+- Creating the pending booking writes no wallet row; the amount due is Booking.totalAmount.
+- Paying atomically deducts the amount, appends one LESSON_PAYMENT row and changes
+  PENDING_PAYMENT to CONFIRMED. Failure leaves the booking and wallet unchanged.
+- Cancelling or expiring an unpaid booking writes no wallet row.
 - If payment never completes, no confirmed booking exists and the slots are released.
 
 ### Step 3 — Confirmed
@@ -252,8 +255,8 @@ booking is blocked _before_ payment is captured.
 
 ### Step 4 — Completed
 
-After delivery the booking becomes `completed`, which starts settlement and unlocks
-reviewing.
+The planned completion action atomically changes CONFIRMED to COMPLETED and credits
+the tutor's LESSON_EARNING after the fee; see §4. Completion is not implemented by PAY-1.
 
 ### Cancellation
 
@@ -282,35 +285,52 @@ one balance, not two.
 | ------------------ | --------- | ------------------------------------ |
 | **Top-up**         | in        | `/wallet/topup` — PromptPay QR       |
 | **Lesson payment** | out       | `/bookings/:id` in payment-due state |
-| **Class earning**  | in        | settlement after a completed lesson  |
+| **Lesson earning** | in        | settlement after a completed lesson  |
 | **Refund**         | in        | eligible cancellation or dispute     |
 | **Payout**         | out       | `/wallet` → Request payout           |
 
 **`/wallet`** is the single money page and shows available balance, pending earnings,
 earnings this month, and all-time paid out, above one transaction list filterable by
-All / Top-ups / Lesson payments / Class earnings / Payouts / Refunds. There are no
+All / Top-ups / Lesson payments / Lesson earnings / Payouts / Refunds. There are no
 separate Payments and Earnings pages.
 
-**`/wallet/transactions/:id`** is read-only history. A lesson payment that has not
-completed points the user back to `/bookings/:id` to pay; it never accepts payment
-itself.
+The approved [ledger decision](sources/tutormatcher-wallet-ledger-decision.md) and
+[implementation guide](sources/tutormatcher-wallet-ledger-implementation.md) supersede
+the earlier pending-transaction design (and the separately supplied PDF).
 
-**Top-up.** Preset amounts or a custom amount, then a PromptPay QR. Balance increases
-and a transaction is recorded only when payment is confirmed.
+**Ledger.** One row belongs to one user's wallet and is written only when money moves.
+It stores a positive amount, resulting balance, timestamp and optional booking link.
+There is no status or direction column: TOP_UP, LESSON_EARNING and REFUND add;
+LESSON_PAYMENT and PAYOUT subtract. Entries are never updated or deleted by application
+flows; failures and zero movements write no entry.
 
-**Earnings.** A completed lesson credits the tutor's share to the wallet. The platform
-takes a **15% fee**, so a ฿520 lesson credits ฿442. The earning is held as **pending**
-until it clears — stated as 24 hours after the lesson — and is excluded from available
-balance until then.
+**`/wallet/transactions/:id`** is read-only history of completed movements.
+Unpaid bookings appear only on `/bookings`, not in wallet history.
 
-> The 15% fee, the 24-hour clearing period, and the 12-hour free-cancellation window
-> below are read off prototype copy. The mechanism is settled; the **numbers still need
-> product sign-off**. Do not treat them as final policy.
+**Top-up.** Preset or custom amounts followed by simulated confirmation in PAY-1.
+The QR is a non-payable demonstration, explicitly labelled; do not send real money.
+Success atomically credits balance and appends TOP_UP. Failure writes nothing.
+Retrying the same reference cannot credit twice. Simulation is disabled in production;
+a verified payment provider is required before real-money use.
 
-**Payouts.** Any user with available balance can withdraw to a saved payout account —
-**payouts are not tutor-only**. The amount leaves the wallet and is recorded as a debit
-transaction linked to the payout account. A request above available balance is blocked.
-Payout accounts are managed in `/settings/wallet`.
+**Lesson earnings (planned, outside PAY-1).** Student confirmation of delivery, or
+automatic completion 24 hours after the lesson ends, credits the tutor's share and
+changes CONFIRMED to COMPLETED atomically. The provisional fee is 15%.
+Pending earnings are computed from CONFIRMED bookings minus the fee; no pending
+ledger row exists. Until settlement, the money is held by the platform for that booking,
+not in the tutor's available wallet.
+
+**Refunds.** Paid cancellation appends REFUND and leaves LESSON_PAYMENT unchanged.
+PAY-1 retains the existing configurable cancellation window and late-refund rate,
+whose defaults are 24 hours and 70%. No late-cancellation tutor share is implemented.
+The earlier prototype described a 12-hour free-cancellation window; final values and
+late-cancellation allocation still need product sign-off.
+
+**Payouts (planned, outside PAY-1).** Any user with available balance can withdraw to a
+saved payout account, not just tutors. A successful payout appends PAYOUT and debits
+balance together; failure writes nothing. An asynchronous provider would need a separate
+request table, not a ledger status. Payout account management, the full wallet dashboard,
+student lesson confirmation and automatic completion remain separate work.
 
 Related stories: US5-1 … US5-8, US11-3.
 
@@ -324,8 +344,8 @@ view additionally shows the student, the subject, the format, the lesson descrip
 the student wrote, the duration, and the payout for that class.
 
 Joining before the room opens explains when it opens or opens the configured waiting
-room. After delivery the system marks the booking `completed` when attendance meets the
-completion rules; otherwise completion is blocked or flagged for review.
+room. Planned completion follows the ledger rule in §4: student confirmation or the
+clearing deadline. Dispute handling and completion automation are outside PAY-1.
 
 Related stories: US6-1 … US6-3.
 
@@ -560,8 +580,9 @@ Rules that are easy to break when building a slice in isolation:
 7. **A paid slot is locked to exactly one booking.** Double-booking must be blocked
    before payment capture, not compensated afterwards.
 8. **The wallet transaction ledger is the source of truth for money.** Every movement
-   has a type, direction, status, amount, and resulting balance; balances are derived,
-   never edited directly.
+   has one owner, a type, positive amount and resulting balance, with no status or
+   direction column. The shared writer updates the balance and appends the row atomically;
+   balances are never edited independently of the ledger.
 9. **Payouts are available to any user with balance,** not only tutors.
 10. **Reviews come only from a completed booking** and are scoped to tutor + subject.
 11. **Listing and verification changes are admin-reviewed before going live.**

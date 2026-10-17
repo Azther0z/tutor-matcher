@@ -27,11 +27,11 @@ User (every account; student by default)
  │                 └─ currentProfileVersionId → TutorProfileVersion │
  ├──< TutorProfileVersion ──< TutorProfileVersionCertification       │
  ├─ isAdmin                                                        │
- ├─ Wallet balance ──< Payment / wallet transaction                │
+ ├─ Wallet balance ──< WalletTransaction                │
  ├──< Booking >── Subject                                          │
  │      └── occupies one continuous run of ────────────────────────┘
  │      ├──< Review >── Subject
- │      └──  Payment (lesson payment)
+ │      └──< WalletTransaction (lesson payment / refund / future earning)
  ├──< Message (to another User)
  └──< Report (as reporter · as reported · as handling admin)
  └──< PasswordResetToken (hashed, expiring, single-use)
@@ -47,7 +47,7 @@ Reading the shape:
 - An **Availability** slot belongs to the tutor and is offered for one or more of that
   tutor's subjects through **AvailabilitySubject**.
 - A **Booking** is one student, one subject, and one continuous run of slots.
-- Money lives on the user's wallet balance and moves through **Payment** rows.
+- Available money lives on the user's balance and moves through append-only **WalletTransaction** rows. Paid lesson money stays with the platform until refunded or settled.
 - A **PasswordResetToken** belongs to one user and stores only a SHA-256 hash of the
   emailed token; it expires after 30 minutes and is marked used after a successful reset.
 
@@ -246,23 +246,42 @@ transaction. Existing snapshots and booking totals are never rewritten by a subj
 Booking responses fall back to the live subject only for legacy bookings until their
 first subject edit. Values overwritten before this feature are not reconstructible.
 
-### payments
+### wallet_transactions
 
-The wallet-transaction table.
+Replaces `payments`, `PaymentType` and `PaymentStatus` per the approved
+[ledger decision](sources/tutormatcher-wallet-ledger-decision.md) and
+[implementation guide](sources/tutormatcher-wallet-ledger-implementation.md).
 
-| Column       | Type          | Constraints                                                | Notes                                          |
-| ------------ | ------------- | ---------------------------------------------------------- | ---------------------------------------------- |
-| payment_id   | SERIAL        | PK                                                         |                                                |
-| type         | PaymentType   | NOT NULL                                                   | `TRANSFER`, `REFUND`, `PAYOUT`                 |
-| amount       | NUMERIC(12,2) | NOT NULL                                                   |                                                |
-| status       | PaymentStatus | NOT NULL, DEFAULT `PENDING`                                | `PENDING`, `HOLDING`, `COMPLETED`, `CANCELLED` |
-| created_at   | TIMESTAMP     | NOT NULL, DEFAULT now()                                    |                                                |
-| completed_at | TIMESTAMP     | NULL                                                       | Settlement time                                |
-| from_user_id | INT           | NOT NULL, FK → users.user_id, ON DELETE RESTRICT           |                                                |
-| to_user_id   | INT           | NOT NULL, FK → users.user_id, ON DELETE RESTRICT           |                                                |
-| booking_id   | INT           | UNIQUE, NULL, FK → bookings.booking_id, ON DELETE SET NULL | Set for a lesson payment                       |
+| Column                | Type                  | Constraints                              | Meaning                                                                                  |
+| --------------------- | --------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
+| wallet_transaction_id | UUID                  | PK                                       | Prisma `id`; top-up request reference                                                    |
+| type                  | WalletTransactionType | NOT NULL                                 | Type determines the sign                                                                 |
+| amount                | NUMERIC(12,2)         | NOT NULL                                 | Positive magnitude; shared writer rejects negative/fractional-cent values and skips zero |
+| balance_after         | NUMERIC(12,2)         | NOT NULL                                 | Available balance immediately after this movement                                        |
+| created_at            | TIMESTAMP             | NOT NULL, DEFAULT now()                  | Time money moved                                                                         |
+| user_id               | UUID                  | NOT NULL, FK → users, ON DELETE RESTRICT | Exactly one wallet owner                                                                 |
+| booking_id            | UUID                  | NULL, FK → bookings, ON DELETE RESTRICT  | Lesson payment, refund or future lesson earning                                          |
 
-Indexes: `from_user_id`, `to_user_id`.
+Unique: `(booking_id, type)`. Index: `(user_id, created_at)`.
+There is no status, direction, completed time or from/to pair. Rows are immutable in
+application code and created only on successful money movement. Direct SQL is not
+protected by an append-only trigger or positive-amount CHECK; the shared writer is
+the enforcement boundary.
+
+All runtime balance changes use the shared writer inside a serializable transaction.
+A conditional debit cannot spend more than the available balance. The matching booking
+status change commits or rolls back with the balance and row. Creating, expiring or
+cancelling an unpaid booking creates no row. Paying uses `Booking.totalAmount`.
+Refunds append a new row without changing the lesson payment. BookingStatus is unchanged.
+The booking API's legacy `payment.status` is derived presentation compatibility, not
+a stored ledger status.
+
+PAY-1 implements simulated TOP_UP plus existing LESSON_PAYMENT/REFUND paths.
+LESSON_EARNING and PAYOUT are enum values for separate future workflows. The wallet
+dashboard and calculated pending earnings are not implemented by this change.
+
+Do not synchronize an existing populated database with an unattended destructive
+`db push`. See [safe rollout](change/pay-1-wallet-ledger/design.md).
 
 ### reviews
 
@@ -310,12 +329,11 @@ Indexes: `admin_user_id`, `reporter_user_id`, `reported_user_id`.
 
 ### Enums
 
-| Enum                        | Values                                                  |
-| --------------------------- | ------------------------------------------------------- |
-| `TutorStatus`               | `UNPUBLISHED`, `PUBLISHED`                              |
-| `TutorProfileVersionStatus` | `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED` |
-| `PaymentType`               | `REFUND`, `PAYOUT`, `TRANSFER`                          |
-| `PaymentStatus`             | `PENDING`, `HOLDING`, `COMPLETED`, `CANCELLED`          |
+| Enum                        | Values                                                           |
+| --------------------------- | ---------------------------------------------------------------- |
+| `TutorStatus`               | `UNPUBLISHED`, `PUBLISHED`                                       |
+| `TutorProfileVersionStatus` | `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED`          |
+| `WalletTransactionType`     | `TOP_UP`, `LESSON_PAYMENT`, `LESSON_EARNING`, `REFUND`, `PAYOUT` |
 
 ---
 
@@ -325,20 +343,20 @@ These come from [`user-journeys.md`](user-journeys.md#invariants). Each one has 
 enforced somewhere — a constraint, a transaction, or a service-layer check — and the
 "Enforced today" column says where it stands.
 
-| #   | Rule                                                                                 | Enforced today                                                              |
-| --- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| 1   | A rating is between 1 and 5                                                          | ✅ CHECK `reviews_rating_stars_range`                                       |
-| 2   | An availability slot is locked to at most one booking                                | ✅ one nullable booking FK per slot; atomic serializable claims             |
-| 3   | A booking has at most one lesson payment                                             | ✅ `payments.booking_id` UNIQUE                                             |
-| 4   | A user's subjects, bookings, and payments survive referential deletes                | ✅ `ON DELETE RESTRICT` across the domain                                   |
-| 5   | A booking occupies a **continuous run** of slots for one subject                     | ✅ booking service validates assigned, consecutive slots on one Bangkok day |
-| 6   | A booking carries a lifecycle status (payment due → confirmed → completed/cancelled) | ✅ `BookingStatus`; completion processing remains separate work             |
-| 7   | Booking price is fixed at creation from the subject rate and the slot count          | ✅ stored total and PROF-6 subject snapshots                                |
-| 8   | A slot cannot be double-sold — the check happens before payment capture              | ✅ serializable booking claims and payment confirmation                     |
-| 9   | Exactly one review per booking                                                       | ❌ `reviews.booking_id` is not UNIQUE                                       |
-| 10  | Every money movement records direction, status, and resulting balance                | ⚠️ partial — see gap G4                                                     |
-| 11  | Available and pending balance are distinguishable                                    | ❌ single `users.balance` — see gap G5                                      |
-| 12  | A tutor cannot open two overlapping slots                                            | ✅ PROF-3: unique Tutor/start plus half-hour grid validation                |
+| #   | Rule                                                                                    | Enforced today                                                                                         |
+| --- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 1   | A rating is between 1 and 5                                                             | ✅ CHECK `reviews_rating_stars_range`                                                                  |
+| 2   | An availability slot is locked to at most one booking                                   | ✅ one nullable booking FK per slot; atomic serializable claims                                        |
+| 3   | A booking has at most one lesson payment                                                | ✅ `wallet_transactions(booking_id, type)` UNIQUE                                                      |
+| 4   | A user's subjects, bookings, and payments survive referential deletes                   | ✅ `ON DELETE RESTRICT` across the domain                                                              |
+| 5   | A booking occupies a **continuous run** of slots for one subject                        | ✅ booking service validates assigned, consecutive slots on one Bangkok day                            |
+| 6   | A booking carries a lifecycle status (payment due → confirmed → completed/cancelled)    | ✅ `BookingStatus`; completion processing remains separate work                                        |
+| 7   | Booking price is fixed at creation from the subject rate and the slot count             | ✅ stored total and PROF-6 subject snapshots                                                           |
+| 8   | A slot cannot be double-sold — the check happens before payment capture                 | ✅ serializable booking claims and payment confirmation                                                |
+| 9   | Exactly one review per booking                                                          | ❌ `reviews.booking_id` is not UNIQUE                                                                  |
+| 10  | Each successful movement records one owner, type, positive amount and resulting balance | ✅ shared atomic writer; no status/direction columns                                                   |
+| 11  | Available balance excludes pending tutor earnings                                       | ✅ no tutor credit at payment; calculated pending-earnings dashboard and settlement remain future work |
+| 12  | A tutor cannot open two overlapping slots                                               | ✅ PROF-3: unique Tutor/start plus half-hour grid validation                                           |
 
 ---
 
@@ -352,15 +370,15 @@ that the current schema is wrong to have shipped.
 
 ### Gaps that block a documented journey
 
-| ID  | Gap                                                                                                                                                                                                           | Journey it blocks                               |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| G1  | Resolved in existing booking code: a Booking has multiple Availability rows and validates a continuous block.                                                                                                 | §3 Booking — multi-slot blocks, duration, price |
-| G2  | Status storage is implemented by `BookingStatus`; automatic completion remains separate work.                                                                                                                 | §3 Booking, `/bookings` tabs, §5 completion     |
-| G3  | Resolved in existing booking/PROF-6 code: stored start, end, total and subject snapshots preserve the agreement.                                                                                              | §3 Payment due, §4 ledger amounts               |
-| G4  | `PaymentType` has no `TOPUP` or `EARNING` value, and there is no `direction` or `balance_after`. A PromptPay top-up and a bank payout also have no counterparty user to put in `to_user_id` / `from_user_id`. | §4 Money — the whole `/wallet` ledger           |
-| G5  | One `users.balance` column, so pending earnings cannot be separated from available balance. (`PaymentStatus.HOLDING` looks intended for this but is not wired to a balance split.)                            | §4 pending earnings, payout eligibility         |
-| G6  | Resolved in existing booking code: `zoom_meeting_url` is nullable while awaiting lesson delivery.                                                                                                             | §3 Step 2                                       |
-| G7  | Resolved by PROF-3: every availability has a required Tutor owner, an open state and unique Tutor/start.                                                                                                      | §7 Availability editor                          |
+| ID  | Gap                                                                                                                                                  | Journey it blocks                               |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| G1  | Resolved in existing booking code: a Booking has multiple Availability rows and validates a continuous block.                                        | §3 Booking — multi-slot blocks, duration, price |
+| G2  | Status storage is implemented by `BookingStatus`; automatic completion remains separate work.                                                        | §3 Booking, `/bookings` tabs, §5 completion     |
+| G3  | Resolved in existing booking/PROF-6 code: stored start, end, total and subject snapshots preserve the agreement.                                     | §3 Payment due, §4 ledger amounts               |
+| G4  | Storage resolved: WalletTransaction has all five types, one owner and balance_after. Full wallet history UI remains future work.                     | §4 Money                                        |
+| G5  | Storage resolved: pending earnings are derived from CONFIRMED bookings, not ledger rows. Calculation UI and settlement are not implemented in PAY-1. | §4 pending earnings                             |
+| G6  | Resolved in existing booking code: `zoom_meeting_url` is nullable while awaiting lesson delivery.                                                    | §3 Step 2                                       |
+| G7  | Resolved by PROF-3: every availability has a required Tutor owner, an open state and unique Tutor/start.                                             | §7 Availability editor                          |
 
 ### Entities the product needs that do not exist yet
 
@@ -379,7 +397,7 @@ that the current schema is wrong to have shipped.
 ## Indexes
 
 Present today: `subjects(tutor_id)`, `bookings(user_id)`, `bookings(subject_id)`,
-`payments(from_user_id)`, `payments(to_user_id)`, `reviews(user_id)`,
+`wallet_transactions(user_id, created_at)`, `reviews(user_id)`,
 `reviews(subject_id)`, `reviews(booking_id)`,
 `tutor_profile_version_certifications(profile_version_id)`,
 `tutor_profile_versions(user_id, created_at)`,
@@ -389,17 +407,17 @@ Present today: `subjects(tutor_id)`, `bookings(user_id)`, `bookings(subject_id)`
 `users(email)`, `users(tutor_id)`, `tutors(current_profile_version_id)`, `password_reset_tokens(token_hash)`,
 `password_reset_tokens(user_id)`,
 `availabilities(tutor_id, started_at)` (unique), and
-`payments(booking_id)`.
+`wallet_transactions(booking_id, type)`.
 
 Access patterns from the journeys that are not covered yet:
 
-| Query                                      | Suggested index                                                                     |
-| ------------------------------------------ | ----------------------------------------------------------------------------------- |
-| Subject page availability for a date range | Covered for Tutor/date by PROF-3's unique `availabilities(tutor_id, started_at)`    |
-| Open slots offered for one subject         | `availability_subjects(subject_id)`                                                 |
-| A user's wallet ledger, newest first       | `payments(from_user_id, created_at DESC)` / `payments(to_user_id, created_at DESC)` |
-| `/bookings` tabs by status                 | `bookings(user_id, status)` once G2 is closed                                       |
-| Search by rating and price                 | aggregate rating on the tutor or subject, plus `subjects(hourly_rate)`              |
+| Query                                      | Suggested index                                                                  |
+| ------------------------------------------ | -------------------------------------------------------------------------------- |
+| Subject page availability for a date range | Covered for Tutor/date by PROF-3's unique `availabilities(tutor_id, started_at)` |
+| Open slots offered for one subject         | `availability_subjects(subject_id)`                                              |
+| A user's wallet ledger, newest first       | Covered by `wallet_transactions(user_id, created_at)`                            |
+| `/bookings` tabs by status                 | `bookings(user_id, status)` once G2 is closed                                    |
+| Search by rating and price                 | aggregate rating on the tutor or subject, plus `subjects(hourly_rate)`           |
 
 ---
 

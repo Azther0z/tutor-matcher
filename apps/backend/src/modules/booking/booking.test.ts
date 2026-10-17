@@ -128,19 +128,7 @@ describe("trial booking rules", () => {
         },
       },
       availabilities: [],
-      payments: [
-        {
-          id: SLOT_B,
-          type: "TRANSFER",
-          amount: new Prisma.Decimal("75.00"),
-          status: "PENDING",
-          createdAt: now,
-          completedAt: null,
-          fromUserId: SUBJECT_ID,
-          toUserId: SLOT_B,
-          bookingId: "44444444-4444-4444-8444-444444444444",
-        },
-      ],
+      walletTransactions: [],
     } satisfies Parameters<typeof mapBookingResponse>[0];
     const booking = mapBookingResponse(record, SUBJECT_ID, now);
 

@@ -8,17 +8,12 @@ datasource db {
   provider = "postgresql"
 }
 
-enum PaymentType {
+enum WalletTransactionType {
+  TOP_UP
+  LESSON_PAYMENT
+  LESSON_EARNING
   REFUND
   PAYOUT
-  TRANSFER
-}
-
-enum PaymentStatus {
-  PENDING
-  HOLDING
-  COMPLETED
-  CANCELLED
 }
 
 enum TutorStatus {
@@ -92,8 +87,7 @@ model User {
   sentMessages     Message[] @relation("MessagesSent")
   receivedMessages Message[] @relation("MessagesReceived")
 
-  paymentsSent     Payment[] @relation("PaymentsFrom")
-  paymentsReceived Payment[] @relation("PaymentsTo")
+  walletTransactions WalletTransaction[]
 
   reportsFiledAsAdmin Report[] @relation("ReportsHandledByAdmin")
   reportsMade         Report[] @relation("ReportsMadeByReporter")
@@ -275,9 +269,9 @@ model Booking {
   subjectId String  @map("subject_id") @db.Uuid
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
-  availabilities Availability[]
-  payments       Payment[]
-  reviews        Review[]
+  availabilities     Availability[]
+  walletTransactions WalletTransaction[]
+  reviews            Review[]
 
   @@index([userId])
   @@index([subjectId])
@@ -286,27 +280,20 @@ model Booking {
   @@map("bookings")
 }
 
-model Payment {
-  id          String        @id @default(uuid()) @map("payment_id") @db.Uuid
-  type        PaymentType
-  amount      Decimal       @db.Decimal(12, 2)
-  status      PaymentStatus @default(PENDING)
-  createdAt   DateTime      @default(now()) @map("created_at")
-  completedAt DateTime?     @map("completed_at")
+model WalletTransaction {
+  id           String                @id @default(uuid()) @map("wallet_transaction_id") @db.Uuid
+  type         WalletTransactionType
+  amount       Decimal               @db.Decimal(12, 2)
+  balanceAfter Decimal               @map("balance_after") @db.Decimal(12, 2)
+  createdAt    DateTime              @default(now()) @map("created_at")
+  userId       String                @map("user_id") @db.Uuid
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  bookingId    String?               @map("booking_id") @db.Uuid
+  booking      Booking?              @relation(fields: [bookingId], references: [id], onDelete: Restrict)
 
-  fromUserId String? @map("from_user_id") @db.Uuid
-  fromUser   User?   @relation("PaymentsFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
-
-  toUserId String? @map("to_user_id") @db.Uuid
-  toUser   User?   @relation("PaymentsTo", fields: [toUserId], references: [id], onDelete: Restrict)
-
-  bookingId String?  @map("booking_id") @db.Uuid
-  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-
-  @@index([fromUserId])
-  @@index([toUserId])
-  @@index([bookingId])
-  @@map("payments")
+  @@unique([bookingId, type])
+  @@index([userId, createdAt])
+  @@map("wallet_transactions")
 }
 
 model Review {
