@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import SearchPage from "./page";
 import { jsonResponse } from "@/src/test/tutor-profile-fixtures";
 import type { SubjectSearchResult, TutorSearchResponse } from "@/src/lib/discovery-api";
+import { setAuthToken } from "@/src/lib/auth";
 
 let mockParams = new URLSearchParams();
 const mockReplace = jest.fn();
@@ -26,6 +27,7 @@ function subject(overrides: Partial<SubjectSearchResult> = {}): SubjectSearchRes
     rating: 4.5,
     reviewCount: 2,
     classesTaught: 3,
+    nextAvailableAt: null,
     tutor: {
       id: "tutor-anong",
       firstName: "Anong",
@@ -44,6 +46,7 @@ function page(results: SubjectSearchResult[], extra: Partial<TutorSearchResponse
     pageSize: 12,
     total: results.length,
     totalPages: 1,
+    recommendationMode: "fallback",
     ...extra,
   };
 }
@@ -146,6 +149,76 @@ describe("SearchPage (DISC-1)", () => {
     expect(satPhysics).toHaveTextContent("New subject");
     expect(satPhysics).toHaveTextContent("PhysicsMathematics");
     expect(satPhysics).toHaveTextContent("฿860.00 / hr");
+  });
+
+  it("sends the current token and shows personalized recommendation context and Bangkok availability", async () => {
+    act(() => setAuthToken("student-token"));
+    respondWith(
+      jsonResponse(
+        page([subject({ nextAvailableAt: "2026-10-17T03:00:00.000Z" })], {
+          recommendationMode: "personalized",
+        })
+      )
+    );
+    render(<SearchPage />);
+
+    expect(await screen.findByText("Recommended for you")).toBeInTheDocument();
+    expect(screen.getByText(/Oct 17, 2026, 10:00 AM \(Bangkok time\)/)).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.find(([path]) => String(path).startsWith("/api/discovery/tutors"))?.[1]
+    ).toMatchObject({ headers: { Authorization: "Bearer student-token" } });
+  });
+
+  it("offers profile setup when a signed-in Student receives fallback recommendations", async () => {
+    act(() => setAuthToken("student-token"));
+    respondWith(jsonResponse(page([subject()])));
+    render(<SearchPage />);
+
+    expect(
+      await screen.findByRole("link", { name: "Add learning areas to your profile" })
+    ).toHaveAttribute("href", "/settings/student");
+    expect(screen.getByText("No availability in the next 30 days")).toBeInTheDocument();
+  });
+
+  it("clears and reloads discovery after the current account changes", async () => {
+    respondWith(
+      jsonResponse(page([subject()])),
+      jsonResponse(page([subject({ id: "new-account-subject", name: "New account result" })]))
+    );
+    render(<SearchPage />);
+    expect(await screen.findByText("1 subject found")).toBeInTheDocument();
+
+    act(() => setAuthToken("new-student-token"));
+    await waitFor(() => expect(searchCalls()).toHaveLength(2));
+    expect(
+      fetchMock.mock.calls.filter(([path]) =>
+        String(path).startsWith("/api/discovery/tutors")
+      )[1][1]
+    ).toMatchObject({ headers: { Authorization: "Bearer new-student-token" } });
+    expect(
+      await screen.findByRole("link", { name: "New account result with Anong Pattana" })
+    ).toBeInTheDocument();
+  });
+
+  it("clears an expired token and reloads public fallback recommendations", async () => {
+    act(() => setAuthToken("expired-token"));
+    fetchMock.mockImplementation((path: string, options?: RequestInit) => {
+      if (path === "/api/discovery/learning-areas") {
+        return Promise.resolve(jsonResponse({ learningAreas: [mathematics] }));
+      }
+      if (path === "/api/discovery/price-range") {
+        return Promise.resolve(jsonResponse({ priceRange }));
+      }
+      if ((options?.headers as Record<string, string> | undefined)?.Authorization) {
+        return Promise.resolve(jsonResponse({ message: "Invalid or expired token" }, 401));
+      }
+      return Promise.resolve(jsonResponse(page([subject()])));
+    });
+    render(<SearchPage />);
+
+    expect(await screen.findByText("Recommended tutors")).toBeInTheDocument();
+    await waitFor(() => expect(searchCalls()).toHaveLength(2));
+    expect(localStorage.getItem("authToken")).toBeNull();
   });
 
   it("re-filters immediately and goes back to page 1 when a filter changes", async () => {

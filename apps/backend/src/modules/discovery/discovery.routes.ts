@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { validate } from "../../middleware/validate.ts";
+import { optionalAuth } from "../../middleware/auth.ts";
 import {
   getLearningAreas,
   getSearchPriceRange,
@@ -23,6 +24,7 @@ export const discoverySearchRateLimiter = rateLimit({
 publicDiscoveryRouter.get(
   "/tutors",
   discoverySearchRateLimiter,
+  optionalAuth,
   validate(tutorSearchQuerySchema, "query"),
   getTutorSearch
 );

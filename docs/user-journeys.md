@@ -170,12 +170,25 @@ most expensive listed subject, rounded outward to hundreds (thousands once price
 ฿10,000); at either end it stops limiting that side. Minimum rating is five stars picked in
 half steps, and picking the selected value again clears it.
 
-Sorting is Recommended (classes taught, then review count, then rating), Price low to
-high, Price high to low, and Top rated, all using the subject's own numbers. A class counts
-as taught when its booking is completed, or confirmed and already over. A subject without
-reviews shows as New and drops out once a minimum rating is set. Each card shows the
+Sorting is Recommended, Price low to high, Price high to low, and Top rated. Recommended
+uses the signed-in Student's selected learning areas when available: 50% area relevance,
+30% subject rating and 20% next availability. Relevance is the share of the Student's
+selected areas matched by the Subject; rating is the subject's average divided by five.
+Availability is `max(0, 1 − wait / 30 days)` for the next open, unbooked slot assigned to
+that Subject. Missing ratings and slots score zero. Subjects without a slot in the next
+30 days remain in results. When the visitor is logged out, has no Student profile, or has
+not selected learning areas, Recommended uses 60% rating and 40% availability.
+
+Recommendation scores are calculated before pagination. Ties use review count, Subject
+name, Tutor name and Subject ID for a stable order. Price and Top rated keep their own
+sort behavior. A class counts as taught when its booking is completed, or confirmed and
+already over. A subject without reviews shows as New and drops out once a minimum rating
+is set. Each card shows the
 subject name, the tutor's name and **Verified** badge, rating and review count, classes
-taught, the start of the subject description, its learning areas, format, and hourly rate.
+taught, the start of the subject description, its learning areas, format, hourly rate and
+next available time in Bangkok time. Recommended results are private and not shared through
+HTTP caches. A signed-in Student in fallback mode can open Student settings to add learning
+areas. Goals and preferred learning periods do not currently affect recommendations.
 Only subjects of published tutors with an approved profile are listed.
 
 Changing a filter re-filters immediately (typed and dragged fields wait for a short pause)

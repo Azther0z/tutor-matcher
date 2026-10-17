@@ -10,7 +10,16 @@ import {
 } from "./discovery.service.ts";
 
 export async function getTutorSearch(req: Request, res: Response) {
-  res.status(200).json(await searchTutorSubjects(tutorSearchQuerySchema.parse(req.query)));
+  res.vary("Authorization");
+  const result = await searchTutorSubjects(
+    tutorSearchQuerySchema.parse(req.query),
+    new Date(),
+    req.user?.sub
+  );
+  if (result.recommendationMode === "personalized") {
+    res.setHeader("Cache-Control", "private, no-store");
+  }
+  res.status(200).json(result);
 }
 
 export async function getSearchPriceRange(_req: Request, res: Response) {
