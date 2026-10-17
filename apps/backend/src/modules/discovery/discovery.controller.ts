@@ -1,6 +1,25 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { getTutorSummary, TutorNotFoundError } from "./discovery.service.ts";
+import { tutorSearchQuerySchema } from "./discovery.schema.ts";
+import {
+  getPriceRange,
+  getTutorSummary,
+  listLearningAreas,
+  searchTutorSubjects,
+  TutorNotFoundError,
+} from "./discovery.service.ts";
+
+export async function getTutorSearch(req: Request, res: Response) {
+  res.status(200).json(await searchTutorSubjects(tutorSearchQuerySchema.parse(req.query)));
+}
+
+export async function getSearchPriceRange(_req: Request, res: Response) {
+  res.status(200).json({ priceRange: await getPriceRange() });
+}
+
+export async function getLearningAreas(_req: Request, res: Response) {
+  res.status(200).json({ learningAreas: await listLearningAreas() });
+}
 
 export async function getTutorById(req: Request, res: Response) {
   const parsedTutorId = z.string().uuid().safeParse(req.params.id);

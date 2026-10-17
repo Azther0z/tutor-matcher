@@ -47,7 +47,7 @@ describe("LoginPage", () => {
     render(<LoginPage />);
     submitLogin();
 
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/dashboard/tutor"));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/dashboard?tab=tutor"));
   });
 
   it("honors an explicit ?next= redirect even for an approved Tutor", async () => {

@@ -23,6 +23,7 @@ Terms below follow [`CONTEXT.md`](../CONTEXT.md).
 ```
 User (every account; student by default)
  ├─ tutorId  ──> Tutor ──< Subject ──< AvailabilitySubject >── Availability (30-min slot)
+ │                 │          └──< SubjectLearningArea >── LearningArea (fixed list)
  │                 └─ currentProfileVersionId → TutorProfileVersion │
  ├──< TutorProfileVersion ──< TutorProfileVersionCertification       │
  ├─ isAdmin                                                        │
@@ -40,7 +41,9 @@ Reading the shape:
 
 - A **User** is one account. `isAdmin` layers an administrative capability onto it;
   is no separate student or tutor account record.
-- A **Subject** is owned by a tutor and is what a student books.
+- A **Subject** is owned by a tutor and is what a student books. It is tagged with one to
+  three **LearningAreas** through **SubjectLearningArea**; students pick from the same list
+  at onboarding, so search and recommendations can match the two.
 - An **Availability** slot belongs to the tutor and is offered for one or more of that
   tutor's subjects through **AvailabilitySubject**.
 - A **Booking** is one student, one subject, and one continuous run of slots.
@@ -154,6 +157,31 @@ and 2000 characters. Description remains nullable in storage for legacy offering
 The API accepts positive THB rate strings with at most two decimals within the column's
 precision. Subject names are not unique. Saves are owner-only and immediate, independent
 of Tutor profile review and publication; no subject review or removal lifecycle is added.
+
+DISC-1 tags every subject with one to three learning areas. The name stays free text and
+is the offering's title; the areas are only a category for discovery. Create and update
+replace the full set and reject an empty list, more than three areas, or an unknown id.
+Bookings do not snapshot the areas.
+
+### learning_areas
+
+| Column           | Type | Constraints | Notes                               |
+| ---------------- | ---- | ----------- | ----------------------------------- |
+| learning_area_id | UUID | PK          |                                     |
+| name             | TEXT | UNIQUE      | Fixed list, e.g. Mathematics, Other |
+
+The team curates this list; users cannot add areas. `apps/backend/prisma/seed-prod.ts` upserts
+it in every environment, and the mock seed runs it first. Students link to it through
+`student_learning_areas` and subjects through `subject_learning_areas`.
+
+### subject_learning_areas
+
+| Column           | Type | Constraints                                                   | Notes |
+| ---------------- | ---- | ------------------------------------------------------------- | ----- |
+| subject_id       | UUID | PK (with learning_area_id), FK → subjects, ON DELETE CASCADE  |       |
+| learning_area_id | UUID | PK (with subject_id), FK → learning_areas, ON DELETE RESTRICT |       |
+
+Index: `learning_area_id`. The one-to-three limit is enforced by the subject API, not the database.
 
 ### availabilities
 
@@ -426,7 +454,9 @@ comparisons, and the embedded-document schema — read the immutable source dire
 ## Changing This Schema
 
 1. Change `apps/backend/prisma/schema.prisma`, synchronize disposable databases with
-   `prisma db push`, and update the seed in `apps/backend/prisma/seed.ts`.
+   `prisma db push`, and update the seeds: reference data every environment needs in
+   `apps/backend/prisma/seed-prod.ts` (run on every backend start), local fixtures in
+   `apps/backend/prisma/seed-mock.ts`.
 2. Update the tables above and close the matching gap row in the same change.
 3. If the change alters product behaviour rather than only storage, update
    [`user-journeys.md`](user-journeys.md) and [`CONTEXT.md`](../CONTEXT.md) too.

@@ -115,6 +115,7 @@ model LearningArea {
   id       String                @id @default(uuid()) @map("learning_area_id") @db.Uuid
   name     String                @unique
   students StudentLearningArea[]
+  subjects SubjectLearningArea[]
 
   @@map("learning_areas")
 }
@@ -197,9 +198,22 @@ model Subject {
   availabilitySubjects AvailabilitySubject[]
   bookings             Booking[]
   reviews              Review[]
+  learningAreas        SubjectLearningArea[]
 
   @@index([tutorId])
   @@map("subjects")
+}
+
+// DISC-1: a subject is tagged with one to three learning areas for discovery.
+model SubjectLearningArea {
+  subjectId      String       @map("subject_id") @db.Uuid
+  learningAreaId String       @map("learning_area_id") @db.Uuid
+  subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  learningArea   LearningArea @relation(fields: [learningAreaId], references: [id], onDelete: Restrict)
+
+  @@id([subjectId, learningAreaId])
+  @@index([learningAreaId])
+  @@map("subject_learning_areas")
 }
 
 model Availability {

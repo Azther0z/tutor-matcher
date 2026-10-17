@@ -1,4 +1,4 @@
-import type { Subject } from "../../generated/prisma/client.ts";
+import type { Prisma, Subject } from "../../generated/prisma/client.ts";
 
 export const subjectSelect = {
   id: true,
@@ -6,9 +6,13 @@ export const subjectSelect = {
   description: true,
   hourlyRate: true,
   format: true,
-} as const;
+  learningAreas: {
+    select: { learningArea: { select: { id: true, name: true } } },
+    orderBy: { learningArea: { name: "asc" } },
+  },
+} as const satisfies Prisma.SubjectSelect;
 
-export type SubjectSummary = Pick<Subject, keyof typeof subjectSelect>;
+export type SubjectSummary = Prisma.SubjectGetPayload<{ select: typeof subjectSelect }>;
 
 export function mapSubject(subject: SubjectSummary) {
   return {
@@ -17,10 +21,13 @@ export function mapSubject(subject: SubjectSummary) {
     description: subject.description,
     hourlyRate: subject.hourlyRate.toFixed(2),
     format: subject.format,
+    learningAreas: subject.learningAreas.map(({ learningArea }) => learningArea),
   };
 }
 
-export function subjectSnapshot(subject: SubjectSummary) {
+export function subjectSnapshot(
+  subject: Pick<Subject, "name" | "description" | "hourlyRate" | "format">
+) {
   return {
     subjectName: subject.name,
     subjectDescription: subject.description,
