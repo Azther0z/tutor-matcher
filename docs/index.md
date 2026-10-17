@@ -13,21 +13,22 @@ disagree.
 
 ## Where to find things
 
-| You need...                                  | Go to                                                                     |
-| -------------------------------------------- | ------------------------------------------------------------------------- |
-| Product behaviour (routes, rules, flows)     | [`user-journeys.md`](user-journeys.md) — the source of truth              |
-| Product goals, roles, and scope              | [`user-journeys.md`](user-journeys.md#overview-and-scope)                 |
-| What work is planned or in progress          | The GitHub issues and Project board                                       |
-| PAY-1 ledger implementation and safe rollout | [Wallet ledger change](change/pay-1-wallet-ledger/proposal.md)            |
-| PROF-6 implementation decisions and checks   | [Subject management change](change/implement-prof-6-subjects/proposal.md) |
-| PROF-3 implementation decisions and checks   | [Availability change](change/implement-prof-3-availability/proposal.md)   |
-| The database schema and its known gaps       | [`database-schema.md`](database-schema.md)                                |
-| Tech stack, repo layout, deployment          | [`../README.md`](../README.md#architecture)                               |
-| How to run and write tests                   | [`testing.md`](testing.md)                                                |
-| Why a technical decision was made            | [`adr/`](adr/)                                                            |
-| Setup and common commands                    | [`../README.md`](../README.md)                                            |
-| Domain vocabulary                            | [`CONTEXT.md`](../CONTEXT.md)                                             |
-| Raw evidence a doc above was built from      | [`sources/`](sources/) — read-only, see below                             |
+| You need...                                         | Go to                                                                         |
+| --------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Product behaviour (routes, rules, flows)            | [`user-journeys.md`](user-journeys.md) — the source of truth                  |
+| Product goals, roles, and scope                     | [`user-journeys.md`](user-journeys.md#overview-and-scope)                     |
+| What work is planned or in progress                 | The GitHub issues and Project board                                           |
+| PAY-1 ledger implementation and safe rollout        | [Wallet ledger change](change/pay-1-wallet-ledger/proposal.md)                |
+| BOOK-3 Student cancellation and acceptance evidence | [Student cancellation change](change/book-3-student-cancellation/proposal.md) |
+| PROF-6 implementation decisions and checks          | [Subject management change](change/implement-prof-6-subjects/proposal.md)     |
+| PROF-3 implementation decisions and checks          | [Availability change](change/implement-prof-3-availability/proposal.md)       |
+| The database schema and its known gaps              | [`database-schema.md`](database-schema.md)                                    |
+| Tech stack, repo layout, deployment                 | [`../README.md`](../README.md#architecture)                                   |
+| How to run and write tests                          | [`testing.md`](testing.md)                                                    |
+| Why a technical decision was made                   | [`adr/`](adr/)                                                                |
+| Setup and common commands                           | [`../README.md`](../README.md)                                                |
+| Domain vocabulary                                   | [`CONTEXT.md`](../CONTEXT.md)                                                 |
+| Raw evidence a doc above was built from             | [`sources/`](sources/) — read-only, see below                                 |
 
 ## What is authoritative
 
@@ -65,8 +66,8 @@ Things the product needs but does not yet have an answer for:
 - API routes and request/response contracts are not documented separately from the code.
 - The authentication mechanism (JWT vs. session vs. federated login) is not settled — see
   [`../README.md`](../README.md#architecture).
-- The cancellation penalty window, the earnings clearing period, and the platform fee are
-  read off prototype copy and still need product sign-off — see
+- The earnings clearing period, platform fee, and late-cancellation allocation still need
+  product sign-off; BOOK-3's 24-hour / 70% defaults are confirmed — see
   [`user-journeys.md`](user-journeys.md#4--money).
 - Whether lesson rescheduling is in scope at all is still open.
 - File storage for tutor verification documents is not chosen yet.

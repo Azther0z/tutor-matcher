@@ -243,4 +243,22 @@ describe("trial booking rules", () => {
     expect(result.late).toBe(true);
     expect(result.amount.toString()).toBe("70");
   });
+
+  it.each([
+    [24 * 60 * 60_000 + 1, false, "100.05"],
+    [24 * 60 * 60_000, true, "70.04"],
+    [24 * 60 * 60_000 - 1, true, "70.04"],
+  ])(
+    "uses server time at %s milliseconds before the lesson and rounds the wallet refund",
+    (remaining, late, amount) => {
+      const now = new Date("2030-01-01T00:00:00.000Z");
+      const result = cancellationRefund(
+        new Prisma.Decimal("100.05"),
+        new Date(now.getTime() + Number(remaining)),
+        now
+      );
+      expect(result.late).toBe(late);
+      expect(result.amount.toFixed(2)).toBe(amount);
+    }
+  );
 });

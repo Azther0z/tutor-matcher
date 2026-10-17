@@ -43,6 +43,7 @@
 - For AI-assisted Sprint delivery, assign the entire story, including design integration and automated testing, to one fixed two-person pair.
 - Treat `docs/user-journeys.md` as behavioural authority and `apps/backend/prisma/schema.prisma` as the authority for what the database currently contains.
 - Ask before changing the Prisma schema or modifying database data directly.
+- For BOOK-3, the user confirmed a full refund more than 24 hours before the lesson and a 70% refund at exactly 24 hours or less, before the lesson starts.
 - The approved wallet design is the two wallet-ledger Markdown sources, not the PDF: one append-only row per wallet movement, positive amounts signed by type, no status/direction. PAY-1 uses simulated payment and may replace Payment in Prisma plus adapt existing booking payment/refund paths; settlement, payouts and completion automation remain separate work.
 - While Tutor Matcher has no real production database, do not maintain Prisma migration history; synchronize disposable databases from `schema.prisma` with `prisma db push`.
 - Tutor applications and edits use reviewed profile versions. Initial approval creates an unpublished Tutor; edit approval switches its current version while preserving publication and existing lesson/conversation access. Verification documents remain URL references; normal file upload and storage are deferred.

@@ -34,6 +34,35 @@ apps/backend/
 
 ## Commands
 
+### BOOK-3 cancellation acceptance
+
+Booking detail page tests cover reviewed server quotes, failed quote loading and retry,
+failed recovery after terms change, late responses after closing the panel, repeat-submit
+protection, and publishing the returned wallet balance. No refund is claimed for an unpaid
+cancellation. Booking unit tests cover the exact 24-hour boundary and rounding to cents.
+
+`student-cancellation.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true`.
+It refuses any database except `tutor_matcher_book3_test` on loopback. Create that dedicated
+disposable database and synchronize the existing schema before running it; do not point it
+at another database. Its fixtures exercise the real HTTP API and PostgreSQL for both refund
+windows, ownership/authentication, unpaid cancellation, stale quotes, slot release, immutable
+payments, and concurrent/repeated cancellation. Fixture cleanup is restricted to BOOK-3 IDs.
+
+From the repository root, after setting `DATABASE_URL` to that dedicated database:
+
+```powershell
+$env:RUN_DATABASE_INTEGRATION = "true"
+$env:EMAIL_DELIVERY_MODE = "log"
+$env:BOOKING_CANCELLATION_WINDOW_HOURS = "24"
+$env:BOOKING_LATE_REFUND_RATE = "0.7"
+npm.cmd --prefix apps/backend test -- --runInBand student-cancellation.integration.test.ts
+npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/bookings/[id]/page.test.tsx"
+```
+
+The policy is confirmed in [BOOK-3 user evidence](sources/book-3-policy-confirmation.md).
+
+### General commands
+
 Run commands from `apps/backend` unless otherwise noted:
 
 ```bash

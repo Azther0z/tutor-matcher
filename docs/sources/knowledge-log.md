@@ -51,3 +51,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/tutormatcher-wallet-ledger-implementation.md
 - Updated: docs/database-schema.md, docs/user-journeys.md, CONTEXT.md, docs/index.md
 - Scope: PAY-1 simulation and necessary booking compatibility; settlement/payout workflows deferred
+
+## [2026-10-17] ingest | BOOK-3 cancellation policy confirmation
+
+- Disposition: Update; supersedes the prototype's 12-hour cancellation window for BOOK-3
+- Raw: docs/sources/book-3-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Confirmed existing 24-hour / 70% defaults and permission for new local BOOK-3 test data only

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ContinuousSlotPicker } from "@/src/components/continuous-slot-picker";
 import { RequireAuth } from "@/src/components/require-auth";
 import {
@@ -15,6 +15,7 @@ import {
   rescheduleBooking,
 } from "@/src/lib/bookings-api";
 import type { AvailabilitySlot, Booking, CancellationQuote } from "@/src/types/booking";
+import { publishWalletBalance } from "@/src/lib/wallet-api";
 
 const TIME_ZONE = "Asia/Bangkok";
 const money = new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" });
@@ -52,6 +53,8 @@ function BookingDetailContent() {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const quoteRequestId = useRef(0);
+  const cancellationInFlight = useRef(false);
 
   const loadBooking = useCallback(async () => {
     try {
@@ -74,19 +77,40 @@ function BookingDetailContent() {
   const isExpired =
     booking?.status === "CANCELLED" && booking.cancellationReason === "PAYMENT_EXPIRED";
 
-  async function openCancellation() {
-    if (!booking) return;
-    setMode("cancel");
+  async function loadCancellationTerms() {
+    if (!booking) return false;
+    const requestId = ++quoteRequestId.current;
     setQuote(null);
     setMessage(null);
     setQuoteLoading(true);
     try {
-      setQuote(await getCancellationQuote(booking.id));
+      const currentQuote = await getCancellationQuote(booking.id);
+      if (requestId !== quoteRequestId.current) return false;
+      setQuote(currentQuote);
+      return true;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not load cancellation terms.");
+      if (requestId === quoteRequestId.current)
+        setMessage(error instanceof Error ? error.message : "Could not load cancellation terms.");
+      return false;
     } finally {
-      setQuoteLoading(false);
+      if (requestId === quoteRequestId.current) setQuoteLoading(false);
     }
+  }
+
+  async function openCancellation() {
+    if (busy || !booking?.actions.canCancel) return;
+    setMode("cancel");
+    setReason("");
+    await loadCancellationTerms();
+  }
+
+  function keepLesson() {
+    if (cancellationInFlight.current) return;
+    quoteRequestId.current += 1;
+    setMode(null);
+    setQuote(null);
+    setQuoteLoading(false);
+    setMessage(null);
   }
 
   async function openReschedule() {
@@ -128,7 +152,8 @@ function BookingDetailContent() {
   }
 
   async function cancel() {
-    if (!booking || !quote) return;
+    if (!booking || !quote || quoteLoading || cancellationInFlight.current) return;
+    cancellationInFlight.current = true;
     setBusy(true);
     setMessage(null);
     try {
@@ -139,19 +164,32 @@ function BookingDetailContent() {
       setBooking(result.booking);
       setMode(null);
       setQuote(null);
+      if (result.booking.payment.walletBalance !== null)
+        publishWalletBalance(result.booking.payment.walletBalance);
       setMessage(
-        `Booking cancelled. ${money.format(Number(result.refund.amount))} was returned to your balance.`
+        Number(result.refund.amount) > 0
+          ? `Booking cancelled. ${money.format(Number(result.refund.amount))} was returned to your wallet.`
+          : "Booking cancelled. No wallet refund was due."
       );
     } catch (error) {
       if (error instanceof BookingApiError && error.code === "CANCELLATION_QUOTE_CHANGED") {
         const currentQuote = error.details?.currentQuote;
-        if (isCancellationQuote(currentQuote)) setQuote(currentQuote);
-        else setQuote(await getCancellationQuote(booking.id));
-        setMessage("The cancellation terms changed. Review the updated refund before confirming.");
+        setQuote(null);
+        if (isCancellationQuote(currentQuote)) {
+          setQuote(currentQuote);
+          setMessage(
+            "The cancellation terms changed. Review the updated refund before confirming."
+          );
+        } else if (await loadCancellationTerms()) {
+          setMessage(
+            "The cancellation terms changed. Review the updated refund before confirming."
+          );
+        }
       } else {
         setMessage(error instanceof Error ? error.message : "Could not cancel this booking.");
       }
     } finally {
+      cancellationInFlight.current = false;
       setBusy(false);
     }
   }
@@ -307,6 +345,7 @@ function BookingDetailContent() {
             <div className="mt-4 grid gap-2">
               {booking.actions.canReschedule && (
                 <button
+                  disabled={busy}
                   onClick={() => void openReschedule()}
                   className="h-10 rounded-full border border-zinc-300 font-medium"
                 >
@@ -315,6 +354,7 @@ function BookingDetailContent() {
               )}
               {booking.actions.canCancel && (
                 <button
+                  disabled={busy || quoteLoading}
                   onClick={() => void openCancellation()}
                   className="h-10 rounded-full border border-red-200 font-medium text-red-700"
                 >
@@ -331,6 +371,16 @@ function BookingDetailContent() {
           <h2 className="text-lg font-semibold">Cancel this lesson?</h2>
           {quoteLoading && (
             <p className="mt-2 text-sm text-zinc-600">Loading cancellation terms…</p>
+          )}
+          {!quoteLoading && !quote && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void loadCancellationTerms()}
+              className="mt-3 text-sm font-semibold text-red-700 underline disabled:opacity-50"
+            >
+              Retry cancellation terms
+            </button>
           )}
           {quote && (
             <>
@@ -362,6 +412,8 @@ function BookingDetailContent() {
           <label className="mt-4 block text-sm font-medium">
             Reason <span className="font-normal text-zinc-500">(optional)</span>
             <textarea
+              maxLength={500}
+              disabled={busy}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               rows={3}
@@ -370,13 +422,14 @@ function BookingDetailContent() {
           </label>
           <div className="mt-4 flex gap-3">
             <button
-              onClick={() => setMode(null)}
+              disabled={busy}
+              onClick={keepLesson}
               className="h-10 rounded-full border border-zinc-300 px-5"
             >
               Keep lesson
             </button>
             <button
-              disabled={busy || !quote}
+              disabled={busy || quoteLoading || !quote}
               onClick={() => void cancel()}
               className="h-10 rounded-full bg-red-600 px-5 font-semibold text-white disabled:opacity-50"
             >
