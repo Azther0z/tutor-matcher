@@ -105,7 +105,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
         // An approved Tutor has no application to manage. Only the initial load redirects, so a
         // pending applicant who refreshes into approval still sees the approved result here.
         if (enrollment && result.tutor && reload === 0) {
-          replace("/dashboard/tutor");
+          replace("/dashboard?tab=tutor");
         }
         setData(result);
         setSubjects(result.tutor?.subjects ?? []);
@@ -402,7 +402,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                 Manage your Tutor profile
               </Link>{" "}
               or{" "}
-              <Link href="/dashboard/tutor" className="underline">
+              <Link href="/dashboard?tab=tutor" className="underline">
                 open your Tutor dashboard
               </Link>
               .

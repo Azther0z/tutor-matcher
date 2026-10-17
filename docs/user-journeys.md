@@ -101,8 +101,8 @@ Guards run before render, not after.
 | `/forgot-password`         | Request a password reset link                                           | Public         |
 | `/reset-password?token=…`  | Validate a reset link and choose a new password                         | Public         |
 | `/(auth)/enroll-tutor`     | Tutor application: documents, introduction video, submit, pending state | Requires login |
-| `/dashboard`               | Student and Tutor dashboards, selected with tabs                        | Requires login |
-| `/dashboard/tutor`         | Tutor dashboard — classes, earnings, bookings, subjects, availability   | Role: tutor    |
+| `/dashboard`               | Student dashboard; approved Tutors also get a Tutor dashboard tab       | Requires login |
+| `/dashboard/tutor`         | Compatibility redirect to `/dashboard?tab=tutor`                        | Redirect       |
 | `/bookings`                | All bookings, tabbed by status                                          | Requires login |
 | `/bookings/s/:subjectId`   | Subject booking — pick a date and a block of slots (no booking yet)     | Requires login |
 | `/bookings/:id`            | One booking — payment, confirmation, meeting link, review               | Requires login |
@@ -123,11 +123,12 @@ Guards run before render, not after.
    `/(auth)/login?next=<original route>` and returns there after logging in.
    _(Verified: logging out and opening `/bookings` redirects to
    `/(auth)/login?next=bookings.html`.)_
-2. A logged-in user who is not an approved tutor opening a `Role: tutor` route is sent
-   to `/(auth)/enroll-tutor`.
-3. An approved tutor opening `/(auth)/enroll-tutor` is sent to `/dashboard/tutor`.
-4. Until a user is approved, tutor links rendered on any page point at the tutor
-   application instead of the tutor page.
+2. A logged-in user who is not an approved Tutor sees only the Student dashboard.
+   Requesting `/dashboard?tab=tutor` does not expose the Tutor tab or its tools. A user
+   opening `/settings/tutor` before approval is sent to `/(auth)/enroll-tutor`.
+3. An approved Tutor opening `/(auth)/enroll-tutor` is sent to `/dashboard?tab=tutor`.
+4. The navbar shows **Become a tutor** for Student accounts and applicants; approved
+   Tutors and admins do not see that link.
 5. Public routes render for logged-out visitors; the header shows **Log in / Sign up**
    instead of the wallet balance and avatar menu.
 
@@ -358,8 +359,10 @@ Related stories: US6-1 … US6-3.
    cancelled submission** explicitly copies its content into a new saved draft
    with a new ID; the cancelled submission and other drafts remain unchanged.
    The page shows the pending documents and introduction video separately from drafts.
-4. While pending the user is still a student: `/dashboard/tutor` and `/settings/tutor`
-   bounce back to the application.
+4. While pending the user is still a Student: the Tutor tab is absent from `/dashboard`,
+   and `/settings/tutor` bounces back to the application. The legacy `/dashboard/tutor`
+   URL redirects to `/dashboard?tab=tutor`, where the user still sees only the Student
+   dashboard.
 5. An admin compares proposed and current content at `/admin/tutor-requests`. Initial
    approval creates a Tutor as **unpublished**, linked to the approved version on the
    same User account, and grants a **Verified** badge. The tutor chooses when to publish.
@@ -370,7 +373,7 @@ Related stories: US6-1 … US6-3.
    admin sees which file and rejects with a reason instead. A URL without an extension is left
    to the admin to check.
 6. After approval, the application shows the approved Tutor and links to Tutor settings
-   and the dashboard. The user chooses when to publish.
+   and `/dashboard?tab=tutor`. The user chooses when to publish.
 
 Related stories: US1-4, US9-1.
 
@@ -378,17 +381,21 @@ Related stories: US1-4, US9-1.
 
 ## 7 · Tutor operations
 
-**Dashboard (`/dashboard`).** Student and Tutor actions are separated by tabs. The Student
-tab keeps the Student profile setup and learning links. The Tutor tab links approved Tutors
-to `/dashboard/tutor`; other users can start a Tutor application at `/enroll-tutor`.
+**Dashboard (`/dashboard`).** Every logged-in user sees the Student dashboard, including
+Student profile setup and learning links. Only approved Tutors see the Student and Tutor
+tabs; Student accounts and pending applicants never receive Tutor dashboard content. The
+Tutor tab contains the availability editor and links to `/settings/tutor`, which owns
+subject and listing management. The navbar keeps **Become a tutor** visible for Student
+accounts and applicants.
 
-**Tutor dashboard (`/dashboard/tutor`).** Ordered by operational priority: compact stat
-cards (classes this week, earnings this month, paid bookings, rating), then the wallet
+**Tutor dashboard (Tutor tab on `/dashboard`).** Ordered by operational priority: compact
+stat cards (classes this week, earnings this month, paid bookings, rating), then the wallet
 and earnings preview, then **Upcoming classes** ("what you need to teach next", each
 with View and Start), then **New paid bookings** ("already confirmed from your
 availability"), then subjects, then the availability editor. Long sections scroll
 inside their own card rather than pushing the page. Subject **Update** links to
-`/settings/tutor`, which owns subject editing.
+`/settings/tutor`, which owns subject editing. The former `/dashboard/tutor` URL redirects
+to `/dashboard?tab=tutor` for existing links and bookmarks.
 
 **Tutor profile (`/settings/tutor`).** Available from the shared Settings navigation as
 **Tutor profile**. Published toggle, photo, display name, headline, bio,
@@ -451,7 +458,7 @@ compact toggle boxes that scroll inside their own area. Availability is per date
 recurring weekly pattern. Approved Tutors can manage it while unpublished; publication
 still controls new bookings.
 
-The availability editor on `/dashboard/tutor` shows seven dated day columns with all
+The availability editor on `/dashboard` shows seven dated day columns with all
 48 half-hours, from `00:00` to `23:30`, in **Asia/Bangkok (UTC+7)**. A month overview
 summarizes availability; clicking a date opens its week for slot editing. Tutors may
 open any future date, close free future
@@ -467,7 +474,8 @@ revision. Changing the selected slot or calendar view requires saving or explici
 discarding its unsaved edits. Save and network errors preserve the draft.
 
 PROF-3 delivers this editor and APIs for existing booking and later discovery integration.
-It does not deliver the search or subject-detail pages, nor the rest of the Tutor dashboard.
+It does not deliver the search or subject-detail pages, nor the other planned Tutor
+dashboard sections.
 
 Related stories: US2-3, US2-4, US2-5, US2-7, US10-2, US10-3.
 
