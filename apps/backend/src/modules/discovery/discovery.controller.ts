@@ -10,6 +10,7 @@ import {
 } from "./discovery.service.ts";
 
 export async function getTutorSearch(req: Request, res: Response) {
+  res.vary("Authorization");
   const result = await searchTutorSubjects(
     tutorSearchQuerySchema.parse(req.query),
     new Date(),
@@ -17,7 +18,6 @@ export async function getTutorSearch(req: Request, res: Response) {
   );
   if (result.recommendationMode === "personalized") {
     res.setHeader("Cache-Control", "private, no-store");
-    res.setHeader("Vary", "Authorization");
   }
   res.status(200).json(result);
 }

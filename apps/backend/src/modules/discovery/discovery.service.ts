@@ -75,7 +75,12 @@ const listedSubjects = Prisma.sql`
     ON v.profile_version_id = t.current_profile_version_id AND v.status = 'APPROVED'`;
 
 // Filters, per-subject stats, sorting and paging all run in Postgres, so a page costs one page.
-function matchingSubjects(query: TutorSearchQuery, now: Date, studentAreaIds: string[]) {
+function matchingSubjects(
+  query: TutorSearchQuery,
+  now: Date,
+  studentAreaIds: string[],
+  options: { includeAvailability: boolean; includeRecommendation: boolean; includeStats: boolean }
+) {
   const conditions: Prisma.Sql[] = [];
   if (query.learningAreaId)
     conditions.push(Prisma.sql`EXISTS (
@@ -95,50 +100,77 @@ function matchingSubjects(query: TutorSearchQuery, now: Date, studentAreaIds: st
     );
   if (query.minRating) conditions.push(Prisma.sql`r.rating >= ${query.minRating}`);
 
+  const needsRating =
+    options.includeStats ||
+    options.includeRecommendation ||
+    query.sort === "rating" ||
+    !!query.minRating;
+  const reviewsJoin = needsRating
+    ? Prisma.sql`LEFT JOIN (
+        SELECT subject_id, COUNT(*) AS review_count, AVG(rating_stars)::float8 AS rating
+        FROM reviews GROUP BY subject_id
+      ) r ON r.subject_id = s.subject_id`
+    : Prisma.empty;
+  const statsJoin = options.includeStats
+    ? Prisma.sql`LEFT JOIN (
+        SELECT subject_id, COUNT(*) AS classes_taught FROM bookings
+        WHERE status = 'COMPLETED' OR (status = 'CONFIRMED' AND ended_at <= ${now.toISOString()}::timestamp)
+        GROUP BY subject_id
+      ) b ON b.subject_id = s.subject_id`
+    : Prisma.empty;
+  const relevanceJoin = options.includeRecommendation
+    ? Prisma.sql`LEFT JOIN (
+        SELECT x.subject_id, COUNT(*)::int AS match_count
+        FROM subject_learning_areas x
+        WHERE x.learning_area_id IN (${studentAreaIds.length ? Prisma.join(studentAreaIds.map((id) => Prisma.sql`${id}::uuid`)) : Prisma.sql`NULL::uuid`})
+        GROUP BY x.subject_id
+      ) relevance ON relevance.subject_id = s.subject_id`
+    : Prisma.empty;
+  const availabilityJoin = options.includeAvailability
+    ? Prisma.sql`LEFT JOIN (
+        SELECT avs.subject_id, MIN(av.started_at) AS next_available_at
+        FROM availability_subjects avs
+        JOIN availabilities av ON av.availability_id = avs.availability_id
+        WHERE av.is_open = TRUE AND av.booking_id IS NULL
+          AND av.started_at > ${now.toISOString()}::timestamp
+          AND av.started_at <= ${new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()}::timestamp
+        GROUP BY avs.subject_id
+      ) a ON a.subject_id = s.subject_id`
+    : Prisma.empty;
+  const recommendationColumns = options.includeRecommendation
+    ? Prisma.sql`a.next_available_at,
+        CASE WHEN ${studentAreaIds.length > 0}
+          THEN COALESCE(relevance.match_count, 0)::float8 / ${Math.max(studentAreaIds.length, 1)}
+          ELSE 0::float8 END AS relevance,
+        CASE WHEN ${studentAreaIds.length > 0}
+          THEN (0.5 * (COALESCE(relevance.match_count, 0)::float8 / ${Math.max(studentAreaIds.length, 1)}))
+            + (0.3 * (COALESCE(r.rating, 0)::float8 / 5.0))
+            + (0.2 * CASE WHEN a.next_available_at IS NULL THEN 0 ELSE
+                GREATEST(0, 1 - EXTRACT(EPOCH FROM (a.next_available_at - ${now.toISOString()}::timestamp)) / (30 * 24 * 60 * 60)) END)
+          ELSE (0.6 * (COALESCE(r.rating, 0)::float8 / 5.0))
+            + (0.4 * CASE WHEN a.next_available_at IS NULL THEN 0 ELSE
+                GREATEST(0, 1 - EXTRACT(EPOCH FROM (a.next_available_at - ${now.toISOString()}::timestamp)) / (30 * 24 * 60 * 60)) END)
+          END AS recommendation_score`
+    : Prisma.sql`${options.includeAvailability ? Prisma.sql`a.next_available_at` : Prisma.sql`NULL::timestamp`} AS next_available_at,
+        0::float8 AS relevance, 0::float8 AS recommendation_score`;
+  const ratingColumns = needsRating
+    ? Prisma.sql`COALESCE(r.review_count, 0)::int AS review_count, r.rating`
+    : Prisma.sql`0::int AS review_count, NULL::float8 AS rating`;
+  const classesTaughtColumn = options.includeStats
+    ? Prisma.sql`COALESCE(b.classes_taught, 0)::int AS classes_taught`
+    : Prisma.sql`0::int AS classes_taught`;
+
   // Nothing marks bookings COMPLETED yet, so a confirmed lesson that has ended counts too.
   return Prisma.sql`
     SELECT s.subject_id, s.name, s.hourly_rate, u.first_name, u.last_name,
-      COALESCE(r.review_count, 0)::int AS review_count,
-      r.rating,
-      COALESCE(b.classes_taught, 0)::int AS classes_taught,
-      a.next_available_at,
-      CASE WHEN ${studentAreaIds.length > 0}
-        THEN COALESCE(relevance.match_count, 0)::float8 / ${Math.max(studentAreaIds.length, 1)}
-        ELSE 0::float8 END AS relevance,
-      CASE WHEN ${studentAreaIds.length > 0}
-        THEN (0.5 * (COALESCE(relevance.match_count, 0)::float8 / ${Math.max(studentAreaIds.length, 1)}))
-          + (0.3 * (COALESCE(r.rating, 0)::float8 / 5.0))
-          + (0.2 * CASE WHEN a.next_available_at IS NULL THEN 0 ELSE
-              GREATEST(0, 1 - EXTRACT(EPOCH FROM (a.next_available_at - ${now.toISOString()}::timestamp)) / (30 * 24 * 60 * 60)) END)
-        ELSE (0.6 * (COALESCE(r.rating, 0)::float8 / 5.0))
-          + (0.4 * CASE WHEN a.next_available_at IS NULL THEN 0 ELSE
-              GREATEST(0, 1 - EXTRACT(EPOCH FROM (a.next_available_at - ${now.toISOString()}::timestamp)) / (30 * 24 * 60 * 60)) END)
-        END AS recommendation_score
+      ${ratingColumns},
+      ${classesTaughtColumn},
+      ${recommendationColumns}
     FROM ${listedSubjects}
-    LEFT JOIN (
-      SELECT subject_id, COUNT(*) AS review_count, AVG(rating_stars)::float8 AS rating
-      FROM reviews GROUP BY subject_id
-    ) r ON r.subject_id = s.subject_id
-    LEFT JOIN (
-      SELECT subject_id, COUNT(*) AS classes_taught FROM bookings
-      WHERE status = 'COMPLETED' OR (status = 'CONFIRMED' AND ended_at <= ${now.toISOString()}::timestamp)
-      GROUP BY subject_id
-    ) b ON b.subject_id = s.subject_id
-    LEFT JOIN (
-      SELECT x.subject_id, COUNT(*)::int AS match_count
-      FROM subject_learning_areas x
-      WHERE x.learning_area_id IN (${studentAreaIds.length ? Prisma.join(studentAreaIds.map((id) => Prisma.sql`${id}::uuid`)) : Prisma.sql`NULL::uuid`})
-      GROUP BY x.subject_id
-    ) relevance ON relevance.subject_id = s.subject_id
-    LEFT JOIN (
-      SELECT avs.subject_id, MIN(av.started_at) AS next_available_at
-      FROM availability_subjects avs
-      JOIN availabilities av ON av.availability_id = avs.availability_id
-      WHERE av.is_open = TRUE AND av.booking_id IS NULL
-        AND av.started_at > ${now.toISOString()}::timestamp
-        AND av.started_at <= ${new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()}::timestamp
-      GROUP BY avs.subject_id
-    ) a ON a.subject_id = s.subject_id
+    ${reviewsJoin}
+    ${statsJoin}
+    ${relevanceJoin}
+    ${availabilityJoin}
     ${conditions.length ? Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}` : Prisma.empty}`;
 }
 
@@ -185,13 +217,22 @@ export async function searchTutorSubjects(
   const studentAreaIds = student?.learningAreas.map(({ learningAreaId }) => learningAreaId) ?? [];
   const recommendationMode =
     query.sort !== "recommended" ? null : studentAreaIds.length > 0 ? "personalized" : "fallback";
-  const matching = matchingSubjects(query, now, studentAreaIds);
+  const matching = matchingSubjects(query, now, studentAreaIds, {
+    includeAvailability: true,
+    includeRecommendation: query.sort === "recommended",
+    includeStats: true,
+  });
+  const countMatching = matchingSubjects(query, now, studentAreaIds, {
+    includeAvailability: false,
+    includeRecommendation: false,
+    includeStats: false,
+  });
   const [rows, [{ total }]] = await Promise.all([
     prisma.$queryRaw<SearchRow[]>`
       SELECT subject_id, review_count, rating, classes_taught, next_available_at FROM (${matching}) m
       ORDER BY ${sortOrder[query.sort]}, name, first_name, last_name, subject_id
       LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize}`,
-    prisma.$queryRaw<[{ total: number }]>`SELECT COUNT(*)::int AS total FROM (${matching}) m`,
+    prisma.$queryRaw<[{ total: number }]>`SELECT COUNT(*)::int AS total FROM (${countMatching}) m`,
   ]);
 
   const details = await prisma.subject.findMany({

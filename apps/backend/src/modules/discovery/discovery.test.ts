@@ -218,14 +218,16 @@ describe("DISC-1 tutor search", () => {
     await request(app).get(`/api/discovery/tutors/${TUTOR_ID}`).expect(401);
   });
 
-  it("uses optional authentication only for valid recommendation tokens", async () => {
+  it("uses valid tokens for personalization and treats invalid tokens as guests", async () => {
     const anonymous = await request(app).get("/api/discovery/tutors").expect(200);
     expect(anonymous.body.recommendationMode).toBe("fallback");
 
-    await request(app)
+    const invalid = await request(app)
       .get("/api/discovery/tutors")
       .set("Authorization", "Bearer invalid.token.value")
-      .expect(401);
+      .expect(200);
+    expect(invalid.body.recommendationMode).toBe("fallback");
+    expect(invalid.headers.vary).toContain("Authorization");
   });
 
   it("loads learning areas from the authenticated Student and disables shared caching", async () => {
@@ -323,7 +325,13 @@ describe("DISC-1 tutor search", () => {
     expect(page.sql.match(/u\.first_name ILIKE/g)).toHaveLength(1);
     // The total counts the same matches.
     expect(rawQuery(1).sql).toContain("COUNT(*)");
-    expect(rawQuery(1).values).toEqual(page.values.slice(0, rawQuery(1).values.length));
+    expect(rawQuery(1).values).toEqual(
+      expect.arrayContaining([MATHEMATICS.id, 200, 600, 4.5, "ONLINE", "%anong%"])
+    );
+    expect(rawQuery(1).sql).not.toContain("FROM availability_subjects");
+    expect(rawQuery(1).sql).not.toContain("FROM bookings");
+    expect(rawQuery(1).sql).not.toContain("0.2 *");
+    expect(rawQuery(1).sql).not.toContain("relevance.match_count");
   });
 
   it.each([
