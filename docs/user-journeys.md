@@ -101,8 +101,8 @@ Guards run before render, not after.
 | `/forgot-password`         | Request a password reset link                                           | Public         |
 | `/reset-password?token=…`  | Validate a reset link and choose a new password                         | Public         |
 | `/(auth)/enroll-tutor`     | Tutor application: documents, introduction video, submit, pending state | Requires login |
-| `/dashboard`               | Student and Tutor dashboards, selected with tabs                        | Requires login |
-| `/dashboard/tutor`         | Tutor dashboard — classes, earnings, bookings, subjects, availability   | Role: tutor    |
+| `/dashboard`               | Student dashboard; approved Tutors also get a Tutor dashboard tab       | Requires login |
+| `/dashboard/tutor`         | Compatibility redirect to `/dashboard?tab=tutor`                        | Redirect       |
 | `/bookings`                | All bookings, tabbed by status                                          | Requires login |
 | `/bookings/s/:subjectId`   | Subject booking — pick a date and a block of slots (no booking yet)     | Requires login |
 | `/bookings/:id`            | One booking — payment, confirmation, meeting link, review               | Requires login |
@@ -123,11 +123,12 @@ Guards run before render, not after.
    `/(auth)/login?next=<original route>` and returns there after logging in.
    _(Verified: logging out and opening `/bookings` redirects to
    `/(auth)/login?next=bookings.html`.)_
-2. A logged-in user who is not an approved tutor opening a `Role: tutor` route is sent
-   to `/(auth)/enroll-tutor`.
-3. An approved tutor opening `/(auth)/enroll-tutor` is sent to `/dashboard/tutor`.
-4. Until a user is approved, tutor links rendered on any page point at the tutor
-   application instead of the tutor page.
+2. A logged-in user who is not an approved Tutor sees only the Student dashboard.
+   Requesting `/dashboard?tab=tutor` does not expose the Tutor tab or its tools. A user
+   opening `/settings/tutor` before approval is sent to `/(auth)/enroll-tutor`.
+3. An approved Tutor opening `/(auth)/enroll-tutor` is sent to `/dashboard?tab=tutor`.
+4. The navbar shows **Become a tutor** for Student accounts and applicants; approved
+   Tutors and admins do not see that link.
 5. Public routes render for logged-out visitors; the header shows **Log in / Sign up**
    instead of the wallet balance and avatar menu.
 
@@ -156,12 +157,33 @@ Related stories: US1-1 … US1-5.
 
 ## 2 · Discovery
 
-**Search (`/search`).** Filters are keyword, subject, maximum hourly price, minimum
-rating, and format (any / online / in-person). Sorting is Recommended, Price low to
-high, Price high to low, and Top rated. Results show the tutor's name, headline,
-rating and review count, subject tags, format, hourly rate, and either a **Verified**
-badge or a location tag. Changing a filter re-filters immediately; no match shows an
-empty state. The filter rail stays visible beside the results on desktop.
+**Search (`/search`).** Public: logged-out visitors can search, and opening a result
+asks them to log in and returns them to that tutor. Each result is **one tutor's subject**,
+so a tutor with three subjects shows as three cards; filtering, sorting, counting and
+paging all work per subject.
+
+Filters are keyword, tutor name, learning area, price range, minimum rating, and format
+(any / online; in-person is deferred with PROF-6). The keyword matches every word against
+the subject's name and description; the tutor name matches every word against the tutor's
+first or last name. The price range is a two-thumb slider covering the cheapest to the
+most expensive listed subject, rounded outward to hundreds (thousands once prices pass
+฿10,000); at either end it stops limiting that side. Minimum rating is five stars picked in
+half steps, and picking the selected value again clears it.
+
+Sorting is Recommended (classes taught, then review count, then rating), Price low to
+high, Price high to low, and Top rated, all using the subject's own numbers. A class counts
+as taught when its booking is completed, or confirmed and already over. A subject without
+reviews shows as New and drops out once a minimum rating is set. Each card shows the
+subject name, the tutor's name and **Verified** badge, rating and review count, classes
+taught, the start of the subject description, its learning areas, format, and hourly rate.
+Only subjects of published tutors with an approved profile are listed.
+
+Changing a filter re-filters immediately (typed and dragged fields wait for a short pause)
+and returns to page 1; a filter picked during that pause is kept. Results come 12 per page
+with Previous and Next, and every filter and the page live in the URL. No match shows an
+empty state with one suggestion per active filter to broaden the search, plus Clear all
+filters, which also resets the name, price range and rating. The filter rail stays visible
+beside the results on desktop.
 
 **Tutor profile (`/tutors/:id`).** Bio, experience, intro video, aggregate rating and
 review count, the tutor's subject list with per-subject rate and next opening, and
@@ -357,8 +379,10 @@ Related stories: US6-1 … US6-3.
    cancelled submission** explicitly copies its content into a new saved draft
    with a new ID; the cancelled submission and other drafts remain unchanged.
    The page shows the pending documents and introduction video separately from drafts.
-4. While pending the user is still a student: `/dashboard/tutor` and `/settings/tutor`
-   bounce back to the application.
+4. While pending the user is still a Student: the Tutor tab is absent from `/dashboard`,
+   and `/settings/tutor` bounces back to the application. The legacy `/dashboard/tutor`
+   URL redirects to `/dashboard?tab=tutor`, where the user still sees only the Student
+   dashboard.
 5. An admin compares proposed and current content at `/admin/tutor-requests`. Initial
    approval creates a Tutor as **unpublished**, linked to the approved version on the
    same User account, and grants a **Verified** badge. The tutor chooses when to publish.
@@ -369,7 +393,7 @@ Related stories: US6-1 … US6-3.
    admin sees which file and rejects with a reason instead. A URL without an extension is left
    to the admin to check.
 6. After approval, the application shows the approved Tutor and links to Tutor settings
-   and the dashboard. The user chooses when to publish.
+   and `/dashboard?tab=tutor`. The user chooses when to publish.
 
 Related stories: US1-4, US9-1.
 
@@ -377,17 +401,21 @@ Related stories: US1-4, US9-1.
 
 ## 7 · Tutor operations
 
-**Dashboard (`/dashboard`).** Student and Tutor actions are separated by tabs. The Student
-tab keeps the Student profile setup and learning links. The Tutor tab links approved Tutors
-to `/dashboard/tutor`; other users can start a Tutor application at `/enroll-tutor`.
+**Dashboard (`/dashboard`).** Every logged-in user sees the Student dashboard, including
+Student profile setup and learning links. Only approved Tutors see the Student and Tutor
+tabs; Student accounts and pending applicants never receive Tutor dashboard content. The
+Tutor tab contains the availability editor and links to `/settings/tutor`, which owns
+subject and listing management. The navbar keeps **Become a tutor** visible for Student
+accounts and applicants.
 
-**Tutor dashboard (`/dashboard/tutor`).** Ordered by operational priority: compact stat
-cards (classes this week, earnings this month, paid bookings, rating), then the wallet
+**Tutor dashboard (Tutor tab on `/dashboard`).** Ordered by operational priority: compact
+stat cards (classes this week, earnings this month, paid bookings, rating), then the wallet
 and earnings preview, then **Upcoming classes** ("what you need to teach next", each
 with View and Start), then **New paid bookings** ("already confirmed from your
 availability"), then subjects, then the availability editor. Long sections scroll
 inside their own card rather than pushing the page. Subject **Update** links to
-`/settings/tutor`, which owns subject editing.
+`/settings/tutor`, which owns subject editing. The former `/dashboard/tutor` URL redirects
+to `/dashboard?tab=tutor` for existing links and bookmarks.
 
 **Tutor profile (`/settings/tutor`).** Available from the shared Settings navigation as
 **Tutor profile**. Published toggle, photo, display name, headline, bio,
@@ -420,7 +448,9 @@ admins. The API still returns approved portfolio certification URLs from earlier
 page shows them.
 
 **Subjects.** Each subject is its own offering with a name, description, hourly rate,
-and format. PROF-6 currently supports **Online** only; in-person offerings and venues
+format, and one to three learning areas. The name is free text; the learning areas come
+from the same fixed list students pick at onboarding (including **Other**) and are how
+search finds the subject. PROF-6 currently supports **Online** only; in-person offerings and venues
 are deferred. Adding starts as a single **Add subject** button that opens the form;
 editing happens inline on the selected subject row. The Subjects section sits below
 Verification. Name and description are required (up to 100 and 2000 characters respectively).
@@ -448,7 +478,7 @@ compact toggle boxes that scroll inside their own area. Availability is per date
 recurring weekly pattern. Approved Tutors can manage it while unpublished; publication
 still controls new bookings.
 
-The availability editor on `/dashboard/tutor` shows seven dated day columns with all
+The availability editor on `/dashboard` shows seven dated day columns with all
 48 half-hours, from `00:00` to `23:30`, in **Asia/Bangkok (UTC+7)**. A month overview
 summarizes availability; clicking a date opens its week for slot editing. Tutors may
 open any future date, close free future
@@ -464,7 +494,8 @@ revision. Changing the selected slot or calendar view requires saving or explici
 discarding its unsaved edits. Save and network errors preserve the draft.
 
 PROF-3 delivers this editor and APIs for existing booking and later discovery integration.
-It does not deliver the search or subject-detail pages, nor the rest of the Tutor dashboard.
+It does not deliver the search or subject-detail pages, nor the other planned Tutor
+dashboard sections.
 
 Related stories: US2-3, US2-4, US2-5, US2-7, US10-2, US10-3.
 

@@ -199,7 +199,7 @@ it("routes an already approved Tutor to the Tutor dashboard", async () => {
     jsonResponse({ status: "APPROVED", tutor: approvedTutor, version: profileVersion })
   );
   render(<EnrollTutorPage />);
-  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard/tutor"));
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard?tab=tutor"));
 });
 
 it("cancels a submission without creating a draft, then explicitly copies a new draft", async () => {

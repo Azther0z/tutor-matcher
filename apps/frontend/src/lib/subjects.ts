@@ -4,6 +4,7 @@ export type SubjectOffering = {
   description: string | null;
   hourlyRate: string;
   format: "ONLINE";
+  learningAreas: Array<{ id: string; name: string }>;
 };
 
 export type SubjectInput = {
@@ -11,7 +12,11 @@ export type SubjectInput = {
   description: string;
   hourlyRate: string;
   format: "ONLINE";
+  learningAreaIds: string[];
 };
+
+// DISC-1: each subject is tagged with one to three learning areas for search.
+export const MAX_SUBJECT_LEARNING_AREAS = 3;
 
 export function validateSubject(input: SubjectInput) {
   const errors: Partial<Record<keyof SubjectInput, string>> = {};
@@ -24,5 +29,9 @@ export function validateSubject(input: SubjectInput) {
     errors.hourlyRate =
       "Enter a positive THB amount up to 99,999,999.99 with at most two decimals.";
   if (input.format !== "ONLINE") errors.format = "Only online lessons are supported.";
+  if (input.learningAreaIds.length === 0)
+    errors.learningAreaIds = "Choose at least one learning area.";
+  else if (input.learningAreaIds.length > MAX_SUBJECT_LEARNING_AREAS)
+    errors.learningAreaIds = `Choose at most ${MAX_SUBJECT_LEARNING_AREAS} learning areas.`;
   return errors;
 }

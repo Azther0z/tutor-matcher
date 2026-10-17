@@ -385,6 +385,11 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     const asTutor = (test: request.Test) => test.set("Authorization", `Bearer ${tutorToken}`);
     const path = "/api/profiles/me/tutor/subjects";
     const original = await prisma.subject.findUniqueOrThrow({ where: { id: SUBJECT_ID } });
+    const area = await prisma.learningArea.upsert({
+      where: { name: "Mathematics" },
+      update: {},
+      create: { name: "Mathematics" },
+    });
     const existing = await prisma.booking.findFirstOrThrow({ where: { subjectId: SUBJECT_ID } });
     const legacy = await prisma.booking.create({
       data: {
@@ -397,29 +402,38 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
       },
     });
     const sibling = await asTutor(
-      request(app).post(path).send({
-        name: original.name,
-        description: "Another independent offering",
-        hourlyRate: "120.50",
-        format: "ONLINE",
-      })
+      request(app)
+        .post(path)
+        .send({
+          name: original.name,
+          description: "Another independent offering",
+          hourlyRate: "120.50",
+          format: "ONLINE",
+          learningAreaIds: [area.id],
+        })
     ).expect(201);
     try {
       await authorize(
-        request(app).put(`${path}/${SUBJECT_ID}`).send({
-          name: "Unauthorized",
-          description: "No change",
-          hourlyRate: "1.00",
-          format: "ONLINE",
-        })
+        request(app)
+          .put(`${path}/${SUBJECT_ID}`)
+          .send({
+            name: "Unauthorized",
+            description: "No change",
+            hourlyRate: "1.00",
+            format: "ONLINE",
+            learningAreaIds: [area.id],
+          })
       ).expect(403);
       const updated = await asTutor(
-        request(app).put(`${path}/${SUBJECT_ID}`).send({
-          name: "Advanced Mathematics",
-          description: "Updated offering",
-          hourlyRate: "199.50",
-          format: "ONLINE",
-        })
+        request(app)
+          .put(`${path}/${SUBJECT_ID}`)
+          .send({
+            name: "Advanced Mathematics",
+            description: "Updated offering",
+            hourlyRate: "199.50",
+            format: "ONLINE",
+            learningAreaIds: [area.id],
+          })
       ).expect(200);
       expect(updated.body.subject.name).toBe("Advanced Mathematics");
       const list = await asTutor(request(app).get(path)).expect(200);

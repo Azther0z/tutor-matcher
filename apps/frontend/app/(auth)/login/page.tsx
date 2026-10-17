@@ -10,9 +10,9 @@ function explicitNextPath(next: string | null) {
   return null;
 }
 
-// An approved Tutor lands on their own dashboard by default; everyone else
-// lands on the student dashboard. An explicit `?next=` (set when a guard
-// redirected here) always takes priority over this.
+// An approved Tutor lands on the Tutor tab of the shared dashboard; everyone else
+// lands on its Student section. An explicit `?next=` (set when a guard redirected
+// here) always takes priority over this.
 async function resolveDefaultLandingPath(token: string) {
   try {
     const response = await fetch("/api/profiles/me/tutor", {
@@ -22,7 +22,7 @@ async function resolveDefaultLandingPath(token: string) {
     if (response.ok) {
       const data = (await response.json()) as { status: string };
       if (data.status === "APPROVED") {
-        return "/dashboard/tutor";
+        return "/dashboard?tab=tutor";
       }
     }
   } catch {

@@ -75,7 +75,7 @@ _Avoid_: Tutor page, storefront, public profile
 
 **Subject**:
 One teaching offering owned by a tutor, with its own name, description, hourly rate,
-and format. A subject — not the tutor — is what a student books, and it has its own
+format, and one to three learning areas for discovery. A subject — not the tutor — is what a student books, and it has its own
 detail page, availability view, and reviews. One tutor has many subjects.
 _Avoid_: Class, course, category, topic
 

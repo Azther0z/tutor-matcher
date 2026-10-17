@@ -12,6 +12,7 @@ const subjects: AvailabilityCalendar["subjects"] = [
     description: "Algebra",
     hourlyRate: "200.00",
     format: "ONLINE",
+    learningAreas: [],
   },
   {
     id: "english",
@@ -19,6 +20,7 @@ const subjects: AvailabilityCalendar["subjects"] = [
     description: "Speaking",
     hourlyRate: "150.00",
     format: "ONLINE",
+    learningAreas: [],
   },
 ];
 function slot(overrides: Partial<StoredSlot> = {}): StoredSlot {

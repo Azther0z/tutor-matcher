@@ -1,8 +1,9 @@
 /**
  * Mock-data seed for local development.
  *
- * Seeds fake users and a connected domain fixture using @faker-js/faker. The
- * fixed emails and fixture values keep local checks stable and idempotent.
+ * Seeds the reference data from seed-prod.ts, then fake users and a connected
+ * domain fixture using @faker-js/faker. The fixed emails and fixture values keep
+ * local checks stable and idempotent.
  *
  * Run with:  npm run gen-mock-data   (or)   just gen-mock-data   (or)   prisma db seed
  */
@@ -12,6 +13,7 @@ import { faker } from "@faker-js/faker";
 
 import { PrismaClient } from "../src/generated/prisma/client.ts";
 import { appendWalletMovement } from "../src/modules/wallet/wallet-ledger.ts";
+import { seedReferenceData } from "./seed-prod.ts";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -33,46 +35,16 @@ const GENERATED_USERS = 20;
 const FIXTURE_TUTOR_IDENTIFICATION_CARD_URL =
   "https://example.com/development-identification-card.pdf";
 const FIXTURE_SUBJECT_NAME = "Mathematics";
+// A subject is tagged with 1 to 3 learning areas.
+const FIXTURE_SUBJECT_LEARNING_AREAS = ["Mathematics"];
 const FIXTURE_AVAILABILITY = new Date("2026-09-01T10:00:00.000Z");
 const FIXTURE_BOOKING_DESCRIPTION = "Development booking fixture";
 const FIXTURE_CERTIFICATION_URL = "https://example.com/development-certificate.pdf";
 const FIXTURE_MESSAGE = "Development message fixture";
 const FIXTURE_REPORT = "Development report fixture";
-const LEARNING_AREAS = [
-  "Mathematics",
-  "Thai Language",
-  "English",
-  "Science",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "Computer Programming",
-  "Business",
-  "Accounting",
-  "Economics",
-  "Art and Design",
-  "Music",
-  "Social Studies",
-  "History",
-  "Geography",
-  "Computer Science",
-  "Data Science",
-  "Chinese",
-  "Japanese",
-  "Korean",
-  "French",
-  "Public Speaking",
-  "Academic Writing",
-];
 
 async function main() {
-  for (const name of LEARNING_AREAS) {
-    await prisma.learningArea.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
-  }
+  await seedReferenceData(prisma);
 
   for (const user of FIXED_USERS) {
     await prisma.user.upsert({
@@ -146,6 +118,17 @@ async function main() {
           tutor: { connect: { id: tutor.id } },
         },
       });
+
+  for (const name of FIXTURE_SUBJECT_LEARNING_AREAS) {
+    const learningArea = await prisma.learningArea.findUniqueOrThrow({ where: { name } });
+    await prisma.subjectLearningArea.upsert({
+      where: {
+        subjectId_learningAreaId: { subjectId: subject.id, learningAreaId: learningArea.id },
+      },
+      update: {},
+      create: { subjectId: subject.id, learningAreaId: learningArea.id },
+    });
+  }
 
   const existingAvailability = await prisma.availability.findFirst({
     where: { startedAt: FIXTURE_AVAILABILITY, tutorId: tutor.id },
