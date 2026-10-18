@@ -2,18 +2,22 @@ import type { Request, Response } from "express";
 import {
   BookingDomainError,
   cancelBooking,
+  cancelBookingAsTutor,
   confirmBookingPayment,
   createBooking,
   getBooking,
   getCancellationQuote,
   getSubjectAvailability,
+  getTutorCancellationQuote,
   listBookings,
+  listTutorUpcomingBookings,
   rescheduleBooking,
 } from "./booking.service.ts";
 import type {
   CancelBookingInput,
   CreateBookingInput,
   RescheduleBookingInput,
+  TutorCancelBookingInput,
 } from "./booking.schema.ts";
 
 async function sendError(error: unknown, res: Response) {
@@ -105,6 +109,36 @@ export async function cancel(req: Request, res: Response) {
   try {
     res.json(
       await cancelBooking(req.user!.sub, req.params.id as string, req.body as CancelBookingInput)
+    );
+  } catch (error) {
+    await sendError(error, res);
+  }
+}
+
+export async function tutorUpcoming(req: Request, res: Response) {
+  try {
+    res.json({ bookings: await listTutorUpcomingBookings(req.user!.sub) });
+  } catch (error) {
+    await sendError(error, res);
+  }
+}
+
+export async function tutorCancellationQuote(req: Request, res: Response) {
+  try {
+    res.json({ quote: await getTutorCancellationQuote(req.user!.sub, req.params.id as string) });
+  } catch (error) {
+    await sendError(error, res);
+  }
+}
+
+export async function tutorCancel(req: Request, res: Response) {
+  try {
+    res.json(
+      await cancelBookingAsTutor(
+        req.user!.sub,
+        req.params.id as string,
+        req.body as TutorCancelBookingInput
+      )
     );
   } catch (error) {
     await sendError(error, res);

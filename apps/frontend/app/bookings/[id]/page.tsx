@@ -8,10 +8,12 @@ import { RequireAuth } from "@/src/components/require-auth";
 import {
   BookingApiError,
   cancelBooking,
+  cancelBookingAsTutor,
   confirmPayment,
   getAvailability,
   getBooking,
   getCancellationQuote,
+  getTutorCancellationQuote,
   rescheduleBooking,
 } from "@/src/lib/bookings-api";
 import type { AvailabilitySlot, Booking, CancellationQuote } from "@/src/types/booking";
@@ -76,6 +78,8 @@ function BookingDetailContent() {
   const startsAt = booking?.startedAt ?? booking?.availabilities[0]?.startedAt;
   const isExpired =
     booking?.status === "CANCELLED" && booking.cancellationReason === "PAYMENT_EXPIRED";
+  // BOOK-4: the tutor cancels through their own quote, which always refunds the student in full.
+  const isTutorView = booking?.viewerRole === "TUTOR";
 
   async function loadCancellationTerms() {
     if (!booking) return false;
@@ -84,7 +88,9 @@ function BookingDetailContent() {
     setMessage(null);
     setQuoteLoading(true);
     try {
-      const currentQuote = await getCancellationQuote(booking.id);
+      const currentQuote = await (isTutorView ? getTutorCancellationQuote : getCancellationQuote)(
+        booking.id
+      );
       if (requestId !== quoteRequestId.current) return false;
       setQuote(currentQuote);
       return true;
@@ -98,7 +104,7 @@ function BookingDetailContent() {
   }
 
   async function openCancellation() {
-    if (busy || !booking?.actions.canCancel) return;
+    if (busy || !(booking?.actions.canCancel || booking?.actions.canTutorCancel)) return;
     setMode("cancel");
     setReason("");
     await loadCancellationTerms();
@@ -153,24 +159,37 @@ function BookingDetailContent() {
 
   async function cancel() {
     if (!booking || !quote || quoteLoading || cancellationInFlight.current) return;
+    if (isTutorView && !reason.trim()) return;
     cancellationInFlight.current = true;
     setBusy(true);
     setMessage(null);
     try {
-      const result = await cancelBooking(booking.id, {
-        reason: reason.trim() || undefined,
-        quoteToken: quote.token || undefined,
-      });
+      const result = isTutorView
+        ? await cancelBookingAsTutor(booking.id, {
+            reason: reason.trim(),
+            quoteToken: quote.token || undefined,
+          })
+        : await cancelBooking(booking.id, {
+            reason: reason.trim() || undefined,
+            quoteToken: quote.token || undefined,
+          });
       setBooking(result.booking);
       setMode(null);
       setQuote(null);
       if (result.booking.payment.walletBalance !== null)
         publishWalletBalance(result.booking.payment.walletBalance);
-      setMessage(
-        Number(result.refund.amount) > 0
-          ? `Booking cancelled. ${money.format(Number(result.refund.amount))} was returned to your wallet.`
-          : "Booking cancelled. No wallet refund was due."
-      );
+      if (isTutorView)
+        setMessage(
+          Number(result.refund.amount) > 0
+            ? `Class cancelled. ${result.booking.student.name} was refunded ${money.format(Number(result.refund.amount))}.`
+            : "Class cancelled. No payment had been made, so no refund was due."
+        );
+      else
+        setMessage(
+          Number(result.refund.amount) > 0
+            ? `Booking cancelled. ${money.format(Number(result.refund.amount))} was returned to your wallet.`
+            : "Booking cancelled. No wallet refund was due."
+        );
     } catch (error) {
       if (error instanceof BookingApiError && error.code === "CANCELLATION_QUOTE_CHANGED") {
         const currentQuote = error.details?.currentQuote;
@@ -275,6 +294,14 @@ function BookingDetailContent() {
           The payment hold expired and the selected times were released.
         </p>
       )}
+      {booking.status === "CANCELLED" && booking.cancelledBy === "TUTOR" && (
+        <div className="mt-6 rounded-2xl border border-zinc-200 p-4 text-sm dark:border-zinc-800">
+          <p className="font-semibold">
+            {isTutorView ? "You cancelled this class." : "Your tutor cancelled this lesson."}
+          </p>
+          {booking.cancellationReason && <p className="mt-1">{booking.cancellationReason}</p>}
+        </div>
+      )}
       {message && (
         <p role="status" className="mt-6 rounded-xl bg-violet-50 p-4 text-sm text-violet-900">
           {message}
@@ -341,7 +368,9 @@ function BookingDetailContent() {
               </Link>
             </div>
           )}
-          {(booking.actions.canCancel || booking.actions.canReschedule) && (
+          {(booking.actions.canCancel ||
+            booking.actions.canReschedule ||
+            booking.actions.canTutorCancel) && (
             <div className="mt-4 grid gap-2">
               {booking.actions.canReschedule && (
                 <button
@@ -352,13 +381,13 @@ function BookingDetailContent() {
                   Reschedule
                 </button>
               )}
-              {booking.actions.canCancel && (
+              {(booking.actions.canCancel || booking.actions.canTutorCancel) && (
                 <button
                   disabled={busy || quoteLoading}
                   onClick={() => void openCancellation()}
                   className="h-10 rounded-full border border-red-200 font-medium text-red-700"
                 >
-                  Cancel lesson
+                  {isTutorView ? "Cancel class" : "Cancel lesson"}
                 </button>
               )}
             </div>
@@ -367,10 +396,14 @@ function BookingDetailContent() {
       </div>
 
       {mode === "cancel" && (
-        <section className="mt-6 rounded-2xl border border-red-200 bg-red-50/50 p-6">
-          <h2 className="text-lg font-semibold">Cancel this lesson?</h2>
+        <section className="mt-6 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
+          <h2 className="text-lg font-semibold">
+            {isTutorView ? "Cancel this class?" : "Cancel this lesson?"}
+          </h2>
           {quoteLoading && (
-            <p className="mt-2 text-sm text-zinc-600">Loading cancellation terms…</p>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              Loading cancellation terms…
+            </p>
           )}
           {!quoteLoading && !quote && (
             <button
@@ -382,14 +415,41 @@ function BookingDetailContent() {
               Retry cancellation terms
             </button>
           )}
-          {quote && (
+          {quote && isTutorView && (
             <>
-              <p className="mt-2 text-sm text-zinc-700">
+              {quote.lateCancellation ? (
+                <p
+                  role="alert"
+                  className="mt-2 rounded-xl border border-amber-300 p-3 text-sm text-amber-800 dark:border-amber-700 dark:text-amber-300"
+                >
+                  This class starts within {quote.policyWindowHours} hours. Cancelling this late
+                  leaves {booking.student.name} without a lesson at short notice.
+                </p>
+              ) : (
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  This class is more than {quote.policyWindowHours} hours away.
+                </p>
+              )}
+              <dl className="mt-4 grid gap-3 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800 sm:grid-cols-2">
+                <div>
+                  <dt className="text-zinc-500">Student&apos;s payment</dt>
+                  <dd className="font-semibold">{money.format(Number(quote.originalAmount))}</dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500">Refund to the student&apos;s wallet</dt>
+                  <dd className="font-semibold">{money.format(Number(quote.refundAmount))}</dd>
+                </div>
+              </dl>
+            </>
+          )}
+          {quote && !isTutorView && (
+            <>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                 {quote.lateCancellation
                   ? `This lesson is within the ${quote.policyWindowHours}-hour policy window.`
                   : `This lesson is outside the ${quote.policyWindowHours}-hour policy window.`}
               </p>
-              <dl className="mt-4 grid gap-3 rounded-xl bg-white p-4 text-sm sm:grid-cols-2">
+              <dl className="mt-4 grid gap-3 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800 sm:grid-cols-2">
                 <div>
                   <dt className="text-zinc-500">Original payment</dt>
                   <dd className="font-semibold">{money.format(Number(quote.originalAmount))}</dd>
@@ -410,14 +470,22 @@ function BookingDetailContent() {
             </>
           )}
           <label className="mt-4 block text-sm font-medium">
-            Reason <span className="font-normal text-zinc-500">(optional)</span>
+            {isTutorView ? (
+              <>
+                Reason <span className="font-normal text-zinc-500">(shown to the student)</span>
+              </>
+            ) : (
+              <>
+                Reason <span className="font-normal text-zinc-500">(optional)</span>
+              </>
+            )}
             <textarea
               maxLength={500}
               disabled={busy}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               rows={3}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white p-3"
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-transparent p-3 dark:border-zinc-700"
             />
           </label>
           <div className="mt-4 flex gap-3">
@@ -426,10 +494,10 @@ function BookingDetailContent() {
               onClick={keepLesson}
               className="h-10 rounded-full border border-zinc-300 px-5"
             >
-              Keep lesson
+              {isTutorView ? "Keep class" : "Keep lesson"}
             </button>
             <button
-              disabled={busy || quoteLoading || !quote}
+              disabled={busy || quoteLoading || !quote || (isTutorView && !reason.trim())}
               onClick={() => void cancel()}
               className="h-10 rounded-full bg-red-600 px-5 font-semibold text-white disabled:opacity-50"
             >
@@ -440,9 +508,9 @@ function BookingDetailContent() {
       )}
 
       {mode === "reschedule" && (
-        <section className="mt-6 rounded-2xl border border-violet-200 bg-violet-50/40 p-6">
+        <section className="mt-6 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
           <h2 className="text-lg font-semibold">Choose a new time</h2>
-          <p className="mt-1 text-sm text-zinc-600">
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
             Choose exactly {requiredSlotCount} consecutive 30-minute
             {requiredSlotCount === 1 ? " slot" : " slots"} on the same day.
           </p>

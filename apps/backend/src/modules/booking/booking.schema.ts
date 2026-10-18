@@ -25,7 +25,16 @@ export const cancelBookingSchema = z.object({
     .regex(/^[a-f0-9]{64}$/)
     .optional(),
 });
+// BOOK-4 requires the tutor to tell the student why the lesson was cancelled.
+export const tutorCancelBookingSchema = z.object({
+  reason: z.string().trim().min(1).max(500),
+  quoteToken: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+});
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 export type RescheduleBookingInput = z.infer<typeof rescheduleBookingSchema>;
 export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;
+export type TutorCancelBookingInput = z.infer<typeof tutorCancelBookingSchema>;

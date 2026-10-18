@@ -58,3 +58,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/book-3-policy-confirmation.md
 - Updated: docs/user-journeys.md, docs/index.md, AGENTS.md Wiki Memory
 - Scope: Confirmed existing 24-hour / 70% defaults and permission for new local BOOK-3 test data only
+
+## [2026-10-18] ingest | BOOK-4 tutor cancellation decisions
+
+- Disposition: Update
+- Raw: docs/sources/book-4-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Full refund on tutor cancellation, Upcoming classes entry point, closed freed slots, required reason with notification, nullable `cancelledBy`

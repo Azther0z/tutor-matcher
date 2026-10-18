@@ -36,6 +36,11 @@ enum BookingStatus {
   COMPLETED
 }
 
+enum BookingCancelledBy {
+  STUDENT
+  TUTOR
+}
+
 enum SubjectFormat {
   ONLINE
 }
@@ -256,6 +261,9 @@ model Booking {
   paymentExpiresAt   DateTime?     @map("payment_expires_at")
   cancelledAt        DateTime?     @map("cancelled_at")
   cancellationReason String?       @map("cancellation_reason")
+
+  // BOOK-4: null for payment-hold expiry and bookings cancelled before this field existed.
+  cancelledBy BookingCancelledBy? @map("cancelled_by")
 
   // Legacy bookings are captured before their subject's first edit.
   subjectName        String?        @map("subject_name")
