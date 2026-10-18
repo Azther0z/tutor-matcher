@@ -425,7 +425,7 @@ function BookingDetailContent() {
                   This class is more than {quote.policyWindowHours} hours away.
                 </p>
               )}
-              <dl className="mt-4 grid gap-3 rounded-xl bg-white p-4 text-sm sm:grid-cols-2">
+              <dl className="mt-4 grid gap-3 rounded-xl bg-white p-4 text-sm text-zinc-900 sm:grid-cols-2">
                 <div>
                   <dt className="text-zinc-500">Student&apos;s payment</dt>
                   <dd className="font-semibold">{money.format(Number(quote.originalAmount))}</dd>
