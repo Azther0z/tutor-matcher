@@ -597,7 +597,7 @@ export async function withdrawTutorRequest(userId: string) {
   });
 }
 
-export async function copyCancelledTutorSubmission(userId: string, submissionId: string) {
+export async function copyTutorSubmission(userId: string, submissionId: string) {
   return prisma.$transaction(async (tx) => {
     await lockProfileUser(tx, userId);
     const submission = await tx.tutorProfileVersion.findFirst({
@@ -605,15 +605,16 @@ export async function copyCancelledTutorSubmission(userId: string, submissionId:
       include: versionInclude,
     });
     if (!submission) throw new TutorWorkflowError(404, "Submission not found");
-    if (submission.status !== "CANCELLED")
-      throw new TutorWorkflowError(409, "Only cancelled submissions can be copied");
+    // A cancelled request is revised after withdrawal, a rejected one after review (SAFE-3).
+    if (submission.status !== "CANCELLED" && submission.status !== "REJECTED")
+      throw new TutorWorkflowError(409, "Only cancelled or rejected submissions can be copied");
     const newest = await tx.tutorProfileVersion.findFirst({
       where: { userId },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: { createdAt: true },
     });
-    // Copy the cancelled snapshot exactly, including incomplete legacy values.
-    // The cancelled version remains immutable; review metadata belongs to it alone.
+    // Copy the submitted snapshot exactly, including incomplete legacy values.
+    // The source version remains immutable; review metadata belongs to it alone.
     const draft = await tx.tutorProfileVersion.create({
       data: {
         userId,

@@ -124,7 +124,7 @@ immutable. User-row locks serialize submissions, withdrawal and review; only one
 pending version per user is allowed, enforced by a partial unique index in `schema.prisma`. Approval atomically creates a Tutor or updates
 its pointer, only to an approved version belonging to that user. Publication remains
 independent. Withdrawal only marks the submitted version CANCELLED; it creates no draft.
-The owner can explicitly copy a cancelled submission into a new DRAFT with its own ID
+The owner can explicitly copy a cancelled or rejected submission into a new DRAFT with its own ID
 and the exact content and certification URLs. Review metadata is not copied. Other drafts
 and the current approved profile remain unchanged. Approved history is retained; content is not copied into `tutors`.
 
