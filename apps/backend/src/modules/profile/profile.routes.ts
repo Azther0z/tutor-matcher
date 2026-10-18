@@ -18,7 +18,7 @@ import {
   submitSelectedDraftForCurrentUser,
   submitDraftForCurrentUser,
   withdrawRequestForCurrentUser,
-  copyCancelledSubmissionForCurrentUser,
+  copySubmissionForCurrentUser,
   setPublicationForCurrentUser,
 } from "./profile.controller.ts";
 import {
@@ -94,5 +94,5 @@ profileRouter.post(
 profileRouter.post(
   "/me/tutor/submissions/:draftId/copy",
   validate(tutorDraftParamsSchema, "params"),
-  copyCancelledSubmissionForCurrentUser
+  copySubmissionForCurrentUser
 );

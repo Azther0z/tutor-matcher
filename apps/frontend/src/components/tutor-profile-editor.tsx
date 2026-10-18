@@ -228,6 +228,22 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
     if (!rowSubmission) setEditorOpen(true);
   }
 
+  // Copies a cancelled or rejected submission into a new saved draft and opens it for revision.
+  function copySubmissionToDraft(submissionId: string, copiedMessage: string) {
+    requestTransition(() => {
+      void runAction(async () => {
+        const result = await tutorApi<TutorApplicationResponse>(
+          `${apiPath}/submissions/${submissionId}/copy`,
+          { method: "POST" }
+        );
+        setData(result);
+        loadDetails(tutorDetailsFromApplication(result.version), result.version!.id);
+        setEditorOpen(true);
+        setMessage(copiedMessage);
+      });
+    });
+  }
+
   function cancelAndResubmit(submissionId: string) {
     requestTransition(() => {
       void runAction(async () => {
@@ -433,9 +449,23 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           <h2 className="text-xl font-semibold">Request rejected</h2>
           <p className="mt-2">Reason: {latestReview.rejectionReason}</p>
           <p className="mt-2">
-            {tutor ? "Your approved profile is unchanged. " : ""}Update the details below and
-            re-submit.
+            {tutor ? "Your approved profile is unchanged. " : ""}You can revise this request in a
+            new draft and re-submit it.
           </p>
+          {!approvedEnrollment && (
+            <button
+              className={`${button} mt-4`}
+              disabled={busy}
+              onClick={() =>
+                copySubmissionToDraft(
+                  latestReview.id,
+                  "New draft created from the rejected request. Update it and submit again."
+                )
+              }
+            >
+              Revise and re-submit
+            </button>
+          )}
         </section>
       )}
       <section className={panel} aria-label="Submission history">
@@ -510,7 +540,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                     {submission.rejectionReason && (
                       <p className="mt-3">Reason: {submission.rejectionReason}</p>
                     )}
-                    {submission.status === "CANCELLED" &&
+                    {(submission.status === "CANCELLED" || submission.status === "REJECTED") &&
                       (approvedEnrollment ? (
                         <Link href="/settings/tutor" className="mt-4 inline-block underline">
                           Create a draft in Tutor settings
@@ -520,24 +550,13 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                           className={`${button} mt-4`}
                           disabled={busy}
                           onClick={() =>
-                            requestTransition(() => {
-                              void runAction(async () => {
-                                const result = await tutorApi<TutorApplicationResponse>(
-                                  `${apiPath}/submissions/${submission.id}/copy`,
-                                  { method: "POST" }
-                                );
-                                setData(result);
-                                loadDetails(
-                                  tutorDetailsFromApplication(result.version),
-                                  result.version!.id
-                                );
-                                setEditorOpen(true);
-                                setMessage("New draft created from the cancelled submission.");
-                              });
-                            })
+                            copySubmissionToDraft(
+                              submission.id,
+                              `New draft created from the ${submission.status.toLowerCase()} submission.`
+                            )
                           }
                         >
-                          Create draft from cancelled submission
+                          Create draft from {submission.status.toLowerCase()} submission
                         </button>
                       ))}
                   </div>

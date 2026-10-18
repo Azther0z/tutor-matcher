@@ -356,8 +356,8 @@ Related stories: US6-1 … US6-3.
    approved, rejected and cancelled submissions as compact expandable rows in **Submission history**.
    Pending Verification and its Withdraw action are inside that list, with no separate pending panel.
    A reload icon sits at the top-right of Submission history. **Create draft from
-   cancelled submission** explicitly copies its content into a new saved draft
-   with a new ID; the cancelled submission and other drafts remain unchanged.
+   cancelled submission** (or **rejected submission**) explicitly copies its content into a
+   new saved draft with a new ID; the source submission and other drafts remain unchanged.
    The page shows the pending documents and introduction video separately from drafts.
 4. While pending the user is still a Student: the Tutor tab is absent from `/dashboard`,
    and `/settings/tutor` bounces back to the application. The legacy `/dashboard/tutor`
@@ -366,8 +366,9 @@ Related stories: US6-1 … US6-3.
 5. An admin compares proposed and current content at `/admin/tutor-requests`. Initial
    approval creates a Tutor as **unpublished**, linked to the approved version on the
    same User account, and grants a **Verified** badge. The tutor chooses when to publish.
-   Rejection requires a reason displayed to the applicant and emailed to them; revised
-   submissions create new versions. Review outcomes are visible in the application/settings UI.
+   Rejection requires a reason displayed to the applicant and emailed to them. **Revise and
+   re-submit** copies the rejected request into a new draft; revised submissions create new
+   versions. Review outcomes are visible in the application/settings UI.
    Approval is blocked while the identification card URL, or a certification URL from earlier
    data, ends in a file extension other than `.pdf`, `.jpg`, `.jpeg`, `.png` or `.webp`; the
    admin sees which file and rejects with a reason instead. A URL without an extension is left
@@ -402,7 +403,8 @@ to `/dashboard?tab=tutor` for existing links and bookmarks.
 and intro video URL, then **Verification** (document state and Replace documents), then
 **Subjects**. Listing and document changes are **submitted for review** and only go live
 once an admin approves; a rejection leaves the live listing untouched and returns a
-reason. Submit is disabled when nothing changed. Approval switches the current profile
+reason, and the Tutor can revise the rejected request in a copied draft. Submit is disabled
+when nothing changed. Approval switches the current profile
 version immediately, preserving the publication setting at that moment. The submit
 UI explains this automatic application. A draft list has Edit and Trash icons and a Submit action.
 Creating or editing a draft opens a modal with a sticky header and Save draft / Submit footer.
@@ -412,7 +414,7 @@ Portfolio certifications are not collected (see §6); saving a draft clears any 
 Other drafts stay editable during review; only a second submission is blocked. Submit
 confirmation explains the pending limit and cancellation. Withdrawal only cancels the submitted
 version; its immutable content stays visible in submission history. The tutor can explicitly
-create a separate draft from a cancelled submission, copying all content.
+create a separate draft from a cancelled or rejected submission, copying all content.
 Pending and approved versions remain immutable history. Account names are edited in Account settings,
 not as part of a profile review.
 

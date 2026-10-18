@@ -169,3 +169,14 @@ per subject, immediate and debounced re-filtering (keeping a filter picked durin
 the two-thumb price slider and its rounding, half-star rating, paging, the no-results state with
 its broadening suggestions, Clear filters, retry after an error, and the learning-area picker in
 the subject form.
+
+## SAFE-3 acceptance coverage
+
+A database integration test submits a listing and document change (bio and identification
+card) and rejects it with a reason. It then copies the rejected request into a new draft with a
+new ID, leaving the rejected version unchanged, revises and resubmits it, and approves it. The
+owner's current profile then has the new bio and identification card, the public listing
+(`GET /api/discovery/tutors/:id`) shows the new bio without the card, and pending or approved
+versions still cannot be copied. Frontend tests cover **Revise and re-submit** in the rejection
+banner, for an approved Tutor and for a rejected initial application, and **Create draft from
+rejected submission** in Submission history.

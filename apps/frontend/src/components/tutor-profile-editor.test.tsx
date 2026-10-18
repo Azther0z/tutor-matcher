@@ -815,6 +815,88 @@ it("shows cancelled history after reload, copies it explicitly, and keeps new dr
   expect(screen.getByLabelText("Draft status")).toHaveTextContent("Not saved");
 });
 
+// SAFE-3: a rejected request is revised in a draft copied from it, like a cancelled one.
+const rejected: TutorProfileVersion = {
+  ...profileVersion,
+  id: "55555555-5555-4555-8555-555555555555",
+  status: "REJECTED",
+  bio: "Rejected listing bio",
+  rejectionReason: "Please clarify",
+};
+const copiedFromRejected: TutorProfileVersion = {
+  ...rejected,
+  id: "66666666-6666-4666-8666-666666666666",
+  status: "DRAFT",
+  rejectionReason: null,
+};
+
+it("revises a rejected listing change from the rejection banner", async () => {
+  const response = application({
+    tutor: approvedTutor,
+    latestReview: rejected,
+    submissions: [rejected],
+  });
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse(response))
+    .mockResolvedValueOnce(
+      jsonResponse({ ...response, version: copiedFromRejected, drafts: [copiedFromRejected] })
+    );
+  render(<TutorProfileEditor />);
+  const banner = (await screen.findByRole("heading", { name: "Request rejected" })).parentElement!;
+  expect(banner).toHaveTextContent("Reason: Please clarify");
+  expect(banner).toHaveTextContent("Your approved profile is unchanged.");
+  fireEvent.click(within(banner).getByRole("button", { name: "Revise and re-submit" }));
+  expect(await screen.findByLabelText("Tutor bio")).toHaveValue(rejected.bio);
+  expect(fetchMock.mock.calls[1][0]).toBe(`/api/profiles/me/tutor/submissions/${rejected.id}/copy`);
+  expect(fetchMock.mock.calls[1][1].method).toBe("POST");
+  expect(screen.getByLabelText("Draft status")).toHaveTextContent("Saved");
+  expect(
+    screen.getByText("New draft created from the rejected request. Update it and submit again.")
+  ).toBeInTheDocument();
+});
+
+it("creates a draft from a rejected submission in the history", async () => {
+  const response = application({ tutor: approvedTutor, submissions: [rejected] });
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse(response))
+    .mockResolvedValueOnce(
+      jsonResponse({ ...response, version: copiedFromRejected, drafts: [copiedFromRejected] })
+    );
+  render(<TutorProfileEditor />);
+  const history = await screen.findByRole("region", { name: "Submission history" });
+  expect(within(history).getByText("Reason: Please clarify")).toBeInTheDocument();
+  fireEvent.click(
+    within(history).getByRole("button", { name: "Create draft from rejected submission" })
+  );
+  expect(await screen.findByLabelText("Tutor bio")).toHaveValue(rejected.bio);
+  expect(fetchMock.mock.calls[1][0]).toBe(`/api/profiles/me/tutor/submissions/${rejected.id}/copy`);
+  expect(screen.getByText("New draft created from the rejected submission.")).toBeInTheDocument();
+});
+
+it("lets a rejected applicant revise the initial application", async () => {
+  const response = application({
+    status: "REJECTED",
+    version: rejected,
+    drafts: [],
+    latestReview: rejected,
+    submissions: [rejected],
+  });
+  fetchMock.mockResolvedValueOnce(jsonResponse(response)).mockResolvedValueOnce(
+    jsonResponse({
+      ...response,
+      status: "DRAFT",
+      version: copiedFromRejected,
+      drafts: [copiedFromRejected],
+    })
+  );
+  render(<TutorProfileEditor enrollment />);
+  const banner = (await screen.findByRole("heading", { name: "Request rejected" })).parentElement!;
+  expect(banner).not.toHaveTextContent("Your approved profile is unchanged.");
+  fireEvent.click(within(banner).getByRole("button", { name: "Revise and re-submit" }));
+  expect(await screen.findByLabelText("Tutor bio")).toHaveValue(rejected.bio);
+  expect(fetchMock.mock.calls[1][0]).toBe(`/api/profiles/me/tutor/submissions/${rejected.id}/copy`);
+});
+
 it("replaces the draft modal with confirmation and Edit draft returns the same unsaved content with consent reset", async () => {
   fetchMock.mockResolvedValueOnce(jsonResponse(application()));
   render(<TutorProfileEditor enrollment />);

@@ -902,7 +902,6 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
     ).toBe(false);
     await copySubmission(cancelled.body.version.id, adminId).expect(404);
     await copySubmission(approved.versionId).expect(409);
-    await copySubmission(rejected.body.version.id).expect(409);
     await copySubmission(privateDraft.body.version.id).expect(409);
     await copySubmission("invalid-id").expect(400);
     const copied = await copySubmission(cancelled.body.version.id).expect(200);
@@ -915,6 +914,50 @@ describeDatabase("AUTH-4 HTTP and PostgreSQL lifecycle", () => {
     expect(copied.body.version.id).not.toBe(cancelled.body.version.id);
     expect(copied.body.pendingRequest.id).toBe(pending.body.version.id);
     expect(copied.body.tutor.id).toBe(approved.tutor.id);
+  });
+
+  it("revises a rejected listing and document change in a copied draft and approves the resubmission", async () => {
+    const initial = await approvedTutor();
+    const rejected = await createDraft({
+      ...fields,
+      bio: "Listing change for review",
+      identificationCardUrl: "https://example.com/replacement-id",
+    });
+    await submitDraft(rejected.body.version.id).expect(200);
+    expect((await review(rejected.body.version.id, "REJECTED", "Please clarify")).status).toBe(200);
+
+    const copied = await copySubmission(rejected.body.version.id).expect(200);
+    expect(copied.body.version).toMatchObject({
+      status: "DRAFT",
+      bio: "Listing change for review",
+      identificationCardUrl: "https://example.com/replacement-id",
+      submittedAt: null,
+      reviewedAt: null,
+      rejectionReason: null,
+    });
+    expect(copied.body.version.id).not.toBe(rejected.body.version.id);
+    expect(
+      await prisma.tutorProfileVersion.findUniqueOrThrow({
+        where: { id: rejected.body.version.id },
+      })
+    ).toMatchObject({ status: "REJECTED", rejectionReason: "Please clarify" });
+
+    await saveDraft(copied.body.version.id, { bio: "Revised listing change" }).expect(200);
+    await submitDraft(copied.body.version.id).expect(200);
+    await copySubmission(copied.body.version.id).expect(409);
+    expect((await review(copied.body.version.id)).status).toBe(200);
+    await copySubmission(copied.body.version.id).expect(409);
+
+    const own = await auth(request(app).get("/api/profiles/me/tutor")).expect(200);
+    expect(own.body.tutor).toMatchObject({
+      bio: "Revised listing change",
+      identificationCardUrl: "https://example.com/replacement-id",
+    });
+    const listing = await auth(
+      request(app).get(`/api/discovery/tutors/${initial.tutor.id}`)
+    ).expect(200);
+    expect(listing.body.bio).toBe("Revised listing change");
+    expect(listing.body).not.toHaveProperty("identificationCardUrl");
   });
 
   it("ignores injected ownership and review fields when creating and saving a draft", async () => {
