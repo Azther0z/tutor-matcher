@@ -398,6 +398,31 @@ describe("DISC-1 tutor search", () => {
     expect(queryRaw).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["recent", -30 * 60 * 1000, true],
+    ["exactly one hour old", -60 * 60 * 1000, true],
+    ["over one hour old", -60 * 60 * 1000 - 1, false],
+    ["a week old", -7 * 24 * 60 * 60 * 1000, false],
+    ["just in the future", 1, false],
+    ["a week in the future", 7 * 24 * 60 * 60 * 1000, false],
+  ])("bounds a %s pagination reference time", async (_label, offset, accepted) => {
+    const currentTime = Date.parse("2026-10-18T12:00:00.000Z");
+    const clock = jest.spyOn(Date, "now").mockReturnValue(currentTime);
+    try {
+      const asOf = new Date(currentTime + offset).toISOString();
+      const expected = accepted ? asOf : new Date(currentTime).toISOString();
+      const response = await request(app)
+        .get("/api/discovery/tutors")
+        .query({ page: "2", asOf })
+        .expect(200);
+
+      expect(response.body.asOf).toBe(expected);
+      expect(rawQuery(0).values).toContain(expected);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it("returns the page in the database's order with each subject's own numbers", async () => {
     const response = await request(app).get("/api/discovery/tutors").expect(200);
     expect(subjectFindMany).toHaveBeenCalledWith(
