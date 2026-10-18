@@ -295,7 +295,7 @@ function BookingDetailContent() {
         </p>
       )}
       {booking.status === "CANCELLED" && booking.cancelledBy === "TUTOR" && (
-        <div className="mt-6 rounded-xl bg-zinc-100 p-4 text-sm text-zinc-800">
+        <div className="mt-6 rounded-2xl border border-zinc-200 p-4 text-sm dark:border-zinc-800">
           <p className="font-semibold">
             {isTutorView ? "You cancelled this class." : "Your tutor cancelled this lesson."}
           </p>
@@ -396,12 +396,14 @@ function BookingDetailContent() {
       </div>
 
       {mode === "cancel" && (
-        <section className="mt-6 rounded-2xl border border-red-200 bg-red-50/50 p-6">
+        <section className="mt-6 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
           <h2 className="text-lg font-semibold">
             {isTutorView ? "Cancel this class?" : "Cancel this lesson?"}
           </h2>
           {quoteLoading && (
-            <p className="mt-2 text-sm text-zinc-600">Loading cancellation terms…</p>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              Loading cancellation terms…
+            </p>
           )}
           {!quoteLoading && !quote && (
             <button
@@ -416,16 +418,19 @@ function BookingDetailContent() {
           {quote && isTutorView && (
             <>
               {quote.lateCancellation ? (
-                <p role="alert" className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                <p
+                  role="alert"
+                  className="mt-2 rounded-xl border border-amber-300 p-3 text-sm text-amber-800 dark:border-amber-700 dark:text-amber-300"
+                >
                   This class starts within {quote.policyWindowHours} hours. Cancelling this late
                   leaves {booking.student.name} without a lesson at short notice.
                 </p>
               ) : (
-                <p className="mt-2 text-sm text-zinc-700">
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                   This class is more than {quote.policyWindowHours} hours away.
                 </p>
               )}
-              <dl className="mt-4 grid gap-3 rounded-xl bg-white p-4 text-sm text-zinc-900 sm:grid-cols-2">
+              <dl className="mt-4 grid gap-3 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800 sm:grid-cols-2">
                 <div>
                   <dt className="text-zinc-500">Student&apos;s payment</dt>
                   <dd className="font-semibold">{money.format(Number(quote.originalAmount))}</dd>
@@ -439,12 +444,12 @@ function BookingDetailContent() {
           )}
           {quote && !isTutorView && (
             <>
-              <p className="mt-2 text-sm text-zinc-700">
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                 {quote.lateCancellation
                   ? `This lesson is within the ${quote.policyWindowHours}-hour policy window.`
                   : `This lesson is outside the ${quote.policyWindowHours}-hour policy window.`}
               </p>
-              <dl className="mt-4 grid gap-3 rounded-xl bg-white p-4 text-sm text-zinc-900 sm:grid-cols-2">
+              <dl className="mt-4 grid gap-3 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800 sm:grid-cols-2">
                 <div>
                   <dt className="text-zinc-500">Original payment</dt>
                   <dd className="font-semibold">{money.format(Number(quote.originalAmount))}</dd>
@@ -480,7 +485,7 @@ function BookingDetailContent() {
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               rows={3}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white p-3 text-zinc-900"
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-transparent p-3 dark:border-zinc-700"
             />
           </label>
           <div className="mt-4 flex gap-3">
@@ -503,9 +508,9 @@ function BookingDetailContent() {
       )}
 
       {mode === "reschedule" && (
-        <section className="mt-6 rounded-2xl border border-violet-200 bg-violet-50/40 p-6">
+        <section className="mt-6 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
           <h2 className="text-lg font-semibold">Choose a new time</h2>
-          <p className="mt-1 text-sm text-zinc-600">
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
             Choose exactly {requiredSlotCount} consecutive 30-minute
             {requiredSlotCount === 1 ? " slot" : " slots"} on the same day.
           </p>
