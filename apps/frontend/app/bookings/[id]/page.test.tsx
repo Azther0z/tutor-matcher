@@ -311,3 +311,93 @@ it("does not claim a refund for an unpaid cancellation", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Confirm cancellation" }));
   await screen.findByText("Booking cancelled. No wallet refund was due.");
 });
+
+describe("BOOK-4 tutor cancellation", () => {
+  const tutorBooking = {
+    ...booking,
+    viewerRole: "TUTOR",
+    payment: { ...booking.payment, walletBalance: null, shortfall: null },
+    actions: { canPay: false, canCancel: false, canReschedule: false, canTutorCancel: true },
+  };
+  const tutorQuote = { ...quote, refundRate: 1, refundAmount: "100", cancellationFee: "0" };
+
+  it("warns about a late class cancellation, requires a reason and refunds the student in full", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: tutorBooking }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ quote: tutorQuote }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          booking: {
+            ...tutorBooking,
+            status: "CANCELLED",
+            cancelledBy: "TUTOR",
+            cancellationReason: "I am sick",
+            actions: { ...tutorBooking.actions, canTutorCancel: false },
+          },
+          refund: { amount: "100.00", lateCancellation: true, rate: 1, cancellationFee: "0.00" },
+        }),
+      });
+    const onBalance = jest.fn();
+    const unsubscribe = subscribeToWalletBalance(onBalance);
+    render(<BookingDetailPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel class" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/within 24 hours.*Student One/);
+    expect(screen.getByText("Refund to the student's wallet")).toBeInTheDocument();
+    expect(screen.queryByText("Cancellation fee")).not.toBeInTheDocument();
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      `/api/bookings/${bookingId}/tutor-cancellation-quote`,
+      expect.anything()
+    );
+
+    const confirm = screen.getByRole("button", { name: "Confirm cancellation" });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "  I am sick " } });
+    expect(confirm).toBeEnabled();
+    fireEvent.click(confirm);
+
+    expect(await screen.findByText("You cancelled this class.")).toBeInTheDocument();
+    expect(screen.getByText(/Student One was refunded/)).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      `/api/bookings/${bookingId}/tutor-cancel`,
+      expect.objectContaining({ body: JSON.stringify({ reason: "I am sick", quoteToken }) })
+    );
+    expect(onBalance).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
+  it("does not show the late warning more than 24 hours before the lesson", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: tutorBooking }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ quote: { ...tutorQuote, lateCancellation: false } }),
+      });
+    render(<BookingDetailPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel class" }));
+    expect(await screen.findByText(/class is more than 24 hours away/)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("tells the student their tutor cancelled and why", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        booking: {
+          ...booking,
+          viewerRole: "STUDENT",
+          status: "CANCELLED",
+          cancelledBy: "TUTOR",
+          cancellationReason: "I am sick",
+          actions: { canPay: false, canCancel: false, canReschedule: false, canTutorCancel: false },
+        },
+      }),
+    });
+    render(<BookingDetailPage />);
+    expect(await screen.findByText("Your tutor cancelled this lesson.")).toBeInTheDocument();
+    expect(screen.getByText("I am sick")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Cancel/ })).not.toBeInTheDocument();
+  });
+});

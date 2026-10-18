@@ -134,6 +134,34 @@ export async function cancelBooking(
   return data;
 }
 
+// BOOK-4 lists the signed-in tutor's classes that have not started yet.
+export async function getTutorUpcomingBookings(): Promise<Booking[]> {
+  const data = await request<{ bookings: Booking[] }>("/api/bookings/tutor/upcoming", {
+    headers: authHeaders(),
+  });
+  return data.bookings;
+}
+
+export async function getTutorCancellationQuote(id: string): Promise<CancellationQuote> {
+  const data = await request<{ quote: CancellationQuote }>(
+    `/api/bookings/${encodeURIComponent(id)}/tutor-cancellation-quote`,
+    { headers: authHeaders() }
+  );
+  return data.quote;
+}
+
+export async function cancelBookingAsTutor(
+  id: string,
+  input: { reason: string; quoteToken?: string }
+): Promise<CancellationResult> {
+  // BOOK-4 always refunds the student in full; the tutor must give a reason.
+  return request<CancellationResult>(`/api/bookings/${encodeURIComponent(id)}/tutor-cancel`, {
+    method: "POST",
+    headers: authHeaders(true),
+    body: JSON.stringify(input),
+  });
+}
+
 export async function rescheduleBooking(id: string, availabilityIds: string[]): Promise<Booking> {
   // Replace the current lesson slots with the selected alternative slots.
   const data = await request<Booking & { booking?: Booking }>(

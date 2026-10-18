@@ -40,6 +40,7 @@ export type BookingActions = {
   canPay: boolean;
   canCancel: boolean;
   canReschedule: boolean;
+  canTutorCancel: boolean;
 };
 
 export type CancellationQuote = {
@@ -69,6 +70,7 @@ export type CancellationResult = {
 export type Booking = {
   id: string;
   status: BookingStatus;
+  viewerRole: "STUDENT" | "TUTOR";
   description?: string | null;
   isTrial: boolean;
   totalAmount: string;
@@ -79,6 +81,7 @@ export type Booking = {
   createdAt: string;
   cancelledAt?: string | null;
   cancellationReason?: string | null;
+  cancelledBy?: "STUDENT" | "TUTOR" | null;
   student: {
     id: string;
     name: string;
