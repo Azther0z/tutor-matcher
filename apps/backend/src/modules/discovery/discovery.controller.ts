@@ -3,10 +3,12 @@ import { z } from "zod";
 import { tutorSearchQuerySchema } from "./discovery.schema.ts";
 import {
   getPriceRange,
+  getTutorProfile,
   getTutorSummary,
   listLearningAreas,
   searchTutorSubjects,
   TutorNotFoundError,
+  TutorUnavailableError,
 } from "./discovery.service.ts";
 
 export async function getTutorSearch(req: Request, res: Response) {
@@ -19,6 +21,26 @@ export async function getSearchPriceRange(_req: Request, res: Response) {
 
 export async function getLearningAreas(_req: Request, res: Response) {
   res.status(200).json({ learningAreas: await listLearningAreas() });
+}
+
+export async function getTutorProfileById(req: Request, res: Response) {
+  const parsedTutorId = z.string().uuid().safeParse(req.params.id);
+
+  if (!parsedTutorId.success) {
+    res.status(404).json({ message: "This tutor profile is unavailable" });
+    return;
+  }
+
+  try {
+    res.status(200).json(await getTutorProfile(parsedTutorId.data));
+  } catch (error) {
+    if (error instanceof TutorUnavailableError) {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+
+    throw error;
+  }
 }
 
 export async function getTutorById(req: Request, res: Response) {

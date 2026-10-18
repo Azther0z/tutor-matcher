@@ -5,6 +5,7 @@ import {
   getLearningAreas,
   getSearchPriceRange,
   getTutorById,
+  getTutorProfileById,
   getTutorSearch,
 } from "./discovery.controller.ts";
 import { tutorSearchQuerySchema } from "./discovery.schema.ts";
@@ -26,6 +27,8 @@ publicDiscoveryRouter.get(
   validate(tutorSearchQuerySchema, "query"),
   getTutorSearch
 );
+// DISC-3: the tutor profile page is public too, like the search that links to it.
+publicDiscoveryRouter.get("/tutors/:id/profile", discoverySearchRateLimiter, getTutorProfileById);
 publicDiscoveryRouter.get("/learning-areas", discoverySearchRateLimiter, getLearningAreas);
 publicDiscoveryRouter.get("/price-range", discoverySearchRateLimiter, getSearchPriceRange);
 
