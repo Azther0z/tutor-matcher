@@ -352,7 +352,9 @@ describe("SearchPage (DISC-1)", () => {
       await screen.findByRole("heading", { name: "No tutors match these filters" })
     ).toBeInTheDocument();
     expect(screen.getByText("Try broadening your search:")).toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    const loginLink = screen.getByRole("link", { name: "Log in" });
+    expect(loginLink).toHaveAttribute("href", "/login");
+    expect(screen.getAllByRole("link")).toEqual([loginLink]);
     expect(
       await screen.findByRole("button", { name: "Search all areas, not just Mathematics" })
     ).toBeInTheDocument();
