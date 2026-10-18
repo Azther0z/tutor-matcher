@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { Prisma } from "../../generated/prisma/client.ts";
-import { createBookingSchema } from "./booking.schema.ts";
+import { createBookingSchema, tutorCancelBookingSchema } from "./booking.schema.ts";
 import {
   assertSlotBlock,
   BookingDomainError,
@@ -146,6 +146,7 @@ describe("trial booking rules", () => {
       paymentExpiresAt: new Date("2026-09-12T00:15:00.000Z"),
       cancelledAt: null,
       cancellationReason: null,
+      cancelledBy: null,
       subjectName: null,
       subjectDescription: null,
       subjectHourlyRate: null,
@@ -224,6 +225,70 @@ describe("trial booking rules", () => {
     expect(preserved.totalAmount).toBe("75.00");
   });
 
+  it("gives the tutor a cancel action and the student none for the same upcoming lesson", () => {
+    const now = new Date("2026-09-12T00:00:00.000Z");
+    const record = {
+      id: "44444444-4444-4444-8444-444444444444",
+      userId: SUBJECT_ID,
+      subjectId: SUBJECT_ID,
+      description: null,
+      zoomMeetingUrl: null,
+      createdAt: now,
+      status: "CONFIRMED",
+      isTrial: true,
+      totalAmount: new Prisma.Decimal("75.00"),
+      startedAt: new Date("2026-09-12T10:00:00.000Z"),
+      endedAt: new Date("2026-09-12T11:00:00.000Z"),
+      paymentExpiresAt: null,
+      cancelledAt: null,
+      cancellationReason: null,
+      cancelledBy: null,
+      subjectName: null,
+      subjectDescription: null,
+      subjectHourlyRate: null,
+      subjectFormat: null,
+      user: { id: SUBJECT_ID, firstName: "Bob", lastName: "Smith", balance: new Prisma.Decimal(0) },
+      subject: {
+        id: SUBJECT_ID,
+        name: "Mathematics",
+        description: null,
+        videoUrl: null,
+        hourlyRate: new Prisma.Decimal("75.00"),
+        format: "ONLINE",
+        tutorId: SLOT_A,
+        tutor: {
+          id: SLOT_A,
+          currentProfileVersion: { avatarUrl: null, status: "APPROVED", certifications: [] },
+          currentProfileVersionId: SLOT_B,
+          enrolledAt: now,
+          status: "PUBLISHED",
+          user: { id: SLOT_B, firstName: "Alice", lastName: "Johnson" },
+        },
+      },
+      availabilities: [],
+      walletTransactions: [],
+    } satisfies Parameters<typeof mapBookingResponse>[0];
+
+    const asTutor = mapBookingResponse(record, SLOT_B, now);
+    expect(asTutor.viewerRole).toBe("TUTOR");
+    expect(asTutor.actions).toMatchObject({ canTutorCancel: true, canCancel: false });
+    expect(asTutor.payment.walletBalance).toBeNull();
+
+    const asStudent = mapBookingResponse(record, SUBJECT_ID, now);
+    expect(asStudent.viewerRole).toBe("STUDENT");
+    expect(asStudent.actions).toMatchObject({ canTutorCancel: false, canCancel: true });
+
+    const started = mapBookingResponse({ ...record, startedAt: now }, SLOT_B, now);
+    expect(started.actions.canTutorCancel).toBe(false);
+    const cancelled = mapBookingResponse(
+      { ...record, status: "CANCELLED", cancelledBy: "TUTOR", cancellationReason: "Sick" },
+      SUBJECT_ID,
+      now
+    );
+    expect(cancelled).toMatchObject({ cancelledBy: "TUTOR", cancellationReason: "Sick" });
+    expect(cancelled.actions.canTutorCancel).toBe(false);
+  });
+
   it("refunds the full credit more than 24 hours before the lesson", () => {
     const result = cancellationRefund(
       new Prisma.Decimal("100.00"),
@@ -261,4 +326,11 @@ describe("trial booking rules", () => {
       expect(result.amount.toFixed(2)).toBe(amount);
     }
   );
+
+  it("requires the tutor to give a reason of at most 500 characters", () => {
+    expect(tutorCancelBookingSchema.safeParse({}).success).toBe(false);
+    expect(tutorCancelBookingSchema.safeParse({ reason: "   " }).success).toBe(false);
+    expect(tutorCancelBookingSchema.safeParse({ reason: "x".repeat(501) }).success).toBe(false);
+    expect(tutorCancelBookingSchema.safeParse({ reason: " Sick " }).data?.reason).toBe("Sick");
+  });
 });

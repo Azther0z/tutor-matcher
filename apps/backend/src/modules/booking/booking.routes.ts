@@ -9,6 +9,9 @@ import {
   list,
   reschedule,
   subjectAvailability,
+  tutorCancel,
+  tutorCancellationQuote,
+  tutorUpcoming,
 } from "./booking.controller.ts";
 import {
   bookingIdParamsSchema,
@@ -16,6 +19,7 @@ import {
   createBookingSchema,
   rescheduleBookingSchema,
   subjectIdParamsSchema,
+  tutorCancelBookingSchema,
 } from "./booking.schema.ts";
 
 export const bookingRouter = Router();
@@ -26,6 +30,8 @@ bookingRouter.get(
   subjectAvailability
 );
 bookingRouter.get("/", list);
+// BOOK-4: the tutor's upcoming classes; registered before /:id so "tutor" is never read as an id.
+bookingRouter.get("/tutor/upcoming", tutorUpcoming);
 bookingRouter.post("/", validate(createBookingSchema), create);
 bookingRouter.get("/:id", validate(bookingIdParamsSchema, "params"), detail);
 bookingRouter.get(
@@ -50,4 +56,16 @@ bookingRouter.post(
   validate(bookingIdParamsSchema, "params"),
   validate(cancelBookingSchema),
   cancel
+);
+// BOOK-4 endpoints: the tutor cancels a lesson and the student is refunded in full.
+bookingRouter.get(
+  "/:id/tutor-cancellation-quote",
+  validate(bookingIdParamsSchema, "params"),
+  tutorCancellationQuote
+);
+bookingRouter.post(
+  "/:id/tutor-cancel",
+  validate(bookingIdParamsSchema, "params"),
+  validate(tutorCancelBookingSchema),
+  tutorCancel
 );

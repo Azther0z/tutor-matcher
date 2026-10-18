@@ -11,6 +11,7 @@ import type {
   CancelBookingInput,
   CreateBookingInput,
   RescheduleBookingInput,
+  TutorCancelBookingInput,
 } from "./booking.schema.ts";
 
 // Best-effort notifications may continue after the response, but cannot delay it indefinitely.
@@ -236,6 +237,7 @@ export function mapBookingResponse(
   now = new Date()
 ) {
   const isStudent = booking.userId === viewerUserId;
+  const isTutor = booking.subject.tutor.user?.id === viewerUserId;
   const transfer = booking.walletTransactions.find((payment) => payment.type === "LESSON_PAYMENT");
   const amountDue = booking.status === "PENDING_PAYMENT" ? booking.totalAmount : ZERO;
   const walletBalance = booking.user.balance;
@@ -257,10 +259,14 @@ export function mapBookingResponse(
     isStudent &&
     booking.status === "CONFIRMED" &&
     booking.startedAt.getTime() - now.getTime() > CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
+  // BOOK-4 lets the tutor cancel any class that has not started, including payment holds.
+  const canTutorCancel =
+    isTutor && ["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) && beforeLesson;
 
   return {
     id: booking.id,
     status: booking.status,
+    viewerRole: isStudent ? ("STUDENT" as const) : ("TUTOR" as const),
     description: booking.description,
     zoomMeetingUrl: booking.zoomMeetingUrl,
     createdAt: booking.createdAt.toISOString(),
@@ -271,6 +277,7 @@ export function mapBookingResponse(
     paymentExpiresAt: booking.paymentExpiresAt?.toISOString() ?? null,
     cancelledAt: booking.cancelledAt?.toISOString() ?? null,
     cancellationReason: booking.cancellationReason,
+    cancelledBy: booking.cancelledBy,
     student: {
       id: booking.user.id,
       name: `${booking.user.firstName} ${booking.user.lastName}`,
@@ -304,7 +311,7 @@ export function mapBookingResponse(
       canPay,
       expiresAt: booking.paymentExpiresAt?.toISOString() ?? null,
     },
-    actions: { canPay: payEligible, canCancel, canReschedule },
+    actions: { canPay: payEligible, canCancel, canReschedule, canTutorCancel },
   };
 }
 
@@ -754,6 +761,7 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
             status: "CANCELLED",
             cancelledAt: transactionNow,
             cancellationReason: input.reason,
+            cancelledBy: "STUDENT",
             paymentExpiresAt: null,
           },
         });
@@ -795,4 +803,183 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
     if (error instanceof BookingDomainError || !isSerializationError(error)) throw error;
     throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking was already cancelled");
   }
+}
+
+// BOOK-4 lists the tutor's classes that have not started, so a tutor can open one to cancel it.
+export async function listTutorUpcomingBookings(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { tutorId: true } });
+  if (!user?.tutorId)
+    throw new BookingForbiddenError("Only approved Tutors can view their classes");
+  const now = new Date();
+  await releaseExpiredBookings(now, { tutorId: user.tutorId });
+  const bookings = await prisma.booking.findMany({
+    where: {
+      subject: { tutorId: user.tutorId },
+      status: { in: ["PENDING_PAYMENT", "CONFIRMED"] },
+      startedAt: { gt: now },
+    },
+    include: detailInclude,
+    orderBy: [{ startedAt: "asc" }, { id: "asc" }],
+  });
+  return bookings.map((booking) => mapBookingResponse(booking, userId, now));
+}
+
+// BOOK-4: a tutor cancellation always refunds the full payment; the window only adds a warning.
+function tutorQuoteFor(booking: QuoteSource, now: Date) {
+  const transfer = booking.walletTransactions.find((payment) => payment.type === "LESSON_PAYMENT");
+  const originalAmount = transfer?.amount ?? ZERO;
+  const late =
+    booking.startedAt.getTime() - now.getTime() <= CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
+  const token = createHash("sha256")
+    .update(
+      [
+        "TUTOR",
+        booking.id,
+        booking.status,
+        booking.startedAt.toISOString(),
+        transfer?.id ?? "unpaid",
+        decimalString(originalAmount),
+        String(late),
+      ].join("|")
+    )
+    .digest("hex");
+  return {
+    token,
+    generatedAt: now.toISOString(),
+    bookingId: booking.id,
+    lateCancellation: late,
+    policyWindowHours: CANCELLATION_POLICY_WINDOW_HOURS,
+    refundRate: transfer ? 1 : 0,
+    originalAmount: decimalString(originalAmount),
+    refundAmount: decimalString(originalAmount),
+    cancellationFee: decimalString(ZERO),
+  };
+}
+
+function assertTutorOwnsBooking(booking: BookingDetailRecord, userId: string) {
+  if (booking.subject.tutor.user?.id !== userId)
+    throw new BookingForbiddenError("You cannot cancel this booking");
+}
+
+export async function getTutorCancellationQuote(userId: string, id: string) {
+  const now = new Date();
+  await releaseExpiredBookings(now, { id });
+  const booking = await loadDetail(id);
+  if (!booking) throw new BookingNotFoundError();
+  assertTutorOwnsBooking(booking, userId);
+  if (
+    !["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) ||
+    booking.startedAt.getTime() <= now.getTime()
+  )
+    throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
+  if (
+    booking.status === "CONFIRMED" &&
+    booking.totalAmount.gt(0) &&
+    !booking.walletTransactions.some((movement) => movement.type === "LESSON_PAYMENT")
+  )
+    throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
+  return tutorQuoteFor(booking, now);
+}
+
+export async function cancelBookingAsTutor(
+  userId: string,
+  id: string,
+  input: TutorCancelBookingInput
+) {
+  const now = new Date();
+  await releaseExpiredBookings(now, { id });
+  let cancelled;
+  try {
+    cancelled = await prisma.$transaction(
+      async (tx) => {
+        const booking = await tx.booking.findUnique({ where: { id }, include: detailInclude });
+        const transactionNow = new Date();
+        if (!booking) throw new BookingNotFoundError();
+        assertTutorOwnsBooking(booking, userId);
+        if (
+          !["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) ||
+          booking.startedAt.getTime() <= transactionNow.getTime()
+        )
+          throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
+
+        const quote = tutorQuoteFor(booking, transactionNow);
+        const transfer = booking.walletTransactions.find(
+          (payment) => payment.type === "LESSON_PAYMENT"
+        );
+        if (booking.status === "CONFIRMED" && !booking.totalAmount.isZero() && !transfer)
+          throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
+        if (transfer && input.quoteToken !== quote.token)
+          throw new BookingConflictError(
+            "CANCELLATION_QUOTE_CHANGED",
+            "The cancellation terms changed. Review the latest terms before confirming.",
+            { currentQuote: quote }
+          );
+
+        const claimed = await tx.booking.updateMany({
+          where: {
+            id,
+            status: { in: ["PENDING_PAYMENT", "CONFIRMED"] },
+            startedAt: { gt: transactionNow },
+          },
+          data: {
+            status: "CANCELLED",
+            cancelledAt: transactionNow,
+            cancellationReason: input.reason,
+            cancelledBy: "TUTOR",
+            paymentExpiresAt: null,
+          },
+        });
+        if (claimed.count !== 1)
+          throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
+
+        let refund = ZERO;
+        if (transfer) {
+          // The student gets the full payment back; the original payment row stays unchanged.
+          refund = new Prisma.Decimal(quote.refundAmount);
+          await appendWalletMovement(tx, {
+            userId: booking.userId,
+            type: "REFUND",
+            amount: refund,
+            bookingId: id,
+          });
+        }
+        // The tutor said they cannot teach then, so the freed slots stay closed until reopened.
+        await tx.availability.updateMany({
+          where: { bookingId: id },
+          data: { bookingId: null, isOpen: false },
+        });
+        const detailed = await tx.booking.findUniqueOrThrow({
+          where: { id },
+          include: detailInclude,
+        });
+        return {
+          response: {
+            booking: mapBookingResponse(detailed, userId, transactionNow),
+            refund: {
+              amount: decimalString(refund),
+              lateCancellation: quote.lateCancellation,
+              rate: quote.refundRate,
+              cancellationFee: quote.cancellationFee,
+            },
+          },
+          studentId: detailed.user.id,
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+  } catch (error) {
+    if (error instanceof BookingDomainError || !isSerializationError(error)) throw error;
+    throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking was already cancelled");
+  }
+  // Notify only after commit; a failed email must not undo the cancellation.
+  await waitForBookingNotifications([
+    notifyUser(cancelled.studentId, {
+      eventType: "booking",
+      details: {
+        subjectName: cancelled.response.booking.subject.name,
+        scheduledAt: new Date(cancelled.response.booking.startedAt),
+      },
+    }),
+  ]);
+  return cancelled.response;
 }
