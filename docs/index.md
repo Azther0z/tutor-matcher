@@ -30,3 +30,47 @@ disagree.
 | Setup and common commands                       | [`../README.md`](../README.md)                                                      |
 | Domain vocabulary                               | [`CONTEXT.md`](../CONTEXT.md)                                                       |
 | Raw evidence a doc above was built from         | [`sources/`](sources/) — read-only, see below                                       |
+
+## What is authoritative
+
+- [`user-journeys.md`](user-journeys.md) is the single source of truth for **what the
+  product does**. If any other document disagrees with it, `user-journeys.md` wins.
+- [`../apps/backend/prisma/schema.prisma`](../apps/backend/prisma/schema.prisma) is the
+  source of truth for **what the database contains today**. [`database-schema.md`](database-schema.md)
+  documents it and tracks the gap between it and `user-journeys.md`.
+- GitHub issues and the Project board are the source of truth for **committed work**.
+
+## What is historical, not current
+
+[`sources/`](sources/) is immutable evidence: the clickable prototype, the original
+backlog export, the database-course Final Report and the supplied wallet-ledger Markdown
+sources. The ledger sources are preserved approved design evidence, compiled into the
+canonical money and schema pages; they are not the superseded PDF. Do not build features from it —
+read the "authoritative" list above instead. It is never edited, only read; the Final
+Report's design reasoning (not its schema) is summarized in
+[`database-schema.md`](database-schema.md#historical-the-final-report).
+
+## Documentation rules
+
+- `docs/` is the only human-facing documentation tree. Keep new pages here, not scattered
+  elsewhere in the repo.
+- `docs/sources/` is immutable. Summarize it in a canonical page above; never rewrite it.
+- Before writing a new page, check this index and the "Read these first" table — most
+  questions already have a home. Extend an existing page before creating a new one.
+- Keep this index accurate: if you add, move, or remove a document under `docs/`, update
+  the table it belongs in and check that every link on this page still resolves.
+
+## Known gaps
+
+Things the product needs but does not yet have an answer for:
+
+- API routes and request/response contracts are not documented separately from the code.
+- The authentication mechanism (JWT vs. session vs. federated login) is not settled — see
+  [`../README.md`](../README.md#architecture).
+- The earnings clearing period, platform fee, and late-cancellation allocation still need
+  product sign-off; BOOK-3's 24-hour / 70% defaults are confirmed — see
+  [`user-journeys.md`](user-journeys.md#4--money).
+- Whether lesson rescheduling is in scope at all is still open.
+- File storage for tutor verification documents is not chosen yet.
+- Most product flows have no Gherkin behaviour-test coverage yet — see
+  [`testing.md`](testing.md#current-coverage-boundary).
