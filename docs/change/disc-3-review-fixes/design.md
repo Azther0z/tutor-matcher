@@ -12,6 +12,9 @@ PR #202 starts at `99f688a`. Five inline review comments identify unguarded clea
 - Use one two-decimal formatter for both rate displays.
 - Add iframe `loading="lazy"`, sandbox permissions limited to scripts/same-origin/presentation, and `strict-origin-when-cross-origin`. Sending the embedding origin preserves video-provider compatibility without disclosing the full page URL.
 - Use video `preload="none"` without autoplay. HTTP file URLs are external links, never embedded media.
+- Guard message submission with pending state and a synchronous ref, released in `finally` so failed sends can be retried. Ignore Enter while the native keyboard event is composing; preserve Shift+Enter.
+- Clamp finite review ratings to 0–5 rounded stars before repetition, using the same value in the accessible label. Show slot subject names as text rather than relying on hover titles.
+- Keep the legacy authenticated summary endpoint for a separate retirement change that also migrates its existing profile integration tests. The reviewer explicitly permits this follow-up.
 
 ## Verification Commands
 

@@ -8,6 +8,8 @@ Address the five review comments from `piranatw` on PR #202 while preserving Nes
 
 In scope: read-only profile loading; bounded availability transfer; Unicode-safe reviewer initials; consistent two-decimal rates; deferred and restricted introduction media.
 
+The second review adds duplicate-send protection, IME-safe Enter handling, safe review-star rendering, visible slot subjects and removal of a redundant slot filter. Retiring the legacy summary API is deferred, as permitted by the reviewer; existing profile integration tests still exercise it. REV-1 subject navigation and optional self-message hiding remain follow-ups.
+
 Out of scope: booking cleanup changes, schema or data changes, DevOps configuration, unrelated stories, and rewriting existing commits.
 
 ## Approach

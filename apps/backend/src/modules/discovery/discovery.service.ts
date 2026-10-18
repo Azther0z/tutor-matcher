@@ -159,12 +159,10 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
         nextOpening: nextOpening.get(subject.id)?.toISOString() ?? null,
       };
     }),
-    availability: slots
-      .filter((slot) => slot.startedAt.getTime() < listedUntil.getTime())
-      .map((slot) => ({
-        startedAt: slot.startedAt.toISOString(),
-        subjectIds: slot.availabilitySubjects.map(({ subjectId }) => subjectId).sort(),
-      })),
+    availability: slots.map((slot) => ({
+      startedAt: slot.startedAt.toISOString(),
+      subjectIds: slot.availabilitySubjects.map(({ subjectId }) => subjectId).sort(),
+    })),
     reviews: reviews.map((review) => {
       const lastInitial = Array.from(review.user.lastName.trim())[0];
       return {

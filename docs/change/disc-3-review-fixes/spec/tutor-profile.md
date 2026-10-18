@@ -2,6 +2,14 @@
 
 ## MODIFIED Requirements
 
+### Requirement: Message submission is single-flight and composition-safe
+
+A pending message SHALL not be sent again through Enter or button clicks. Enter during IME composition SHALL not submit; Shift+Enter SHALL remain a newline. Failed requests SHALL release the guard and allow retry.
+
+### Requirement: Defensive and accessible display
+
+Review star rendering SHALL clamp and round the supplied number to 0–5 before repeating star characters and SHALL expose that same count accessibly. Slot subject names SHALL be visible text, including on touch screens.
+
 ### Requirement: Public profile reads do not write booking state
 
 Loading a public tutor profile SHALL NOT invoke expired-booking cleanup or a booking write transaction. Held/booked slots SHALL remain excluded until the existing booking flow releases them.

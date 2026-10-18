@@ -24,6 +24,12 @@
 
 ## 3. Verification and Publication
 
+- [x] 3.2 Address the second review's message submission and display findings.
+  - Acceptance: Pending sends cannot be repeated by Enter/click; IME Enter does not send; failure permits retry; review stars are bounded and slot subjects are visible. Remove the redundant slot filter.
+  - Verify: Profile page regressions, discovery suite, lint and builds.
+  - Files: Profile page and tests, discovery service, this change's artifacts, docs/testing.md
+  - Deferred: Retire the legacy summary endpoint with its existing profile integration coverage in a separate change, as the reviewer permits. Subject navigation remains dependent on REV-1 and is disclosed in the PR. Self-messaging is a separate optional follow-up.
+
 - [x] 3.1 Verify the review fixes and prepare publication to PR #202.
   - Acceptance: All scoped local checks pass; the planned PR description reflects the fixes and evidence. Verify remote CI after publication before claiming remote success.
   - Verify: `my-verify-change`, diff scope, local test/build evidence; remote CI tracked on PR #202.

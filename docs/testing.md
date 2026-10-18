@@ -169,6 +169,11 @@ non-BMP characters and omit punctuation for empty surnames. Header/card rates sh
 two-decimal formatting; embeds use lazy loading, sandbox and referrer restrictions,
 HTTPS video files do not preload or autoplay, and HTTP files remain external links.
 
+Second-review regressions cover repeated Enter/click during a pending message, retry after
+failure, IME composition without premature submission, bounded review stars and visible
+slot subject names. The detailed-slot mock returns rows within the asserted query bounds;
+later next openings are supplied only by the grouped query.
+
 ## DISC-1 acceptance coverage
 
 Search runs as one SQL query: Postgres filters, counts each subject's reviews and classes taught,

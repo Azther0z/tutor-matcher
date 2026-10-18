@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getAuthSnapshot, getAuthToken, subscribeToAuth } from "@/src/lib/auth";
 import {
   getTutorProfile,
@@ -97,10 +97,11 @@ function UnavailableProfile() {
 }
 
 function Stars({ rating }: { rating: number }) {
+  const stars = Number.isFinite(rating) ? Math.max(0, Math.min(5, Math.round(rating))) : 0;
   return (
-    <span aria-hidden className="text-amber-400">
-      {"★".repeat(rating)}
-      <span className="text-zinc-300 dark:text-zinc-700">{"★".repeat(5 - rating)}</span>
+    <span role="img" aria-label={`${stars} out of 5 stars`} className="text-amber-400">
+      {"★".repeat(stars)}
+      <span className="text-zinc-300 dark:text-zinc-700">{"★".repeat(5 - stars)}</span>
     </span>
   );
 }
@@ -294,10 +295,15 @@ function AvailabilitySection({ profile }: { profile: TutorProfile }) {
                 {slots.map((slot) => (
                   <li
                     key={slot.startedAt}
-                    title={slot.subjectIds.map((id) => names.get(id)).join(", ")}
                     className="rounded-full bg-violet-100 px-3 py-1 text-sm font-medium text-violet-800 dark:bg-violet-950 dark:text-violet-200"
                   >
-                    {openingTime(slot.startedAt)}
+                    <span>{openingTime(slot.startedAt)}</span>{" "}
+                    <span>
+                      {slot.subjectIds
+                        .map((id) => names.get(id))
+                        .filter(Boolean)
+                        .join(", ")}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -337,7 +343,6 @@ function ReviewsSection({
             >
               <p className="flex flex-wrap items-center gap-2 text-sm">
                 <Stars rating={review.rating} />
-                <span className="sr-only">{review.rating} out of 5 stars</span>
                 <span className="font-medium">{review.reviewer}</span>
                 <span className="text-zinc-500">
                   · {review.subjectName} ·{" "}
@@ -363,13 +368,15 @@ function MessageSection({ profile }: { profile: TutorProfile }) {
   const signedIn = useSyncExternalStore(subscribeToAuth, getAuthSnapshot, () => null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
   async function handleSend() {
-    if (!draft.trim()) return;
+    if (sending || sendingRef.current || !draft.trim()) return;
     const token = getAuthToken();
     if (!token) return;
 
+    sendingRef.current = true;
     setSending(true);
     setSendError(null);
 
@@ -392,6 +399,7 @@ function MessageSection({ profile }: { profile: TutorProfile }) {
     } catch {
       setSendError("Could not reach the server. Please try again.");
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   }
@@ -407,7 +415,7 @@ function MessageSection({ profile }: { profile: TutorProfile }) {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
+              if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                 event.preventDefault();
                 handleSend();
               }

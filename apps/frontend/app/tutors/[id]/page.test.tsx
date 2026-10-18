@@ -114,6 +114,7 @@ describe("DISC-3 tutor profile page", () => {
 
     const availability = screen.getByRole("region", { name: "Availability" });
     expect(within(availability).getByText("10:00")).toBeInTheDocument();
+    expect(within(availability).getByText("Calculus")).toBeVisible();
 
     const reviews = screen.getByRole("region", { name: "Reviews" });
     expect(within(reviews).getByText("Clear explanations.")).toBeInTheDocument();
@@ -310,4 +311,58 @@ describe("DISC-3 tutor profile page", () => {
       )
     );
   });
+
+  it("sends only once while a request is pending and allows retry after failure", async () => {
+    localStorage.setItem("authToken", "token");
+    respondWith(profile);
+    render(<TutorDetailPage />);
+    const textarea = await screen.findByPlaceholderText("Ask Anong a question before booking…");
+    fireEvent.change(textarea, { target: { value: "Hi!" } });
+    let finish!: (response: unknown) => void;
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+
+    fireEvent.keyDown(textarea, { key: "Enter" });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+    fireEvent.click(screen.getByRole("button", { name: "Sending…" }));
+    const posts = () => fetchMock.mock.calls.filter(([, init]) => init?.method === "POST");
+    expect(posts()).toHaveLength(1);
+
+    finish({ ok: false, json: async () => ({ message: "Please retry" }) });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Please retry");
+    fireEvent.keyDown(textarea, { key: "Enter" });
+    await waitFor(() => expect(mockPush).toHaveBeenCalled());
+    expect(posts()).toHaveLength(2);
+  });
+
+  it("does not send Enter while composing text with an IME", async () => {
+    localStorage.setItem("authToken", "token");
+    respondWith(profile);
+    render(<TutorDetailPage />);
+    const textarea = await screen.findByPlaceholderText("Ask Anong a question before booking…");
+    fireEvent.change(textarea, { target: { value: "你好" } });
+    fireEvent.keyDown(textarea, { key: "Enter", isComposing: true });
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+    fireEvent.keyDown(textarea, { key: "Enter", isComposing: false });
+    await waitFor(() => expect(mockPush).toHaveBeenCalled());
+  });
+
+  it.each([
+    [6, 5],
+    [-1, 0],
+    [2.5, 3],
+  ])(
+    "renders an out-of-range or fractional review rating %s safely as %s stars",
+    async (rating, expected) => {
+      respondWith({ ...profile, reviews: [{ ...profile.reviews[0], rating }] });
+      render(<TutorDetailPage />);
+      expect(
+        await screen.findByRole("img", { name: `${expected} out of 5 stars` })
+      ).toBeInTheDocument();
+    }
+  );
 });

@@ -28,7 +28,17 @@
 - Actual PostgreSQL profile read: connection enforced `default_transaction_read_only=on`; grouped next openings matched a direct reference read and the displayed window matched the two-week bound. One subject and one current free slot were exercised; this is a focused read-only smoke check, not a broad load test.
 - Pre-commit formatting/ESLint tasks were run manually for the exact staged files; full formatting is checked against LF contents exported from the Git index. The commit skips a duplicate Husky invocation because this Windows checkout uses CRLF baseline files. No hook, DevOps, schema, or existing source-evidence file is changed.
 
-## Residual Boundaries
+## Second Review Follow-Up (2026-10-18)
+
+- Enter and click share a synchronous pending guard; IME composition is ignored and Shift+Enter is preserved. Failure releases the guard for retry.
+- Review stars are rounded and bounded before repetition, including the accessible label. Slot subject names are visible text. The redundant post-query date filter is removed; the test fixture now matches the query's asserted 14-day bound.
+- New regressions failed against the previous page (duplicate/IME sends, unavailable slot text and unsafe rating rendering). After the fixes, all 206 frontend tests passed, including 19 profile page tests. Discovery tests: 47 passed.
+- Backend TypeScript build and frontend production build/typecheck (`--webpack`, for the existing worktree dependency-junction limitation) passed. Backend/frontend ESLint passed.
+- The existing legacy summary endpoint is retained for a separate retirement change, explicitly permitted by the review. Profile integration tests still consume its approved-edit and certification response. No frontend caller remains; those tests need migration rather than silent deletion.
+- Subject cards still navigate to the REV-1 placeholder. This is disclosed in the PR rather than expanding DISC-3 into REV-1. Optional self-message hiding remains a follow-up. The public messaging recipient identifier remains intentionally available.
+- No database data/schema, DevOps configuration, original contributor history or Wiki Memory was changed.
+
+## Earlier Verification Boundaries
 
 - Real third-party video playback was not exercised. Automated tests cover source classification, lazy/preload behavior, and sandbox/referrer attributes.
 - Unicode handling preserves a code point as requested, not an entire multi-code-point grapheme cluster.

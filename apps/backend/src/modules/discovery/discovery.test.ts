@@ -433,7 +433,6 @@ describe("DISC-3 tutor profile", () => {
         startedAt: soon,
         availabilitySubjects: [{ subjectId: "physics" }, { subjectId: "calculus" }],
       },
-      { startedAt: later, availabilitySubjects: [{ subjectId: "physics" }] },
     ]);
   });
 
