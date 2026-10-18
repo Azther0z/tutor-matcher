@@ -13,9 +13,10 @@ import {
 
 export async function getTutorSearch(req: Request, res: Response) {
   res.vary("Authorization");
+  const query = tutorSearchQuerySchema.parse(req.query);
   const result = await searchTutorSubjects(
-    tutorSearchQuerySchema.parse(req.query),
-    new Date(),
+    query,
+    query.asOf ? new Date(query.asOf) : new Date(),
     req.user?.sub
   );
   if (result.recommendationMode === "personalized") {

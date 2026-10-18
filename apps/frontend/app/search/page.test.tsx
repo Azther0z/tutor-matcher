@@ -47,6 +47,7 @@ function page(results: SubjectSearchResult[], extra: Partial<TutorSearchResponse
     total: results.length,
     totalPages: 1,
     recommendationMode: "fallback",
+    asOf: "2026-10-18T03:00:00.000Z",
     ...extra,
   };
 }
@@ -222,7 +223,7 @@ describe("SearchPage (DISC-1)", () => {
   });
 
   it("re-filters immediately and goes back to page 1 when a filter changes", async () => {
-    mockParams = new URLSearchParams("sort=rating&page=2");
+    mockParams = new URLSearchParams("sort=rating&page=2&asOf=2026-10-18T03:00:00.000Z");
     respondWith(jsonResponse(page([subject()], { page: 2, totalPages: 2, total: 13 })));
     render(<SearchPage />);
     await screen.findByRole("option", { name: "Physics" });
@@ -416,7 +417,10 @@ describe("SearchPage (DISC-1)", () => {
     respondWith(jsonResponse(page([], { page: 99, total: 30, totalPages: 3 })));
     render(<SearchPage />);
     await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith("/search?q=math&page=3", { scroll: false })
+      expect(mockReplace).toHaveBeenCalledWith(
+        "/search?q=math&page=3&asOf=2026-10-18T03%3A00%3A00.000Z",
+        { scroll: false }
+      )
     );
     expect(screen.queryByText("No tutors match these filters")).not.toBeInTheDocument();
   });
@@ -432,16 +436,29 @@ describe("SearchPage (DISC-1)", () => {
     expect(screen.getAllByRole("button", { name: /stars and up$/ })).toHaveLength(10);
   });
 
-  it("pages through results", async () => {
+  it("pages through results using the same reference time", async () => {
     mockParams = new URLSearchParams("q=math&page=2");
     respondWith(jsonResponse(page([subject()], { page: 2, totalPages: 3, total: 30 })));
-    render(<SearchPage />);
+    const view = render(<SearchPage />);
     expect(await screen.findByText("Page 2 of 3")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(mockReplace).toHaveBeenLastCalledWith("/search?q=math&page=3", { scroll: false });
+    expect(mockReplace).toHaveBeenLastCalledWith(
+      "/search?q=math&page=3&asOf=2026-10-18T03%3A00%3A00.000Z",
+      { scroll: false }
+    );
     fireEvent.click(screen.getByRole("button", { name: "Previous" }));
-    expect(mockReplace).toHaveBeenLastCalledWith("/search?q=math", { scroll: false });
+    expect(mockReplace).toHaveBeenLastCalledWith(
+      "/search?q=math&asOf=2026-10-18T03%3A00%3A00.000Z",
+      { scroll: false }
+    );
+    mockParams = new URLSearchParams("q=math&page=3&asOf=2026-10-18T03:00:00.000Z");
+    view.rerender(<SearchPage />);
+    await waitFor(() =>
+      expect(searchCalls()).toContain(
+        "/api/discovery/tutors?q=math&page=3&asOf=2026-10-18T03%3A00%3A00.000Z"
+      )
+    );
   });
 
   it("shows an error and retries the same search", async () => {

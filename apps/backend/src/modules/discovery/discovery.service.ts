@@ -204,6 +204,18 @@ const listedSubjects = Prisma.sql`
   JOIN tutor_profile_versions v
     ON v.profile_version_id = t.current_profile_version_id AND v.status = 'APPROVED'`;
 
+function nextAvailability(now: Date, subjectId?: Prisma.Sql) {
+  return Prisma.sql`
+    SELECT avs.subject_id, MIN(av.started_at) AS next_available_at
+    FROM availability_subjects avs
+    JOIN availabilities av ON av.availability_id = avs.availability_id
+    WHERE av.is_open = TRUE AND av.booking_id IS NULL
+      AND av.started_at > ${now.toISOString()}::timestamp
+      AND av.started_at <= ${new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()}::timestamp
+      ${subjectId ? Prisma.sql`AND avs.subject_id = ${subjectId}` : Prisma.empty}
+    GROUP BY avs.subject_id`;
+}
+
 // Filters, per-subject stats, sorting and paging all run in Postgres, so a page costs one page.
 function matchingSubjects(
   query: TutorSearchQuery,
@@ -230,11 +242,7 @@ function matchingSubjects(
     );
   if (query.minRating) conditions.push(Prisma.sql`r.rating >= ${query.minRating}`);
 
-  const needsRating =
-    options.includeStats ||
-    options.includeRecommendation ||
-    query.sort === "rating" ||
-    !!query.minRating;
+  const needsRating = options.includeStats || options.includeRecommendation || !!query.minRating;
   const reviewsJoin = needsRating
     ? Prisma.sql`LEFT JOIN (
         SELECT subject_id, COUNT(*) AS review_count, AVG(rating_stars)::float8 AS rating
@@ -258,13 +266,7 @@ function matchingSubjects(
     : Prisma.empty;
   const availabilityJoin = options.includeAvailability
     ? Prisma.sql`LEFT JOIN (
-        SELECT avs.subject_id, MIN(av.started_at) AS next_available_at
-        FROM availability_subjects avs
-        JOIN availabilities av ON av.availability_id = avs.availability_id
-        WHERE av.is_open = TRUE AND av.booking_id IS NULL
-          AND av.started_at > ${now.toISOString()}::timestamp
-          AND av.started_at <= ${new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()}::timestamp
-        GROUP BY avs.subject_id
+        ${nextAvailability(now)}
       ) a ON a.subject_id = s.subject_id`
     : Prisma.empty;
   const recommendationColumns = options.includeRecommendation
@@ -348,7 +350,7 @@ export async function searchTutorSubjects(
   const recommendationMode =
     query.sort !== "recommended" ? null : studentAreaIds.length > 0 ? "personalized" : "fallback";
   const matching = matchingSubjects(query, now, studentAreaIds, {
-    includeAvailability: true,
+    includeAvailability: query.sort === "recommended",
     includeRecommendation: query.sort === "recommended",
     includeStats: true,
   });
@@ -359,9 +361,16 @@ export async function searchTutorSubjects(
   });
   const [rows, [{ total }]] = await Promise.all([
     prisma.$queryRaw<SearchRow[]>`
-      SELECT subject_id, review_count, rating, classes_taught, next_available_at FROM (${matching}) m
-      ORDER BY ${sortOrder[query.sort]}, name, first_name, last_name, subject_id
-      LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize}`,
+      WITH page AS MATERIALIZED (
+        SELECT * FROM (${matching}) m
+        ORDER BY ${sortOrder[query.sort]}, name, first_name, last_name, subject_id
+        LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize}
+      )
+      SELECT page.subject_id, page.review_count, page.rating, page.classes_taught,
+        ${query.sort === "recommended" ? Prisma.sql`page.next_available_at` : Prisma.sql`a.next_available_at`}
+      FROM page
+      ${query.sort === "recommended" ? Prisma.empty : Prisma.sql`LEFT JOIN LATERAL (${nextAvailability(now, Prisma.sql`page.subject_id`)}) a ON TRUE`}
+      ORDER BY ${sortOrder[query.sort]}, name, first_name, last_name, page.subject_id`,
     prisma.$queryRaw<[{ total: number }]>`SELECT COUNT(*)::int AS total FROM (${countMatching}) m`,
   ]);
 
@@ -398,6 +407,7 @@ export async function searchTutorSubjects(
     total,
     totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
     recommendationMode,
+    asOf: now.toISOString(),
   };
 }
 

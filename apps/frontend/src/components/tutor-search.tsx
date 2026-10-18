@@ -89,7 +89,9 @@ export function TutorSearch() {
 
   function apply(changes: Partial<TutorSearchFilters>) {
     // Any filter change starts again from the first page.
-    const nextQuery = filtersToQuery({ ...filters, page: 1, ...changes });
+    const isPageChange = changes.page !== undefined && Object.keys(changes).length === 1;
+    const asOf = isPageChange ? (filters.asOf ?? loaded?.data?.asOf) : undefined;
+    const nextQuery = filtersToQuery({ ...filters, page: 1, ...changes, asOf });
     router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
   }
 
@@ -98,8 +100,8 @@ export function TutorSearch() {
       subscribeToAuth(() => {
         setLoaded(null);
         setAuthRevision((revision) => revision + 1);
-        if (filters.page > 1) {
-          const nextQuery = filtersToQuery({ ...filters, page: 1 });
+        if (filters.page > 1 || filters.asOf) {
+          const nextQuery = filtersToQuery({ ...filters, page: 1, asOf: undefined });
           router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
         }
       }),

@@ -15,6 +15,7 @@ export type TutorSearchFilters = {
   format: string;
   sort: TutorSort;
   page: number;
+  asOf?: string;
 };
 
 // DISC-1: one result per tutor + subject, with that subject's own price and rating.
@@ -33,6 +34,7 @@ export type TutorSearchResponse = {
   total: number;
   totalPages: number;
   recommendationMode: "personalized" | "fallback" | null;
+  asOf: string;
 };
 
 export type PriceRange = { min: string; max: string } | null;
@@ -70,6 +72,7 @@ export function filtersFromParams(params: Pick<URLSearchParams, "get">): TutorSe
     format: params.get("format") ?? "",
     sort: sortOptions.some(({ value }) => value === sort) ? (sort as TutorSort) : "recommended",
     page: Number.isInteger(page) && page > 1 ? page : 1,
+    ...(params.get("asOf") ? { asOf: params.get("asOf")! } : {}),
   };
 }
 
@@ -84,6 +87,7 @@ export function filtersToQuery(filters: TutorSearchFilters) {
   if (filters.format) params.set("format", filters.format);
   if (filters.sort !== "recommended") params.set("sort", filters.sort);
   if (filters.page > 1) params.set("page", String(filters.page));
+  if (filters.asOf) params.set("asOf", filters.asOf);
   return params.toString();
 }
 

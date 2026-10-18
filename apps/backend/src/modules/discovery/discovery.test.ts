@@ -360,8 +360,40 @@ describe("DISC-1 tutor search", () => {
   it("asks the database for only the requested page", async () => {
     await request(app).get("/api/discovery/tutors").query({ page: "3", pageSize: "5" }).expect(200);
     const page = rawQuery(0);
-    expect(page.sql).toMatch(/LIMIT \? OFFSET \?\s*$/);
+    expect(page.sql).toMatch(/LIMIT \? OFFSET \?/);
     expect(page.values.slice(-2)).toEqual([5, 10]);
+  });
+
+  it.each(["price_asc", "price_desc", "rating"])(
+    "loads availability only for the selected page when sorting by %s",
+    async (sort) => {
+      await request(app).get("/api/discovery/tutors").query({ sort }).expect(200);
+      const sql = rawQuery(0).sql;
+      const pageEnd = sql.indexOf("FROM page");
+      expect(sql.slice(0, pageEnd)).not.toContain("FROM availability_subjects");
+      expect(sql.slice(pageEnd)).toContain("LEFT JOIN LATERAL");
+      expect(sql.slice(pageEnd)).toContain("avs.subject_id = page.subject_id");
+      expect(rawQuery(1).sql).not.toContain("FROM availability_subjects");
+      expect(rawQuery(1).sql).not.toContain("FROM reviews");
+    }
+  );
+
+  it("reuses the first page's reference time for subsequent recommendation pages", async () => {
+    const first = await request(app).get("/api/discovery/tutors").expect(200);
+    const referenceTime = first.body.asOf;
+    const firstValues = rawQuery(0).values.slice(0, -2);
+    const second = await request(app)
+      .get("/api/discovery/tutors")
+      .query({ page: "2", asOf: referenceTime })
+      .expect(200);
+    expect(second.body.asOf).toBe(referenceTime);
+    expect(rawQuery(2).values.slice(0, -2)).toEqual(firstValues);
+    expect(rawQuery(2).values.slice(-2)).toEqual([12, 12]);
+  });
+
+  it("rejects an invalid reference timestamp", async () => {
+    await request(app).get("/api/discovery/tutors").query({ asOf: "invalid" }).expect(400);
+    expect(queryRaw).not.toHaveBeenCalled();
   });
 
   it("returns the page in the database's order with each subject's own numbers", async () => {
@@ -411,6 +443,7 @@ describe("DISC-1 tutor search", () => {
       total: 7,
       totalPages: 2,
       recommendationMode: "fallback",
+      asOf: expect.any(String),
     });
   });
 
