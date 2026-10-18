@@ -15,6 +15,10 @@ export type ConfirmedTopup = WalletSummary & {
 
 const WALLET_BALANCE_CHANGED_EVENT = "tutor-matcher-wallet-balance-changed";
 
+export function publishWalletBalance(balance: string) {
+  window.dispatchEvent(new CustomEvent(WALLET_BALANCE_CHANGED_EVENT, { detail: { balance } }));
+}
+
 export function subscribeToWalletBalance(callback: (balance: string) => void) {
   function handleBalanceChanged(event: Event) {
     const balance = (event as CustomEvent<{ balance?: string }>).detail?.balance;
@@ -54,8 +58,6 @@ export async function confirmTopup(
     body: JSON.stringify({ amount, reference, simulation }),
   });
 
-  window.dispatchEvent(
-    new CustomEvent(WALLET_BALANCE_CHANGED_EVENT, { detail: { balance: confirmed.balance } })
-  );
+  publishWalletBalance(confirmed.balance);
   return confirmed;
 }

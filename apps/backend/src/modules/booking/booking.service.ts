@@ -50,7 +50,7 @@ function rateSetting(name: string, fallback: number) {
   return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : fallback;
 }
 
-// These BOOK-3 defaults stay configurable until product signs off the final policy numbers.
+// Approved BOOK-3 defaults; deployments may explicitly configure a different policy.
 export const CANCELLATION_POLICY_WINDOW_HOURS = positiveSetting(
   "BOOKING_CANCELLATION_WINDOW_HOURS",
   24
