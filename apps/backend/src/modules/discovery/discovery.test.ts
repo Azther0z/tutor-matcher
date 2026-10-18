@@ -16,6 +16,7 @@ const bookingFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const transaction = jest.fn(async (run: (tx: unknown) => unknown) =>
   run({ booking: { findMany: bookingFindMany } })
 );
+const studentFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
@@ -27,6 +28,7 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
     tutor: { findUnique: profileTutorFindUnique },
     review: { aggregate: reviewAggregate, findMany: reviewFindMany, groupBy: reviewGroupBy },
     availability: { findMany: availabilityFindMany },
+    student: { findUnique: studentFindUnique },
   },
 }));
 
@@ -156,6 +158,7 @@ type Row = {
   review_count: number;
   rating: number | null;
   classes_taught: number;
+  next_available_at: Date | null;
 };
 
 function subjectRow({ id, name, tutor, rate }: Fixture) {
@@ -198,10 +201,23 @@ const physics = { id: "physics", name: "Physics", tutor: "Daniel", rate: "900.00
 describe("DISC-1 tutor search", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    studentFindUnique.mockResolvedValue(null);
     usePage(
       [
-        { subject_id: "physics", review_count: 1, rating: 5, classes_taught: 0 },
-        { subject_id: "calculus", review_count: 2, rating: 4.4999, classes_taught: 1 },
+        {
+          subject_id: "physics",
+          review_count: 1,
+          rating: 5,
+          classes_taught: 0,
+          next_available_at: null,
+        },
+        {
+          subject_id: "calculus",
+          review_count: 2,
+          rating: 4.4999,
+          classes_taught: 1,
+          next_available_at: null,
+        },
       ],
       7,
       [calculus, physics]
@@ -214,6 +230,51 @@ describe("DISC-1 tutor search", () => {
     await request(app).get("/api/discovery/price-range").expect(200);
     await request(app).get("/api/discovery/learning-areas").expect(200);
     await request(app).get(`/api/discovery/tutors/${TUTOR_ID}`).expect(401);
+  });
+
+  it("uses valid tokens for personalization and treats invalid tokens as guests", async () => {
+    const anonymous = await request(app).get("/api/discovery/tutors").expect(200);
+    expect(anonymous.body.recommendationMode).toBe("fallback");
+
+    const invalid = await request(app)
+      .get("/api/discovery/tutors")
+      .set("Authorization", "Bearer invalid.token.value")
+      .expect(200);
+    expect(invalid.body.recommendationMode).toBe("fallback");
+    expect(invalid.headers.vary).toContain("Authorization");
+  });
+
+  it("loads learning areas from the authenticated Student and disables shared caching", async () => {
+    studentFindUnique.mockResolvedValue({ learningAreas: [{ learningAreaId: MATHEMATICS.id }] });
+    const response = await request(app)
+      .get("/api/discovery/tutors")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .expect(200);
+
+    expect(studentFindUnique).toHaveBeenCalledWith({
+      where: { userId: USER_ID },
+      select: { learningAreas: { select: { learningAreaId: true } } },
+    });
+    expect(response.body.recommendationMode).toBe("personalized");
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(response.headers.vary).toContain("Authorization");
+    expect(rawQuery(0).sql).toContain("recommendation_score DESC");
+    expect(rawQuery(0).sql).toContain("0.5 *");
+    expect(rawQuery(0).sql).toContain("0.3 *");
+    expect(rawQuery(0).sql).toContain("0.2 *");
+    expect(rawQuery(0).values).toContain(MATHEMATICS.id);
+  });
+
+  it("uses fallback ranking for an authenticated account without a Student profile", async () => {
+    studentFindUnique.mockResolvedValue(null);
+    const response = await request(app)
+      .get("/api/discovery/tutors")
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .expect(200);
+
+    expect(response.body.recommendationMode).toBe("fallback");
+    expect(rawQuery(0).sql).toContain("0.6 *");
+    expect(rawQuery(0).sql).toContain("0.4 *");
   });
 
   it.each([
@@ -278,24 +339,88 @@ describe("DISC-1 tutor search", () => {
     expect(page.sql.match(/u\.first_name ILIKE/g)).toHaveLength(1);
     // The total counts the same matches.
     expect(rawQuery(1).sql).toContain("COUNT(*)");
-    expect(rawQuery(1).values).toEqual(page.values.slice(0, rawQuery(1).values.length));
+    expect(rawQuery(1).values).toEqual(
+      expect.arrayContaining([MATHEMATICS.id, 200, 600, 4.5, "ONLINE", "%anong%"])
+    );
+    expect(rawQuery(1).sql).not.toContain("FROM availability_subjects");
+    expect(rawQuery(1).sql).not.toContain("FROM bookings");
+    expect(rawQuery(1).sql).not.toContain("0.2 *");
+    expect(rawQuery(1).sql).not.toContain("relevance.match_count");
   });
 
   it.each([
-    ["recommended", "classes_taught DESC, review_count DESC, rating DESC NULLS LAST"],
+    ["recommended", "recommendation_score DESC, review_count DESC"],
     ["rating", "rating DESC NULLS LAST, review_count DESC"],
     ["price_asc", "hourly_rate ASC"],
     ["price_desc", "hourly_rate DESC"],
   ])("sorts by %s in the database with stable tie-breakers", async (sort, order) => {
-    await request(app).get("/api/discovery/tutors").query({ sort }).expect(200);
+    const response = await request(app).get("/api/discovery/tutors").query({ sort }).expect(200);
+    expect(response.body.recommendationMode).toBe(sort === "recommended" ? "fallback" : null);
     expect(rawQuery(0).sql).toContain(`ORDER BY ${order}, name, first_name, last_name, subject_id`);
   });
 
   it("asks the database for only the requested page", async () => {
     await request(app).get("/api/discovery/tutors").query({ page: "3", pageSize: "5" }).expect(200);
     const page = rawQuery(0);
-    expect(page.sql).toMatch(/LIMIT \? OFFSET \?\s*$/);
+    expect(page.sql).toMatch(/LIMIT \? OFFSET \?/);
     expect(page.values.slice(-2)).toEqual([5, 10]);
+  });
+
+  it.each(["price_asc", "price_desc", "rating"])(
+    "loads availability only for the selected page when sorting by %s",
+    async (sort) => {
+      await request(app).get("/api/discovery/tutors").query({ sort }).expect(200);
+      const sql = rawQuery(0).sql;
+      const pageEnd = sql.indexOf("FROM page");
+      expect(sql.slice(0, pageEnd)).not.toContain("FROM availability_subjects");
+      expect(sql.slice(pageEnd)).toContain("LEFT JOIN LATERAL");
+      expect(sql.slice(pageEnd)).toContain("avs.subject_id = page.subject_id");
+      expect(rawQuery(1).sql).not.toContain("FROM availability_subjects");
+      expect(rawQuery(1).sql).not.toContain("FROM reviews");
+    }
+  );
+
+  it("reuses the first page's reference time for subsequent recommendation pages", async () => {
+    const first = await request(app).get("/api/discovery/tutors").expect(200);
+    const referenceTime = first.body.asOf;
+    const firstValues = rawQuery(0).values.slice(0, -2);
+    const second = await request(app)
+      .get("/api/discovery/tutors")
+      .query({ page: "2", asOf: referenceTime })
+      .expect(200);
+    expect(second.body.asOf).toBe(referenceTime);
+    expect(rawQuery(2).values.slice(0, -2)).toEqual(firstValues);
+    expect(rawQuery(2).values.slice(-2)).toEqual([12, 12]);
+  });
+
+  it("rejects an invalid reference timestamp", async () => {
+    await request(app).get("/api/discovery/tutors").query({ asOf: "invalid" }).expect(400);
+    expect(queryRaw).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["recent", -30 * 60 * 1000, true],
+    ["exactly one hour old", -60 * 60 * 1000, true],
+    ["over one hour old", -60 * 60 * 1000 - 1, false],
+    ["a week old", -7 * 24 * 60 * 60 * 1000, false],
+    ["just in the future", 1, false],
+    ["a week in the future", 7 * 24 * 60 * 60 * 1000, false],
+  ])("bounds a %s pagination reference time", async (_label, offset, accepted) => {
+    const currentTime = Date.parse("2026-10-18T12:00:00.000Z");
+    const clock = jest.spyOn(Date, "now").mockReturnValue(currentTime);
+    try {
+      const asOf = new Date(currentTime + offset).toISOString();
+      const expected = accepted ? asOf : new Date(currentTime).toISOString();
+      const response = await request(app)
+        .get("/api/discovery/tutors")
+        .query({ page: "2", asOf })
+        .expect(200);
+
+      expect(response.body.asOf).toBe(expected);
+      expect(rawQuery(0).values).toContain(expected);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it("returns the page in the database's order with each subject's own numbers", async () => {
@@ -317,6 +442,7 @@ describe("DISC-1 tutor search", () => {
       rating: 5,
       reviewCount: 1,
       classesTaught: 0,
+      nextAvailableAt: null,
       tutor: {
         id: "tutor-Daniel",
         firstName: "Daniel",
@@ -337,7 +463,15 @@ describe("DISC-1 tutor search", () => {
       .get("/api/discovery/tutors")
       .query({ page: "9", pageSize: "5" })
       .expect(200);
-    expect(response.body).toEqual({ results: [], page: 9, pageSize: 5, total: 7, totalPages: 2 });
+    expect(response.body).toEqual({
+      results: [],
+      page: 9,
+      pageSize: 5,
+      total: 7,
+      totalPages: 2,
+      recommendationMode: "fallback",
+      asOf: expect.any(String),
+    });
   });
 
   it("counts a class as taught when completed, or confirmed and already over", async () => {

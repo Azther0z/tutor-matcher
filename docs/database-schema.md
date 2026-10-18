@@ -27,6 +27,7 @@ User (every account; student by default)
  │                 └─ currentProfileVersionId → TutorProfileVersion │
  ├──< TutorProfileVersion ──< TutorProfileVersionCertification       │
  ├─ isAdmin                                                        │
+ └──< Student ──< StudentLearningArea >── LearningArea             │
  ├─ Wallet balance ──< WalletTransaction                │
  ├──< Booking >── Subject                                          │
  │      └── occupies one continuous run of ────────────────────────┘
@@ -44,6 +45,9 @@ Reading the shape:
 - A **Subject** is owned by a tutor and is what a student books. It is tagged with one to
   three **LearningAreas** through **SubjectLearningArea**; students pick from the same list
   at onboarding, so search and recommendations can match the two.
+- Recommended discovery uses the Student's selected learning areas, Subject reviews and
+  open unbooked availability assigned through **AvailabilitySubject**. The database has no
+  Subject goal tags, so Student goals do not currently contribute to recommendation scores.
 - An **Availability** slot belongs to the tutor and is offered for one or more of that
   tutor's subjects through **AvailabilitySubject**.
 - A **Booking** is one student, one subject, and one continuous run of slots.

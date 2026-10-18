@@ -11,8 +11,23 @@ import {
   TutorUnavailableError,
 } from "./discovery.service.ts";
 
+const SEARCH_REFERENCE_MAX_AGE_MS = 60 * 60 * 1000;
+
 export async function getTutorSearch(req: Request, res: Response) {
-  res.status(200).json(await searchTutorSubjects(tutorSearchQuerySchema.parse(req.query)));
+  res.vary("Authorization");
+  const query = tutorSearchQuerySchema.parse(req.query);
+  const now = Date.now();
+  const requestedTime = query.asOf ? Date.parse(query.asOf) : now;
+  // Keep pagination stable briefly, but refresh bookmarked links and future timestamps.
+  const referenceTime =
+    requestedTime <= now && now - requestedTime <= SEARCH_REFERENCE_MAX_AGE_MS
+      ? requestedTime
+      : now;
+  const result = await searchTutorSubjects(query, new Date(referenceTime), req.user?.sub);
+  if (result.recommendationMode === "personalized") {
+    res.setHeader("Cache-Control", "private, no-store");
+  }
+  res.status(200).json(result);
 }
 
 export async function getSearchPriceRange(_req: Request, res: Response) {

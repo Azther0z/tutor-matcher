@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import SearchPage from "./page";
 import { jsonResponse } from "@/src/test/tutor-profile-fixtures";
 import type { SubjectSearchResult, TutorSearchResponse } from "@/src/lib/discovery-api";
+import { setAuthToken } from "@/src/lib/auth";
 
 let mockParams = new URLSearchParams();
 const mockReplace = jest.fn();
@@ -26,6 +27,7 @@ function subject(overrides: Partial<SubjectSearchResult> = {}): SubjectSearchRes
     rating: 4.5,
     reviewCount: 2,
     classesTaught: 3,
+    nextAvailableAt: null,
     tutor: {
       id: "tutor-anong",
       firstName: "Anong",
@@ -44,6 +46,8 @@ function page(results: SubjectSearchResult[], extra: Partial<TutorSearchResponse
     pageSize: 12,
     total: results.length,
     totalPages: 1,
+    recommendationMode: "fallback",
+    asOf: "2026-10-18T03:00:00.000Z",
     ...extra,
   };
 }
@@ -148,8 +152,78 @@ describe("SearchPage (DISC-1)", () => {
     expect(satPhysics).toHaveTextContent("฿860.00 / hr");
   });
 
+  it("sends the current token and shows personalized recommendation context and Bangkok availability", async () => {
+    act(() => setAuthToken("student-token"));
+    respondWith(
+      jsonResponse(
+        page([subject({ nextAvailableAt: "2026-10-17T03:00:00.000Z" })], {
+          recommendationMode: "personalized",
+        })
+      )
+    );
+    render(<SearchPage />);
+
+    expect(await screen.findByText("Recommended for you")).toBeInTheDocument();
+    expect(screen.getByText(/Oct 17, 2026, 10:00 AM \(Bangkok time\)/)).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.find(([path]) => String(path).startsWith("/api/discovery/tutors"))?.[1]
+    ).toMatchObject({ headers: { Authorization: "Bearer student-token" } });
+  });
+
+  it("offers profile setup when a signed-in Student receives fallback recommendations", async () => {
+    act(() => setAuthToken("student-token"));
+    respondWith(jsonResponse(page([subject()])));
+    render(<SearchPage />);
+
+    expect(
+      await screen.findByRole("link", { name: "Add learning areas to your profile" })
+    ).toHaveAttribute("href", "/settings/student");
+    expect(screen.getByText("No availability in the next 30 days")).toBeInTheDocument();
+  });
+
+  it("clears and reloads discovery after the current account changes", async () => {
+    respondWith(
+      jsonResponse(page([subject()])),
+      jsonResponse(page([subject({ id: "new-account-subject", name: "New account result" })]))
+    );
+    render(<SearchPage />);
+    expect(await screen.findByText("1 subject found")).toBeInTheDocument();
+
+    act(() => setAuthToken("new-student-token"));
+    await waitFor(() => expect(searchCalls()).toHaveLength(2));
+    expect(
+      fetchMock.mock.calls.filter(([path]) =>
+        String(path).startsWith("/api/discovery/tutors")
+      )[1][1]
+    ).toMatchObject({ headers: { Authorization: "Bearer new-student-token" } });
+    expect(
+      await screen.findByRole("link", { name: "New account result with Anong Pattana" })
+    ).toBeInTheDocument();
+  });
+
+  it("clears an expired token and reloads public fallback recommendations", async () => {
+    act(() => setAuthToken("expired-token"));
+    fetchMock.mockImplementation((path: string, options?: RequestInit) => {
+      if (path === "/api/discovery/learning-areas") {
+        return Promise.resolve(jsonResponse({ learningAreas: [mathematics] }));
+      }
+      if (path === "/api/discovery/price-range") {
+        return Promise.resolve(jsonResponse({ priceRange }));
+      }
+      if ((options?.headers as Record<string, string> | undefined)?.Authorization) {
+        return Promise.resolve(jsonResponse({ message: "Invalid or expired token" }, 401));
+      }
+      return Promise.resolve(jsonResponse(page([subject()])));
+    });
+    render(<SearchPage />);
+
+    expect(await screen.findByText("Recommended tutors")).toBeInTheDocument();
+    await waitFor(() => expect(searchCalls()).toHaveLength(2));
+    expect(localStorage.getItem("authToken")).toBeNull();
+  });
+
   it("re-filters immediately and goes back to page 1 when a filter changes", async () => {
-    mockParams = new URLSearchParams("sort=rating&page=2");
+    mockParams = new URLSearchParams("sort=rating&page=2&asOf=2026-10-18T03:00:00.000Z");
     respondWith(jsonResponse(page([subject()], { page: 2, totalPages: 2, total: 13 })));
     render(<SearchPage />);
     await screen.findByRole("option", { name: "Physics" });
@@ -279,7 +353,9 @@ describe("SearchPage (DISC-1)", () => {
       await screen.findByRole("heading", { name: "No tutors match these filters" })
     ).toBeInTheDocument();
     expect(screen.getByText("Try broadening your search:")).toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    const loginLink = screen.getByRole("link", { name: "Log in" });
+    expect(loginLink).toHaveAttribute("href", "/login");
+    expect(screen.getAllByRole("link")).toEqual([loginLink]);
     expect(
       await screen.findByRole("button", { name: "Search all areas, not just Mathematics" })
     ).toBeInTheDocument();
@@ -341,7 +417,10 @@ describe("SearchPage (DISC-1)", () => {
     respondWith(jsonResponse(page([], { page: 99, total: 30, totalPages: 3 })));
     render(<SearchPage />);
     await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith("/search?q=math&page=3", { scroll: false })
+      expect(mockReplace).toHaveBeenCalledWith(
+        "/search?q=math&page=3&asOf=2026-10-18T03%3A00%3A00.000Z",
+        { scroll: false }
+      )
     );
     expect(screen.queryByText("No tutors match these filters")).not.toBeInTheDocument();
   });
@@ -357,16 +436,29 @@ describe("SearchPage (DISC-1)", () => {
     expect(screen.getAllByRole("button", { name: /stars and up$/ })).toHaveLength(10);
   });
 
-  it("pages through results", async () => {
+  it("pages through results using the same reference time", async () => {
     mockParams = new URLSearchParams("q=math&page=2");
     respondWith(jsonResponse(page([subject()], { page: 2, totalPages: 3, total: 30 })));
-    render(<SearchPage />);
+    const view = render(<SearchPage />);
     expect(await screen.findByText("Page 2 of 3")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(mockReplace).toHaveBeenLastCalledWith("/search?q=math&page=3", { scroll: false });
+    expect(mockReplace).toHaveBeenLastCalledWith(
+      "/search?q=math&page=3&asOf=2026-10-18T03%3A00%3A00.000Z",
+      { scroll: false }
+    );
     fireEvent.click(screen.getByRole("button", { name: "Previous" }));
-    expect(mockReplace).toHaveBeenLastCalledWith("/search?q=math", { scroll: false });
+    expect(mockReplace).toHaveBeenLastCalledWith(
+      "/search?q=math&asOf=2026-10-18T03%3A00%3A00.000Z",
+      { scroll: false }
+    );
+    mockParams = new URLSearchParams("q=math&page=3&asOf=2026-10-18T03:00:00.000Z");
+    view.rerender(<SearchPage />);
+    await waitFor(() =>
+      expect(searchCalls()).toContain(
+        "/api/discovery/tutors?q=math&page=3&asOf=2026-10-18T03%3A00%3A00.000Z"
+      )
+    );
   });
 
   it("shows an error and retries the same search", async () => {

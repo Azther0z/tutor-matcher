@@ -4,6 +4,9 @@ import { URL } from "node:url";
 import request from "supertest";
 import { app } from "../../app.ts";
 import { prisma } from "../../lib/db.ts";
+import { signAuthToken } from "../../lib/jwt.ts";
+import { searchTutorSubjects } from "./discovery.service.ts";
+import { tutorSearchQuerySchema } from "./discovery.schema.ts";
 
 if (process.env.RUN_DATABASE_INTEGRATION === "true") {
   const database = new URL(process.env.DATABASE_URL ?? "");
@@ -24,7 +27,11 @@ const describeDatabase = process.env.RUN_DATABASE_INTEGRATION === "true" ? descr
 const token = `disc1${randomUUID().slice(0, 8)}`;
 const userIds: string[] = [];
 const tutorIds: string[] = [];
+const studentIds: string[] = [];
 const areas: Record<string, string> = {};
+let searchNow: Date;
+let boundaryTutorId: string;
+let boundarySubjectId: string;
 
 async function createTutor(
   firstName: string,
@@ -89,6 +96,35 @@ function search(query: Record<string, string>) {
     .query({ ...query, q: `${token} ${query.q ?? ""}` })
     .expect(200);
 }
+function personalizedSearch(query: Record<string, string> = {}) {
+  const studentId = studentIds[0];
+  return request(app)
+    .get("/api/discovery/tutors")
+    .set(
+      "Authorization",
+      `Bearer ${signAuthToken({ sub: studentId, email: `${token}-student@example.com`, isAdmin: false })}`
+    )
+    .query({ ...query, q: `${token} ${query.q ?? ""}` })
+    .expect(200);
+}
+
+async function publishAvailability(
+  tutorId: string,
+  subjectId: string,
+  startedAt: Date,
+  isOpen = true,
+  bookingId: string | null = null
+) {
+  await prisma.availability.create({
+    data: {
+      tutorId,
+      startedAt,
+      isOpen,
+      bookingId,
+      availabilitySubjects: { create: [{ subjectId }] },
+    },
+  });
+}
 const names = (body: { results: { name: string }[] }) => body.results.map(({ name }) => name);
 
 describeDatabase("DISC-1 search on PostgreSQL", () => {
@@ -110,11 +146,22 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
       },
     });
     userIds.push(student.id);
+    studentIds.push(student.id);
+    await prisma.student.create({
+      data: {
+        userId: student.id,
+        educationLevel: "UNIVERSITY",
+        goals: ["EXAM_PREPARATION"],
+        preferredLearningPeriod: "FLEXIBLE",
+        preferredDurationMinutes: 30,
+        learningAreas: { create: [{ learningAreaId: areas.Mathematics }] },
+      },
+    });
 
     const anong = await createTutor("Anong", [
       { name: "แคลคูลัส ม.ปลาย", rate: "500.00", areas: ["Mathematics"] },
     ]);
-    await createTutor("Daniel", [
+    const daniel = await createTutor("Daniel", [
       { name: "SAT Physics", rate: "900.00", areas: ["Physics", "Mathematics"] },
       { name: "IELTS Speaking", rate: "300.00", areas: ["English"] },
     ]);
@@ -127,6 +174,19 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
       "UNPUBLISHED"
     );
 
+    searchNow = new Date();
+    const now = searchNow.getTime();
+    await publishAvailability(
+      anong.tutor.id,
+      anong.subjects[0].id,
+      new Date(now + 5 * 24 * 60 * 60_000)
+    );
+    await publishAvailability(
+      daniel.tutor.id,
+      daniel.subjects[0].id,
+      new Date(now + 2 * 60 * 60_000)
+    );
+
     const reviewed = await lesson(anong.subjects[0].id, student.id, "COMPLETED");
     await prisma.review.createMany({
       data: [5, 4].map((ratingStars) => ({
@@ -137,9 +197,28 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
       })),
     });
     for (let i = 0; i < 3; i++) await lesson(sirinya.subjects[0].id, student.id, "CONFIRMED");
+    const algebra = sirinya.subjects[0];
+    await publishAvailability(sirinya.tutor.id, algebra.id, new Date(now + 60 * 60_000), false);
+    await publishAvailability(sirinya.tutor.id, algebra.id, new Date(now - 60 * 60_000));
+    await publishAvailability(
+      sirinya.tutor.id,
+      algebra.id,
+      new Date(now + 90 * 60_000),
+      true,
+      reviewed.id
+    );
+    await publishAvailability(sirinya.tutor.id, algebra.id, new Date(now + 31 * 24 * 60 * 60_000));
+    const ielts = daniel.subjects[1];
+    boundaryTutorId = daniel.tutor.id;
+    boundarySubjectId = ielts.id;
+    await publishAvailability(daniel.tutor.id, ielts.id, new Date(now + 31 * 24 * 60 * 60_000));
   });
 
   afterAll(async () => {
+    await prisma.availabilitySubject.deleteMany({
+      where: { availability: { tutorId: { in: tutorIds } } },
+    });
+    await prisma.availability.deleteMany({ where: { tutorId: { in: tutorIds } } });
     await prisma.review.deleteMany({ where: { userId: { in: userIds } } });
     await prisma.booking.deleteMany({ where: { userId: { in: userIds } } });
     await prisma.subject.deleteMany({ where: { tutorId: { in: tutorIds } } });
@@ -155,7 +234,7 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
     expect(names((await search({ q: "แคลคูลัส" })).body)).toEqual(["แคลคูลัส ม.ปลาย"]);
     expect(names((await search({ q: "algebra" })).body)).toEqual(["Algebra"]);
     // One card per subject, so a tutor with two subjects shows twice.
-    expect(names((await search({ tutorName: "daniel" })).body)).toEqual([
+    expect(names((await search({ tutorName: "daniel", sort: "rating" })).body)).toEqual([
       "IELTS Speaking",
       "SAT Physics",
     ]);
@@ -182,20 +261,28 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
     });
   });
 
-  it("ranks subjects by their own classes taught, then reviews, and filters by rating", async () => {
+  it("ranks anonymous results by rating and next availability, while retaining other sorts", async () => {
     const recommended = await search({});
     expect(names(recommended.body)).toEqual([
-      "Algebra",
       "แคลคูลัส ม.ปลาย",
-      "IELTS Speaking",
       "SAT Physics",
+      "Algebra",
+      "IELTS Speaking",
     ]);
-    expect(recommended.body.results[0].classesTaught).toBe(3);
-    expect(recommended.body.results[1]).toMatchObject({
+    expect(recommended.body.recommendationMode).toBe("fallback");
+    const algebra = recommended.body.results.find(
+      ({ name }: { name: string }) => name === "Algebra"
+    );
+    const calculus = recommended.body.results.find(
+      ({ name }: { name: string }) => name === "แคลคูลัส ม.ปลาย"
+    );
+    expect(algebra?.classesTaught).toBe(3);
+    expect(calculus).toMatchObject({
       rating: 4.5,
       reviewCount: 2,
       classesTaught: 1,
     });
+    expect(calculus?.nextAvailableAt).toEqual(expect.any(String));
 
     expect(names((await search({ minRating: "4.5" })).body)).toEqual(["แคลคูลัส ม.ปลาย"]);
     expect(names((await search({ sort: "price_asc" })).body)).toEqual([
@@ -204,6 +291,48 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
       "Algebra",
       "SAT Physics",
     ]);
+  });
+
+  it("personalizes by the Student's learning areas and reports the next slot for each Subject", async () => {
+    const response = await personalizedSearch();
+    expect(response.body.recommendationMode).toBe("personalized");
+    expect(names(response.body)).toEqual([
+      "แคลคูลัส ม.ปลาย",
+      "SAT Physics",
+      "Algebra",
+      "IELTS Speaking",
+    ]);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(response.body.results[0].nextAvailableAt).toEqual(expect.any(String));
+    expect(response.body.results[1].nextAvailableAt).toEqual(expect.any(String));
+    expect(response.body.results[2].nextAvailableAt).toBeNull();
+  });
+
+  it("uses one fixed request time and includes the exact 30-day boundary only", async () => {
+    const boundary = new Date(searchNow.getTime() + 30 * 24 * 60 * 60_000);
+    const slot = await prisma.availability.create({
+      data: {
+        tutorId: boundaryTutorId,
+        startedAt: boundary,
+        isOpen: true,
+        availabilitySubjects: { create: [{ subjectId: boundarySubjectId }] },
+      },
+    });
+    try {
+      const response = await searchTutorSubjects(
+        tutorSearchQuerySchema.parse({ q: token }),
+        searchNow,
+        studentIds[0]
+      );
+      const ielts = response.results.find(({ name }) => name === "IELTS Speaking");
+      const algebra = response.results.find(({ name }) => name === "Algebra");
+
+      expect(ielts?.nextAvailableAt).toBe(boundary.toISOString());
+      expect(algebra?.nextAvailableAt).toBeNull();
+    } finally {
+      await prisma.availabilitySubject.deleteMany({ where: { availabilityId: slot.id } });
+      await prisma.availability.delete({ where: { id: slot.id } });
+    }
   });
 
   it("pages in the database and reports the total of every match", async () => {
