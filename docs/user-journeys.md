@@ -288,6 +288,15 @@ the lesson starts. The confirmation shows the server-calculated fee and refund; 
 the terms change, the Student must review and confirm the new quote. See the
 [policy confirmation](sources/book-3-policy-confirmation.md).
 
+A Tutor can also cancel a class that has not started (BOOK-4), from **Upcoming classes**
+on the Tutor tab of `/dashboard`. The Student is always refunded the full payment, even
+inside the 24-hour window; there the Tutor only sees a late-cancellation warning before
+confirming, and no money moves from the Tutor. The Tutor must give a reason (up to 500
+characters), which the Student sees on the booking with "Your tutor cancelled this lesson".
+The freed slots return to the Tutor's calendar closed, not bookable, until the Tutor reopens
+them. The Student gets a best-effort booking notification after the cancellation commits.
+See the [BOOK-4 confirmation](sources/book-4-policy-confirmation.md).
+
 ### `/bookings`
 
 Tabs: **All**, **Upcoming** (confirmed and paid), **Payment due** (slots held, booking
@@ -429,7 +438,8 @@ Related stories: US1-4, US9-1.
 **Dashboard (`/dashboard`).** Every logged-in user sees the Student dashboard, including
 Student profile setup and learning links. Only approved Tutors see the Student and Tutor
 tabs; Student accounts and pending applicants never receive Tutor dashboard content. The
-Tutor tab contains the availability editor and links to `/settings/tutor`, which owns
+Tutor tab contains **Upcoming classes** (BOOK-4: each class that has not started, with its
+student and time, opening `/bookings/:id`), the availability editor and links to `/settings/tutor`, which owns
 subject and listing management. The navbar keeps **Become a tutor** visible for Student
 accounts and applicants.
 

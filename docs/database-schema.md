@@ -250,6 +250,12 @@ transaction. Existing snapshots and booking totals are never rewritten by a subj
 Booking responses fall back to the live subject only for legacy bookings until their
 first subject edit. Values overwritten before this feature are not reconstructible.
 
+BOOK-4 also adds a nullable column to `bookings` saying who cancelled:
+
+| Column       | Type               | Purpose                                                      |
+| ------------ | ------------------ | ------------------------------------------------------------ |
+| cancelled_by | BookingCancelledBy | `STUDENT` or `TUTOR`; NULL for payment-hold expiry and older |
+
 ### wallet_transactions
 
 Replaces `payments`, `PaymentType` and `PaymentStatus` per the approved
@@ -338,6 +344,7 @@ Indexes: `admin_user_id`, `reporter_user_id`, `reported_user_id`.
 | `TutorStatus`               | `UNPUBLISHED`, `PUBLISHED`                                       |
 | `TutorProfileVersionStatus` | `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED`          |
 | `WalletTransactionType`     | `TOP_UP`, `LESSON_PAYMENT`, `LESSON_EARNING`, `REFUND`, `PAYOUT` |
+| `BookingCancelledBy`        | `STUDENT`, `TUTOR`                                               |
 
 ---
 

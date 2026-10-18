@@ -61,6 +61,30 @@ npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/booking
 
 The policy is confirmed in [BOOK-3 user evidence](sources/book-3-policy-confirmation.md).
 
+### BOOK-4 tutor cancellation acceptance
+
+Booking unit tests cover the tutor and student cancel actions on the same lesson, the
+`cancelledBy` field and the required tutor reason. Booking detail page tests cover the late
+warning, the disabled confirmation until a reason is entered, the full refund to the
+student, and the student's "Your tutor cancelled this lesson" note. Upcoming classes tests
+cover the list, its links, and the empty and error states.
+
+`tutor-cancellation.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true`.
+It refuses any database except `tutor_matcher_book4_test` on loopback; create that dedicated
+disposable database and synchronize the schema first. It covers full refunds in both windows,
+closed slots, unpaid holds, ownership/authentication, the required reason, missing, stale and
+student-issued quote tokens, concurrent cancellation, the upcoming list, and `cancelledBy` on
+both the tutor and the BOOK-3 student paths. Fixture cleanup is restricted to BOOK-4 IDs.
+
+```powershell
+$env:RUN_DATABASE_INTEGRATION = "true"
+$env:EMAIL_DELIVERY_MODE = "log"
+$env:BOOKING_CANCELLATION_WINDOW_HOURS = "24"
+npm.cmd --prefix apps/backend test -- --runInBand tutor-cancellation.integration.test.ts
+```
+
+The decisions are recorded in [BOOK-4 user evidence](sources/book-4-policy-confirmation.md).
+
 ### General commands
 
 Run commands from `apps/backend` unless otherwise noted:
