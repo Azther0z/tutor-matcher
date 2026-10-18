@@ -444,7 +444,7 @@ function BookingDetailContent() {
                   ? `This lesson is within the ${quote.policyWindowHours}-hour policy window.`
                   : `This lesson is outside the ${quote.policyWindowHours}-hour policy window.`}
               </p>
-              <dl className="mt-4 grid gap-3 rounded-xl bg-white p-4 text-sm sm:grid-cols-2">
+              <dl className="mt-4 grid gap-3 rounded-xl bg-white p-4 text-sm text-zinc-900 sm:grid-cols-2">
                 <div>
                   <dt className="text-zinc-500">Original payment</dt>
                   <dd className="font-semibold">{money.format(Number(quote.originalAmount))}</dd>
@@ -480,7 +480,7 @@ function BookingDetailContent() {
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               rows={3}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white p-3"
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white p-3 text-zinc-900"
             />
           </label>
           <div className="mt-4 flex gap-3">
