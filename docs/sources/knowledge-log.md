@@ -72,3 +72,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/prof-7-policy-confirmation.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
 - Scope: Several Thai bank payout accounts per user with one default, masked numbers, `/settings/wallet` for any logged-in user; payout requests stay with PAY-7
+
+## [2026-10-24] ingest | PAY-7 payout request decisions
+
+- Disposition: Update
+- Raw: docs/sources/pay-7-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Simulated payout off in production, `/wallet/payout` page with a saved payout account (default picked first), one PAYOUT row with `payoutAccountId` per payout, no status or request table

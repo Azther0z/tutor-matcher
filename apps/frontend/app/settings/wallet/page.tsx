@@ -27,6 +27,8 @@ const inputClassName =
   "h-11 rounded-lg border border-black/[.12] bg-background px-3 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18] dark:[color-scheme:dark]";
 const primaryButton =
   "flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]";
+const secondaryButton =
+  "flex h-11 items-center justify-center rounded-full border border-black/[.12] px-5 text-base font-medium transition-colors hover:bg-black/[.06] dark:border-white/[.18] dark:hover:bg-white/[.08]";
 const smallButton =
   "rounded-full border border-black/[.12] px-3 py-1.5 text-sm font-medium hover:bg-black/[.06] disabled:opacity-60 dark:border-white/[.18] dark:hover:bg-white/[.08]";
 const dangerButton =
@@ -151,9 +153,14 @@ function WalletSettings() {
               </p>
             )}
           </div>
-          <Link href="/wallet/topup" className={primaryButton}>
-            Top up
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/wallet/payout" className={secondaryButton}>
+              Request payout
+            </Link>
+            <Link href="/wallet/topup" className={primaryButton}>
+              Top up
+            </Link>
+          </div>
         </section>
 
         {loadError && (

@@ -287,8 +287,15 @@ The booking API's legacy `payment.status` is derived presentation compatibility,
 a stored ledger status.
 
 PAY-1 implements simulated TOP_UP plus existing LESSON_PAYMENT/REFUND paths.
-LESSON_EARNING and PAYOUT are enum values for separate future workflows. The wallet
+LESSON_EARNING is an enum value for separate future work. The wallet
 dashboard and calculated pending earnings are not implemented by this change.
+
+PAY-7 writes PAYOUT rows for simulated payouts and adds a nullable column saying where
+each payout was sent. The debit and the row commit in one serializable transaction.
+
+| Column            | Type | Constraints                                    | Meaning                                                |
+| ----------------- | ---- | ---------------------------------------------- | ------------------------------------------------------ |
+| payout_account_id | UUID | NULL, FK → payout_accounts, ON DELETE RESTRICT | The account a PAYOUT was sent to; NULL for other types |
 
 Do not synchronize an existing populated database with an unattended destructive
 `db push`. See [safe rollout](change/pay-1-wallet-ledger/design.md).
