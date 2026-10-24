@@ -9,6 +9,8 @@ import { discoveryRouter, publicDiscoveryRouter } from "./modules/discovery/disc
 import { healthRouter } from "./modules/health/health.routes.ts";
 import { messagingRouter } from "./modules/messaging/messaging.routes.ts";
 import { notificationRouter } from "./modules/notification/notification.routes.ts";
+import { payoutAccountRouter } from "./modules/payout/payout-account.routes.ts";
+import { payoutRouter } from "./modules/payout/payout.routes.ts";
 import { profileRouter } from "./modules/profile/profile.routes.ts";
 import { reviewRouter } from "./modules/review/review.routes.ts";
 import { walletRouter } from "./modules/wallet/wallet.routes.ts";
@@ -26,6 +28,8 @@ apiRouter.use("/profiles", requireAuth, profileRouter);
 apiRouter.use("/discovery", requireAuth, discoveryRouter);
 apiRouter.use("/bookings", requireAuth, bookingRouter);
 apiRouter.use("/wallet", requireAuth, walletRouter);
+apiRouter.use("/payout-accounts", requireAuth, payoutAccountRouter);
+apiRouter.use("/payouts", requireAuth, payoutRouter);
 apiRouter.use("/messages", requireAuth, messagingRouter);
 apiRouter.use("/notifications", requireAuth, notificationRouter);
 apiRouter.use("/reviews", requireAuth, reviewRouter);
