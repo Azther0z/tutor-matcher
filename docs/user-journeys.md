@@ -109,6 +109,7 @@ Guards run before render, not after.
 | `/messages/:id`            | Conversation thread with student ⇄ tutor context switch                 | Requires login |
 | `/wallet`                  | Combined ledger: top-ups, lesson payments, earnings, refunds, payouts   | Requires login |
 | `/wallet/topup`            | Add money by PromptPay QR (Thai mobile-banking QR payment)              | Requires login |
+| `/wallet/payout`           | Request a simulated payout to a saved payout account                    | Requires login |
 | `/wallet/transactions/:id` | Read-only transaction detail                                            | Requires login |
 | `/settings/account`        | Email, password, deactivate account                                     | Requires login |
 | `/settings/notifications`  | Per-event email and push preferences                                    | Requires login |
@@ -319,7 +320,7 @@ one balance, not two.
 | **Lesson payment** | out       | `/bookings/:id` in payment-due state |
 | **Lesson earning** | in        | settlement after a completed lesson  |
 | **Refund**         | in        | eligible cancellation or dispute     |
-| **Payout**         | out       | `/wallet` → Request payout           |
+| **Payout**         | out       | `/wallet/payout`                     |
 
 **`/wallet`** is the single money page and shows available balance, pending earnings,
 earnings this month, and all-time paid out, above one transaction list filterable by
@@ -359,11 +360,19 @@ The earlier prototype's 12-hour window is superseded for BOOK-3 by the
 [user confirmation](sources/book-3-policy-confirmation.md); late-cancellation allocation
 remains separate work.
 
-**Payouts (planned, outside PAY-1).** Any user with available balance can withdraw to a
-saved payout account, not just tutors. A successful payout appends PAYOUT and debits
-balance together; failure writes nothing. An asynchronous provider would need a separate
-request table, not a ledger status. The full wallet dashboard,
-student lesson confirmation and automatic completion remain separate work.
+**Payouts (PAY-7).** Any user with available balance can request a payout on
+`/wallet/payout`, not just tutors. A student who only topped up and never taught can pay
+out too. The page shows the available balance and the user's saved payout accounts with
+masked account numbers, with the default account picked first. The user enters an amount,
+reviews the payout and confirms it. An amount above the available balance is blocked on
+the page and by the server. A successful payout appends one PAYOUT row linked to the
+payout account and debits the balance in the same serializable transaction; failure writes
+nothing. Repeating the same request reference does not pay out twice. The payout is
+simulated, labelled "Simulated payout, no real money is transferred", and turned off in
+production like top-up. With no saved payout account the page asks the user to add one in
+Wallet settings. An asynchronous provider would need a separate request table, not a ledger
+status. The full wallet dashboard, student lesson confirmation and automatic completion
+remain separate work. See the [PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
 
 **Payout accounts (`/settings/wallet`, PROF-7).** Any logged-in user can open Wallet
 settings from the Settings navigation, not only Tutors, because payouts are not tutor-only.
