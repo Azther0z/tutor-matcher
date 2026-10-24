@@ -79,3 +79,30 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/pay-7-policy-confirmation.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
 - Scope: Tutor-only payout (issue #161 changed 2026-10-25), simulated and off in production, `/wallet/payout` page with a saved payout account (default picked first), one PAYOUT row with `payoutAccountId` per payout, no status or request table
+
+## [2026-10-24] research | CLASS-1 lesson delivery alternatives
+
+- Disposition: New
+- Raw: docs/sources/class-1-research-scope.md
+- Raw: docs/sources/class-1-daily-prebuilt.md, docs/sources/class-1-daily-access.md, docs/sources/class-1-daily-token-properties.md
+- Raw: docs/sources/class-1-daily-pricing.md, docs/sources/class-1-daily-concurrency.md, docs/sources/class-1-daily-eject.md
+- Raw: docs/sources/class-1-livekit-access.md, docs/sources/class-1-livekit-pricing.md, docs/sources/class-1-livekit-deployment.md, docs/sources/class-1-livekit-ports.md
+- Raw: docs/sources/class-1-livekit-rooms.md, docs/sources/class-1-livekit-meet.md
+- Raw: docs/sources/class-1-jitsi-docker.md, docs/sources/class-1-jitsi-iframe.md
+- Raw: docs/sources/class-1-mirotalk-readme.md, docs/sources/class-1-mirotalk-access.md
+- Raw: docs/sources/class-1-whereby-lifecycle.md, docs/sources/class-1-whereby-pricing.md
+- Created: docs/lesson-delivery-options.md
+- Updated: docs/index.md, AGENTS.md Wiki Memory
+- Method: Official documentation/source and dated pricing; selected faithful source sections preserved with capture metadata. Daily concurrency FAQ extracted from HTML because Markdown omitted its answer.
+- Scope: Managed cloud and self-hosted alternatives to Google Meet/Microsoft Teams; recommendations, estimates, risks, and implementation questions only. No provider selection, live accounts/calls, application/schema/deployment edits, or additional GitHub changes.
+
+## [2026-10-24] handoff | CLASS-1 feature-branch continuation
+
+- Disposition: New; Update
+- Raw: docs/sources/class-1-google-duration.md
+- Raw: docs/sources/class-1-google-premium-features.md
+- Raw: docs/sources/class-1-google-api-auth.md
+- Raw: docs/sources/class-1-google-space-members.md
+- Created: docs/class-1-handoff.md
+- Updated: docs/lesson-delivery-options.md, docs/index.md
+- Scope: User requested handoff and push on a feature branch for continued implementation on another device. Preserve last-selected Google Meet direction, distinguish Business Standard co-host requirements from API access, and confirm its group-call duration needs no extra extension. No application/schema/deployment or issue edits.
