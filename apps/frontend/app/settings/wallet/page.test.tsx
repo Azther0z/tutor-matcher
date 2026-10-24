@@ -67,6 +67,10 @@ describe("WalletSettingsPage", () => {
 
     expect(await screen.findByText("฿1,250.50")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Top up" })).toHaveAttribute("href", "/wallet/topup");
+    expect(screen.getByRole("link", { name: "Request payout" })).toHaveAttribute(
+      "href",
+      "/wallet/payout"
+    );
     expect(screen.getByRole("link", { name: "Wallet" })).toHaveAttribute("aria-current", "page");
     expect(await screen.findByText(/No payout accounts yet/)).toBeInTheDocument();
     expect(screen.getByText("Your first account becomes your default.")).toBeInTheDocument();
