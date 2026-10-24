@@ -23,6 +23,7 @@ disagree.
 | DISC-2 recommendation implementation and checks | [Tutor recommendations change](change/implement-disc-2-recommendations/proposal.md) |
 | PROF-6 implementation decisions and checks      | [Subject management change](change/implement-prof-6-subjects/proposal.md)           |
 | PROF-3 implementation decisions and checks      | [Availability change](change/implement-prof-3-availability/proposal.md)             |
+| PROF-7 payout account decisions                 | [PROF-7 evidence](sources/prof-7-policy-confirmation.md)                            |
 | The database schema and its known gaps          | [`database-schema.md`](database-schema.md)                                          |
 | Tech stack, repo layout, deployment             | [`../README.md`](../README.md#architecture)                                         |
 | How to run and write tests                      | [`testing.md`](testing.md)                                                          |

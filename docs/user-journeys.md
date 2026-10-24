@@ -362,8 +362,22 @@ remains separate work.
 **Payouts (planned, outside PAY-1).** Any user with available balance can withdraw to a
 saved payout account, not just tutors. A successful payout appends PAYOUT and debits
 balance together; failure writes nothing. An asynchronous provider would need a separate
-request table, not a ledger status. Payout account management, the full wallet dashboard,
+request table, not a ledger status. The full wallet dashboard,
 student lesson confirmation and automatic completion remain separate work.
+
+**Payout accounts (`/settings/wallet`, PROF-7).** Any logged-in user can open Wallet
+settings from the Settings navigation, not only Tutors, because payouts are not tutor-only.
+The page starts with the wallet balance and a **Top up** link to `/wallet/topup`. Below it,
+the user's saved payout accounts are listed with bank, account holder name, masked number
+(`•••• 1234`). The default has a **Default** badge, the others a **Set default** action,
+and every row has **Remove**, which asks for an inline confirm. An **Add account** form takes a Thai bank from the list, the account
+holder name and a 10 to 15 digit account number (spaces and dashes are ignored). A user can
+save up to 5 accounts. The first one becomes the default, and a new one replaces the default
+only when the user ticks **Make this my default account**. Exactly one account is the
+default, and payouts use it unless the user picks another. The full number is never shown
+again after saving. Accounts cannot be edited: the user removes one and adds it again, so
+past payouts keep the account they were sent to. Removing the default makes the oldest
+remaining account the default. See the [PROF-7 confirmation](sources/prof-7-policy-confirmation.md).
 
 Related stories: US5-1 … US5-8, US11-3.
 

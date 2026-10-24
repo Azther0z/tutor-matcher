@@ -293,6 +293,29 @@ dashboard and calculated pending earnings are not implemented by this change.
 Do not synchronize an existing populated database with an unattended destructive
 `db push`. See [safe rollout](change/pay-1-wallet-ledger/design.md).
 
+### payout_accounts
+
+PROF-7 adds each user's saved Thai bank accounts for payouts. Any user can have them, not
+only Tutors.
+
+| Column              | Type      | Constraints                              | Meaning                                                  |
+| ------------------- | --------- | ---------------------------------------- | -------------------------------------------------------- |
+| payout_account_id   | UUID      | PK                                       | Prisma `id`                                              |
+| bank_code           | TEXT      | NOT NULL                                 | Code from the backend Thai bank list, e.g. `KBANK`       |
+| account_holder_name | TEXT      | NOT NULL                                 | Name on the bank account, 1 to 100 characters            |
+| account_number      | TEXT      | NOT NULL                                 | Full number, 10 to 15 digits; API responses only mask it |
+| is_default          | BOOLEAN   | NOT NULL, DEFAULT false                  | The account payouts use unless the user picks another    |
+| created_at          | TIMESTAMP | NOT NULL, DEFAULT now()                  | Oldest remaining account becomes default after a removal |
+| removed_at          | TIMESTAMP | NULL                                     | Set when the user removes it; the row stays for payouts  |
+| user_id             | UUID      | NOT NULL, FK → users, ON DELETE RESTRICT | Owner                                                    |
+
+Partial unique index `payout_accounts_one_default_per_user` on `(user_id) WHERE is_default`
+keeps one default per user. Index: `(user_id, created_at)`. Removing an account sets
+`removed_at` and clears `is_default`, and is never a hard delete, because
+`wallet_transactions.payout_account_id` can point at it. The service allows at most 5
+active accounts and changes the default in one serializable transaction. Accounts cannot
+be edited; the user removes one and adds it again.
+
 ### reviews
 
 | Column       | Type      | Constraints                                            | Notes                            |
@@ -395,7 +418,7 @@ that the current schema is wrong to have shipped.
 
 | ID  | Missing                                                                                                                              | Journey                        |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
-| G10 | **Payout account** (bank details, default flag)                                                                                      | §4 Payouts, `/settings/wallet` |
+| G10 | Resolved by PROF-7: `payout_accounts` stores each user's bank accounts with one default.                                             | §4 Payouts, `/settings/wallet` |
 | G11 | **Notification preference** per user and event type, with email and push flags                                                       | §8 Notifications               |
 | G12 | **Review reply** from the tutor, and a moderation status on reviews and messages                                                     | §9 Reviews, §10 Admin          |
 | G13 | **Account suspension / ban** state on `users`                                                                                        | §10 Admin                      |
@@ -419,6 +442,8 @@ Present today: `subjects(tutor_id)`, `bookings(user_id)`, `bookings(subject_id)`
 `password_reset_tokens(user_id)`,
 `availabilities(tutor_id, started_at)` (unique), and
 `wallet_transactions(booking_id, type)`.
+PROF-7 adds `payout_accounts(user_id, created_at)` and the partial unique
+`payout_accounts(user_id) WHERE is_default`.
 
 Access patterns from the journeys that are not covered yet:
 
