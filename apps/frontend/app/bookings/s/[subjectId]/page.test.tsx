@@ -25,11 +25,18 @@ const availability = {
 };
 
 beforeEach(() => {
+  jest.useFakeTimers({
+    now: new Date("2030-01-01T00:00:00Z"),
+    doNotFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask"],
+  });
   jest.clearAllMocks();
   localStorage.setItem("authToken", "student-token");
 });
 
-afterEach(() => localStorage.clear());
+afterEach(() => {
+  localStorage.clear();
+  jest.useRealTimers();
+});
 
 it("creates a trial booking with UUID identifiers", async () => {
   global.fetch = jest
@@ -37,7 +44,13 @@ it("creates a trial booking with UUID identifiers", async () => {
     .mockResolvedValueOnce({ ok: true, json: async () => availability })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: { id: bookingId } }) });
   render(<SubjectBookingPage />);
-  fireEvent.click(await screen.findByRole("button", { name: /(?:AM|PM)/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "2030-01-10" }));
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  expect(screen.getAllByRole("button", { name: /^\d{2}:\d{2} / })).toHaveLength(48);
+  expect(screen.getByRole("button", { name: "00:00 Not available" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "23:30 Not available" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "16:00 Available" }));
+  expect(screen.getByText("Trial · 30 min")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
   await waitFor(() => expect(push).toHaveBeenCalledWith(`/bookings/${bookingId}`));
   expect(global.fetch).toHaveBeenLastCalledWith(
@@ -64,10 +77,33 @@ it("refreshes availability only for a structured slot-taken error", async () => 
     })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ ...availability, slots: [] }) });
   render(<SubjectBookingPage />);
-  fireEvent.click(await screen.findByRole("button", { name: /(?:AM|PM)/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "2030-01-10" }));
+  fireEvent.click(screen.getByRole("button", { name: "16:00 Available" }));
   fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
   expect(await screen.findByText(/just booked by someone else/i)).toBeInTheDocument();
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
+});
+
+it("calculates a continuous hour from the locked subject rate without creating a booking", async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      ...availability,
+      slots: [
+        ...availability.slots,
+        { id: "second", startedAt: "2030-01-10T09:30:00Z", available: true },
+      ],
+    }),
+  });
+  render(<SubjectBookingPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "2030-01-10" }));
+  fireEvent.click(screen.getByRole("button", { name: "16:00 Available" }));
+  expect(screen.getByText("฿10.00")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "16:30 Available" }));
+  expect(screen.getByText("Trial · 60 min")).toBeInTheDocument();
+  expect(screen.getByText("฿20.00")).toBeInTheDocument();
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  expect(push).not.toHaveBeenCalled();
 });
 
 it("keeps subject details visible but disables new bookings when unpublished", async () => {
