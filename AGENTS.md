@@ -55,6 +55,7 @@
 - Docker Swarm production Compose uses string-form `env_file` entries. Keep `admin-signup-key.enc.env` present and use a blank `ADMIN_SIGNUP_KEY` to disable Admin signup.
 - `/dashboard` always shows the Student dashboard; only approved Tutors get a Tutor tab on that same page. Keep legacy `/dashboard/tutor` links forwarding to the Tutor tab.
 - Student accounts must continue to see **Become a tutor** in the navbar.
+- CLASS-1 provider research must consider managed cloud and self-hosted options; Docker sidecar hosting is acceptable, not required. No replacement provider is approved by that research request; see `docs/lesson-delivery-options.md`.
 
 ### Open Threads
 - Question: Is rescheduling a booking in scope?
