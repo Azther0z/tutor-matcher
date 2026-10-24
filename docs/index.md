@@ -18,6 +18,7 @@ disagree.
 | Product behaviour (routes, rules, flows)        | [`user-journeys.md`](user-journeys.md) — the source of truth                        |
 | Product goals, roles, and scope                 | [`user-journeys.md`](user-journeys.md#overview-and-scope)                           |
 | What work is planned or in progress             | The GitHub issues and Project board                                                 |
+| CLASS-1 accepted lesson-link decision           | [Google Meet lesson links ADR](adr/0004-google-meet-lesson-links.md) — confirmed contract and validation gates |
 | PAY-1 ledger implementation and safe rollout    | [Wallet ledger change](change/pay-1-wallet-ledger/proposal.md)                      |
 | DISC-3 review fixes and verification            | [Tutor profile review fixes](change/disc-3-review-fixes/proposal.md)                |
 | DISC-2 recommendation implementation and checks | [Tutor recommendations change](change/implement-disc-2-recommendations/proposal.md) |
