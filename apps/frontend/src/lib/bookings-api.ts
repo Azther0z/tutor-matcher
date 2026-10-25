@@ -174,3 +174,18 @@ export async function rescheduleBooking(id: string, availabilityIds: string[]): 
   );
   return data.booking ?? data;
 }
+
+export async function updateMeetingLink(
+  id: string,
+  customMeetingUrl: string | null
+): Promise<Booking> {
+  const data = await request<Booking & { booking?: Booking }>(
+    `/api/bookings/${encodeURIComponent(id)}/meeting-link`,
+    {
+      method: "PATCH",
+      headers: authHeaders(true),
+      body: JSON.stringify({ customMeetingUrl }),
+    }
+  );
+  return data.booking ?? data;
+}

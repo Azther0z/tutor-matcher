@@ -84,8 +84,9 @@ model User {
   profileVersions         TutorProfileVersion[] @relation("ProfileVersionOwner")
   reviewedProfileVersions TutorProfileVersion[] @relation("ProfileVersionReviewer")
 
-  bookings Booking[]
-  reviews  Review[]
+  bookings            Booking[]
+  reviews             Review[]
+  meetingLinksUpdated Booking[] @relation("MeetingLinkUpdatedBy")
 
   passwordResetTokens PasswordResetToken[]
 
@@ -250,18 +251,21 @@ model AvailabilitySubject {
 }
 
 model Booking {
-  id                 String        @id @default(uuid()) @map("booking_id") @db.Uuid
-  description        String?
-  zoomMeetingUrl     String?       @map("zoom_meeting_url")
-  createdAt          DateTime      @default(now()) @map("created_at")
-  status             BookingStatus @default(PENDING_PAYMENT)
-  isTrial            Boolean       @default(true) @map("is_trial")
-  totalAmount        Decimal       @map("total_amount") @db.Decimal(12, 2)
-  startedAt          DateTime      @map("started_at")
-  endedAt            DateTime      @map("ended_at")
-  paymentExpiresAt   DateTime?     @map("payment_expires_at")
-  cancelledAt        DateTime?     @map("cancelled_at")
-  cancellationReason String?       @map("cancellation_reason")
+  id                     String        @id @default(uuid()) @map("booking_id") @db.Uuid
+  description            String?
+  zoomMeetingUrl         String?       @map("zoom_meeting_url")
+  customMeetingUrl       String?       @map("custom_meeting_url")
+  meetingLinkUpdatedAt   DateTime?     @map("meeting_link_updated_at")
+  meetingLinkUpdatedById String?       @map("meeting_link_updated_by_id") @db.Uuid
+  createdAt              DateTime      @default(now()) @map("created_at")
+  status                 BookingStatus @default(PENDING_PAYMENT)
+  isTrial                Boolean       @default(true) @map("is_trial")
+  totalAmount            Decimal       @map("total_amount") @db.Decimal(12, 2)
+  startedAt              DateTime      @map("started_at")
+  endedAt                DateTime      @map("ended_at")
+  paymentExpiresAt       DateTime?     @map("payment_expires_at")
+  cancelledAt            DateTime?     @map("cancelled_at")
+  cancellationReason     String?       @map("cancellation_reason")
 
   // BOOK-4: null for payment-hold expiry and bookings cancelled before this field existed.
   cancelledBy BookingCancelledBy? @map("cancelled_by")
@@ -274,6 +278,8 @@ model Booking {
 
   userId String @map("user_id") @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  meetingLinkUpdatedBy User? @relation("MeetingLinkUpdatedBy", fields: [meetingLinkUpdatedById], references: [id], onDelete: Restrict)
 
   subjectId String  @map("subject_id") @db.Uuid
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)

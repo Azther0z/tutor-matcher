@@ -216,24 +216,33 @@ subject page show subject-filtered availability.
 
 ### bookings
 
-| Column              | Type          | Constraints                                            | Notes                                                        |
-| ------------------- | ------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
-| booking_id          | UUID          | PK                                                     |                                                              |
-| description         | TEXT          | NULL                                                   | The student's "what do you want to learn" note               |
-| zoom_meeting_url    | TEXT          | NULL                                                   | Meeting link for the lesson                                  |
-| created_at          | TIMESTAMP     | NOT NULL, DEFAULT now()                                |                                                              |
-| user_id             | UUID          | NOT NULL, FK → users.user_id, ON DELETE RESTRICT       | The student                                                  |
-| subject_id          | UUID          | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Identifies the tutor through the subject                     |
-| status              | BookingStatus | NOT NULL, DEFAULT `PENDING_PAYMENT`                    | `PENDING_PAYMENT`, `CONFIRMED`, `COMPLETED`, `CANCELLED`     |
-| started_at          | TIMESTAMP     | NOT NULL                                               | Agreed first-slot start                                      |
-| ended_at            | TIMESTAMP     | NOT NULL                                               | Agreed last-slot end                                         |
-| total_amount        | NUMERIC(12,2) | NOT NULL                                               | Agreed price                                                 |
-| payment_expires_at  | TIMESTAMP     | NULL                                                   | Active payment-hold deadline                                 |
-| cancelled_at        | TIMESTAMP     | NULL                                                   | Cancellation time                                            |
-| cancellation_reason | TEXT          | NULL                                                   | Cancellation reason                                          |
-| is_trial            | BOOLEAN       | NOT NULL, DEFAULT true                                 | Existing booking API field; no trial flow is added by PROF-3 |
+| Column                     | Type          | Constraints                                            | Notes                                                        |
+| -------------------------- | ------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
+| booking_id                 | UUID          | PK                                                     |                                                              |
+| description                | TEXT          | NULL                                                   | The student's "what do you want to learn" note               |
+| zoom_meeting_url           | TEXT          | NULL                                                   | Existing generated-link fallback field                       |
+| custom_meeting_url         | TEXT          | NULL                                                   | Tutor-provided override; takes precedence when present       |
+| meeting_link_updated_at    | TIMESTAMP     | NULL                                                   | Time the Tutor last set or removed a custom link             |
+| meeting_link_updated_by_id | UUID          | NULL, FK → users.user_id, ON DELETE RESTRICT           | User who made the latest custom-link change                  |
+| created_at                 | TIMESTAMP     | NOT NULL, DEFAULT now()                                |                                                              |
+| user_id                    | UUID          | NOT NULL, FK → users.user_id, ON DELETE RESTRICT       | The student                                                  |
+| subject_id                 | UUID          | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Identifies the tutor through the subject                     |
+| status                     | BookingStatus | NOT NULL, DEFAULT `PENDING_PAYMENT`                    | `PENDING_PAYMENT`, `CONFIRMED`, `COMPLETED`, `CANCELLED`     |
+| started_at                 | TIMESTAMP     | NOT NULL                                               | Agreed first-slot start                                      |
+| ended_at                   | TIMESTAMP     | NOT NULL                                               | Agreed last-slot end                                         |
+| total_amount               | NUMERIC(12,2) | NOT NULL                                               | Agreed price                                                 |
+| payment_expires_at         | TIMESTAMP     | NULL                                                   | Active payment-hold deadline                                 |
+| cancelled_at               | TIMESTAMP     | NULL                                                   | Cancellation time                                            |
+| cancellation_reason        | TEXT          | NULL                                                   | Cancellation reason                                          |
+| is_trial                   | BOOLEAN       | NOT NULL, DEFAULT true                                 | Existing booking API field; no trial flow is added by PROF-3 |
 
 Indexes: `user_id`, `subject_id`.
+
+When a custom link is set or removed, the latest editor and timestamp are updated;
+previous values are not retained as a history. The current effective link is
+`custom_meeting_url` when non-NULL, otherwise `zoom_meeting_url`. Google Meet room
+creation is deferred, so `zoom_meeting_url` remains the current generated-link field in
+the application schema for now.
 
 PROF-6 also adds the following nullable subject snapshot columns to `bookings`:
 

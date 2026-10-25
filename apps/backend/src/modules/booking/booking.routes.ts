@@ -12,6 +12,7 @@ import {
   tutorCancel,
   tutorCancellationQuote,
   tutorUpcoming,
+  updateMeetingLink,
 } from "./booking.controller.ts";
 import {
   bookingIdParamsSchema,
@@ -20,6 +21,7 @@ import {
   rescheduleBookingSchema,
   subjectIdParamsSchema,
   tutorCancelBookingSchema,
+  updateMeetingLinkSchema,
 } from "./booking.schema.ts";
 
 export const bookingRouter = Router();
@@ -50,6 +52,12 @@ bookingRouter.patch(
   validate(bookingIdParamsSchema, "params"),
   validate(rescheduleBookingSchema),
   reschedule
+);
+bookingRouter.patch(
+  "/:id/meeting-link",
+  validate(bookingIdParamsSchema, "params"),
+  validate(updateMeetingLinkSchema),
+  updateMeetingLink
 );
 bookingRouter.post(
   "/:id/cancel",

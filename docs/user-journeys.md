@@ -279,9 +279,10 @@ locked to this booking while payment is outstanding.
 
 ### Step 3 — Confirmed
 
-The booking shows the lesson, when, where (Online · Zoom), and the **meeting link**,
-plus what was paid and the payment reference. Actions are Join, Message the tutor, and
-Cancel.
+The booking shows the lesson, when, where (Online), and the meeting link when one is
+available, plus what was paid and the payment reference. When the Tutor has supplied a
+custom link, it is used for the single **Join lesson** action; otherwise the generated
+link is used. A confirmed booking stays confirmed while its link is unavailable.
 
 **There is no tutor accept step.** The tutor published the slot as available, so a paid
 booking is auto-confirmed onto the tutor's schedule. If the slot was taken first, the
@@ -408,10 +409,19 @@ Related stories: US5-1 … US5-8, US11-3.
 
 ## 5 · Lesson delivery
 
-A confirmed online booking gets a meeting link, visible to the student on
-`/bookings/:id` and to the tutor in the tutor view of the same booking. The tutor's
+A confirmed online booking shows its effective meeting link on `/bookings/:id` to both
+participants. The assigned Tutor can add, replace, or remove a custom HTTPS link until
+the scheduled lesson end. A custom link takes priority over the generated-link field;
+removing it restores the generated link when one is available. The booking page shows
+the latest editor and change time, without a full history. The app offers Join as soon
+as a confirmed booking has a link and until its scheduled end; cancelled and completed
+bookings have no Join action. Links are not checked with their provider. The Tutor's
 view additionally shows the student, the subject, the format, the lesson description
 the student wrote, the duration, and the payout for that class.
+
+Google Meet room creation and its recovery are not implemented in this slice. Until a
+later provider integration replaces the existing generated-link field, a Tutor-provided
+link can be used independently of generated meeting creation.
 
 Joining before the room opens explains when it opens or opens the configured waiting
 room. Planned completion follows the ledger rule in §4: student confirmation or the

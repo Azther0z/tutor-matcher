@@ -69,6 +69,7 @@ export type BookingErrorCode =
   | "BOOKING_ALREADY_PAID"
   | "BOOKING_NOT_CANCELLABLE"
   | "BOOKING_NOT_RESCHEDULABLE"
+  | "MEETING_LINK_NOT_EDITABLE"
   | "PAYMENT_NOT_FOUND"
   | "INSUFFICIENT_BALANCE"
   | "CANCELLATION_QUOTE_CHANGED";
@@ -127,6 +128,7 @@ export class BookingPaymentError extends BookingDomainError {
 
 const detailInclude = {
   user: { select: { id: true, firstName: true, lastName: true, balance: true } },
+  meetingLinkUpdatedBy: { select: { id: true, firstName: true, lastName: true } },
   subject: {
     include: {
       tutor: {
@@ -238,6 +240,7 @@ export function mapBookingResponse(
 ) {
   const isStudent = booking.userId === viewerUserId;
   const isTutor = booking.subject.tutor.user?.id === viewerUserId;
+  const effectiveMeetingUrl = booking.customMeetingUrl ?? booking.zoomMeetingUrl;
   const transfer = booking.walletTransactions.find((payment) => payment.type === "LESSON_PAYMENT");
   const amountDue = booking.status === "PENDING_PAYMENT" ? booking.totalAmount : ZERO;
   const walletBalance = booking.user.balance;
@@ -262,6 +265,9 @@ export function mapBookingResponse(
   // BOOK-4 lets the tutor cancel any class that has not started, including payment holds.
   const canTutorCancel =
     isTutor && ["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) && beforeLesson;
+  const beforeLessonEnd = booking.endedAt.getTime() > now.getTime();
+  const canEditMeetingLink = isTutor && booking.status === "CONFIRMED" && beforeLessonEnd;
+  const canJoin = booking.status === "CONFIRMED" && Boolean(effectiveMeetingUrl) && beforeLessonEnd;
 
   return {
     id: booking.id,
@@ -269,6 +275,14 @@ export function mapBookingResponse(
     viewerRole: isStudent ? ("STUDENT" as const) : ("TUTOR" as const),
     description: booking.description,
     zoomMeetingUrl: booking.zoomMeetingUrl,
+    customMeetingUrl: booking.customMeetingUrl,
+    effectiveMeetingUrl,
+    meetingLinkUpdatedAt: booking.meetingLinkUpdatedAt?.toISOString() ?? null,
+    meetingLinkUpdatedBy: booking.meetingLinkUpdatedBy
+      ? {
+          name: `${booking.meetingLinkUpdatedBy.firstName} ${booking.meetingLinkUpdatedBy.lastName}`,
+        }
+      : null,
     createdAt: booking.createdAt.toISOString(),
     isTrial: booking.isTrial,
     totalAmount: decimalString(booking.totalAmount),
@@ -311,7 +325,14 @@ export function mapBookingResponse(
       canPay,
       expiresAt: booking.paymentExpiresAt?.toISOString() ?? null,
     },
-    actions: { canPay: payEligible, canCancel, canReschedule, canTutorCancel },
+    actions: {
+      canPay: payEligible,
+      canCancel,
+      canReschedule,
+      canTutorCancel,
+      canEditMeetingLink,
+      canJoin,
+    },
   };
 }
 
@@ -519,6 +540,51 @@ export async function getBooking(userId: string, id: string) {
   if (booking.userId !== userId && booking.subject.tutor.user?.id !== userId)
     throw new BookingForbiddenError("You cannot view this booking");
   return mapBookingResponse(booking, userId, now);
+}
+
+export async function updateBookingMeetingLink(
+  userId: string,
+  id: string,
+  customMeetingUrl: string | null
+) {
+  const now = new Date();
+  const booking = await prisma.booking.findUnique({
+    where: { id },
+    include: {
+      subject: { include: { tutor: { include: { user: { select: { id: true } } } } } },
+    },
+  });
+  if (!booking) throw new BookingNotFoundError();
+  if (booking.subject.tutor.user?.id !== userId)
+    throw new BookingForbiddenError(
+      "Only the Tutor assigned to this booking can update its meeting link"
+    );
+  if (booking.status !== "CONFIRMED" || booking.endedAt.getTime() <= now.getTime())
+    throw new BookingConflictError(
+      "MEETING_LINK_NOT_EDITABLE",
+      "Meeting links can only be changed on confirmed bookings before their scheduled end"
+    );
+
+  const updated = await prisma.booking.updateMany({
+    where: {
+      id,
+      status: "CONFIRMED",
+      endedAt: { gt: now },
+      subject: { tutor: { user: { id: userId } } },
+    },
+    data: {
+      customMeetingUrl,
+      meetingLinkUpdatedAt: now,
+      meetingLinkUpdatedById: userId,
+    },
+  });
+  if (updated.count !== 1)
+    throw new BookingConflictError(
+      "MEETING_LINK_NOT_EDITABLE",
+      "Meeting links can only be changed on confirmed bookings before their scheduled end"
+    );
+
+  return getBooking(userId, id);
 }
 
 export async function listBookings(userId: string) {

@@ -15,6 +15,7 @@ import {
   getCancellationQuote,
   getTutorCancellationQuote,
   rescheduleBooking,
+  updateMeetingLink,
 } from "@/src/lib/bookings-api";
 import type { AvailabilitySlot, Booking, CancellationQuote } from "@/src/types/booking";
 import { publishWalletBalance } from "@/src/lib/wallet-api";
@@ -55,12 +56,17 @@ function BookingDetailContent() {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [meetingUrlDraft, setMeetingUrlDraft] = useState("");
+  const [meetingLinkBusy, setMeetingLinkBusy] = useState(false);
+  const [clientNow, setClientNow] = useState(() => Date.now());
   const quoteRequestId = useRef(0);
   const cancellationInFlight = useRef(false);
 
   const loadBooking = useCallback(async () => {
     try {
-      setBooking(await getBooking(id));
+      const result = await getBooking(id);
+      setBooking(result);
+      setMeetingUrlDraft(result.customMeetingUrl ?? "");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load this booking.");
     } finally {
@@ -73,6 +79,11 @@ function BookingDetailContent() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadBooking();
   }, [loadBooking]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setClientNow(Date.now()), 1_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const requiredSlotCount = booking?.availabilities.length ?? 0;
   const startsAt = booking?.startedAt ?? booking?.availabilities[0]?.startedAt;
@@ -241,6 +252,29 @@ function BookingDetailContent() {
     }
   }
 
+  async function saveMeetingLink(customMeetingUrl: string | null) {
+    if (!booking || !booking.actions.canEditMeetingLink || meetingLinkBusy) return;
+    setMeetingLinkBusy(true);
+    setMessage(null);
+    try {
+      const updated = await updateMeetingLink(booking.id, customMeetingUrl);
+      setBooking(updated);
+      setMeetingUrlDraft(updated.customMeetingUrl ?? "");
+      setMessage(
+        customMeetingUrl === null
+          ? updated.zoomMeetingUrl
+            ? "Tutor link removed. The generated meeting link is restored."
+            : "Tutor link removed. No meeting link is available yet."
+          : "Meeting link updated."
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not update the meeting link.");
+      await loadBooking();
+    } finally {
+      setMeetingLinkBusy(false);
+    }
+  }
+
   const sortedSlots = useMemo(
     () =>
       [...slots].sort(
@@ -268,6 +302,9 @@ function BookingDetailContent() {
     );
 
   const shortfall = Number(booking.payment.shortfall ?? 0);
+  const beforeLessonEnd = new Date(booking.endedAt).getTime() > clientNow;
+  const canJoinLesson = booking.actions.canJoin && beforeLessonEnd;
+  const canEditMeetingLink = booking.actions.canEditMeetingLink && beforeLessonEnd;
   const topUpHref = `/wallet/topup?${new URLSearchParams({
     amount: String(shortfall),
     returnTo: `/bookings/${booking.id}`,
@@ -336,15 +373,75 @@ function BookingDetailContent() {
               </div>
             )}
           </dl>
-          {booking.status === "CONFIRMED" && booking.zoomMeetingUrl && (
+          {canJoinLesson && booking.effectiveMeetingUrl && (
             <a
-              href={booking.zoomMeetingUrl}
+              href={booking.effectiveMeetingUrl}
               target="_blank"
               rel="noreferrer"
               className="mt-6 inline-flex h-11 items-center rounded-full bg-violet-600 px-5 font-semibold text-white"
             >
               Join lesson
             </a>
+          )}
+          {booking.status === "CONFIRMED" && !booking.effectiveMeetingUrl && (
+            <p className="mt-6 text-sm text-zinc-600 dark:text-zinc-400">
+              Your booking is confirmed. A meeting link is not available yet.
+            </p>
+          )}
+          {booking.effectiveMeetingUrl && (
+            <p className="mt-3 text-sm text-zinc-500">
+              Using {booking.customMeetingUrl ? "the Tutor-provided link" : "the generated link"}.
+            </p>
+          )}
+          {booking.meetingLinkUpdatedAt && booking.meetingLinkUpdatedBy && (
+            <p className="mt-2 text-sm text-zinc-500">
+              Meeting link last updated by {booking.meetingLinkUpdatedBy.name} on{" "}
+              {dateTime.format(new Date(booking.meetingLinkUpdatedAt))}.
+            </p>
+          )}
+          {canEditMeetingLink && (
+            <div className="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+              <label htmlFor="custom-meeting-url" className="block text-sm font-semibold">
+                Replace meeting link
+              </label>
+              <p className="mt-1 text-sm text-zinc-500">
+                Enter an HTTPS meeting link. The link is not checked with the provider.
+              </p>
+              <input
+                id="custom-meeting-url"
+                type="url"
+                inputMode="url"
+                autoComplete="url"
+                value={meetingUrlDraft}
+                onChange={(event) => setMeetingUrlDraft(event.target.value)}
+                placeholder="https://..."
+                className="mt-3 min-h-11 w-full rounded-lg border border-zinc-300 bg-transparent px-3 dark:border-zinc-700"
+              />
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  disabled={
+                    meetingLinkBusy ||
+                    !meetingUrlDraft.trim() ||
+                    meetingUrlDraft.trim() === booking.customMeetingUrl
+                  }
+                  onClick={() => void saveMeetingLink(meetingUrlDraft.trim())}
+                  className="inline-flex min-h-10 items-center rounded-full bg-zinc-900 px-4 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+                >
+                  {meetingLinkBusy ? "Saving…" : "Save link"}
+                </button>
+                {booking.customMeetingUrl && (
+                  <button
+                    type="button"
+                    disabled={meetingLinkBusy}
+                    onClick={() => void saveMeetingLink(null)}
+                    className="inline-flex min-h-10 items-center rounded-full border border-zinc-300 px-4 text-sm font-semibold disabled:opacity-50 dark:border-zinc-700"
+                  >
+                    {booking.zoomMeetingUrl ? "Restore generated link" : "Remove Tutor link"}
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </section>
         <aside className="rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">

@@ -1,11 +1,13 @@
 # CLASS-1 implementation handoff
 
-Updated: 2026-10-24. Continue on **`feat/CLASS-1-lesson-delivery`**.
+Updated: 2026-10-25. Continue on **`feat/CLASS-1-lesson-delivery`**.
 
 **Status:** Requirements grilling is complete and
-[ADR 0004](adr/0004-google-meet-lesson-links.md) is accepted. **Implementation has not
-started, and no live meeting test has been run.** The application baseline is `6054b29`
-(BOOK-4 merged); this branch adds research, the accepted decision, and continuation guidance.
+[ADR 0004](adr/0004-google-meet-lesson-links.md) is accepted. The first Tutor custom-link
+slice is implemented locally under [its change plan](change/class-1-custom-meeting-url/proposal.md).
+Google Meet room creation and live meeting tests remain pending. The database has not been
+synchronized with the new Prisma fields. These changes are local to this worktree and have
+not been committed or pushed. The application baseline is `6054b29` (BOOK-4 merged).
 
 ## Read first
 
@@ -37,6 +39,9 @@ reveals a material problem that needs a user decision.
   the custom URL for a confirmed Booking until its scheduled end. Apply basic HTTPS URL
   validation without a provider allowlist or room-availability check. Retain latest
   editor/time, without a full history.
+- **Implementation sequence:** deliver Tutor-provided URLs first so confirmed lessons can
+  proceed without waiting for provider setup. Integrate Google Meet room creation later;
+  retain the same generated/custom precedence and other accepted requirements.
 - Provision after payment commits. Each required new room gets **one initial attempt plus
   up to three retries: four attempts total**. Recovery continues even after a custom URL
   is saved. A later generated URL is fallback only and must not replace the custom choice.
@@ -64,28 +69,27 @@ Tutor co-host model; it is not an approved subscription requirement for this sco
 
 ## Current documentation mismatch
 
-Issue #146 was re-read for this handoff and remains open with Zoom in its title, story,
-and acceptance criteria. Its original fallback criterion says the Tutor is notified;
-the accepted contract instead uses Booking-page status without new emails.
-The [booking journey](user-journeys.md#3--booking-a-lesson) also still labels online delivery
-as Zoom. These artifacts need alignment with the confirmed decision before implementation;
-this documentation push does not edit the issue or rewrite the journeys.
+Issue #146 remains open with Zoom in its title, story, and acceptance criteria. Its original
+fallback criterion says the Tutor is notified; the accepted contract instead uses
+Booking-page status without new emails. The canonical booking journey now describes the
+Tutor override and avoids implying that Google Meet room creation is already implemented.
+The issue itself has not been edited.
 
-The schema documentation correctly describes the database as it exists today, including
-`zoomMeetingUrl`. Update it alongside an approved schema change, without presenting
-planned fields as already implemented.
+The Prisma schema and schema documentation now include `customMeetingUrl`,
+`meetingLinkUpdatedAt`, and `meetingLinkUpdatedById`. Apply the schema to a local or shared
+database only under the applicable data-change approval; no database push was performed here.
 
 ## Repository starting points
 
-| File/area                                                                                | Current state / next integration concern                                                                                                                                                                           |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [Booking service](../apps/backend/src/modules/booking/booking.service.ts)                | `confirmBookingPayment()` commits before best-effort notifications. Add provisioning after commit; integrate existing `rescheduleBooking()` and cancellation paths with generation invalidation.                   |
-| [Classroom module](../apps/backend/src/modules/classroom/)                               | Placeholder routes/service; inspect before choosing the provider/provisioning service boundary.                                                                                                                    |
-| [Prisma schema](../apps/backend/prisma/schema.prisma)                                    | Booking has nullable `zoomMeetingUrl`; generated/custom URLs, provider identity, recovery state, generation/version protection, and latest editor/time need design. Ask before schema edits or direct data writes. |
-| [Booking detail page](../apps/frontend/app/bookings/[id]/page.tsx)                       | Existing Join reads `zoomMeetingUrl` for a confirmed Booking. Add effective-link/status rendering, scheduled-end eligibility, and the Tutor override/restore editor.                                               |
-| [Frontend Booking types](../apps/frontend/src/types/booking.ts)                          | The API/client contract still exposes `zoomMeetingUrl`; update it with the approved schema and effective-link design.                                                                                              |
-| [Authentication service](../apps/backend/src/modules/auth/auth.service.ts)               | Existing local login stays in place. Organizer OAuth is backend integration configuration; no Tutor/Student Google-linking feature is required.                                                                    |
-| [Notification service](../apps/backend/src/modules/notification/notification.service.ts) | Existing emails are best-effort and preference-controlled. CLASS-1 uses page status; do not add fallback/change emails or treat notification waiting as a durable work queue.                                      |
+| File/area                                                                                | Current state / next integration concern                                                                                                                                                                                              |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Booking service](../apps/backend/src/modules/booking/booking.service.ts)                | Tutor override endpoint, effective-link mapping, and server-computed actions are implemented. `confirmBookingPayment()` commits before notifications; add future provisioning after commit and protect reschedule/cancellation races. |
+| [Classroom module](../apps/backend/src/modules/classroom/)                               | Placeholder routes/service; inspect before choosing the provider/provisioning service boundary.                                                                                                                                       |
+| [Prisma schema](../apps/backend/prisma/schema.prisma)                                    | Booking now stores `customMeetingUrl` and latest editor/time beside nullable `zoomMeetingUrl`. Provider identity, recovery state, and generation/version protection remain for Meet provisioning.                                     |
+| [Booking detail page](../apps/frontend/app/bookings/[id]/page.tsx)                       | Uses the effective URL, scheduled-end Join eligibility, and the Tutor override/restore editor.                                                                                                                                        |
+| [Frontend Booking types](../apps/frontend/src/types/booking.ts)                          | Exposes generated/custom/effective URLs, latest editor/time, and server-computed Join/edit actions.                                                                                                                                   |
+| [Authentication service](../apps/backend/src/modules/auth/auth.service.ts)               | Existing local login stays in place. Organizer OAuth is backend integration configuration; no Tutor/Student Google-linking feature is required.                                                                                       |
+| [Notification service](../apps/backend/src/modules/notification/notification.service.ts) | Existing emails are best-effort and preference-controlled. CLASS-1 uses page status; do not add fallback/change emails or treat notification waiting as a durable work queue.                                                         |
 
 There is no existing durable provisioning queue. Choose the recovery mechanism and data
 model in the change proposal; avoid silently introducing unrelated infrastructure.
@@ -130,29 +134,29 @@ No Tutor co-host test or Google-account-linking implementation is required for C
 If the selected setup cannot provide a required joining behavior, report the evidence and
 ask before changing the confirmed contract.
 
-## Next actions on the other device
+## Next actions
 
-1. Fetch and switch to `feat/CLASS-1-lesson-delivery`; start with ADR 0004 and this handoff.
-2. Resolve authorized account setup and run the live feasibility checks above. Record what
-   was actually tested and the capacity observed.
-3. Create the normal `docs/change` proposal/spec/tasks from the accepted ADR, including
-   provisioning recovery, schedule-generation protection, API/UI behavior, and required
-   schema/configuration changes. Coordinate issue and canonical-journey alignment without
-   rewriting immutable evidence. Request approval for the concrete Prisma changes.
-4. Implement within the approved scope and ownership boundaries. Existing reschedule
-   eligibility and cancellation/refund rules stay outside the meeting integration.
-5. Verify successful creation, throttling, four-attempt exhaustion, uncertain creation,
-   restart/concurrent-worker recovery, manual-link ownership and HTTPS validation,
-   override/restore, late success while custom is active, repeated rescheduling,
-   cancellation races, Join/edit end-time boundaries, and missing-link/status UI.
-   Existing payment remains committed throughout failure scenarios.
+1. Review the local custom-link implementation and run the planned behavioral checks when
+   requested. The current status is validated by Prisma, TypeScript builds, and lint; the
+   database is not synchronized in this worktree.
+2. For the later Google Meet slice, add its focused change proposal/spec/tasks for OAuth,
+   after-payment room creation, bounded recovery, schedule-generation protection, and
+   booking-page status. Request approval for any additional Prisma changes before editing.
+3. With explicit authorization, select the actual organizer account and plan, configure
+   OAuth securely, and prove the accepted concurrent and organizer-absent joining behavior.
+4. Implement the provider slice without changing payment, reschedule eligibility, or
+   cancellation/refund policy. Keep copied-link behavior and provider capacity limits as
+   stated in ADR 0004.
+5. Verify creation, throttling, retry exhaustion, uncertain creation, restart/concurrent
+   recovery, manual override priority, repeated rescheduling, cancellation races, and
+   Join/edit time boundaries. Record tested capacity and account-specific access results.
 
 ## Branch validation and approval boundaries
 
-The branch currently contains documentation and immutable research evidence only. The
-accepted ADR, this handoff, docs index, and confirmed Wiki Memory pointer are the current
-continuation package. Formatting, local links, and Git diff checks validate the documentation;
-they do not establish application correctness or live Google behavior.
+This worktree contains the accepted ADR, implementation change artifacts, custom-link code,
+and aligned canonical documentation. Prisma validation, application builds, lint, and
+formatting passed; no behavioral tests, database synchronization, or live Google behavior
+were checked. No commit, push, issue edit, or deployment was performed for this slice.
 
 Schema/data changes, credentials, subscriptions, live tests, server operations, and deployment
 require their applicable authorization. Protected deployment/environment/CI work remains under

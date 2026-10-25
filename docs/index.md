@@ -26,6 +26,7 @@ disagree.
 | PROF-3 implementation decisions and checks      | [Availability change](change/implement-prof-3-availability/proposal.md)             |
 | PROF-7 payout account decisions                 | [PROF-7 evidence](sources/prof-7-policy-confirmation.md)                            |
 | CLASS-1 implementation continuation             | [CLASS-1 handoff](class-1-handoff.md) — Google Meet direction, constraints, next steps |
+| CLASS-1 custom URL first slice                  | [Custom meeting URL change](change/class-1-custom-meeting-url/proposal.md)             |
 | CLASS-1 managed and self-hosted video alternatives | [Lesson delivery options](lesson-delivery-options.md) — research, not a provider decision |
 | The database schema and its known gaps          | [`database-schema.md`](database-schema.md)                                          |
 | Tech stack, repo layout, deployment             | [`../README.md`](../README.md#architecture)                                         |

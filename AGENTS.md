@@ -57,7 +57,7 @@
 - Docker Swarm production Compose uses string-form `env_file` entries. Keep `admin-signup-key.enc.env` present and use a blank `ADMIN_SIGNUP_KEY` to disable Admin signup.
 - `/dashboard` always shows the Student dashboard; only approved Tutors get a Tutor tab on that same page. Keep legacy `/dashboard/tutor` links forwarding to the Tutor tab.
 - Student accounts must continue to see **Become a tutor** in the navbar.
-- CLASS-1 uses a platform-owned Google Meet organizer via OAuth, with separate generated and Tutor-provided URLs. The custom URL wins and survives rescheduling; rescheduling replaces the generated room. Co-host automation and Google-account linking are deferred. Follow the confirmed contract in `docs/adr/0004-google-meet-lesson-links.md`.
+- CLASS-1 uses a platform-owned Google Meet organizer via OAuth, with separate generated and Tutor-provided URLs. Implement Tutor-provided URLs first; Google Meet room creation can follow later. The custom URL wins and survives rescheduling; rescheduling replaces the generated room. Co-host automation and Google-account linking are deferred. Follow the confirmed contract in `docs/adr/0004-google-meet-lesson-links.md`.
 
 ### Open Threads
 - Question: Is rescheduling a booking in scope?

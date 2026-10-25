@@ -41,6 +41,8 @@ export type BookingActions = {
   canCancel: boolean;
   canReschedule: boolean;
   canTutorCancel: boolean;
+  canEditMeetingLink: boolean;
+  canJoin: boolean;
 };
 
 export type CancellationQuote = {
@@ -78,6 +80,10 @@ export type Booking = {
   endedAt: string;
   paymentExpiresAt: string | null;
   zoomMeetingUrl?: string | null;
+  customMeetingUrl: string | null;
+  effectiveMeetingUrl: string | null;
+  meetingLinkUpdatedAt: string | null;
+  meetingLinkUpdatedBy: { name: string } | null;
   createdAt: string;
   cancelledAt?: string | null;
   cancellationReason?: string | null;
