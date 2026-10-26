@@ -19,11 +19,13 @@ export function SubjectBookingCalendar({
   selectedIds,
   onChange,
   onSelectionMessage,
+  initialDate,
 }: {
   slots: AvailabilitySlot[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
   onSelectionMessage: (message: string | null) => void;
+  initialDate?: string | null;
 }) {
   const [now] = useState(() => new Date());
   const today = dayKey(now);
@@ -31,8 +33,17 @@ export function SubjectBookingCalendar({
   // Clamp month-end dates rather than letting Date overflow into a fourth month.
   const limitDay = Math.min(day, new Date(Date.UTC(year, month + 3, 0)).getUTCDate());
   const horizon = new Date(Date.UTC(year, month + 2, limitDay)).toISOString().slice(0, 10);
-  const [visibleMonth, setVisibleMonth] = useState(today.slice(0, 7));
-  const [selectedDay, setSelectedDay] = useState("");
+  const validInitialDate =
+    initialDate &&
+    /^\d{4}-\d{2}-\d{2}$/.test(initialDate) &&
+    initialDate >= today &&
+    initialDate <= horizon &&
+    !Number.isNaN(atNoon(initialDate).getTime()) &&
+    dayKey(atNoon(initialDate)) === initialDate
+      ? initialDate
+      : "";
+  const [visibleMonth, setVisibleMonth] = useState((validInitialDate || today).slice(0, 7));
+  const [selectedDay, setSelectedDay] = useState(validInitialDate);
   const available = slots.filter(
     (slot) =>
       slot.available !== false &&
