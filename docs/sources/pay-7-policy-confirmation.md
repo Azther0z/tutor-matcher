@@ -16,3 +16,7 @@ Answer: On its own page, /wallet/payout, like /wallet/topup. The full /wallet pa
 Question: How is a payout stored?
 
 Answer: As in the approved wallet ledger design. A successful payout appends one PAYOUT wallet transaction and debits the balance in the same serializable transaction. A failure writes nothing. There is no status column and no request table, because the payout finishes in one request.
+
+Question: Who can request a payout?
+
+Answer: Only Tutors. Issue #161 was changed on 2026-10-25 to "Tutor requests a payout from available balance": a user who is not a Tutor cannot use the payout flow, and student withdrawals are out of scope.

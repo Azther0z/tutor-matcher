@@ -131,9 +131,8 @@ is outside PAY-1; see the approved ledger design in docs/user-journeys.md §4.
 _Avoid_: Income, revenue, salary
 
 **Payout**:
-A withdrawal of available wallet balance to a saved payout account. Payouts are not
-tutor-only: any user with available balance can request one, including a student who
-only topped up.
+A withdrawal of available wallet balance to a saved payout account. Payouts are
+tutor-only: a Tutor with available balance can request one; students cannot withdraw.
 _Avoid_: Withdrawal request, cash-out, transfer
 
 **Payout Account**:

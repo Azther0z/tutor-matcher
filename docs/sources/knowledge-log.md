@@ -78,4 +78,4 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Disposition: Update
 - Raw: docs/sources/pay-7-policy-confirmation.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
-- Scope: Simulated payout off in production, `/wallet/payout` page with a saved payout account (default picked first), one PAYOUT row with `payoutAccountId` per payout, no status or request table
+- Scope: Tutor-only payout (issue #161 changed 2026-10-25), simulated and off in production, `/wallet/payout` page with a saved payout account (default picked first), one PAYOUT row with `payoutAccountId` per payout, no status or request table

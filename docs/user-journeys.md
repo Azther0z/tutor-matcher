@@ -40,15 +40,15 @@ disabled key leaves the account as a standard Student account.
 
 | Role        | What the capability adds                                                                                                               |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| **Student** | Default for every account: search, message a tutor, book and pay for lessons, attend, review completed lessons, top up and withdraw    |
-| **Tutor**   | Granted on approved application: public listing, subjects, per-date availability, teaching confirmed classes, earnings into the wallet |
+| **Student** | Default for every account: search, message a tutor, book and pay for lessons, attend, review completed lessons, top up                 |
+| **Tutor**   | Granted on approved application: public listing, subjects, per-date availability, teaching confirmed classes, wallet earnings, payouts |
 | **Admin**   | Tutor applications, listing and document review, content moderation, disputes and refunds, suspension and bans                         |
 
 **In scope:** account sign-up and login; tutor application with identity and
 certification documents; admin-reviewed public listings; per-tutor subjects; per-date
 30-minute availability with subject assignment; tutor and subject discovery with
 filters; subject-locked 1-1 booking of a continuous block; wallet top-up by PromptPay,
-wallet-funded lesson payment, earnings, refunds, and payouts for any user; online lesson
+wallet-funded lesson payment, earnings, refunds, and payouts for tutors; online lesson
 delivery by meeting link and automatic completion; student ⇄ tutor messaging and
 notification preferences; reviews scoped to a tutor and a subject, with tutor replies
 and flagging; admin queues for applications, moderation, disputes, and account safety.
@@ -373,9 +373,10 @@ The earlier prototype's 12-hour window is superseded for BOOK-3 by the
 [user confirmation](sources/book-3-policy-confirmation.md); late-cancellation allocation
 remains separate work.
 
-**Payouts (PAY-7).** Any user with available balance can request a payout on
-`/wallet/payout`, not just tutors. A student who only topped up and never taught can pay
-out too. The page shows the available balance and the user's saved payout accounts with
+**Payouts (PAY-7).** A Tutor with available balance can request a payout on
+`/wallet/payout`. Payouts are tutor-only: the server rejects anyone else and the page tells
+them payouts are for Tutors, and the Request payout button on Wallet settings only shows for
+Tutors. Student withdrawals are out of scope. The page shows the available balance and the user's saved payout accounts with
 masked account numbers, with the default account picked first. The user enters an amount,
 reviews the payout and confirms it. An amount above the available balance is blocked on
 the page and by the server. A successful payout appends one PAYOUT row linked to the
@@ -384,11 +385,10 @@ nothing. Repeating the same request reference does not pay out twice. The payout
 simulated, labelled "Simulated payout, no real money is transferred", and turned off in
 production like top-up. With no saved payout account the page asks the user to add one in
 Wallet settings. An asynchronous provider would need a separate request table, not a ledger
-status. The full wallet dashboard, student lesson confirmation and automatic completion
-remain separate work. See the [PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
+status. The full wallet dashboard and lesson completion remain separate work. See the [PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
 
 **Payout accounts (`/settings/wallet`, PROF-7).** Any logged-in user can open Wallet
-settings from the Settings navigation, not only Tutors, because payouts are not tutor-only.
+settings from the Settings navigation, not only Tutors (PROF-7). Requesting a payout is tutor-only (PAY-7).
 The page starts with the wallet balance and a **Top up** link to `/wallet/topup`. Below it,
 the user's saved payout accounts are listed with bank, account holder name, masked number
 (`•••• 1234`). The default has a **Default** badge, the others a **Set default** action,
@@ -656,7 +656,7 @@ Rules that are easy to break when building a slice in isolation:
    has one owner, a type, positive amount and resulting balance, with no status or
    direction column. The shared writer updates the balance and appends the row atomically;
    balances are never edited independently of the ledger.
-9. **Payouts are available to any user with balance,** not only tutors.
+9. **Payouts are tutor-only.** A Tutor can pay out available balance; students cannot withdraw.
 10. **Reviews come only from a completed booking** and are scoped to tutor + subject.
 11. **Listing and verification changes are admin-reviewed before going live.**
 
