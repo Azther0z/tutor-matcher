@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { SubjectBookingCalendar } from "@/src/components/subject-booking-calendar";
 import { RequireAuth } from "@/src/components/require-auth";
 import { BookingApiError, createBooking, getAvailability } from "@/src/lib/bookings-api";
@@ -15,6 +15,7 @@ function SubjectBookingContent() {
   // Read the reusable subject id from /bookings/s/[subjectId].
   const { subjectId } = useParams<{ subjectId: string }>();
   const router = useRouter();
+  const initialDate = useSearchParams().get("date");
   const [data, setData] = useState<AvailabilityResponse | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [description, setDescription] = useState("");
@@ -134,6 +135,8 @@ function SubjectBookingContent() {
           ) : (
             <div className="mt-6">
               <SubjectBookingCalendar
+                key={`${subjectId}:${initialDate ?? ""}`}
+                initialDate={initialDate}
                 slots={openSlots}
                 selectedIds={selectedIds}
                 onChange={setSelectedIds}
@@ -210,8 +213,10 @@ function SubjectBookingContent() {
 
 export default function SubjectBookingPage() {
   return (
-    <RequireAuth>
-      <SubjectBookingContent />
-    </RequireAuth>
+    <Suspense fallback={<p>Loading available times…</p>}>
+      <RequireAuth>
+        <SubjectBookingContent />
+      </RequireAuth>
+    </Suspense>
   );
 }

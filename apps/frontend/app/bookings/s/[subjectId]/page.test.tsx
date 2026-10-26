@@ -7,11 +7,13 @@ const slotId = "073ea12c-9fb1-4c70-9910-554432c8dc21";
 const push = jest.fn();
 const replace = jest.fn();
 const router = { push, replace };
+let mockSearchParams = new URLSearchParams();
 
 jest.mock("next/navigation", () => ({
   useParams: () => ({ subjectId }),
   usePathname: () => `/bookings/s/${subjectId}`,
   useRouter: () => router,
+  useSearchParams: () => mockSearchParams,
 }));
 
 const availability = {
@@ -30,12 +32,30 @@ beforeEach(() => {
     doNotFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask"],
   });
   jest.clearAllMocks();
+  mockSearchParams = new URLSearchParams();
   localStorage.setItem("authToken", "student-token");
 });
 
 afterEach(() => {
   localStorage.clear();
   jest.useRealTimers();
+});
+
+it("opens the date passed by DISC-4 without selecting times or creating a booking", async () => {
+  mockSearchParams = new URLSearchParams({ date: "2030-01-10" });
+  global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => availability });
+  render(<SubjectBookingPage />);
+  expect(await screen.findByRole("button", { name: "2030-01-10" })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+  expect(screen.getByRole("button", { name: "16:00 Available" })).toHaveAttribute(
+    "aria-pressed",
+    "false"
+  );
+  expect(screen.getByRole("button", { name: "Confirm booking" })).toBeDisabled();
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  expect(push).not.toHaveBeenCalled();
 });
 
 it("creates a trial booking with UUID identifiers", async () => {
