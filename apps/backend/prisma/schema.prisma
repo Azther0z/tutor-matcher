@@ -93,6 +93,7 @@ model User {
   receivedMessages Message[] @relation("MessagesReceived")
 
   walletTransactions WalletTransaction[]
+  payoutAccounts     PayoutAccount[]
 
   reportsFiledAsAdmin Report[] @relation("ReportsHandledByAdmin")
   reportsMade         Report[] @relation("ReportsMadeByReporter")
@@ -299,9 +300,33 @@ model WalletTransaction {
   bookingId    String?               @map("booking_id") @db.Uuid
   booking      Booking?              @relation(fields: [bookingId], references: [id], onDelete: Restrict)
 
+  // PAY-7: the account a PAYOUT was sent to; null for every other type.
+  payoutAccountId String?        @map("payout_account_id") @db.Uuid
+  payoutAccount   PayoutAccount? @relation(fields: [payoutAccountId], references: [id], onDelete: Restrict)
+
   @@unique([bookingId, type])
   @@index([userId, createdAt])
   @@map("wallet_transactions")
+}
+
+// PROF-7: any user's saved bank accounts for payouts. Removed accounts stay for payout history.
+model PayoutAccount {
+  id                String    @id @default(uuid()) @map("payout_account_id") @db.Uuid
+  bankCode          String    @map("bank_code")
+  accountHolderName String    @map("account_holder_name")
+  accountNumber     String    @map("account_number")
+  isDefault         Boolean   @default(false) @map("is_default")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  removedAt         DateTime? @map("removed_at")
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  walletTransactions WalletTransaction[]
+
+  @@unique([userId], map: "payout_accounts_one_default_per_user", where: { isDefault: true })
+  @@index([userId, createdAt])
+  @@map("payout_accounts")
 }
 
 model Review {

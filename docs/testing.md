@@ -85,6 +85,33 @@ npm.cmd --prefix apps/backend test -- --runInBand tutor-cancellation.integration
 
 The decisions are recorded in [BOOK-4 user evidence](sources/book-4-policy-confirmation.md).
 
+### PROF-7 payout account acceptance
+
+Payout account unit tests use mocked Prisma. They cover authentication, the bank list, the
+first account becoming the default, `makeDefault`, input rules (bank from the list, trimmed
+holder name up to 100 characters, 10 to 15 digits after removing spaces and dashes), the
+5 account limit, duplicate accounts, the add and remove rate limit, the retry on a one-default race, owner-only 404s, and soft removal that
+promotes the oldest account. Wallet settings page tests cover the balance and Top up link,
+the empty state, masked rows with the Default badge, form validation, adding, setting the
+default, the inline remove confirm (no `window.confirm`), the limit and the error states.
+
+`payout-account.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true`.
+It refuses any database except `tutor_matcher_prof7_test` on loopback; create that dedicated
+disposable database and synchronize the schema first. It covers a Student who is not a
+Tutor and a Tutor, the first default, `makeDefault`, atomic and concurrent default switches,
+the one-default index, removal that promotes the oldest account, the 5 account limit,
+owner-only access, and that no response contains a full account number. Fixture cleanup is
+restricted to PROF-7 IDs.
+
+```powershell
+$env:RUN_DATABASE_INTEGRATION = "true"
+$env:EMAIL_DELIVERY_MODE = "log"
+npm.cmd --prefix apps/backend test -- --runInBand payout-account.integration.test.ts
+npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/settings/wallet/page.test.tsx"
+```
+
+The decisions are recorded in [PROF-7 user evidence](sources/prof-7-policy-confirmation.md).
+
 ### General commands
 
 Run commands from `apps/backend` unless otherwise noted:

@@ -65,3 +65,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/book-4-policy-confirmation.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
 - Scope: Full refund on tutor cancellation, Upcoming classes entry point, closed freed slots, required reason with notification, nullable `cancelledBy`
+
+## [2026-10-24] ingest | PROF-7 payout account decisions
+
+- Disposition: Update; resolves schema gap G10
+- Raw: docs/sources/prof-7-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Several Thai bank payout accounts per user with one default, masked numbers, `/settings/wallet` for any logged-in user; payout requests stay with PAY-7
