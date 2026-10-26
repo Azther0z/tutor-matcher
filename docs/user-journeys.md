@@ -377,7 +377,8 @@ only when the user ticks **Make this my default account**. Exactly one account i
 default, and payouts use it unless the user picks another. The full number is never shown
 again after saving. Accounts cannot be edited: the user removes one and adds it again, so
 past payouts keep the account they were sent to. Removing the default makes the oldest
-remaining account the default. See the [PROF-7 confirmation](sources/prof-7-policy-confirmation.md).
+remaining account the default. The same bank and number can't be saved twice while active,
+and adding or removing accounts is rate limited per user. See the [PROF-7 confirmation](sources/prof-7-policy-confirmation.md).
 
 Related stories: US5-1 … US5-8, US11-3.
 

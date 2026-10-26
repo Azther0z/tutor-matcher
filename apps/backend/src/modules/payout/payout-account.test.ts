@@ -20,6 +20,7 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
 }));
 const { app } = await import("../../app.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");
+const { payoutAccountRateLimiter } = await import("./payout-account.routes.ts");
 
 const userId = "77000000-0000-4000-8000-000000000001";
 const accountId = "77000000-0000-4000-8000-000000000002";
@@ -50,6 +51,7 @@ const create = (body: object = {}) =>
 const calls = (fn: Mock) => fn.mock.calls.map((call) => call[0]);
 
 beforeEach(() => {
+  payoutAccountRateLimiter.resetKey(userId);
   jest.clearAllMocks();
   for (const fn of Object.values(tx.payoutAccount)) fn.mockReset().mockResolvedValue(null);
   tx.payoutAccount.findMany.mockResolvedValue([]);
@@ -122,6 +124,24 @@ describe("PROF-7 payout account settings", () => {
     const response = await create().expect(409);
     expect(response.body.code).toBe("PAYOUT_ACCOUNT_LIMIT");
     expect(tx.payoutAccount.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects an active account with the same bank and number", async () => {
+    tx.payoutAccount.findMany.mockResolvedValue([
+      { isDefault: true, bankCode: "KBANK", accountNumber: "1234567890" },
+    ]);
+    const response = await create().expect(409);
+    expect(response.body.code).toBe("PAYOUT_ACCOUNT_DUPLICATE");
+    expect(tx.payoutAccount.create).not.toHaveBeenCalled();
+    await create({ bankCode: "SCB" }).expect(201);
+  });
+
+  it("limits adding and removing to thirty changes per account", async () => {
+    for (let index = 0; index < 30; index++) await create().expect(201);
+    const blocked = await create().expect(429);
+    expect(blocked.body.code).toBe("PAYOUT_ACCOUNT_RATE_LIMITED");
+    await authorize(request(app).delete(`/api/payout-accounts/${accountId}`)).expect(429);
+    await authorize(request(app).get("/api/payout-accounts")).expect(200);
   });
 
   it("retries when the one-default index rejects a concurrent change", async () => {

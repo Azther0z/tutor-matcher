@@ -4,6 +4,7 @@ import request from "supertest";
 import { app } from "../../app.ts";
 import { prisma } from "../../lib/db.ts";
 import { signAuthToken } from "../../lib/jwt.ts";
+import { payoutAccountRateLimiter } from "./payout-account.routes.ts";
 
 const enabled = process.env.RUN_DATABASE_INTEGRATION === "true";
 if (enabled) {
@@ -76,6 +77,7 @@ async function cleanFixtures() {
 
 (enabled ? describe : describe.skip)("PROF-7 payout account acceptance", () => {
   beforeEach(async () => {
+    for (const id of userIds) payoutAccountRateLimiter.resetKey(id);
     await cleanFixtures();
     await prisma.user.createMany({
       data: userIds.map((id, index) => ({
@@ -218,6 +220,18 @@ async function cleanFixtures() {
     expect(blocked.body.code).toBe("PAYOUT_ACCOUNT_LIMIT");
     await authorize(request(app).delete(`/api/payout-accounts/${saved[4].id}`)).expect(200);
     await addAccount("1000000006");
+  });
+
+  it("rejects a second active account with the same bank and number", async () => {
+    const first = await addAccount(NUMBERS[0]);
+    const duplicate = await authorize(
+      request(app)
+        .post("/api/payout-accounts")
+        .send({ bankCode: first.bankCode, accountHolderName: "Again", accountNumber: NUMBERS[0] })
+    ).expect(409);
+    expect(duplicate.body.code).toBe("PAYOUT_ACCOUNT_DUPLICATE");
+    await authorize(request(app).delete(`/api/payout-accounts/${first.id}`)).expect(200);
+    await addAccount(NUMBERS[0]);
   });
 
   it("only lets the owner change or remove an account", async () => {

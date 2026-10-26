@@ -90,7 +90,7 @@ The decisions are recorded in [BOOK-4 user evidence](sources/book-4-policy-confi
 Payout account unit tests use mocked Prisma. They cover authentication, the bank list, the
 first account becoming the default, `makeDefault`, input rules (bank from the list, trimmed
 holder name up to 100 characters, 10 to 15 digits after removing spaces and dashes), the
-5 account limit, the retry on a one-default race, owner-only 404s, and soft removal that
+5 account limit, duplicate accounts, the add and remove rate limit, the retry on a one-default race, owner-only 404s, and soft removal that
 promotes the oldest account. Wallet settings page tests cover the balance and Top up link,
 the empty state, masked rows with the Default badge, form validation, adding, setting the
 default, the inline remove confirm (no `window.confirm`), the limit and the error states.

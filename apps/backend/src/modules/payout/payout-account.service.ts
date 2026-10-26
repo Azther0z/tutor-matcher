@@ -61,8 +61,20 @@ export async function createPayoutAccount(userId: string, input: CreatePayoutAcc
   await inSerializableTransaction(async (tx) => {
     const accounts = await tx.payoutAccount.findMany({
       where: { userId, removedAt: null },
-      select: { isDefault: true },
+      select: { isDefault: true, bankCode: true, accountNumber: true },
     });
+    if (
+      accounts.some(
+        (account) =>
+          account.bankCode === input.bankCode && account.accountNumber === input.accountNumber
+      )
+    ) {
+      throw new PayoutAccountDomainError(
+        "PAYOUT_ACCOUNT_DUPLICATE",
+        "This account is already saved.",
+        409
+      );
+    }
     if (accounts.length >= MAX_PAYOUT_ACCOUNTS) {
       throw new PayoutAccountDomainError(
         "PAYOUT_ACCOUNT_LIMIT",
