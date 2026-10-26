@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ContinuousSlotPicker } from "@/src/components/continuous-slot-picker";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { SubjectBookingCalendar } from "@/src/components/subject-booking-calendar";
 import { RequireAuth } from "@/src/components/require-auth";
 import { BookingApiError, createBooking, getAvailability } from "@/src/lib/bookings-api";
 import type { AvailabilityResponse } from "@/src/types/booking";
@@ -15,6 +15,7 @@ function SubjectBookingContent() {
   // Read the reusable subject id from /bookings/s/[subjectId].
   const { subjectId } = useParams<{ subjectId: string }>();
   const router = useRouter();
+  const initialDate = useSearchParams().get("date");
   const [data, setData] = useState<AvailabilityResponse | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [description, setDescription] = useState("");
@@ -51,6 +52,14 @@ function SubjectBookingContent() {
 
   // A 30-minute slot costs half of the tutor's hourly rate.
   const total = (Number(data?.subject?.hourlyRate ?? 0) * selectedIds.length) / 2;
+  const selectedSlots = openSlots
+    .filter((slot) => selectedIds.includes(slot.id))
+    .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  const windowFormat = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIME_ZONE,
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 
   async function submit() {
     // BOOK-1 requires at least one slot before creating the trial booking.
@@ -125,12 +134,13 @@ function SubjectBookingContent() {
             </div>
           ) : (
             <div className="mt-6">
-              <ContinuousSlotPicker
+              <SubjectBookingCalendar
+                key={`${subjectId}:${initialDate ?? ""}`}
+                initialDate={initialDate}
                 slots={openSlots}
                 selectedIds={selectedIds}
                 onChange={setSelectedIds}
                 onSelectionMessage={setMessage}
-                timeZone={TIME_ZONE}
               />
             </div>
           )}
@@ -139,6 +149,20 @@ function SubjectBookingContent() {
         <aside className="h-fit rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           <h2 className="text-lg font-semibold">Booking summary</h2>
           <dl className="mt-5 space-y-3 text-sm">
+            {selectedSlots.length > 0 && (
+              <div>
+                <dt className="text-zinc-500">Selected time (Bangkok)</dt>
+                <dd>
+                  {windowFormat.format(new Date(selectedSlots[0].startedAt))} –{" "}
+                  {windowFormat.format(
+                    new Date(
+                      new Date(selectedSlots[selectedSlots.length - 1].startedAt).getTime() +
+                        30 * 60_000
+                    )
+                  )}
+                </dd>
+              </div>
+            )}
             <div className="flex justify-between gap-4">
               <dt className="text-zinc-500">Lesson</dt>
               <dd className="text-right font-medium">Trial · {selectedIds.length * 30} min</dd>
@@ -179,7 +203,7 @@ function SubjectBookingContent() {
             {submitting ? "Booking…" : total > 0 ? "Continue to payment" : "Confirm booking"}
           </button>
           <p className="mt-3 text-center text-xs text-zinc-500">
-            Your time is confirmed only after this step succeeds.
+            Continue to reserve these times temporarily. Payment confirms your booking.
           </p>
         </aside>
       </div>
@@ -189,8 +213,10 @@ function SubjectBookingContent() {
 
 export default function SubjectBookingPage() {
   return (
-    <RequireAuth>
-      <SubjectBookingContent />
-    </RequireAuth>
+    <Suspense fallback={<p>Loading available times…</p>}>
+      <RequireAuth>
+        <SubjectBookingContent />
+      </RequireAuth>
+    </Suspense>
   );
 }
