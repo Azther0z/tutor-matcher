@@ -256,3 +256,15 @@ owner's current profile then has the new bio and identification card, the public
 versions still cannot be copied. Frontend tests cover **Revise and re-submit** in the rejection
 banner, for an approved Tutor and for a rejected initial application, and **Create draft from
 rejected submission** in Submission history.
+
+## DISC-4 acceptance coverage
+
+Discovery tests cover the public subject endpoint: only this subject's details, rating, reviews
+and openings; one Bangkok day of open slots that are not closed, held or booked; the 92-day
+openings grouped by Bangkok day in SQL with parameters; the next opening (or today) as the
+default day; a 400 for a malformed date; and a 404 for another tutor's subject, an unpublished
+or unapproved tutor, or a non-UUID id. The PostgreSQL suite (opt-in like DISC-1) checks the
+00:00 and 23:30 day edges, closed, held and other-subject slots, the open-day list and
+subject-only reviews. Frontend tests cover the 48 informational rows, Book this subject below
+the table with the subject and date (and the login hand-off), the disabled button on an empty
+day, calendar selection through the URL, the back link, the unavailable state and retry.
