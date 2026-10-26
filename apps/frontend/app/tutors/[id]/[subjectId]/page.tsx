@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { SubjectDateCalendar } from "@/src/components/subject-date-calendar";
+import { SubjectDayCalendar } from "@/src/components/subject-day-calendar";
 import { formatRate, Rating, ReviewList } from "@/src/components/tutor-public";
 import { getAuthSnapshot, subscribeToAuth } from "@/src/lib/auth";
 import {
@@ -24,16 +25,6 @@ const WINDOW_DAYS = 92;
 const bangkokDay = (instant: number) => new Date(instant + BANGKOK_MS).toISOString().slice(0, 10);
 const isDay = (value: string | null): value is string =>
   !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
-
-// The 48 half-hour rows of a Bangkok day, from 00:00–00:30 to 23:30–24:00.
-function halfHours(date: string) {
-  const clock = (index: number) =>
-    `${String(Math.floor(index / 2)).padStart(2, "0")}:${index % 2 ? "30" : "00"}`;
-  return Array.from({ length: 48 }, (_, index) => ({
-    label: `${clock(index)}–${clock(index + 1)}`,
-    startedAt: new Date(`${date}T${clock(index)}:00+07:00`).toISOString(),
-  }));
-}
 
 // DISC-4: the subject reads its day from the URL, so it renders on the client inside Suspense.
 export default function TutorSubjectPage() {
@@ -226,7 +217,7 @@ function SubjectView({
           <p className="text-zinc-500">Loading availability…</p>
         ) : (
           <>
-            <AvailabilityTable date={page.date} openSlots={page.openSlots} />
+            <SubjectDayCalendar date={page.date} openSlots={page.openSlots} />
             <BookButton
               subjectId={subject.id}
               date={page.date}
@@ -246,55 +237,6 @@ function SubjectView({
         <ReviewList reviews={page.reviews} />
       </section>
     </main>
-  );
-}
-
-// Every half hour of the day is listed for information; the rows are not a slot picker.
-function AvailabilityTable({ date, openSlots }: { date: string; openSlots: string[] }) {
-  const open = new Set(openSlots);
-  const heading = new Intl.DateTimeFormat("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Asia/Bangkok",
-  }).format(new Date(`${date}T12:00:00+07:00`));
-
-  return (
-    <table className="w-full text-left text-sm">
-      <caption className="mb-2 text-left font-medium">{heading}</caption>
-      <thead>
-        <tr className="text-zinc-500">
-          <th scope="col" className="py-1 font-normal">
-            Time
-          </th>
-          <th scope="col" className="py-1 font-normal">
-            Status
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {halfHours(date).map((slot) => {
-          const available = open.has(slot.startedAt);
-          return (
-            <tr key={slot.label} className="border-t border-black/5 dark:border-white/10">
-              <th scope="row" className="py-1.5 font-normal tabular-nums">
-                {slot.label}
-              </th>
-              <td
-                className={
-                  available
-                    ? "py-1.5 font-medium text-green-700 dark:text-green-300"
-                    : "py-1.5 text-zinc-400"
-                }
-              >
-                {available ? "Available" : "Not available"}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
   );
 }
 
