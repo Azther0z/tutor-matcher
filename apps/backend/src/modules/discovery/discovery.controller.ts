@@ -1,12 +1,14 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { tutorSearchQuerySchema } from "./discovery.schema.ts";
+import { subjectPageQuerySchema, tutorSearchQuerySchema } from "./discovery.schema.ts";
 import {
   getPriceRange,
   getTutorProfile,
+  getTutorSubjectPage,
   getTutorSummary,
   listLearningAreas,
   searchTutorSubjects,
+  SubjectUnavailableError,
   TutorNotFoundError,
   TutorUnavailableError,
 } from "./discovery.service.ts";
@@ -50,6 +52,29 @@ export async function getTutorProfileById(req: Request, res: Response) {
     res.status(200).json(await getTutorProfile(parsedTutorId.data));
   } catch (error) {
     if (error instanceof TutorUnavailableError) {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+
+    throw error;
+  }
+}
+
+export async function getTutorSubjectPageById(req: Request, res: Response) {
+  const ids = z
+    .object({ id: z.string().uuid(), subjectId: z.string().uuid() })
+    .safeParse(req.params);
+
+  if (!ids.success) {
+    res.status(404).json({ message: "This subject is unavailable" });
+    return;
+  }
+
+  const { date } = subjectPageQuerySchema.parse(req.query);
+  try {
+    res.status(200).json(await getTutorSubjectPage(ids.data.id, ids.data.subjectId, date));
+  } catch (error) {
+    if (error instanceof SubjectUnavailableError) {
       res.status(404).json({ message: error.message });
       return;
     }

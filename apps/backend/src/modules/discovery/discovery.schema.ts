@@ -31,3 +31,8 @@ export const tutorSearchQuerySchema = z
   );
 
 export type TutorSearchQuery = z.infer<typeof tutorSearchQuerySchema>;
+
+// DISC-4: the subject page shows one Bangkok day; without a date it opens on the next opening.
+export const subjectPageQuerySchema = z.object({
+  date: z.preprocess(unset, z.iso.date().optional()),
+});
