@@ -27,6 +27,7 @@ export async function appendWalletMovement(
     type: WalletTransactionType;
     amount: Prisma.Decimal | string | number;
     bookingId?: string;
+    payoutAccountId?: string;
   }
 ) {
   const amount = new Prisma.Decimal(input.amount);

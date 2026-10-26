@@ -112,6 +112,33 @@ npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/setting
 
 The decisions are recorded in [PROF-7 user evidence](sources/prof-7-policy-confirmation.md).
 
+### PAY-7 payout request acceptance
+
+Payout unit tests mock Prisma and cover the PAYOUT row with its payout account, the masked
+account number in the response, the over-balance block, a missing or removed account,
+repeated and conflicting references, the production switch, invalid amounts and the rate
+limit, and that a user who is not a Tutor is rejected. Payout page tests cover the default account, picking another account, the confirm
+step, the navbar balance update, the over-balance block, the empty state, the
+Tutor-only message and the production-disabled state. Wallet settings shows Request payout
+only to Tutors.
+
+`payout.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true`. It refuses any
+database except `tutor_matcher_pay7_test` on loopback; create that dedicated disposable
+database and synchronize the schema first. It covers a Tutor paying out, a Student who is
+not a Tutor being rejected with nothing written, exactly one PAYOUT row with the right `balanceAfter` and `payoutAccountId`, a payout
+to another saved account, the over-balance block with nothing written, another user's and
+removed accounts, a repeated reference, concurrent payouts that cannot overdraw, and the
+production switch. Fixture cleanup is restricted to PAY-7 IDs.
+
+```powershell
+$env:RUN_DATABASE_INTEGRATION = "true"
+$env:EMAIL_DELIVERY_MODE = "log"
+npm.cmd --prefix apps/backend test -- --runInBand payout.integration.test.ts
+npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/wallet/payout/page.test.tsx"
+```
+
+The decisions are recorded in [PAY-7 user evidence](sources/pay-7-policy-confirmation.md).
+
 ### General commands
 
 Run commands from `apps/backend` unless otherwise noted:
@@ -178,7 +205,7 @@ behavior are implemented, following the journeys in [User Journeys](user-journey
 | Booking                   | Slots must be back-to-back, and price is slot count x hourly rate / 2           |
 | Payment                   | Paying from wallet balance confirms the booking and locks the slots to it       |
 | Wallet                    | Every movement writes a transaction, and balances follow the ledger             |
-| Payout                    | Any user with available balance can withdraw; over-balance requests are blocked |
+| Payout                    | Tutors can pay out; non-tutors and amounts over balance are blocked (see PAY-7) |
 | Reviews                   | A review is accepted only from the reviewer's own completed booking             |
 
 The product invariants in [User Journeys](user-journeys.md#invariants) are the shortlist of
