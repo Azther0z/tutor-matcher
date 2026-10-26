@@ -137,7 +137,11 @@ function BookingDetailContent() {
     setBusy(true);
     setMessage(null);
     try {
-      setBooking(await confirmPayment(booking.id));
+      const confirmed = await confirmPayment(booking.id);
+      setBooking(confirmed);
+      if (confirmed.payment.walletBalance !== null) {
+        publishWalletBalance(confirmed.payment.walletBalance);
+      }
       setMessage("Payment confirmed. Your trial lesson is booked.");
     } catch (error) {
       if (error instanceof BookingApiError && error.code === "BOOKING_EXPIRED") {

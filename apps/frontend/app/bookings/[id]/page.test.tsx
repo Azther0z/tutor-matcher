@@ -129,6 +129,66 @@ it("disables payment and links to wallet top-up for the server shortfall", async
   );
 });
 
+it("confirms wallet payment immediately without a tutor approval step", async () => {
+  const pending = {
+    ...booking,
+    status: "PENDING_PAYMENT",
+    payment: { ...booking.payment, canPay: true },
+    actions: { ...booking.actions, canPay: true },
+  };
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: pending }) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        booking: {
+          ...booking,
+          payment: { ...booking.payment, walletBalance: "0.00" },
+        },
+      }),
+    });
+  const onBalance = jest.fn();
+  const unsubscribe = subscribeToWalletBalance(onBalance);
+  render(<BookingDetailPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Confirm payment" }));
+  expect(await screen.findByText("CONFIRMED")).toBeInTheDocument();
+  expect(screen.getByText("Payment confirmed. Your trial lesson is booked.")).toBeInTheDocument();
+  expect(global.fetch).toHaveBeenLastCalledWith(
+    `/api/bookings/${bookingId}/confirm-payment`,
+    expect.objectContaining({ method: "POST" })
+  );
+  expect(screen.queryByRole("button", { name: "Confirm payment" })).not.toBeInTheDocument();
+  expect(onBalance).toHaveBeenCalledTimes(1);
+  expect(onBalance).toHaveBeenCalledWith("0.00");
+  unsubscribe();
+});
+
+it("does not publish a wallet balance when payment fails", async () => {
+  const pending = {
+    ...booking,
+    status: "PENDING_PAYMENT",
+    payment: { ...booking.payment, canPay: true },
+    actions: { ...booking.actions, canPay: true },
+  };
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: pending }) })
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ message: "Payment failed" }),
+    });
+  const onBalance = jest.fn();
+  const unsubscribe = subscribeToWalletBalance(onBalance);
+  render(<BookingDetailPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Confirm payment" }));
+  expect(await screen.findByText("Payment failed")).toBeInTheDocument();
+  expect(screen.queryByText("CONFIRMED")).not.toBeInTheDocument();
+  expect(onBalance).not.toHaveBeenCalled();
+  unsubscribe();
+});
+
 it("does not show student actions when the backend denies them", async () => {
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
