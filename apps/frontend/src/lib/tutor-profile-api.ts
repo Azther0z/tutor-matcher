@@ -47,6 +47,35 @@ export async function getTutorProfile(tutorId: string, signal?: AbortSignal) {
   return { kind: "profile", profile: data } satisfies ProfileResult;
 }
 
+// DISC-4: one subject's public page for a single Bangkok day (YYYY-MM-DD).
+export type SubjectPage = {
+  tutor: { id: string; firstName: string; lastName: string; verified: boolean };
+  subject: ProfileSubject;
+  date: string;
+  openDates: string[];
+  openSlots: string[];
+  reviews: ProfileReview[];
+};
+
+export type SubjectPageResult = { kind: "subject"; page: SubjectPage } | { kind: "unavailable" };
+
+// Without a date the page opens on the subject's next opening (or today when there is none).
+export async function getTutorSubjectPage(
+  tutorId: string,
+  subjectId: string,
+  date?: string,
+  signal?: AbortSignal
+) {
+  const path = `/api/discovery/tutors/${encodeURIComponent(tutorId)}/subjects/${encodeURIComponent(subjectId)}`;
+  const response = await fetch(date ? `${path}?date=${encodeURIComponent(date)}` : path, {
+    signal,
+  });
+  if (response.status === 404) return { kind: "unavailable" } satisfies SubjectPageResult;
+  const data = (await response.json().catch(() => null)) as SubjectPage | null;
+  if (!response.ok || data === null) throw new Error("Could not load this subject.");
+  return { kind: "subject", page: data } satisfies SubjectPageResult;
+}
+
 export type VideoSource =
   { kind: "embed"; src: string } | { kind: "file"; src: string } | { kind: "link"; src: string };
 

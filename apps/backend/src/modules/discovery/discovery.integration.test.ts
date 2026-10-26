@@ -127,6 +127,20 @@ async function publishAvailability(
 }
 const names = (body: { results: { name: string }[] }) => body.results.map(({ name }) => name);
 
+async function removeFixtures() {
+  await prisma.availabilitySubject.deleteMany({
+    where: { availability: { tutorId: { in: tutorIds } } },
+  });
+  await prisma.availability.deleteMany({ where: { tutorId: { in: tutorIds } } });
+  await prisma.review.deleteMany({ where: { userId: { in: userIds } } });
+  await prisma.booking.deleteMany({ where: { userId: { in: userIds } } });
+  await prisma.subject.deleteMany({ where: { tutorId: { in: tutorIds } } });
+  await prisma.user.updateMany({ where: { id: { in: userIds } }, data: { tutorId: null } });
+  await prisma.tutor.deleteMany({ where: { id: { in: tutorIds } } });
+  await prisma.tutorProfileVersion.deleteMany({ where: { userId: { in: userIds } } });
+  await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+}
+
 describeDatabase("DISC-1 search on PostgreSQL", () => {
   beforeAll(async () => {
     for (const name of ["Mathematics", "Physics", "English"]) {
@@ -214,20 +228,7 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
     await publishAvailability(daniel.tutor.id, ielts.id, new Date(now + 31 * 24 * 60 * 60_000));
   });
 
-  afterAll(async () => {
-    await prisma.availabilitySubject.deleteMany({
-      where: { availability: { tutorId: { in: tutorIds } } },
-    });
-    await prisma.availability.deleteMany({ where: { tutorId: { in: tutorIds } } });
-    await prisma.review.deleteMany({ where: { userId: { in: userIds } } });
-    await prisma.booking.deleteMany({ where: { userId: { in: userIds } } });
-    await prisma.subject.deleteMany({ where: { tutorId: { in: tutorIds } } });
-    await prisma.user.updateMany({ where: { id: { in: userIds } }, data: { tutorId: null } });
-    await prisma.tutor.deleteMany({ where: { id: { in: tutorIds } } });
-    await prisma.tutorProfileVersion.deleteMany({ where: { userId: { in: userIds } } });
-    await prisma.user.deleteMany({ where: { id: { in: userIds } } });
-    await prisma.$disconnect();
-  });
+  afterAll(removeFixtures);
 
   it("matches subjects by tutor name or subject in any case, including Thai", async () => {
     expect(names((await search({ tutorName: "ANONG" })).body)).toEqual(["แคลคูลัส ม.ปลาย"]);
@@ -364,3 +365,117 @@ describeDatabase("DISC-1 search on PostgreSQL", () => {
     expect(none.body).toMatchObject({ results: [], total: 0, totalPages: 1 });
   });
 });
+
+describeDatabase("DISC-4 subject page on PostgreSQL", () => {
+  const bangkokMs = 7 * 60 * 60_000;
+  const bangkokDay = (instant: Date) =>
+    new Date(instant.getTime() + bangkokMs).toISOString().slice(0, 10);
+  // A Bangkok day three days ahead; it starts at 17:00 UTC the day before.
+  const day = bangkokDay(new Date(Date.now() + 3 * 24 * 60 * 60_000));
+  const dayStart = new Date(Date.parse(`${day}T00:00:00.000Z`) - bangkokMs);
+  const at = (minutes: number) => new Date(dayStart.getTime() + minutes * 60_000);
+  let tutorId: string;
+  let chemistryId: string;
+  let otherTutorId: string;
+  let hidden: { tutorId: string; subjectId: string };
+
+  function page(query: Record<string, string> = {}, ids = [tutorId, chemistryId]) {
+    return request(app).get(`/api/discovery/tutors/${ids[0]}/subjects/${ids[1]}`).query(query);
+  }
+
+  beforeAll(async () => {
+    const area = await prisma.learningArea.upsert({
+      where: { name: "Mathematics" },
+      update: {},
+      create: { name: "Mathematics" },
+    });
+    areas.Mathematics = area.id;
+    const student = await prisma.user.create({
+      data: {
+        firstName: "Reviewer",
+        lastName: "Fixture",
+        email: `${token}-reviewer@example.com`,
+        password: "fixture",
+      },
+    });
+    userIds.push(student.id);
+    const mali = await createTutor("Mali", [
+      { name: "Chemistry", rate: "450.00", areas: ["Mathematics"] },
+      { name: "Biology", rate: "550.00", areas: ["Mathematics"] },
+    ]);
+    const [chemistry, biology] = mali.subjects;
+    tutorId = mali.tutor.id;
+    chemistryId = chemistry.id;
+    otherTutorId = (await createTutor("Niran", [{ name: "Geometry", rate: "400.00", areas: [] }]))
+      .tutor.id;
+    const unpublished = await createTutor(
+      "Hiddenfour",
+      [{ name: "Statistics", rate: "400.00", areas: [] }],
+      "UNPUBLISHED"
+    );
+    hidden = { tutorId: unpublished.tutor.id, subjectId: unpublished.subjects[0].id };
+
+    const chemistryLesson = await lesson(chemistry.id, student.id, "COMPLETED");
+    const biologyLesson = await lesson(biology.id, student.id, "COMPLETED");
+    await prisma.review.createMany({
+      data: [
+        {
+          ratingStars: 5,
+          text: "Great labs",
+          subjectId: chemistry.id,
+          bookingId: chemistryLesson.id,
+        },
+        { ratingStars: 2, text: "Too fast", subjectId: biology.id, bookingId: biologyLesson.id },
+      ].map((review) => ({ ...review, userId: student.id })),
+    });
+    const booked = await lesson(chemistry.id, student.id, "CONFIRMED");
+
+    await publishAvailability(tutorId, chemistry.id, at(-30)); // 23:30 the day before
+    await publishAvailability(tutorId, chemistry.id, at(0)); // 00:00
+    await publishAvailability(tutorId, chemistry.id, at(10 * 60), false); // closed
+    await publishAvailability(tutorId, chemistry.id, at(11 * 60), true, booked.id); // held
+    await publishAvailability(tutorId, biology.id, at(12 * 60)); // another subject
+    await publishAvailability(tutorId, chemistry.id, at(23 * 60 + 30)); // 23:30
+    await publishAvailability(tutorId, chemistry.id, at(24 * 60)); // 00:00 the next day
+  });
+
+  afterAll(removeFixtures);
+
+  it("shows one Bangkok day of the subject's open slots, from 00:00 through 23:30", async () => {
+    const response = await page({ date: day }).expect(200);
+
+    expect(response.body.date).toBe(day);
+    expect(response.body.openSlots).toEqual([at(0).toISOString(), at(23 * 60 + 30).toISOString()]);
+    expect(response.body.openDates).toEqual([bangkokDay(at(-30)), day, bangkokDay(at(24 * 60))]);
+  });
+
+  it("opens on the next opening and rates the subject from its own reviews only", async () => {
+    const response = await page().expect(200);
+
+    expect(response.body.date).toBe(bangkokDay(at(-30)));
+    expect(response.body.openSlots).toEqual([at(-30).toISOString()]);
+    expect(response.body.subject).toMatchObject({
+      id: chemistryId,
+      name: "Chemistry",
+      hourlyRate: "450.00",
+      rating: 5,
+      reviewCount: 1,
+      nextOpening: at(-30).toISOString(),
+    });
+    expect(response.body.reviews).toEqual([
+      expect.objectContaining({
+        rating: 5,
+        text: "Great labs",
+        subjectName: "Chemistry",
+        reviewer: "Reviewer F.",
+      }),
+    ]);
+  });
+
+  it("is unavailable for another tutor's subject or an unpublished tutor", async () => {
+    await page({}, [otherTutorId, chemistryId]).expect(404);
+    await page({}, [hidden.tutorId, hidden.subjectId]).expect(404);
+  });
+});
+
+afterAll(() => prisma.$disconnect());

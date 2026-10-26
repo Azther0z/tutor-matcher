@@ -3,6 +3,7 @@ import request from "supertest";
 
 const tutorFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 const subjectFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
+const subjectFindFirst = jest.fn<(args: unknown) => Promise<unknown>>();
 const queryRaw =
   jest.fn<(strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>>();
 const learningAreaFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
@@ -21,7 +22,7 @@ const studentFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
     user: { findUnique: tutorFindUnique },
-    subject: { findMany: subjectFindMany },
+    subject: { findMany: subjectFindMany, findFirst: subjectFindFirst },
     $queryRaw: queryRaw,
     $transaction: transaction,
     learningArea: { findMany: learningAreaFindMany },
@@ -746,5 +747,168 @@ describe("DISC-3 tutor profile", () => {
     const response = await request(app).get("/api/discovery/tutors/not-a-uuid/profile").expect(404);
     expect(response.body).toEqual({ message: "This tutor profile is unavailable" });
     expect(profileTutorFindUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("DISC-4 subject page", () => {
+  const SUBJECT_ID = "00000000-0000-4000-8000-000000000301";
+  const url = `/api/discovery/tutors/${TUTOR_ID}/subjects/${SUBJECT_ID}`;
+  // 09:00 and 09:30 on 3 November in Bangkok.
+  const opening = new Date("2026-11-03T02:00:00.000Z");
+  const following = new Date("2026-11-03T02:30:00.000Z");
+  const bangkokToday = () => new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  function listedSubject(tutor: Record<string, unknown> = {}) {
+    return {
+      id: SUBJECT_ID,
+      name: "Calculus",
+      description: "Limits and derivatives",
+      hourlyRate: new Prisma.Decimal("500"),
+      format: "ONLINE",
+      learningAreas: [{ learningArea: MATHEMATICS }],
+      tutor: {
+        id: TUTOR_ID,
+        status: "PUBLISHED",
+        user: { firstName: "Anong", lastName: "Pattanakul" },
+        currentProfileVersion: { status: "APPROVED" },
+        ...tutor,
+      },
+    };
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    subjectFindFirst.mockResolvedValue(listedSubject());
+    queryRaw.mockReset().mockResolvedValue([
+      { date: "2026-11-03", firstAt: opening },
+      { date: "2026-11-05", firstAt: new Date("2026-11-05T10:30:00.000Z") },
+    ]);
+    reviewAggregate.mockResolvedValue({ _avg: { ratingStars: 4.5 }, _count: 2 });
+    reviewFindMany.mockResolvedValue([
+      {
+        id: "review-1",
+        ratingStars: 5,
+        text: "Clear explanations.",
+        createdAt: new Date("2026-09-01T10:00:00.000Z"),
+        subject: { name: "Calculus" },
+        user: { firstName: "Bob", lastName: "Student" },
+      },
+    ]);
+    availabilityFindMany.mockResolvedValue([{ startedAt: opening }, { startedAt: following }]);
+  });
+
+  it("is public and shows only this subject's details, openings and reviews", async () => {
+    const response = await request(app).get(url).expect(200);
+
+    expect(response.body).toEqual({
+      tutor: { id: TUTOR_ID, firstName: "Anong", lastName: "Pattanakul", verified: true },
+      subject: {
+        id: SUBJECT_ID,
+        name: "Calculus",
+        description: "Limits and derivatives",
+        hourlyRate: "500.00",
+        format: "ONLINE",
+        learningAreas: [MATHEMATICS],
+        rating: 4.5,
+        reviewCount: 2,
+        nextOpening: opening.toISOString(),
+      },
+      date: "2026-11-03",
+      openDates: ["2026-11-03", "2026-11-05"],
+      openSlots: [opening.toISOString(), following.toISOString()],
+      reviews: [
+        {
+          id: "review-1",
+          rating: 5,
+          text: "Clear explanations.",
+          createdAt: "2026-09-01T10:00:00.000Z",
+          subjectName: "Calculus",
+          reviewer: "Bob S.",
+        },
+      ],
+    });
+    expect(subjectFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: SUBJECT_ID, tutorId: TUTOR_ID } })
+    );
+    expect(reviewAggregate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { subjectId: SUBJECT_ID } })
+    );
+    expect(reviewFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { subjectId: SUBJECT_ID }, take: 10 })
+    );
+  });
+
+  it("asks for one Bangkok day of this subject's open slots that are not held or booked", async () => {
+    await request(app).get(`${url}?date=2026-11-05`).expect(200);
+
+    const { where } = availabilityFindMany.mock.calls[0][0] as {
+      where: { startedAt: { gt: Date; gte: Date; lt: Date } };
+    };
+    expect(where).toMatchObject({
+      tutorId: TUTOR_ID,
+      isOpen: true,
+      bookingId: null,
+      availabilitySubjects: { some: { subjectId: SUBJECT_ID } },
+    });
+    expect(where.startedAt.gte.toISOString()).toBe("2026-11-04T17:00:00.000Z");
+    expect(where.startedAt.lt.toISOString()).toBe("2026-11-05T17:00:00.000Z");
+    expect(bookingFindMany).not.toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("groups the 92-day openings by Bangkok day in SQL, with every value as a parameter", async () => {
+    await request(app).get(url).expect(200);
+
+    expect(queryRaw).toHaveBeenCalledTimes(1);
+    const grouped = rawQuery();
+    expect(grouped.sql).toContain("slots.started_at + interval '7 hours'");
+    expect(grouped.sql).toContain("GROUP BY 1");
+    expect(grouped.sql).toContain("slots.is_open = TRUE AND slots.booking_id IS NULL");
+    expect(grouped.sql).not.toContain(SUBJECT_ID);
+    const [tutorId, subjectId, from, until] = grouped.values as [string, string, Date, Date];
+    expect([tutorId, subjectId]).toEqual([TUTOR_ID, SUBJECT_ID]);
+    expect(until.getTime() - from.getTime()).toBe(92 * 86_400_000);
+  });
+
+  it("opens on today in Bangkok when the subject has no openings", async () => {
+    queryRaw.mockResolvedValue([]);
+    availabilityFindMany.mockResolvedValue([]);
+
+    const response = await request(app).get(url).expect(200);
+
+    expect(response.body).toMatchObject({ date: bangkokToday(), openDates: [], openSlots: [] });
+    expect(response.body.subject.nextOpening).toBeNull();
+  });
+
+  it("rejects a malformed date before reading anything", async () => {
+    await request(app).get(`${url}?date=03-11-2026`).expect(400);
+
+    expect(subjectFindFirst).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["unpublished", { status: "UNPUBLISHED" }],
+    ["without an approved current profile", { currentProfileVersion: { status: "PENDING" } }],
+    ["without an account", { user: null }],
+  ])("is unavailable and shows no details when the tutor is %s", async (_label, tutor) => {
+    subjectFindFirst.mockResolvedValue(listedSubject(tutor));
+
+    const response = await request(app).get(url).expect(404);
+
+    expect(response.body).toEqual({ message: "This subject is unavailable" });
+    expect(reviewFindMany).not.toHaveBeenCalled();
+    expect(availabilityFindMany).not.toHaveBeenCalled();
+  });
+
+  it("is unavailable for another tutor's subject or an id that is not a UUID", async () => {
+    subjectFindFirst.mockResolvedValue(null);
+    await request(app).get(url).expect(404);
+
+    subjectFindFirst.mockClear();
+    const response = await request(app)
+      .get(`/api/discovery/tutors/${TUTOR_ID}/subjects/not-a-uuid`)
+      .expect(404);
+    expect(response.body).toEqual({ message: "This subject is unavailable" });
+    expect(subjectFindFirst).not.toHaveBeenCalled();
   });
 });
