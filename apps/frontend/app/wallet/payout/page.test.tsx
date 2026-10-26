@@ -32,11 +32,16 @@ function respond(body: unknown, ok = true) {
   return { ok, json: async () => body };
 }
 
-function mockLoad(balance = "500.00", accounts = [defaultAccount, otherAccount]) {
+function mockLoad(
+  balance = "500.00",
+  accounts = [defaultAccount, otherAccount],
+  tutorStatus = "APPROVED"
+) {
   return jest
     .fn()
     .mockResolvedValueOnce(respond({ balance }))
-    .mockResolvedValueOnce(respond({ accounts }));
+    .mockResolvedValueOnce(respond({ accounts }))
+    .mockResolvedValueOnce(respond({ status: tutorStatus }));
 }
 
 describe("wallet payout", () => {
@@ -82,7 +87,7 @@ describe("wallet payout", () => {
     fireEvent.click(screen.getByRole("button", { name: "Review payout" }));
     expect(screen.getByRole("heading", { name: "Pay out ฿120.50?" })).toBeInTheDocument();
     expect(screen.getByText(/Balance after payout ฿379\.50/)).toBeInTheDocument();
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(global.fetch).toHaveBeenCalledTimes(3);
 
     fireEvent.click(screen.getByRole("button", { name: "Confirm payout" }));
     expect(await screen.findByRole("heading", { name: "Payout complete" })).toBeInTheDocument();
@@ -120,7 +125,7 @@ describe("wallet payout", () => {
       "The amount is more than your available balance of ฿100.00."
     );
     expect(screen.queryByRole("button", { name: "Confirm payout" })).not.toBeInTheDocument();
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(global.fetch).toHaveBeenCalledTimes(3);
   });
 
   it("shows the server's balance error and returns to the form", async () => {
@@ -180,6 +185,34 @@ describe("wallet payout", () => {
       await screen.findByRole("heading", { name: "Payouts are not available here yet" })
     ).toBeInTheDocument();
     expect(screen.getByText("฿500.00")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Confirm payout" })).not.toBeInTheDocument();
+  });
+
+  it("tells a user who is not a Tutor that payouts are for Tutors", async () => {
+    global.fetch = mockLoad("500.00", [defaultAccount], "NONE");
+    render(<WalletPayoutPage />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Payouts are for Tutors" })
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Amount (฿)")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "No saved payout account" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("switches to the Tutor-only message when the server rejects the payout", async () => {
+    global.fetch = mockLoad().mockResolvedValueOnce(
+      respond({ code: "PAYOUT_TUTOR_ONLY", message: "Only Tutors can request a payout" }, false)
+    );
+    render(<WalletPayoutPage />);
+    fireEvent.change(await screen.findByLabelText("Amount (฿)"), { target: { value: "100" } });
+    fireEvent.click(screen.getByRole("button", { name: "Review payout" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm payout" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Payouts are for Tutors" })
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Confirm payout" })).not.toBeInTheDocument();
   });
 

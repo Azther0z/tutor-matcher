@@ -5,12 +5,13 @@ import request from "supertest";
 const findEntry = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const findAccount = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const findUser = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const findTutorLink = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const updateUser = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const createEntry = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const tx = {
   walletTransaction: { findUnique: findEntry, create: createEntry },
   payoutAccount: { findFirst: findAccount },
-  user: { updateMany: updateUser, findUniqueOrThrow: findUser },
+  user: { updateMany: updateUser, findUniqueOrThrow: findUser, findUnique: findTutorLink },
 };
 const transaction =
   jest.fn<(callback: (client: typeof tx) => Promise<unknown>) => Promise<unknown>>();
@@ -60,6 +61,7 @@ beforeEach(() => {
   findEntry.mockReset().mockResolvedValue(null);
   findAccount.mockReset().mockResolvedValue(account);
   findUser.mockReset().mockResolvedValue({ balance: new Prisma.Decimal(200) });
+  findTutorLink.mockReset().mockResolvedValue({ tutorId: "55555555-5555-4555-8555-555555555555" });
   updateUser.mockReset().mockResolvedValue({ count: 1 });
   createEntry.mockReset().mockResolvedValue(entry);
   transaction.mockReset().mockImplementation((callback) => callback(tx));
@@ -114,6 +116,15 @@ describe("simulated payout request", () => {
         payoutAccountId,
       },
     });
+  });
+
+  it("blocks a user who is not a Tutor without writing a row", async () => {
+    findTutorLink.mockResolvedValue({ tutorId: null });
+    const result = await post().expect(403);
+    expect(result.body.code).toBe("PAYOUT_TUTOR_ONLY");
+    expect(findEntry).not.toHaveBeenCalled();
+    expect(updateUser).not.toHaveBeenCalled();
+    expect(createEntry).not.toHaveBeenCalled();
   });
 
   it("blocks an amount above the available balance without writing a row", async () => {

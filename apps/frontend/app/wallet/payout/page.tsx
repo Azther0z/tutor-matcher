@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
 import {
+  isTutor,
   listPayoutAccounts,
   PayoutApiError,
   requestPayout,
@@ -30,7 +31,9 @@ function PayoutContent() {
   const [accounts, setAccounts] = useState<PayoutAccountSummary[]>([]);
   const [accountId, setAccountId] = useState("");
   const [amount, setAmount] = useState<number | "">("");
-  const [stage, setStage] = useState<"form" | "confirm" | "done" | "unavailable">("form");
+  const [stage, setStage] = useState<"form" | "confirm" | "done" | "unavailable" | "tutorOnly">(
+    "form"
+  );
   const [reference, setReference] = useState("");
   const [result, setResult] = useState<CompletedPayout | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,8 +42,9 @@ function PayoutContent() {
   const account = accounts.find((item) => item.id === accountId);
 
   useEffect(() => {
-    Promise.all([getWallet(), listPayoutAccounts()])
-      .then(([wallet, saved]) => {
+    Promise.all([getWallet(), listPayoutAccounts(), isTutor()])
+      .then(([wallet, saved, tutor]) => {
+        if (!tutor) setStage("tutorOnly");
         setBalance(wallet.balance);
         setAccounts(saved.accounts);
         setAccountId(
@@ -91,6 +95,10 @@ function PayoutContent() {
         setStage("unavailable");
         return;
       }
+      if (reason instanceof PayoutApiError && reason.code === "PAYOUT_TUTOR_ONLY") {
+        setStage("tutorOnly");
+        return;
+      }
       setError(
         reason instanceof Error
           ? reason.message
@@ -132,7 +140,7 @@ function PayoutContent() {
           </p>
         )}
 
-        {!loading && balance !== null && accounts.length === 0 && (
+        {!loading && balance !== null && stage !== "tutorOnly" && accounts.length === 0 && (
           <div className="p-8 text-center">
             <h2 className="text-xl font-semibold">No saved payout account</h2>
             <p className="mt-2 text-zinc-500">
@@ -262,6 +270,15 @@ function PayoutContent() {
             >
               Request another payout
             </button>
+          </div>
+        )}
+
+        {stage === "tutorOnly" && (
+          <div role="alert" className="p-8 text-center">
+            <h2 className="text-xl font-semibold">Payouts are for Tutors</h2>
+            <p className="mt-2 text-zinc-500">
+              Only Tutors can request a payout from their wallet balance.
+            </p>
           </div>
         )}
 

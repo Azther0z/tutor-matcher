@@ -59,6 +59,17 @@ async function payoutRequest<T>(url: string, init?: RequestInit): Promise<T> {
   return body;
 }
 
+// Payouts are tutor-only. The tutor application reports APPROVED once the user is a Tutor.
+export async function isTutor() {
+  const token = getAuthToken();
+  const response = await fetch("/api/profiles/me/tutor", {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) return false;
+  const body = (await response.json().catch(() => null)) as { status?: string } | null;
+  return body?.status === "APPROVED";
+}
+
 export function listPayoutAccounts() {
   return payoutRequest<{ accounts: PayoutAccountSummary[] }>("/api/payout-accounts");
 }

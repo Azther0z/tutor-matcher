@@ -14,6 +14,7 @@ import {
   type PayoutAccount,
   type PayoutBank,
 } from "@/src/lib/payout-accounts-api";
+import { isTutor } from "@/src/lib/payouts-api";
 import { getWallet } from "@/src/lib/wallet-api";
 
 type FieldErrors = Partial<Record<"bankCode" | "accountHolderName" | "accountNumber", string>>;
@@ -48,6 +49,7 @@ function validate(bankCode: string, accountHolderName: string, accountNumber: st
 function WalletSettings() {
   const [balance, setBalance] = useState<string | null>(null);
   const [balanceError, setBalanceError] = useState<string | null>(null);
+  const [tutor, setTutor] = useState(false);
   const [accounts, setAccounts] = useState<PayoutAccount[] | null>(null);
   const [banks, setBanks] = useState<PayoutBank[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -67,6 +69,9 @@ function WalletSettings() {
     getWallet()
       .then((wallet) => setBalance(wallet.balance))
       .catch(() => setBalanceError("Could not load your wallet balance."));
+    isTutor()
+      .then(setTutor)
+      .catch(() => setTutor(false));
     Promise.all([getPayoutAccounts(), getPayoutBanks()])
       .then(([savedAccounts, bankList]) => {
         setAccounts(savedAccounts);
@@ -154,9 +159,11 @@ function WalletSettings() {
             )}
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href="/wallet/payout" className={secondaryButton}>
-              Request payout
-            </Link>
+            {tutor && (
+              <Link href="/wallet/payout" className={secondaryButton}>
+                Request payout
+              </Link>
+            )}
             <Link href="/wallet/topup" className={primaryButton}>
               Top up
             </Link>

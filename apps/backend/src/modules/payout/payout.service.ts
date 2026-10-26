@@ -51,6 +51,17 @@ export async function requestPayout(userId: string, input: RequestPayoutInput) {
     try {
       return await prisma.$transaction(
         async (tx) => {
+          const user = await tx.user.findUnique({
+            where: { id: userId },
+            select: { tutorId: true },
+          });
+          if (!user?.tutorId) {
+            throw new PayoutDomainError(
+              "PAYOUT_TUTOR_ONLY",
+              "Only Tutors can request a payout",
+              403
+            );
+          }
           const previous = await tx.walletTransaction.findUnique({
             where: { id: input.reference },
             include: { payoutAccount: true },

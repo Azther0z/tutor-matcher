@@ -36,9 +36,10 @@ function ok(body: unknown) {
 }
 
 // The page loads the wallet, then the accounts and the bank list.
-function mockLoad(accounts: unknown[], balance = "1250.50") {
+function mockLoad(accounts: unknown[], balance = "1250.50", tutorStatus = "NONE") {
   fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
     if (url === "/api/wallet") return ok({ balance });
+    if (url === "/api/profiles/me/tutor") return ok({ status: tutorStatus });
     if (url === "/api/payout-accounts/banks") return ok({ banks });
     if (url === "/api/payout-accounts" && !init?.method) return ok({ accounts });
     throw new Error(`Unexpected request ${init?.method ?? "GET"} ${url}`);
@@ -61,16 +62,23 @@ beforeEach(() => {
 });
 
 describe("WalletSettingsPage", () => {
+  it("shows Request payout only to Tutors", async () => {
+    mockLoad([], "1250.50", "APPROVED");
+    render(<WalletSettingsPage />);
+
+    expect(await screen.findByRole("link", { name: "Request payout" })).toHaveAttribute(
+      "href",
+      "/wallet/payout"
+    );
+  });
+
   it("shows the balance with a top-up link and the empty state", async () => {
     mockLoad([]);
     render(<WalletSettingsPage />);
 
     expect(await screen.findByText("฿1,250.50")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Top up" })).toHaveAttribute("href", "/wallet/topup");
-    expect(screen.getByRole("link", { name: "Request payout" })).toHaveAttribute(
-      "href",
-      "/wallet/payout"
-    );
+    expect(screen.queryByRole("link", { name: "Request payout" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Wallet" })).toHaveAttribute("aria-current", "page");
     expect(await screen.findByText(/No payout accounts yet/)).toBeInTheDocument();
     expect(screen.getByText("Your first account becomes your default.")).toBeInTheDocument();
