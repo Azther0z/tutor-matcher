@@ -219,6 +219,15 @@ marked `Available` or `Not available` for that subject. The rows are information
 they are not the picker. Booking starts from the button below the table, which carries
 the tutor, subject, rate, and date context.
 
+The page is public (`GET /api/discovery/tutors/:id/subjects/:subjectId?date=YYYY-MM-DD`) under
+the same rule as the tutor profile: a published tutor with an approved current profile who owns
+the subject; anything else shows an unavailable message and nothing else. The calendar lets the
+Student pick any day from today to three months ahead (Bangkok time); days with openings show a
+dot, and without a `date` the page opens on the next opening. The selected day lives in the URL.
+A day with no openings shows all 48 rows as `Not available` and disables **Book this subject**.
+The button links to `/bookings/s/:subjectId?date=YYYY-MM-DD`; a logged-out visitor goes to
+login first and returns there with the date. A back link returns to `/tutors/:id`.
+
 Related stories: US3-1 … US3-6.
 
 ---
