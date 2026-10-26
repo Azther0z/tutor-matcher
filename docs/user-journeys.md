@@ -211,20 +211,24 @@ is unpublished, has no approved current profile, or does not exist shows an unav
 message and none of their details. Messaging stays available to logged-in visitors.
 
 **Subject page (`/tutors/:id/:subjectId`).** The bookable unit. It shows that
-subject's description, hourly rate, format, and next opening; a calendar; the
-availability table for the selected day; and **only that subject's reviews**.
+subject's description, hourly rate, format, and next opening; a month calendar; a day
+calendar for the selected day; and **only that subject's reviews**.
 
-The availability table renders **all 48 half-hour slots from `00:00` to `23:30`**, each
-marked `Available` or `Not available` for that subject. The rows are informational —
-they are not the picker. Booking starts from the button below the table, which carries
-the tutor, subject, rate, and date context.
+The day calendar lays out **all 48 half-hour slots from `00:00` to `23:30`** on a time grid.
+Consecutive half-hours open for that subject draw as one `Available` block (for example
+`09:00–11:00`); the rest of the day stays empty as `Not available`, and a summary above the
+grid lists the open times. Screen readers still hear every half-hour as `Available` or
+`Not available`, and the grid opens scrolled to the first open block. The calendar is
+informational — it is not the picker. Booking starts from the button below the calendar,
+which carries the tutor, subject, rate, and date context.
 
 The page is public (`GET /api/discovery/tutors/:id/subjects/:subjectId?date=YYYY-MM-DD`) under
 the same rule as the tutor profile: a published tutor with an approved current profile who owns
-the subject; anything else shows an unavailable message and nothing else. The calendar lets the
-Student pick any day from today to three months ahead (Bangkok time); days with openings show a
-dot, and without a `date` the page opens on the next opening. The selected day lives in the URL.
-A day with no openings shows all 48 rows as `Not available` and disables **Book this subject**.
+the subject; anything else shows an unavailable message and nothing else. The month calendar lets
+the Student pick any day from today to three months ahead (Bangkok time); days with openings show
+a dot, and without a `date` the page opens on the next opening. The selected day lives in the URL.
+A day with no openings shows an empty day calendar, every half-hour `Not available`, and disables
+**Book this subject**.
 The button links to `/bookings/s/:subjectId?date=YYYY-MM-DD`; a logged-out visitor goes to
 login first and returns there with the date. A back link returns to `/tutors/:id`.
 

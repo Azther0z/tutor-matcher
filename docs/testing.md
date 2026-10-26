@@ -265,6 +265,8 @@ openings grouped by Bangkok day in SQL with parameters; the next opening (or tod
 default day; a 400 for a malformed date; and a 404 for another tutor's subject, an unpublished
 or unapproved tutor, or a non-UUID id. The PostgreSQL suite (opt-in like DISC-1) checks the
 00:00 and 23:30 day edges, closed, held and other-subject slots, the open-day list and
-subject-only reviews. Frontend tests cover the 48 informational rows, Book this subject below
-the table with the subject and date (and the login hand-off), the disabled button on an empty
-day, calendar selection through the URL, the back link, the unavailable state and retry.
+subject-only reviews. Frontend tests cover the day calendar's 48 half-hours (each Available or
+Not available, none clickable), consecutive open half-hours drawn as one block, the calendar
+opening at the first open time, Book this subject below the calendar with the subject and date
+(and the login hand-off), the disabled button on an empty day, calendar selection through the
+URL, the back link, the unavailable state and retry.

@@ -66,6 +66,13 @@ function respond(body: unknown, status = 200) {
   });
 }
 
+const dayCalendar = () => screen.getByRole("region", { name: /^Calendar for / });
+const findDayCalendar = () => screen.findByRole("region", { name: /^Calendar for / });
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 beforeEach(() => {
   fetchMock.mockReset();
   mockReplace.mockReset();
@@ -93,31 +100,48 @@ it("shows only this subject's details, rate, format and reviews, with a way back
   expect(fetchMock).toHaveBeenCalledWith(apiPath, expect.anything());
 });
 
-it("lists all 48 half-hour slots as information only, marking the open ones", async () => {
-  respond(subjectPage());
+it("shows the day as a calendar of all 48 half-hours, with open times drawn as blocks", async () => {
+  respond(subjectPage({ openSlots: [at(day, "09:00"), at(day, "09:30"), at(day, "14:00")] }));
   render(<TutorSubjectPage />);
 
-  const table = await screen.findByRole("table");
-  expect(within(table).getAllByRole("row")).toHaveLength(49);
-  const row = (label: string) =>
-    within(table).getByRole("rowheader", { name: label }).closest("tr");
-  expect(row("09:00–09:30")).toHaveTextContent("Available");
-  expect(row("09:30–10:00")).toHaveTextContent("Available");
-  expect(row("00:00–00:30")).toHaveTextContent("Not available");
-  expect(row("23:30–24:00")).toHaveTextContent("Not available");
-  expect(within(table).getAllByText("Available")).toHaveLength(2);
-  expect(within(table).queryAllByRole("button")).toHaveLength(0);
-  expect(within(table).queryAllByRole("link")).toHaveLength(0);
+  const calendar = await findDayCalendar();
+  expect(within(calendar).getAllByRole("listitem")).toHaveLength(48);
+  expect(within(calendar).getByText("09:00–09:30 Available")).toBeInTheDocument();
+  expect(within(calendar).getByText("09:30–10:00 Available")).toBeInTheDocument();
+  expect(within(calendar).getByText("14:00–14:30 Available")).toBeInTheDocument();
+  expect(within(calendar).getByText("00:00–00:30 Not available")).toBeInTheDocument();
+  expect(within(calendar).getByText("23:30–24:00 Not available")).toBeInTheDocument();
+  expect(within(calendar).getAllByText(/^\d\d:\d\d–\d\d:\d\d Available$/)).toHaveLength(3);
+  expect(within(calendar).getAllByText(/ Not available$/)).toHaveLength(45);
+  // Consecutive open half-hours read as one block; a lone half-hour is its own block.
+  expect(within(calendar).getByText("09:00–10:00 · Available")).toBeInTheDocument();
+  expect(within(calendar).getByText("14:00–14:30 · Available")).toBeInTheDocument();
+  expect(screen.getByText("Open times: 09:00–10:00, 14:00–14:30")).toBeInTheDocument();
+  expect(within(calendar).queryAllByRole("button")).toHaveLength(0);
+  expect(within(calendar).queryAllByRole("link")).toHaveLength(0);
 });
 
-it("puts Book this subject below the table, carrying the subject and the selected date", async () => {
+it("opens the calendar at the first open time", async () => {
+  jest.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function (
+    this: HTMLElement
+  ) {
+    return this.parentElement ? Array.from(this.parentElement.children).indexOf(this) * 32 : 0;
+  });
   respond(subjectPage());
   render(<TutorSubjectPage />);
 
-  const table = await screen.findByRole("table");
+  // 09:00 is half-hour 18; 08:30 stays in view above it.
+  expect((await findDayCalendar()).scrollTop).toBe(17 * 32);
+});
+
+it("puts Book this subject below the calendar, carrying the subject and the selected date", async () => {
+  respond(subjectPage());
+  render(<TutorSubjectPage />);
+
+  const calendar = await findDayCalendar();
   const book = screen.getByRole("link", { name: "Book this subject" });
   expect(book).toHaveAttribute("href", `/bookings/s/${SUBJECT_ID}?date=${day}`);
-  expect(table.compareDocumentPosition(book) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(calendar.compareDocumentPosition(book) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
 it("sends a logged-out visitor to log in first without losing the date", async () => {
@@ -141,7 +165,9 @@ it("disables booking on a day with no open times", async () => {
     "No open times on this day. Pick a day marked with a dot."
   );
   expect(screen.queryByRole("link", { name: "Book this subject" })).not.toBeInTheDocument();
-  expect(within(screen.getByRole("table")).getAllByText("Not available")).toHaveLength(48);
+  expect(within(dayCalendar()).getAllByText(/ Not available$/)).toHaveLength(48);
+  expect(within(dayCalendar()).queryByText(/· Available$/)).not.toBeInTheDocument();
+  expect(screen.getByText("No open times on this day")).toBeInTheDocument();
 });
 
 it("lets any upcoming day be picked, marks open days and keeps the day in the URL", async () => {
@@ -170,13 +196,13 @@ it("loads the day named in the URL and ignores a malformed one", async () => {
   mockSearchParams = new URLSearchParams({ date: otherDay });
   respond(subjectPage({ date: otherDay, openSlots: [] }));
   const view = render(<TutorSubjectPage />);
-  await screen.findByRole("table");
+  await findDayCalendar();
   expect(fetchMock).toHaveBeenLastCalledWith(`${apiPath}?date=${otherDay}`, expect.anything());
   view.unmount();
 
   mockSearchParams = new URLSearchParams({ date: "tomorrow" });
   render(<TutorSubjectPage />);
-  await screen.findByRole("table");
+  await findDayCalendar();
   expect(fetchMock).toHaveBeenLastCalledWith(apiPath, expect.anything());
 });
 
@@ -188,7 +214,7 @@ it("shows only an unavailable message when the subject is not public", async () 
     await screen.findByRole("heading", { name: "This subject is unavailable" })
   ).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Find a tutor" })).toHaveAttribute("href", "/search");
-  expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: /^Calendar for / })).not.toBeInTheDocument();
 });
 
 it("offers a retry when the subject cannot be loaded", async () => {
