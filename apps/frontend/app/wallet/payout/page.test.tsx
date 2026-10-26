@@ -201,6 +201,22 @@ describe("wallet payout", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows a load error, not the Tutor-only message, when the Tutor check fails", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(respond({ balance: "500.00" }))
+      .mockResolvedValueOnce(respond({ accounts: [defaultAccount] }))
+      .mockResolvedValueOnce(respond({ message: "Server error" }, false));
+    render(<WalletPayoutPage />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Could not load your wallet. Please refresh and try again."
+    );
+    expect(
+      screen.queryByRole("heading", { name: "Payouts are for Tutors" })
+    ).not.toBeInTheDocument();
+  });
+
   it("switches to the Tutor-only message when the server rejects the payout", async () => {
     global.fetch = mockLoad().mockResolvedValueOnce(
       respond({ code: "PAYOUT_TUTOR_ONLY", message: "Only Tutors can request a payout" }, false)

@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
+import { getPayoutAccounts, type PayoutAccount } from "@/src/lib/payout-accounts-api";
 import {
   isTutor,
-  listPayoutAccounts,
   PayoutApiError,
   requestPayout,
   type CompletedPayout,
-  type PayoutAccountSummary,
 } from "@/src/lib/payouts-api";
 import { getWallet } from "@/src/lib/wallet-api";
 
@@ -22,13 +21,13 @@ function money(value: number) {
   return `฿${amountFormat.format(value)}`;
 }
 
-function accountLabel(account: PayoutAccountSummary) {
+function accountLabel(account: PayoutAccount) {
   return `${account.bankName} ${account.maskedAccountNumber}`;
 }
 
 function PayoutContent() {
   const [balance, setBalance] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<PayoutAccountSummary[]>([]);
+  const [accounts, setAccounts] = useState<PayoutAccount[]>([]);
   const [accountId, setAccountId] = useState("");
   const [amount, setAmount] = useState<number | "">("");
   const [stage, setStage] = useState<"form" | "confirm" | "done" | "unavailable" | "tutorOnly">(
@@ -42,18 +41,14 @@ function PayoutContent() {
   const account = accounts.find((item) => item.id === accountId);
 
   useEffect(() => {
-    Promise.all([getWallet(), listPayoutAccounts(), isTutor()])
+    Promise.all([getWallet(), getPayoutAccounts(), isTutor()])
       .then(([wallet, saved, tutor]) => {
         if (!tutor) setStage("tutorOnly");
         setBalance(wallet.balance);
-        setAccounts(saved.accounts);
-        setAccountId(
-          (saved.accounts.find((item) => item.isDefault) ?? saved.accounts[0])?.id ?? ""
-        );
+        setAccounts(saved);
+        setAccountId((saved.find((item) => item.isDefault) ?? saved[0])?.id ?? "");
       })
-      .catch((reason: unknown) =>
-        setError(reason instanceof Error ? reason.message : "Could not load your wallet.")
-      )
+      .catch(() => setError("Could not load your wallet. Please refresh and try again."))
       .finally(() => setLoading(false));
   }, []);
 

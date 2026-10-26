@@ -1,15 +1,6 @@
 import { getAuthToken } from "@/src/lib/auth";
+import type { PayoutAccount } from "@/src/lib/payout-accounts-api";
 import { publishWalletBalance } from "@/src/lib/wallet-api";
-
-export type PayoutAccountSummary = {
-  id: string;
-  bankCode: string;
-  bankName: string;
-  accountHolderName: string;
-  maskedAccountNumber: string;
-  isDefault: boolean;
-  createdAt: string;
-};
 
 export type CompletedPayout = {
   balance: string;
@@ -20,7 +11,7 @@ export type CompletedPayout = {
     amount: string;
     balanceAfter: string;
     createdAt: string;
-    payoutAccount: PayoutAccountSummary;
+    payoutAccount: PayoutAccount;
   };
 };
 
@@ -60,18 +51,10 @@ async function payoutRequest<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 // Payouts are tutor-only. The tutor application reports APPROVED once the user is a Tutor.
+// A failed request throws, so an error is never mistaken for "not a Tutor".
 export async function isTutor() {
-  const token = getAuthToken();
-  const response = await fetch("/api/profiles/me/tutor", {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!response.ok) return false;
-  const body = (await response.json().catch(() => null)) as { status?: string } | null;
-  return body?.status === "APPROVED";
-}
-
-export function listPayoutAccounts() {
-  return payoutRequest<{ accounts: PayoutAccountSummary[] }>("/api/payout-accounts");
+  const { status } = await payoutRequest<{ status?: string }>("/api/profiles/me/tutor");
+  return status === "APPROVED";
 }
 
 export async function requestPayout(amount: number, payoutAccountId: string, reference: string) {

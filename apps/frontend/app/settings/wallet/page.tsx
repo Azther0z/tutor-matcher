@@ -49,7 +49,7 @@ function validate(bankCode: string, accountHolderName: string, accountNumber: st
 function WalletSettings() {
   const [balance, setBalance] = useState<string | null>(null);
   const [balanceError, setBalanceError] = useState<string | null>(null);
-  const [tutor, setTutor] = useState(false);
+  const [showPayoutLink, setShowPayoutLink] = useState(false);
   const [accounts, setAccounts] = useState<PayoutAccount[] | null>(null);
   const [banks, setBanks] = useState<PayoutBank[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -69,9 +69,10 @@ function WalletSettings() {
     getWallet()
       .then((wallet) => setBalance(wallet.balance))
       .catch(() => setBalanceError("Could not load your wallet balance."));
+    // A failed check still shows the link; the payout page checks again and explains.
     isTutor()
-      .then(setTutor)
-      .catch(() => setTutor(false));
+      .then(setShowPayoutLink)
+      .catch(() => setShowPayoutLink(true));
     Promise.all([getPayoutAccounts(), getPayoutBanks()])
       .then(([savedAccounts, bankList]) => {
         setAccounts(savedAccounts);
@@ -159,7 +160,7 @@ function WalletSettings() {
             )}
           </div>
           <div className="flex flex-wrap gap-3">
-            {tutor && (
+            {showPayoutLink && (
               <Link href="/wallet/payout" className={secondaryButton}>
                 Request payout
               </Link>
