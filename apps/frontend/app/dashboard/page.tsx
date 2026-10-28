@@ -2,6 +2,7 @@
 
 import { RequireAuth } from "@/src/components/require-auth";
 import { TutorAvailabilityEditor } from "@/src/components/tutor-availability-editor";
+import { TutorNeedsConfirmation } from "@/src/components/tutor-needs-confirmation";
 import { TutorUpcomingClasses } from "@/src/components/tutor-upcoming-classes";
 
 import Link from "next/link";
@@ -240,6 +241,7 @@ export default function DashboardPage() {
                 Manage subjects and listing
               </Link>
             </div>
+            <TutorNeedsConfirmation />
             <TutorUpcomingClasses />
             <TutorAvailabilityEditor />
           </section>

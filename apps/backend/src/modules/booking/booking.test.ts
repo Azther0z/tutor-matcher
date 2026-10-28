@@ -304,12 +304,24 @@ describe("trial booking rules", () => {
 
     const asTutor = mapBookingResponse(record, SLOT_B, now);
     expect(asTutor.viewerRole).toBe("TUTOR");
-    expect(asTutor.actions).toMatchObject({ canTutorCancel: true, canCancel: false });
+    expect(asTutor.actions).toMatchObject({
+      canTutorCancel: true,
+      canCancel: false,
+      canConfirmCompletion: false,
+    });
     expect(asTutor.payment.walletBalance).toBeNull();
 
     const asStudent = mapBookingResponse(record, SUBJECT_ID, now);
     expect(asStudent.viewerRole).toBe("STUDENT");
-    expect(asStudent.actions).toMatchObject({ canTutorCancel: false, canCancel: true });
+    expect(asStudent.actions).toMatchObject({
+      canTutorCancel: false,
+      canCancel: true,
+      canConfirmCompletion: false,
+    });
+
+    const ended = { ...record, endedAt: now };
+    expect(mapBookingResponse(ended, SLOT_B, now).actions.canConfirmCompletion).toBe(true);
+    expect(mapBookingResponse(ended, SUBJECT_ID, now).actions.canConfirmCompletion).toBe(false);
 
     const withMeetingLinks = {
       ...record,
@@ -329,6 +341,7 @@ describe("trial booking rules", () => {
 
     const started = mapBookingResponse({ ...record, startedAt: now }, SLOT_B, now);
     expect(started.actions.canTutorCancel).toBe(false);
+    expect(mapBookingResponse(record, SLOT_B, now).actions.canConfirmCompletion).toBe(false);
     expect(
       mapBookingResponse({ ...withMeetingLinks, endedAt: now }, SLOT_B, now).actions
     ).toMatchObject({
@@ -352,7 +365,11 @@ describe("trial booking rules", () => {
       canJoin: false,
     });
     const completed = mapBookingResponse({ ...withMeetingLinks, status: "COMPLETED" }, SLOT_B, now);
-    expect(completed.actions).toMatchObject({ canEditMeetingLink: false, canJoin: false });
+    expect(completed.actions).toMatchObject({
+      canEditMeetingLink: false,
+      canJoin: false,
+      canConfirmCompletion: false,
+    });
   });
 
   it("refunds the full credit more than 24 hours before the lesson", () => {

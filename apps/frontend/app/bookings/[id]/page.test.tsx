@@ -44,7 +44,12 @@ const booking = {
     canPay: false,
     expiresAt: null,
   },
-  actions: { canPay: false, canCancel: true, canReschedule: true },
+  actions: {
+    canPay: false,
+    canCancel: true,
+    canReschedule: true,
+    canConfirmCompletion: false,
+  },
 };
 
 const quote = {
@@ -100,6 +105,80 @@ it("shows server cancellation terms before sending the quote token", async () =>
       body: JSON.stringify({ quoteToken }),
     })
   );
+});
+
+it("lets the assigned Tutor confirm an ended lesson with an irreversible confirmation dialog", async () => {
+  const endedBooking = {
+    ...booking,
+    viewerRole: "TUTOR",
+    startedAt: "2020-01-10T09:00:00.000Z",
+    endedAt: "2020-01-10T09:30:00.000Z",
+    actions: {
+      ...booking.actions,
+      canCancel: false,
+      canReschedule: false,
+      canConfirmCompletion: true,
+    },
+  };
+  localStorage.setItem("authToken", "tutor-token");
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: endedBooking }) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        booking: {
+          ...endedBooking,
+          status: "COMPLETED",
+          actions: { ...endedBooking.actions, canConfirmCompletion: false },
+        },
+      }),
+    });
+
+  render(<BookingDetailPage />);
+  expect(
+    await screen.findByRole("button", { name: "Confirm session completed" })
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Confirm session completed" }));
+  expect(screen.getByRole("dialog", { name: "Confirm session completed?" })).toHaveTextContent(
+    "You cannot undo this confirmation."
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Confirm completed" }));
+
+  expect(await screen.findByText("COMPLETED")).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("Session marked completed.");
+  expect(
+    screen.queryByRole("button", { name: "Confirm session completed" })
+  ).not.toBeInTheDocument();
+  expect(global.fetch).toHaveBeenLastCalledWith(
+    `/api/bookings/${bookingId}/confirm-completion`,
+    expect.objectContaining({ method: "POST" })
+  );
+});
+
+it("shows the completed status to the Student without a Tutor confirmation action", async () => {
+  const completedForStudent = {
+    ...booking,
+    status: "COMPLETED",
+    viewerRole: "STUDENT",
+    actions: {
+      ...booking.actions,
+      canCancel: false,
+      canReschedule: false,
+      canConfirmCompletion: false,
+    },
+  };
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ booking: completedForStudent }),
+  });
+
+  render(<BookingDetailPage />);
+
+  expect(await screen.findByText("COMPLETED")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Confirm session completed" })
+  ).not.toBeInTheDocument();
 });
 
 it("disables payment and links to wallet top-up for the server shortfall", async () => {

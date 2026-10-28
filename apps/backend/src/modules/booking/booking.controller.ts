@@ -3,6 +3,7 @@ import {
   BookingDomainError,
   cancelBooking,
   cancelBookingAsTutor,
+  confirmBookingCompletionAsTutor,
   confirmBookingPayment,
   createBooking,
   getBooking,
@@ -11,6 +12,7 @@ import {
   getTutorCancellationQuote,
   listBookings,
   listTutorUpcomingBookings,
+  listTutorBookingsNeedingConfirmation,
   rescheduleBooking,
   updateBookingMeetingLink,
 } from "./booking.service.ts";
@@ -134,6 +136,24 @@ export async function cancel(req: Request, res: Response) {
 export async function tutorUpcoming(req: Request, res: Response) {
   try {
     res.json({ bookings: await listTutorUpcomingBookings(req.user!.sub) });
+  } catch (error) {
+    await sendError(error, res);
+  }
+}
+
+export async function tutorNeedsConfirmation(req: Request, res: Response) {
+  try {
+    res.json({ bookings: await listTutorBookingsNeedingConfirmation(req.user!.sub) });
+  } catch (error) {
+    await sendError(error, res);
+  }
+}
+
+export async function tutorConfirmCompletion(req: Request, res: Response) {
+  try {
+    res.json({
+      booking: await confirmBookingCompletionAsTutor(req.user!.sub, req.params.id as string),
+    });
   } catch (error) {
     await sendError(error, res);
   }

@@ -392,20 +392,20 @@ These come from [`user-journeys.md`](user-journeys.md#invariants). Each one has 
 enforced somewhere — a constraint, a transaction, or a service-layer check — and the
 "Enforced today" column says where it stands.
 
-| #   | Rule                                                                                    | Enforced today                                                                                         |
-| --- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| 1   | A rating is between 1 and 5                                                             | ✅ CHECK `reviews_rating_stars_range`                                                                  |
-| 2   | An availability slot is locked to at most one booking                                   | ✅ one nullable booking FK per slot; atomic serializable claims                                        |
-| 3   | A booking has at most one lesson payment                                                | ✅ `wallet_transactions(booking_id, type)` UNIQUE                                                      |
-| 4   | A user's subjects, bookings, and payments survive referential deletes                   | ✅ `ON DELETE RESTRICT` across the domain                                                              |
-| 5   | A booking occupies a **continuous run** of slots for one subject                        | ✅ booking service validates assigned, consecutive slots on one Bangkok day                            |
-| 6   | A booking carries a lifecycle status (payment due → confirmed → completed/cancelled)    | ✅ `BookingStatus`; completion processing remains separate work                                        |
-| 7   | Booking price is fixed at creation from the subject rate and the slot count             | ✅ stored total and PROF-6 subject snapshots                                                           |
-| 8   | A slot cannot be double-sold — the check happens before payment capture                 | ✅ serializable booking claims and payment confirmation                                                |
-| 9   | Exactly one review per booking                                                          | ❌ `reviews.booking_id` is not UNIQUE                                                                  |
-| 10  | Each successful movement records one owner, type, positive amount and resulting balance | ✅ shared atomic writer; no status/direction columns                                                   |
-| 11  | Available balance excludes pending tutor earnings                                       | ✅ no tutor credit at payment; calculated pending-earnings dashboard and settlement remain future work |
-| 12  | A tutor cannot open two overlapping slots                                               | ✅ PROF-3: unique Tutor/start plus half-hour grid validation                                           |
+| #   | Rule                                                                                    | Enforced today                                                                                                    |
+| --- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 1   | A rating is between 1 and 5                                                             | ✅ CHECK `reviews_rating_stars_range`                                                                             |
+| 2   | An availability slot is locked to at most one booking                                   | ✅ one nullable booking FK per slot; atomic serializable claims                                                   |
+| 3   | A booking has at most one lesson payment                                                | ✅ `wallet_transactions(booking_id, type)` UNIQUE                                                                 |
+| 4   | A user's subjects, bookings, and payments survive referential deletes                   | ✅ `ON DELETE RESTRICT` across the domain                                                                         |
+| 5   | A booking occupies a **continuous run** of slots for one subject                        | ✅ booking service validates assigned, consecutive slots on one Bangkok day                                       |
+| 6   | A booking carries a lifecycle status (payment due → confirmed → completed/cancelled)    | ✅ `BookingStatus`; assigned Tutor confirmation sets `COMPLETED`, while earnings and reviews remain separate work |
+| 7   | Booking price is fixed at creation from the subject rate and the slot count             | ✅ stored total and PROF-6 subject snapshots                                                                      |
+| 8   | A slot cannot be double-sold — the check happens before payment capture                 | ✅ serializable booking claims and payment confirmation                                                           |
+| 9   | Exactly one review per booking                                                          | ❌ `reviews.booking_id` is not UNIQUE                                                                             |
+| 10  | Each successful movement records one owner, type, positive amount and resulting balance | ✅ shared atomic writer; no status/direction columns                                                              |
+| 11  | Available balance excludes pending tutor earnings                                       | ✅ no tutor credit at payment; calculated pending-earnings dashboard and settlement remain future work            |
+| 12  | A tutor cannot open two overlapping slots                                               | ✅ PROF-3: unique Tutor/start plus half-hour grid validation                                                      |
 
 ---
 
@@ -419,15 +419,15 @@ that the current schema is wrong to have shipped.
 
 ### Gaps that block a documented journey
 
-| ID  | Gap                                                                                                                                                  | Journey it blocks                               |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| G1  | Resolved in existing booking code: a Booking has multiple Availability rows and validates a continuous block.                                        | §3 Booking — multi-slot blocks, duration, price |
-| G2  | Status storage is implemented by `BookingStatus`; automatic completion remains separate work.                                                        | §3 Booking, `/bookings` tabs, §5 completion     |
-| G3  | Resolved in existing booking/PROF-6 code: stored start, end, total and subject snapshots preserve the agreement.                                     | §3 Payment due, §4 ledger amounts               |
-| G4  | Storage resolved: WalletTransaction has all five types, one owner and balance_after. Full wallet history UI remains future work.                     | §4 Money                                        |
-| G5  | Storage resolved: pending earnings are derived from CONFIRMED bookings, not ledger rows. Calculation UI and settlement are not implemented in PAY-1. | §4 pending earnings                             |
-| G6  | Resolved in existing booking code: `zoom_meeting_url` is nullable while awaiting lesson delivery.                                                    | §3 Step 2                                       |
-| G7  | Resolved by PROF-3: every availability has a required Tutor owner, an open state and unique Tutor/start.                                             | §7 Availability editor                          |
+| ID  | Gap                                                                                                                                                     | Journey it blocks                               |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| G1  | Resolved in existing booking code: a Booking has multiple Availability rows and validates a continuous block.                                           | §3 Booking — multi-slot blocks, duration, price |
+| G2  | Status storage is implemented by `BookingStatus`; CLASS-2 adds assigned-Tutor completion confirmation. No time-based or automatic completion is stored. | §3 Booking, `/bookings` tabs, §5 completion     |
+| G3  | Resolved in existing booking/PROF-6 code: stored start, end, total and subject snapshots preserve the agreement.                                        | §3 Payment due, §4 ledger amounts               |
+| G4  | Storage resolved: WalletTransaction has all five types, one owner and balance_after. Full wallet history UI remains future work.                        | §4 Money                                        |
+| G5  | Storage resolved: pending earnings are derived from CONFIRMED bookings, not ledger rows. Calculation UI and settlement are not implemented in PAY-1.    | §4 pending earnings                             |
+| G6  | Resolved in existing booking code: `zoom_meeting_url` is nullable while awaiting lesson delivery.                                                       | §3 Step 2                                       |
+| G7  | Resolved by PROF-3: every availability has a required Tutor owner, an open state and unique Tutor/start.                                                | §7 Availability editor                          |
 
 ### Entities the product needs that do not exist yet
 

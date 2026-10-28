@@ -49,7 +49,7 @@ certification documents; admin-reviewed public listings; per-tutor subjects; per
 30-minute availability with subject assignment; tutor and subject discovery with
 filters; subject-locked 1-1 booking of a continuous block; wallet top-up by PromptPay,
 wallet-funded lesson payment, earnings, refunds, and payouts for tutors; online lesson
-delivery by meeting link and automatic completion; student ⇄ tutor messaging and
+delivery by meeting link and Tutor-confirmed completion; student ⇄ tutor messaging and
 notification preferences; reviews scoped to a tutor and a subject, with tutor replies
 and flagging; admin queues for applications, moderation, disputes, and account safety.
 
@@ -290,8 +290,13 @@ booking is blocked _before_ payment is captured.
 
 ### Step 4 — Completed
 
-The planned completion action atomically changes CONFIRMED to COMPLETED and credits
-the tutor's LESSON_EARNING after the fee; see §4. Completion is not implemented by PAY-1.
+`CONFIRMED` means the lesson is paid and scheduled; it does not mean the session happened.
+At the scheduled end time, a confirmed lesson appears in the Tutor dashboard's separate
+**Needs confirmation** list. The assigned Tutor opens the booking and confirms completion
+in a one-way dialog. The booking then changes to `COMPLETED`. Until the Tutor confirms,
+the booking stays `CONFIRMED` and remains in the list; the system does not complete or
+expire it automatically. CLASS-2 records this status change only. Earnings release and
+Student review eligibility are handled by CLASS-3.
 
 ### Cancellation
 
@@ -360,12 +365,12 @@ Success atomically credits balance and appends TOP_UP. Failure writes nothing.
 Retrying the same reference cannot credit twice. Simulation is disabled in production;
 a verified payment provider is required before real-money use.
 
-**Lesson earnings (planned, outside PAY-1).** Student confirmation of delivery, or
-automatic completion 24 hours after the lesson ends, credits the tutor's share and
-changes CONFIRMED to COMPLETED atomically. The provisional fee is 15%.
-Pending earnings are computed from CONFIRMED bookings minus the fee; no pending
-ledger row exists. Until settlement, the money is held by the platform for that booking,
-not in the tutor's available wallet.
+**Lesson earnings (planned for CLASS-3, outside PAY-1 and CLASS-2).** After the Tutor
+confirms completion, CLASS-3 handles the Tutor's share after the platform fee and makes
+the Student review available. CLASS-2 changes BookingStatus only and creates no wallet
+movement. The provisional fee is 15%. Pending earnings are computed from CONFIRMED
+bookings minus the fee; no pending ledger row exists. Until settlement, the money is held
+by the platform for that booking, not in the Tutor's available wallet.
 
 **Refunds.** Paid cancellation appends REFUND and leaves LESSON_PAYMENT unchanged.
 PAY-1 retains the existing configurable cancellation window and late-refund rate,
@@ -485,15 +490,17 @@ Related stories: US1-4, US9-1.
 **Dashboard (`/dashboard`).** Every logged-in user sees the Student dashboard, including
 Student profile setup and learning links. Only approved Tutors see the Student and Tutor
 tabs; Student accounts and pending applicants never receive Tutor dashboard content. The
-Tutor tab contains **Upcoming classes** (BOOK-4: each class that has not started, with its
-student and time, opening `/bookings/:id`), the availability editor and links to `/settings/tutor`, which owns
-subject and listing management. The navbar keeps **Become a tutor** visible for Student
-accounts and applicants.
+Tutor tab contains **Needs confirmation** (CLASS-2: confirmed lessons at or past their
+scheduled end, opening `/bookings/:id`), **Upcoming classes** (BOOK-4: each class that has not
+started, with its student and time, opening `/bookings/:id`), the availability editor and links
+to `/settings/tutor`, which owns subject and listing management. The navbar keeps
+**Become a tutor** visible for Student accounts and applicants.
 
 **Tutor dashboard (Tutor tab on `/dashboard`).** Ordered by operational priority: compact
 stat cards (classes this week, earnings this month, paid bookings, rating), then the wallet
-and earnings preview, then **Upcoming classes** ("what you need to teach next", each
-with View and Start), then **New paid bookings** ("already confirmed from your
+and earnings preview, then **Needs confirmation** (ended lessons awaiting a Tutor decision),
+then **Upcoming classes** ("what you need to teach next", each with View and Start), then
+**New paid bookings** ("already confirmed from your
 availability"), then subjects, then the availability editor. Long sections scroll
 inside their own card rather than pushing the page. Subject **Update** links to
 `/settings/tutor`, which owns subject editing. The former `/dashboard/tutor` URL redirects

@@ -10,6 +10,8 @@ import {
   reschedule,
   subjectAvailability,
   tutorCancel,
+  tutorConfirmCompletion,
+  tutorNeedsConfirmation,
   tutorCancellationQuote,
   tutorUpcoming,
   updateMeetingLink,
@@ -34,6 +36,7 @@ bookingRouter.get(
 bookingRouter.get("/", list);
 // BOOK-4: the tutor's upcoming classes; registered before /:id so "tutor" is never read as an id.
 bookingRouter.get("/tutor/upcoming", tutorUpcoming);
+bookingRouter.get("/tutor/needs-confirmation", tutorNeedsConfirmation);
 bookingRouter.post("/", validate(createBookingSchema), create);
 bookingRouter.get("/:id", validate(bookingIdParamsSchema, "params"), detail);
 bookingRouter.get(
@@ -45,6 +48,11 @@ bookingRouter.post(
   "/:id/confirm-payment",
   validate(bookingIdParamsSchema, "params"),
   confirmPayment
+);
+bookingRouter.post(
+  "/:id/confirm-completion",
+  validate(bookingIdParamsSchema, "params"),
+  tutorConfirmCompletion
 );
 // BOOK-3 endpoints: reschedule or cancel an existing student booking.
 bookingRouter.patch(

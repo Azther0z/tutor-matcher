@@ -5,10 +5,12 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ContinuousSlotPicker } from "@/src/components/continuous-slot-picker";
 import { RequireAuth } from "@/src/components/require-auth";
+import { TutorDialog } from "@/src/components/tutor-dialog";
 import {
   BookingApiError,
   cancelBooking,
   cancelBookingAsTutor,
+  confirmBookingCompletion,
   confirmPayment,
   getAvailability,
   getBooking,
@@ -74,6 +76,7 @@ function BookingDetailContent() {
   const [message, setMessage] = useState<string | null>(null);
   const [meetingUrlDraft, setMeetingUrlDraft] = useState("");
   const [meetingLinkBusy, setMeetingLinkBusy] = useState(false);
+  const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [clientNow, setClientNow] = useState(() => Date.now());
   const quoteRequestId = useRef(0);
   const cancellationInFlight = useRef(false);
@@ -201,6 +204,22 @@ function BookingDetailContent() {
       } else {
         setMessage(error instanceof Error ? error.message : "Payment could not be confirmed.");
       }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmCompletion() {
+    if (!booking?.actions.canConfirmCompletion || busy) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      setBooking(await confirmBookingCompletion(booking.id));
+      setCompletionDialogOpen(false);
+      setMessage("Session marked completed.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not confirm this lesson.");
+      await loadBooking();
     } finally {
       setBusy(false);
     }
@@ -354,6 +373,7 @@ function BookingDetailContent() {
   const beforeLessonEnd = new Date(booking.endedAt).getTime() > clientNow;
   const canJoinLesson = booking.actions.canJoin && beforeLessonEnd;
   const canEditMeetingLink = booking.actions.canEditMeetingLink && beforeLessonEnd;
+  const canConfirmCompletion = booking.actions.canConfirmCompletion && !beforeLessonEnd;
   const topUpHref = `/wallet/topup?${new URLSearchParams({
     amount: String(shortfall),
     returnTo: `/bookings/${booking.id}`,
@@ -447,6 +467,22 @@ function BookingDetailContent() {
               Meeting link last updated on {dateTime.format(new Date(booking.meetingLinkUpdatedAt))}
               .
             </p>
+          )}
+          {canConfirmCompletion && (
+            <div className="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+              <h3 className="font-semibold">Confirm this lesson</h3>
+              <p className="mt-1 text-sm text-zinc-500">
+                The scheduled lesson time has ended. Confirm when the session is complete.
+              </p>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setCompletionDialogOpen(true)}
+                className="mt-3 h-11 rounded-full bg-violet-600 px-5 font-semibold text-white disabled:opacity-50"
+              >
+                Confirm session completed
+              </button>
+            </div>
           )}
           {canEditMeetingLink && (
             <div className="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-800">
@@ -544,6 +580,39 @@ function BookingDetailContent() {
           )}
         </aside>
       </div>
+
+      {completionDialogOpen && (
+        <TutorDialog
+          title="Confirm session completed?"
+          titleId="confirm-session-completed-title"
+          onClose={() => setCompletionDialogOpen(false)}
+          busy={busy}
+          footer={
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setCompletionDialogOpen(false)}
+                className="h-10 rounded-full border border-zinc-300 px-4 font-medium disabled:opacity-50"
+              >
+                Go back
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void confirmCompletion()}
+                className="h-10 rounded-full bg-violet-600 px-4 font-semibold text-white disabled:opacity-50"
+              >
+                {busy ? "Confirming…" : "Confirm completed"}
+              </button>
+            </div>
+          }
+        >
+          <p className="px-6 py-5 text-sm text-zinc-600 dark:text-zinc-300">
+            This will mark the lesson completed. You cannot undo this confirmation.
+          </p>
+        </TutorDialog>
+      )}
 
       {mode === "cancel" && (
         <section className="mt-6 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
