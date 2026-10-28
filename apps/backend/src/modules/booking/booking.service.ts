@@ -754,6 +754,8 @@ export async function rescheduleBooking(userId: string, id: string, input: Resch
           data: {
             startedAt: slots[0]!.startedAt,
             endedAt: new Date(slots.at(-1)!.startedAt.getTime() + SLOT_MS),
+            // A generated room belongs to the old schedule; the CLASS-1 override is retained.
+            zoomMeetingUrl: null,
           },
           include: detailInclude,
         });

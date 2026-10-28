@@ -22,20 +22,34 @@ const SUBJECT_ID = "41000000-0000-4000-8000-000000000004";
 const PENDING_SLOT_ID = "41000000-0000-4000-8000-000000000005";
 const PAID_SLOT_ID = "41000000-0000-4000-8000-000000000006";
 const INVALID_EXPIRY_SLOT_ID = "41000000-0000-4000-8000-000000000007";
+const LINK_STUDENT_ID = "41000000-0000-4000-8000-000000000008";
 
 const token = signAuthToken({
   sub: STUDENT_ID,
   email: "booking-integration-student@example.com",
   isAdmin: false,
 });
+const tutorToken = signAuthToken({
+  sub: TUTOR_USER_ID,
+  email: "booking-integration-tutor@example.com",
+  isAdmin: false,
+});
+const linkStudentToken = signAuthToken({
+  sub: LINK_STUDENT_ID,
+  email: "meeting-link-integration-student@example.com",
+  isAdmin: false,
+});
 const authorize = (test: request.Test) => test.set("Authorization", `Bearer ${token}`);
+const authorizeTutor = (test: request.Test) => test.set("Authorization", `Bearer ${tutorToken}`);
+const authorizeLinkStudent = (test: request.Test) =>
+  test.set("Authorization", `Bearer ${linkStudentToken}`);
 
 async function cleanFixtures() {
   await prisma.message.deleteMany({
     where: { OR: [{ fromUserId: STUDENT_ID }, { fromUserId: TUTOR_USER_ID }] },
   });
   await prisma.walletTransaction.deleteMany({
-    where: { userId: { in: [STUDENT_ID, TUTOR_USER_ID] } },
+    where: { userId: { in: [STUDENT_ID, TUTOR_USER_ID, LINK_STUDENT_ID] } },
   });
   await prisma.availability.updateMany({
     where: { id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID] } },
@@ -50,7 +64,9 @@ async function cleanFixtures() {
   await prisma.user.updateMany({ where: { id: TUTOR_USER_ID }, data: { tutorId: null } });
   await prisma.tutor.deleteMany({ where: { id: TUTOR_ID } });
   await prisma.tutorProfileVersion.deleteMany({ where: { userId: TUTOR_USER_ID } });
-  await prisma.user.deleteMany({ where: { id: { in: [STUDENT_ID, TUTOR_USER_ID] } } });
+  await prisma.user.deleteMany({
+    where: { id: { in: [STUDENT_ID, TUTOR_USER_ID, LINK_STUDENT_ID] } },
+  });
 }
 
 const describeWithDatabase =
@@ -79,15 +95,28 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
           password: "fixture",
           balance: "0.00",
         },
+        {
+          id: LINK_STUDENT_ID,
+          firstName: "Meeting Link",
+          lastName: "Student",
+          email: "meeting-link-integration-student@example.com",
+          password: "fixture",
+        },
       ],
     });
     await prisma.$transaction(
-      (tx) =>
-        appendWalletMovement(tx, {
+      async (tx) => {
+        await appendWalletMovement(tx, {
           userId: STUDENT_ID,
           type: "TOP_UP",
           amount: 500,
-        }),
+        });
+        await appendWalletMovement(tx, {
+          userId: LINK_STUDENT_ID,
+          type: "TOP_UP",
+          amount: 500,
+        });
+      },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
     await prisma.tutor.create({
@@ -173,6 +202,75 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     expect(booking.status).toBe("CANCELLED");
     expect(transfer).toEqual([]);
     expect(slot.bookingId).toBeNull();
+  });
+
+  it("keeps the Tutor override through rescheduling and retires the old generated URL", async () => {
+    const created = await authorizeLinkStudent(
+      request(app)
+        .post("/api/bookings")
+        .send({
+          subjectId: SUBJECT_ID,
+          availabilityIds: [PENDING_SLOT_ID],
+          isTrial: true,
+        })
+    ).expect(201);
+    const bookingId = created.body.booking.id as string;
+    await authorizeLinkStudent(
+      request(app).post(`/api/bookings/${bookingId}/confirm-payment`)
+    ).expect(200);
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { zoomMeetingUrl: "https://meet.example.com/old-room" },
+    });
+
+    await authorizeLinkStudent(
+      request(app)
+        .patch(`/api/bookings/${bookingId}/meeting-link`)
+        .send({ customMeetingUrl: "https://meet.example.com/custom-room" })
+    ).expect(403);
+    await authorizeTutor(
+      request(app)
+        .patch(`/api/bookings/${bookingId}/meeting-link`)
+        .send({ customMeetingUrl: "http://meet.example.com/insecure" })
+    ).expect(400);
+
+    const overridden = await authorizeTutor(
+      request(app)
+        .patch(`/api/bookings/${bookingId}/meeting-link`)
+        .send({ customMeetingUrl: "https://meet.example.com/custom-room" })
+    ).expect(200);
+    expect(overridden.body.booking).toMatchObject({
+      zoomMeetingUrl: "https://meet.example.com/old-room",
+      customMeetingUrl: "https://meet.example.com/custom-room",
+      effectiveMeetingUrl: "https://meet.example.com/custom-room",
+      actions: { canEditMeetingLink: true, canJoin: true },
+    });
+
+    const restored = await authorizeTutor(
+      request(app).patch(`/api/bookings/${bookingId}/meeting-link`).send({ customMeetingUrl: null })
+    ).expect(200);
+    expect(restored.body.booking.effectiveMeetingUrl).toBe("https://meet.example.com/old-room");
+
+    await authorizeTutor(
+      request(app)
+        .patch(`/api/bookings/${bookingId}/meeting-link`)
+        .send({ customMeetingUrl: "https://meet.example.com/custom-room" })
+    ).expect(200);
+    const rescheduled = await authorizeLinkStudent(
+      request(app)
+        .patch(`/api/bookings/${bookingId}/reschedule`)
+        .send({ availabilityIds: [INVALID_EXPIRY_SLOT_ID] })
+    ).expect(200);
+    expect(rescheduled.body.booking).toMatchObject({
+      status: "CONFIRMED",
+      zoomMeetingUrl: null,
+      customMeetingUrl: "https://meet.example.com/custom-room",
+      effectiveMeetingUrl: "https://meet.example.com/custom-room",
+      actions: { canJoin: true },
+    });
+    const persisted = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
+    expect(persisted.zoomMeetingUrl).toBeNull();
+    expect(persisted.customMeetingUrl).toBe("https://meet.example.com/custom-room");
   });
 
   it("refunds from Platform while keeping the original payment and tutor wallet unchanged", async () => {

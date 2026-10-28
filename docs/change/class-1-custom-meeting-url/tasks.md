@@ -6,9 +6,9 @@
       effective URL and `canEditMeetingLink` / `canJoin` actions in booking responses.
   - Acceptance: generated and custom URLs remain separate; custom wins; edit and join
     availability follow the confirmed status, Tutor identity, and scheduled-end rules.
-  - Verify: Prisma validate/generate and backend build.
+  - Verify: Prisma validate/generate, backend build, and booking-state mapping tests.
   - Files: `apps/backend/prisma/schema.prisma`, `apps/backend/src/modules/booking/booking.service.ts`,
-    `apps/backend/src/modules/booking/booking.test.ts` (existing typed fixture only).
+    `apps/backend/src/modules/booking/booking.test.ts`.
 
 ## 2. Add the Tutor update operation
 
@@ -16,7 +16,7 @@
   - Acceptance: only the assigned Tutor can change a confirmed booking before its end;
     only syntactically valid HTTPS URLs or null are accepted; each change records the
     latest editor and time.
-  - Verify: backend build and lint.
+  - Verify: backend build/lint and database-gated HTTP lifecycle tests.
   - Files: `apps/backend/src/modules/booking/booking.schema.ts`, `booking.routes.ts`,
     `booking.controller.ts`, `booking.service.ts`.
 
@@ -31,6 +31,15 @@
   - Verify: frontend lint and build.
   - Files: `apps/frontend/src/types/booking.ts`, `apps/frontend/src/lib/bookings-api.ts`,
     `apps/frontend/app/bookings/[id]/page.tsx`.
+
+- [x] 3.2 Preserve the Tutor override through rescheduling and retire the previous
+      generated URL.
+  - Acceptance: the new schedule is committed with the custom URL retained and the old
+    generated URL cleared while Meet provisioning remains deferred.
+  - Verify: database-gated HTTP lifecycle test checks access, URL validation, restore,
+    rescheduling, and persisted link state.
+  - Files: `apps/backend/src/modules/booking/booking.service.ts`,
+    `apps/backend/src/modules/booking/booking.integration.test.ts`.
 
 ## 4. Align canonical documentation
 

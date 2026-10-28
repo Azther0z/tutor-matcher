@@ -286,15 +286,48 @@ describe("trial booking rules", () => {
     expect(asStudent.viewerRole).toBe("STUDENT");
     expect(asStudent.actions).toMatchObject({ canTutorCancel: false, canCancel: true });
 
+    const withMeetingLinks = {
+      ...record,
+      zoomMeetingUrl: "https://meet.example.com/generated",
+      customMeetingUrl: "https://meet.example.com/custom",
+    };
+    const activeAsTutor = mapBookingResponse(withMeetingLinks, SLOT_B, now);
+    const activeAsStudent = mapBookingResponse(withMeetingLinks, SUBJECT_ID, now);
+    expect(activeAsTutor).toMatchObject({
+      effectiveMeetingUrl: "https://meet.example.com/custom",
+      actions: { canEditMeetingLink: true, canJoin: true },
+    });
+    expect(activeAsStudent).toMatchObject({
+      effectiveMeetingUrl: "https://meet.example.com/custom",
+      actions: { canEditMeetingLink: false, canJoin: true },
+    });
+
     const started = mapBookingResponse({ ...record, startedAt: now }, SLOT_B, now);
     expect(started.actions.canTutorCancel).toBe(false);
+    expect(
+      mapBookingResponse({ ...withMeetingLinks, endedAt: now }, SLOT_B, now).actions
+    ).toMatchObject({
+      canEditMeetingLink: false,
+      canJoin: false,
+    });
     const cancelled = mapBookingResponse(
-      { ...record, status: "CANCELLED", cancelledBy: "TUTOR", cancellationReason: "Sick" },
+      {
+        ...withMeetingLinks,
+        status: "CANCELLED",
+        cancelledBy: "TUTOR",
+        cancellationReason: "Sick",
+      },
       SUBJECT_ID,
       now
     );
     expect(cancelled).toMatchObject({ cancelledBy: "TUTOR", cancellationReason: "Sick" });
-    expect(cancelled.actions.canTutorCancel).toBe(false);
+    expect(cancelled.actions).toMatchObject({
+      canTutorCancel: false,
+      canEditMeetingLink: false,
+      canJoin: false,
+    });
+    const completed = mapBookingResponse({ ...withMeetingLinks, status: "COMPLETED" }, SLOT_B, now);
+    expect(completed.actions).toMatchObject({ canEditMeetingLink: false, canJoin: false });
   });
 
   it("refunds the full credit more than 24 hours before the lesson", () => {
