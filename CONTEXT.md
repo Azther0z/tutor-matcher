@@ -90,7 +90,9 @@ _Avoid_: Time slot, open slot, schedule entry, recurring availability schedule
 One student and one tutor, one subject, and one continuous block of back-to-back
 availability slots. A booking exists only once a time has been chosen; before that,
 the student is still in the subject booking flow with no booking record. Statuses are
-`payment due`, `confirmed`, `completed`, and `cancelled`.
+`payment due`, `confirmed`, `completed`, and `cancelled`. `Confirmed` means paid and
+scheduled; after the lesson's scheduled end, it remains confirmed until the assigned
+Tutor manually confirms completion, which changes it to `completed`.
 _Avoid_: Reservation, appointment, order, class booking
 
 **Lesson**:
@@ -124,10 +126,10 @@ difference and come back; the slot stays locked to the booking meanwhile.
 _Avoid_: Checkout, transfer proof, invoice
 
 **Lesson Earning**:
-The tutor's share after the platform fee. The planned settlement appends LESSON_EARNING
-when the student confirms delivery or the clearing deadline passes. Until then, pending
-earnings are calculated from CONFIRMED bookings, with no tutor ledger row. Settlement
-is outside PAY-1; see the approved ledger design in docs/user-journeys.md §4.
+The tutor's share after the platform fee. CLASS-3 will append LESSON_EARNING after the
+assigned Tutor confirms lesson completion. Until settlement, pending earnings are
+calculated from CONFIRMED bookings, with no tutor ledger row. Settlement is outside
+PAY-1 and CLASS-2; see the approved ledger design in docs/user-journeys.md §4.
 _Avoid_: Income, revenue, salary
 
 **Payout**:
