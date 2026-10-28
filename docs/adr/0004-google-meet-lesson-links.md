@@ -11,7 +11,9 @@ a separate Tutor-provided URL that overrides the generated link. Google Meet rep
 the ordinary shared-host Zoom direction after its concurrency restrictions were reviewed;
 preserving both URLs provides automatic creation, manual recovery, and restoration of
 the generated default without losing the Tutor's choice. The user confirmed this contract
-after requirements grilling on 2026-10-24; implementation and live validation remain pending.
+after requirements grilling on 2026-10-24. The current CLASS-1 slice implements the
+separate Tutor-provided URL and latest-editor metadata; automated Google Meet room creation
+and live validation remain pending.
 
 ## Consequences
 
@@ -81,9 +83,9 @@ after requirements grilling on 2026-10-24; implementation and live validation re
   lessons without the organizer attending, entry without host approval, preferred anonymous
   entry or the accepted Google-sign-in fallback, and the desktop/mobile joining flows under
   the actual account and policies. No live meeting test has established these behaviors yet.
-- The current schema still has only `zoomMeetingUrl`. Align the original issue, canonical
-  journeys, and a change proposal before implementation; request approval for Prisma changes.
-  This ADR records the accepted design and does not change application behavior or schema.
+- The current implementation stores the generated-provider URL and Tutor override
+  separately, with the Tutor URL taking precedence. Automated Google Meet provisioning,
+  retries, and replacement-room creation on reschedule remain follow-up work.
 
 ## Considered Options
 
@@ -93,8 +95,6 @@ one URL would lose the generated restore option. Platform-organizer OAuth was ch
 Workspace service-account delegation, while Tutor-owned OAuth and automated co-host
 assignment would introduce account-linking scope that is deferred from CLASS-1.
 
-Background evidence remains in the [earlier handoff](../class-1-handoff.md),
-[provider comparison](../lesson-delivery-options.md), and captured
-[Google API authentication guide](../sources/class-1-google-api-auth.md).
-The accepted decisions here supersede the handoff's provisional architecture and open
-CLASS-1 requirements; its provider risks remain relevant to validation.
+The [custom meeting URL change](../change/class-1-custom-meeting-url/proposal.md) records
+the first implementation slice. This ADR remains the source for the accepted end-state
+and the validation required before claiming Google Meet provisioning works.
