@@ -14,8 +14,8 @@
 
 - [x] 2.1 Add an authenticated endpoint to set or remove the custom URL.
   - Acceptance: only the assigned Tutor can change a confirmed booking before its end;
-    only syntactically valid HTTPS URLs or null are accepted; each change records the
-    latest editor and time.
+    only syntactically valid HTTPS URLs or null are accepted; each change records its
+    timestamp.
   - Verify: backend build/lint and database-gated HTTP lifecycle tests.
   - Files: `apps/backend/src/modules/booking/booking.schema.ts`, `booking.routes.ts`,
     `booking.controller.ts`, `booking.service.ts`.
@@ -26,7 +26,7 @@
       their custom URL.
   - Acceptance: both participants see the same Join destination; Tutor changes take
     effect on the page; removing the custom URL restores the generated fallback; latest
-    editor/time are shown; Join is hidden after cancellation, completion, or scheduled
+    change time is shown; Join is hidden after cancellation, completion, or scheduled
     end.
   - Verify: frontend lint and build.
   - Files: `apps/frontend/src/types/booking.ts`, `apps/frontend/src/lib/bookings-api.ts`,

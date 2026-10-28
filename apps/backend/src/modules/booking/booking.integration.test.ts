@@ -245,6 +245,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
       effectiveMeetingUrl: "https://meet.example.com/custom-room",
       actions: { canEditMeetingLink: true, canJoin: true },
     });
+    expect(overridden.body.booking.meetingLinkUpdatedAt).toEqual(expect.any(String));
 
     const restored = await authorizeTutor(
       request(app).patch(`/api/bookings/${bookingId}/meeting-link`).send({ customMeetingUrl: null })
@@ -271,6 +272,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     const persisted = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
     expect(persisted.zoomMeetingUrl).toBeNull();
     expect(persisted.customMeetingUrl).toBe("https://meet.example.com/custom-room");
+    expect(persisted.meetingLinkUpdatedAt).toBeInstanceOf(Date);
   });
 
   it("refunds from Platform while keeping the original payment and tutor wallet unchanged", async () => {

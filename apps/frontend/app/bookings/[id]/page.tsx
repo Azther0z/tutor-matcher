@@ -393,10 +393,10 @@ function BookingDetailContent() {
               Using {booking.customMeetingUrl ? "the Tutor-provided link" : "the generated link"}.
             </p>
           )}
-          {booking.meetingLinkUpdatedAt && booking.meetingLinkUpdatedBy && (
+          {booking.meetingLinkUpdatedAt && (
             <p className="mt-2 text-sm text-zinc-500">
-              Meeting link last updated by {booking.meetingLinkUpdatedBy.name} on{" "}
-              {dateTime.format(new Date(booking.meetingLinkUpdatedAt))}.
+              Meeting link last updated on {dateTime.format(new Date(booking.meetingLinkUpdatedAt))}
+              .
             </p>
           )}
           {canEditMeetingLink && (

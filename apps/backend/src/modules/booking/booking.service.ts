@@ -128,7 +128,6 @@ export class BookingPaymentError extends BookingDomainError {
 
 const detailInclude = {
   user: { select: { id: true, firstName: true, lastName: true, balance: true } },
-  meetingLinkUpdatedBy: { select: { id: true, firstName: true, lastName: true } },
   subject: {
     include: {
       tutor: {
@@ -278,11 +277,6 @@ export function mapBookingResponse(
     customMeetingUrl: booking.customMeetingUrl,
     effectiveMeetingUrl,
     meetingLinkUpdatedAt: booking.meetingLinkUpdatedAt?.toISOString() ?? null,
-    meetingLinkUpdatedBy: booking.meetingLinkUpdatedBy
-      ? {
-          name: `${booking.meetingLinkUpdatedBy.firstName} ${booking.meetingLinkUpdatedBy.lastName}`,
-        }
-      : null,
     createdAt: booking.createdAt.toISOString(),
     isTrial: booking.isTrial,
     totalAmount: decimalString(booking.totalAmount),
@@ -575,7 +569,6 @@ export async function updateBookingMeetingLink(
     data: {
       customMeetingUrl,
       meetingLinkUpdatedAt: now,
-      meetingLinkUpdatedById: userId,
     },
   });
   if (updated.count !== 1)

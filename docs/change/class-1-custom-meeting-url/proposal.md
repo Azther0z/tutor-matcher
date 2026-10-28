@@ -15,7 +15,7 @@ In scope:
 - Let the booked Tutor add, replace, or remove the URL on a confirmed booking until its
   scheduled end.
 - Accept valid HTTPS URLs without checking the provider or testing the meeting room.
-- Show the latest editor and update time on the booking page.
+- Show the latest update time on the booking page.
 
 Out of scope:
 
@@ -25,7 +25,7 @@ Out of scope:
 
 ## Approach
 
-Add a nullable custom URL and latest-edit metadata to Booking. Add an authenticated
+Add a nullable custom URL and latest-update timestamp to Booking. Add an authenticated
 booking endpoint that checks Tutor ownership, booking status, and the scheduled end on
 the server. Return both stored links and expose the effective URL and edit/join actions
 in the booking response. The booking page provides the Tutor editor and one effective
@@ -38,7 +38,7 @@ separate provider-integration change replaces it.
 
 ## Impact
 
-- `apps/backend/prisma/schema.prisma`: store the custom URL and latest editor/time.
+- `apps/backend/prisma/schema.prisma`: store the custom URL and latest-change timestamp.
 - `apps/backend/src/modules/booking/`: authorize edits and return effective link state.
 - `apps/frontend/app/bookings/[id]/page.tsx`: let the Tutor manage the override and let
   either participant join through the effective URL.

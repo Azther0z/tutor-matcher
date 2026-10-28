@@ -12,7 +12,7 @@ the ordinary shared-host Zoom direction after its concurrency restrictions were 
 preserving both URLs provides automatic creation, manual recovery, and restoration of
 the generated default without losing the Tutor's choice. The user confirmed this contract
 after requirements grilling on 2026-10-24. The current CLASS-1 slice implements the
-separate Tutor-provided URL and latest-editor metadata; automated Google Meet room creation
+separate Tutor-provided URL and its latest-change timestamp; automated Google Meet room creation
 and live validation remain pending.
 
 ## Consequences
@@ -43,7 +43,8 @@ and live validation remain pending.
   has already started. The Tutor does not edit the generated URL.
 - Accept syntactically valid HTTPS custom URLs. Do not maintain a provider allowlist or
   attempt to verify that the destination room works.
-- Retain the latest link editor and change time, without a full change-history timeline.
+- Retain the latest link-change time, without editor attribution or a full change-history
+  timeline.
 - Show provisioning, missing-link, and active-link status on the Booking page. CLASS-1
   adds no failure or link-change email notifications.
 

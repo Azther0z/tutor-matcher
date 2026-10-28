@@ -83,7 +83,6 @@ export type Booking = {
   customMeetingUrl: string | null;
   effectiveMeetingUrl: string | null;
   meetingLinkUpdatedAt: string | null;
-  meetingLinkUpdatedBy: { name: string } | null;
   createdAt: string;
   cancelledAt?: string | null;
   cancellationReason?: string | null;

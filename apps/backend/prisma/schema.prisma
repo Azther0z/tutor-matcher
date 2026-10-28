@@ -86,8 +86,6 @@ model User {
 
   bookings            Booking[]
   reviews             Review[]
-  meetingLinksUpdated Booking[] @relation("MeetingLinkUpdatedBy")
-
   passwordResetTokens PasswordResetToken[]
 
   sentMessages     Message[] @relation("MessagesSent")
@@ -256,7 +254,6 @@ model Booking {
   zoomMeetingUrl         String?       @map("zoom_meeting_url")
   customMeetingUrl       String?       @map("custom_meeting_url")
   meetingLinkUpdatedAt   DateTime?     @map("meeting_link_updated_at")
-  meetingLinkUpdatedById String?       @map("meeting_link_updated_by_id") @db.Uuid
   createdAt              DateTime      @default(now()) @map("created_at")
   status                 BookingStatus @default(PENDING_PAYMENT)
   isTrial                Boolean       @default(true) @map("is_trial")
@@ -278,8 +275,6 @@ model Booking {
 
   userId String @map("user_id") @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
-
-  meetingLinkUpdatedBy User? @relation("MeetingLinkUpdatedBy", fields: [meetingLinkUpdatedById], references: [id], onDelete: Restrict)
 
   subjectId String  @map("subject_id") @db.Uuid
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)

@@ -413,7 +413,7 @@ A confirmed online booking shows its effective meeting link on `/bookings/:id` t
 participants. The assigned Tutor can add, replace, or remove a custom HTTPS link until
 the scheduled lesson end. A custom link takes priority over the generated-link field;
 removing it restores the generated link when one is available. The booking page shows
-the latest editor and change time, without a full history. The app offers Join as soon
+the time it was last changed, without a full history. The app offers Join as soon
 as a confirmed booking has a link and until its scheduled end; cancelled and completed
 bookings have no Join action. Links are not checked with their provider. The Tutor's
 view additionally shows the student, the subject, the format, the lesson description

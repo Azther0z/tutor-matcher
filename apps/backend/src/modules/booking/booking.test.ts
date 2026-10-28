@@ -139,7 +139,6 @@ describe("trial booking rules", () => {
       zoomMeetingUrl: null,
       customMeetingUrl: null,
       meetingLinkUpdatedAt: null,
-      meetingLinkUpdatedById: null,
       createdAt: now,
       status: "PENDING_PAYMENT",
       isTrial: true,
@@ -160,7 +159,6 @@ describe("trial booking rules", () => {
         lastName: "Smith",
         balance: new Prisma.Decimal("10.00"),
       },
-      meetingLinkUpdatedBy: null,
       subject: {
         id: SUBJECT_ID,
         name: "Mathematics",
@@ -239,7 +237,6 @@ describe("trial booking rules", () => {
       zoomMeetingUrl: null,
       customMeetingUrl: null,
       meetingLinkUpdatedAt: null,
-      meetingLinkUpdatedById: null,
       createdAt: now,
       status: "CONFIRMED",
       isTrial: true,
@@ -255,7 +252,6 @@ describe("trial booking rules", () => {
       subjectHourlyRate: null,
       subjectFormat: null,
       user: { id: SUBJECT_ID, firstName: "Bob", lastName: "Smith", balance: new Prisma.Decimal(0) },
-      meetingLinkUpdatedBy: null,
       subject: {
         id: SUBJECT_ID,
         name: "Mathematics",

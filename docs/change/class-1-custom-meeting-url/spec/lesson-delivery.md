@@ -15,7 +15,7 @@ meeting URL is available.
 
 - GIVEN a confirmed booking before its scheduled end
 - WHEN its assigned Tutor saves a valid HTTPS URL
-- THEN the booking stores the custom URL and the latest editor and update time
+- THEN the booking stores the custom URL and the latest update time
 - AND the booking page uses the custom URL for Join
 
 #### Scenario: Tutor restores the generated URL
@@ -57,5 +57,5 @@ meeting URL is available.
 
 - GIVEN the custom meeting URL has been changed or removed
 - WHEN either participant views the booking page
-- THEN the latest editor and update time are available
+- THEN the latest update time is available
 - AND the system does not expose a full change history
