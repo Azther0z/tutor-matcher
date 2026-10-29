@@ -17,6 +17,7 @@ export type BookingErrorCode =
   | "CANCELLATION_QUOTE_CHANGED"
   | "BOOKING_NOT_FOUND"
   | "BOOKING_FORBIDDEN"
+  | "MEETING_LINK_NOT_EDITABLE"
   | "PAYMENT_FAILED";
 
 export class BookingApiError extends Error {
@@ -170,6 +171,21 @@ export async function rescheduleBooking(id: string, availabilityIds: string[]): 
       method: "PATCH",
       headers: authHeaders(true),
       body: JSON.stringify({ availabilityIds }),
+    }
+  );
+  return data.booking ?? data;
+}
+
+export async function updateMeetingLink(
+  id: string,
+  customMeetingUrl: string | null
+): Promise<Booking> {
+  const data = await request<Booking & { booking?: Booking }>(
+    `/api/bookings/${encodeURIComponent(id)}/meeting-link`,
+    {
+      method: "PATCH",
+      headers: authHeaders(true),
+      body: JSON.stringify({ customMeetingUrl }),
     }
   );
   return data.booking ?? data;

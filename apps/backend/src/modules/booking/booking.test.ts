@@ -1,6 +1,10 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { Prisma } from "../../generated/prisma/client.ts";
-import { createBookingSchema, tutorCancelBookingSchema } from "./booking.schema.ts";
+import {
+  createBookingSchema,
+  tutorCancelBookingSchema,
+  updateMeetingLinkSchema,
+} from "./booking.schema.ts";
 import {
   assertSlotBlock,
   BookingDomainError,
@@ -12,6 +16,31 @@ import {
 const SUBJECT_ID = "11111111-1111-4111-8111-111111111111";
 const SLOT_A = "22222222-2222-4222-8222-222222222222";
 const SLOT_B = "33333333-3333-4333-8333-333333333333";
+
+describe("Tutor meeting link rules", () => {
+  it("accepts HTTPS URLs up to 2048 characters and rejects longer URLs", () => {
+    const prefix = "https://meet.example.com/";
+    const maxLengthUrl = prefix + "a".repeat(2048 - prefix.length);
+
+    expect(updateMeetingLinkSchema.safeParse({ customMeetingUrl: maxLengthUrl }).success).toBe(
+      true
+    );
+    expect(
+      updateMeetingLinkSchema.safeParse({ customMeetingUrl: `${maxLengthUrl}a` }).success
+    ).toBe(false);
+  });
+
+  it("allows removing a Tutor URL and rejects non-HTTPS URLs", () => {
+    expect(updateMeetingLinkSchema.safeParse({ customMeetingUrl: null }).success).toBe(true);
+    expect(
+      updateMeetingLinkSchema.safeParse({ customMeetingUrl: "http://meet.example.com/room" })
+        .success
+    ).toBe(false);
+    expect(updateMeetingLinkSchema.safeParse({ customMeetingUrl: "not a URL" }).success).toBe(
+      false
+    );
+  });
+});
 
 it("bounds notification waiting and logs late lookup failures without private details", async () => {
   jest.useFakeTimers();
@@ -137,6 +166,8 @@ describe("trial booking rules", () => {
       subjectId: SUBJECT_ID,
       description: "Algebra",
       zoomMeetingUrl: null,
+      customMeetingUrl: null,
+      meetingLinkUpdatedAt: null,
       createdAt: now,
       status: "PENDING_PAYMENT",
       isTrial: true,
@@ -233,6 +264,8 @@ describe("trial booking rules", () => {
       subjectId: SUBJECT_ID,
       description: null,
       zoomMeetingUrl: null,
+      customMeetingUrl: null,
+      meetingLinkUpdatedAt: null,
       createdAt: now,
       status: "CONFIRMED",
       isTrial: true,
@@ -278,15 +311,48 @@ describe("trial booking rules", () => {
     expect(asStudent.viewerRole).toBe("STUDENT");
     expect(asStudent.actions).toMatchObject({ canTutorCancel: false, canCancel: true });
 
+    const withMeetingLinks = {
+      ...record,
+      zoomMeetingUrl: "https://meet.example.com/generated",
+      customMeetingUrl: "https://meet.example.com/custom",
+    };
+    const activeAsTutor = mapBookingResponse(withMeetingLinks, SLOT_B, now);
+    const activeAsStudent = mapBookingResponse(withMeetingLinks, SUBJECT_ID, now);
+    expect(activeAsTutor).toMatchObject({
+      effectiveMeetingUrl: "https://meet.example.com/custom",
+      actions: { canEditMeetingLink: true, canJoin: true },
+    });
+    expect(activeAsStudent).toMatchObject({
+      effectiveMeetingUrl: "https://meet.example.com/custom",
+      actions: { canEditMeetingLink: false, canJoin: true },
+    });
+
     const started = mapBookingResponse({ ...record, startedAt: now }, SLOT_B, now);
     expect(started.actions.canTutorCancel).toBe(false);
+    expect(
+      mapBookingResponse({ ...withMeetingLinks, endedAt: now }, SLOT_B, now).actions
+    ).toMatchObject({
+      canEditMeetingLink: false,
+      canJoin: false,
+    });
     const cancelled = mapBookingResponse(
-      { ...record, status: "CANCELLED", cancelledBy: "TUTOR", cancellationReason: "Sick" },
+      {
+        ...withMeetingLinks,
+        status: "CANCELLED",
+        cancelledBy: "TUTOR",
+        cancellationReason: "Sick",
+      },
       SUBJECT_ID,
       now
     );
     expect(cancelled).toMatchObject({ cancelledBy: "TUTOR", cancellationReason: "Sick" });
-    expect(cancelled.actions.canTutorCancel).toBe(false);
+    expect(cancelled.actions).toMatchObject({
+      canTutorCancel: false,
+      canEditMeetingLink: false,
+      canJoin: false,
+    });
+    const completed = mapBookingResponse({ ...withMeetingLinks, status: "COMPLETED" }, SLOT_B, now);
+    expect(completed.actions).toMatchObject({ canEditMeetingLink: false, canJoin: false });
   });
 
   it("refunds the full credit more than 24 hours before the lesson", () => {

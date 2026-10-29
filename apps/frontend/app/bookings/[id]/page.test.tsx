@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import BookingDetailPage from "./page";
 import { subscribeToWalletBalance } from "@/src/lib/wallet-api";
 
@@ -246,6 +246,135 @@ it("keeps confirmation disabled until a failed quote is retried", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Retry cancellation terms" }));
   await screen.findByText(/70\.00/);
   expect(screen.getByRole("button", { name: "Confirm cancellation" })).toBeEnabled();
+});
+
+it("shows Add meeting link when the Tutor has no custom URL and validates HTTPS locally", async () => {
+  const tutorBooking = {
+    ...booking,
+    viewerRole: "TUTOR",
+    customMeetingUrl: null,
+    effectiveMeetingUrl: null,
+    actions: { ...booking.actions, canEditMeetingLink: true, canJoin: false },
+  };
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ booking: tutorBooking }),
+  }) as jest.Mock;
+  render(<BookingDetailPage />);
+
+  expect(await screen.findByText("Add meeting link")).toBeInTheDocument();
+  const input = screen.getByLabelText("Add meeting link");
+  fireEvent.change(input, { target: { value: "http://meet.example.com/room" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save link" }));
+
+  expect(await screen.findByRole("status")).toHaveTextContent("Enter a valid HTTPS meeting link.");
+  expect(input).toHaveValue("http://meet.example.com/room");
+
+  const tooLongUrl = `https://meet.example.com/${"a".repeat(2048)}`;
+  fireEvent.change(input, { target: { value: tooLongUrl } });
+  fireEvent.click(screen.getByRole("button", { name: "Save link" }));
+
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "Meeting links must be 2048 characters or fewer."
+  );
+  expect(input).toHaveValue(tooLongUrl);
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+it("preserves the Tutor draft and avoids reloading after a failed meeting-link save", async () => {
+  const tutorBooking = {
+    ...booking,
+    viewerRole: "TUTOR",
+    customMeetingUrl: null,
+    effectiveMeetingUrl: null,
+    actions: { ...booking.actions, canEditMeetingLink: true, canJoin: false },
+  };
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: tutorBooking }) })
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ message: "Meeting link save failed" }),
+    }) as jest.Mock;
+  render(<BookingDetailPage />);
+
+  const input = await screen.findByLabelText("Add meeting link");
+  fireEvent.change(input, { target: { value: "https://meet.example.com/room" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save link" }));
+
+  expect(await screen.findByText("Meeting link save failed")).toBeInTheDocument();
+  expect(input).toHaveValue("https://meet.example.com/room");
+  expect(global.fetch).toHaveBeenCalledTimes(2);
+});
+
+it("reloads the booking after the server says Tutor link editing is no longer allowed", async () => {
+  const tutorBooking = {
+    ...booking,
+    viewerRole: "TUTOR",
+    customMeetingUrl: "https://meet.example.com/current-room",
+    effectiveMeetingUrl: "https://meet.example.com/current-room",
+    actions: { ...booking.actions, canEditMeetingLink: true, canJoin: false },
+  };
+  const refreshedBooking = {
+    ...tutorBooking,
+    customMeetingUrl: null,
+    effectiveMeetingUrl: null,
+    actions: { ...tutorBooking.actions, canEditMeetingLink: false },
+  };
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: tutorBooking }) })
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      json: async () => ({ code: "MEETING_LINK_NOT_EDITABLE", message: "Booking has ended" }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ booking: refreshedBooking }),
+    }) as jest.Mock;
+  render(<BookingDetailPage />);
+
+  const input = await screen.findByLabelText("Replace meeting link");
+  fireEvent.change(input, { target: { value: "https://meet.example.com/new-room" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save link" }));
+
+  expect(await screen.findByText("Booking has ended")).toBeInTheDocument();
+  expect(global.fetch).toHaveBeenCalledTimes(3);
+  expect(screen.queryByLabelText("Add meeting link")).not.toBeInTheDocument();
+});
+
+it("hides the Join action when its deadline timeout reaches the booking end", async () => {
+  jest.useFakeTimers();
+  try {
+    const now = new Date("2030-01-10T09:29:59.000Z");
+    jest.setSystemTime(now);
+    const joiningBooking = {
+      ...booking,
+      viewerRole: "STUDENT",
+      effectiveMeetingUrl: "https://meet.example.com/room",
+      endedAt: "2030-01-10T09:30:01.000Z",
+      actions: { ...booking.actions, canJoin: true, canEditMeetingLink: false },
+    };
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ booking: joiningBooking }),
+    }) as jest.Mock;
+    render(<BookingDetailPage />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("link", { name: "Join lesson" })).toBeInTheDocument();
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2_001);
+    });
+    expect(screen.queryByRole("link", { name: "Join lesson" })).not.toBeInTheDocument();
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 it("discards a stale quote when reloading its replacement fails", async () => {

@@ -12,12 +12,14 @@ import {
   listBookings,
   listTutorUpcomingBookings,
   rescheduleBooking,
+  updateBookingMeetingLink,
 } from "./booking.service.ts";
 import type {
   CancelBookingInput,
   CreateBookingInput,
   RescheduleBookingInput,
   TutorCancelBookingInput,
+  UpdateMeetingLinkInput,
 } from "./booking.schema.ts";
 
 async function sendError(error: unknown, res: Response) {
@@ -90,6 +92,20 @@ export async function reschedule(req: Request, res: Response) {
         req.user!.sub,
         req.params.id as string,
         req.body as RescheduleBookingInput
+      ),
+    });
+  } catch (error) {
+    await sendError(error, res);
+  }
+}
+
+export async function updateMeetingLink(req: Request, res: Response) {
+  try {
+    res.json({
+      booking: await updateBookingMeetingLink(
+        req.user!.sub,
+        req.params.id as string,
+        (req.body as UpdateMeetingLinkInput).customMeetingUrl
       ),
     });
   } catch (error) {

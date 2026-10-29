@@ -15,11 +15,14 @@ import {
   getCancellationQuote,
   getTutorCancellationQuote,
   rescheduleBooking,
+  updateMeetingLink,
 } from "@/src/lib/bookings-api";
 import type { AvailabilitySlot, Booking, CancellationQuote } from "@/src/types/booking";
 import { publishWalletBalance } from "@/src/lib/wallet-api";
 
 const TIME_ZONE = "Asia/Bangkok";
+const MAX_MEETING_URL_LENGTH = 2048;
+const MAX_TIMEOUT_DELAY = 2_147_483_647;
 const money = new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" });
 const dateTime = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
@@ -43,6 +46,20 @@ function isCancellationQuote(value: unknown): value is CancellationQuote {
   return typeof quote.token === "string" && typeof quote.refundAmount === "string";
 }
 
+function meetingUrlValidationMessage(value: string) {
+  if (value.length > MAX_MEETING_URL_LENGTH) {
+    return `Meeting links must be ${MAX_MEETING_URL_LENGTH} characters or fewer.`;
+  }
+
+  try {
+    if (new URL(value).protocol === "https:") return null;
+  } catch {
+    // The URL constructor rejects relative, malformed, and incomplete URLs.
+  }
+
+  return "Enter a valid HTTPS meeting link.";
+}
+
 function BookingDetailContent() {
   const { id } = useParams<{ id: string }>();
   const [booking, setBooking] = useState<Booking | null>(null);
@@ -55,12 +72,17 @@ function BookingDetailContent() {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [meetingUrlDraft, setMeetingUrlDraft] = useState("");
+  const [meetingLinkBusy, setMeetingLinkBusy] = useState(false);
+  const [clientNow, setClientNow] = useState(() => Date.now());
   const quoteRequestId = useRef(0);
   const cancellationInFlight = useRef(false);
 
   const loadBooking = useCallback(async () => {
     try {
-      setBooking(await getBooking(id));
+      const result = await getBooking(id);
+      setBooking(result);
+      setMeetingUrlDraft(result.customMeetingUrl ?? "");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load this booking.");
     } finally {
@@ -73,6 +95,29 @@ function BookingDetailContent() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadBooking();
   }, [loadBooking]);
+
+  useEffect(() => {
+    const endedAt = booking ? new Date(booking.endedAt).getTime() : Number.NaN;
+    const hasTimeSensitiveActions = Boolean(
+      booking?.actions.canJoin || booking?.actions.canEditMeetingLink
+    );
+    if (!hasTimeSensitiveActions || !Number.isFinite(endedAt) || endedAt <= clientNow) return;
+
+    const refreshClientTime = () => setClientNow(Date.now());
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refreshClientTime();
+    };
+    const delay = Math.min(Math.max(endedAt - Date.now(), 0), MAX_TIMEOUT_DELAY);
+    const timeout = window.setTimeout(refreshClientTime, delay);
+    window.addEventListener("focus", refreshClientTime);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearTimeout(timeout);
+      window.removeEventListener("focus", refreshClientTime);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [booking, clientNow]);
 
   const requiredSlotCount = booking?.availabilities.length ?? 0;
   const startsAt = booking?.startedAt ?? booking?.availabilities[0]?.startedAt;
@@ -241,6 +286,44 @@ function BookingDetailContent() {
     }
   }
 
+  async function saveMeetingLink(customMeetingUrl: string | null) {
+    if (!booking || !booking.actions.canEditMeetingLink || meetingLinkBusy) return;
+    if (customMeetingUrl !== null) {
+      const validationMessage = meetingUrlValidationMessage(customMeetingUrl);
+      if (validationMessage) {
+        setMessage(validationMessage);
+        return;
+      }
+    }
+
+    setMeetingLinkBusy(true);
+    setMessage(null);
+    try {
+      const updated = await updateMeetingLink(booking.id, customMeetingUrl);
+      setBooking(updated);
+      setMeetingUrlDraft(updated.customMeetingUrl ?? "");
+      setMessage(
+        customMeetingUrl === null
+          ? updated.zoomMeetingUrl
+            ? "Tutor link removed. The generated meeting link is restored."
+            : "Tutor link removed. No meeting link is available yet."
+          : "Meeting link updated."
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not update the meeting link.");
+      if (
+        error instanceof BookingApiError &&
+        (error.status === 403 ||
+          error.status === 404 ||
+          (error.status === 409 && error.code === "MEETING_LINK_NOT_EDITABLE"))
+      ) {
+        await loadBooking();
+      }
+    } finally {
+      setMeetingLinkBusy(false);
+    }
+  }
+
   const sortedSlots = useMemo(
     () =>
       [...slots].sort(
@@ -268,6 +351,9 @@ function BookingDetailContent() {
     );
 
   const shortfall = Number(booking.payment.shortfall ?? 0);
+  const beforeLessonEnd = new Date(booking.endedAt).getTime() > clientNow;
+  const canJoinLesson = booking.actions.canJoin && beforeLessonEnd;
+  const canEditMeetingLink = booking.actions.canEditMeetingLink && beforeLessonEnd;
   const topUpHref = `/wallet/topup?${new URLSearchParams({
     amount: String(shortfall),
     returnTo: `/bookings/${booking.id}`,
@@ -336,15 +422,75 @@ function BookingDetailContent() {
               </div>
             )}
           </dl>
-          {booking.status === "CONFIRMED" && booking.zoomMeetingUrl && (
+          {canJoinLesson && booking.effectiveMeetingUrl && (
             <a
-              href={booking.zoomMeetingUrl}
+              href={booking.effectiveMeetingUrl}
               target="_blank"
               rel="noreferrer"
               className="mt-6 inline-flex h-11 items-center rounded-full bg-violet-600 px-5 font-semibold text-white"
             >
               Join lesson
             </a>
+          )}
+          {booking.status === "CONFIRMED" && !booking.effectiveMeetingUrl && (
+            <p className="mt-6 text-sm text-zinc-600 dark:text-zinc-400">
+              Your booking is confirmed. A meeting link is not available yet.
+            </p>
+          )}
+          {booking.effectiveMeetingUrl && (
+            <p className="mt-3 text-sm text-zinc-500">
+              Using {booking.customMeetingUrl ? "the Tutor-provided link" : "the generated link"}.
+            </p>
+          )}
+          {booking.meetingLinkUpdatedAt && (
+            <p className="mt-2 text-sm text-zinc-500">
+              Meeting link last updated on {dateTime.format(new Date(booking.meetingLinkUpdatedAt))}
+              .
+            </p>
+          )}
+          {canEditMeetingLink && (
+            <div className="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+              <label htmlFor="custom-meeting-url" className="block text-sm font-semibold">
+                {booking.customMeetingUrl ? "Replace meeting link" : "Add meeting link"}
+              </label>
+              <p className="mt-1 text-sm text-zinc-500">
+                Enter an HTTPS meeting link. The link is not checked with the provider.
+              </p>
+              <input
+                id="custom-meeting-url"
+                type="url"
+                inputMode="url"
+                autoComplete="url"
+                value={meetingUrlDraft}
+                onChange={(event) => setMeetingUrlDraft(event.target.value)}
+                placeholder="https://..."
+                className="mt-3 min-h-11 w-full rounded-lg border border-zinc-300 bg-transparent px-3 dark:border-zinc-700"
+              />
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  disabled={
+                    meetingLinkBusy ||
+                    !meetingUrlDraft.trim() ||
+                    meetingUrlDraft.trim() === booking.customMeetingUrl
+                  }
+                  onClick={() => void saveMeetingLink(meetingUrlDraft.trim())}
+                  className="inline-flex min-h-10 items-center rounded-full bg-zinc-900 px-4 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+                >
+                  {meetingLinkBusy ? "Saving…" : "Save link"}
+                </button>
+                {booking.customMeetingUrl && (
+                  <button
+                    type="button"
+                    disabled={meetingLinkBusy}
+                    onClick={() => void saveMeetingLink(null)}
+                    className="inline-flex min-h-10 items-center rounded-full border border-zinc-300 px-4 text-sm font-semibold disabled:opacity-50 dark:border-zinc-700"
+                  >
+                    {booking.zoomMeetingUrl ? "Restore generated link" : "Remove Tutor link"}
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </section>
         <aside className="rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
