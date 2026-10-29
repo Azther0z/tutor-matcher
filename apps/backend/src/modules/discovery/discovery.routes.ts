@@ -6,9 +6,9 @@ import {
   getLearningAreas,
   getSearchPriceRange,
   getTutorById,
-  getTutorProfileById,
+  getPublicTutorProfile,
   getTutorSearch,
-  getTutorSubjectPageById,
+  getPublicSubjectPage,
 } from "./discovery.controller.ts";
 import { subjectPageQuerySchema, tutorSearchQuerySchema } from "./discovery.schema.ts";
 
@@ -31,13 +31,13 @@ publicDiscoveryRouter.get(
   getTutorSearch
 );
 // DISC-3: the tutor profile page is public too, like the search that links to it.
-publicDiscoveryRouter.get("/tutors/:id/profile", discoverySearchRateLimiter, getTutorProfileById);
+publicDiscoveryRouter.get("/tutors/:id/profile", discoverySearchRateLimiter, getPublicTutorProfile);
 // DISC-4: each subject's page is public as well and loads one Bangkok day at a time.
 publicDiscoveryRouter.get(
   "/tutors/:id/subjects/:subjectId",
   discoverySearchRateLimiter,
   validate(subjectPageQuerySchema, "query"),
-  getTutorSubjectPageById
+  getPublicSubjectPage
 );
 publicDiscoveryRouter.get("/learning-areas", discoverySearchRateLimiter, getLearningAreas);
 publicDiscoveryRouter.get("/price-range", discoverySearchRateLimiter, getSearchPriceRange);

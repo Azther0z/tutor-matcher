@@ -218,7 +218,7 @@ export async function sendPaymentNotificationEmail({
 // SAFE-2: a rejection reason reaches the applicant by email as well as in their submission
 // history. It is an account email like password reset, so notification preferences do not apply.
 // Approved Tutors revise in Tutor settings; first-time applicants on the application page.
-export async function sendTutorRequestRejectedEmail({
+export async function sendTutorRejectionEmail({
   to,
   firstName,
   reason,

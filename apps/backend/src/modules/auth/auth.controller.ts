@@ -3,13 +3,13 @@ import {
   signup as signupService,
   login as loginService,
   SignupConflictError,
-  CurrentUserNotFoundError,
+  CurrentUserMissingError,
   InvalidCredentialsError,
   getCurrentUser as getCurrentUserService,
   requestPasswordReset as requestPasswordResetService,
-  validatePasswordResetToken as validatePasswordResetTokenService,
+  validatePasswordResetToken as validateResetTokenService,
   confirmPasswordReset as confirmPasswordResetService,
-  InvalidPasswordResetTokenError,
+  InvalidResetTokenError,
 } from "./auth.service.ts";
 import type {
   LoginInput,
@@ -57,7 +57,7 @@ export async function getCurrentUser(req: Request, res: Response) {
     const user = await getCurrentUserService(req.user!.sub);
     res.status(200).json(user);
   } catch (error) {
-    if (error instanceof CurrentUserNotFoundError) {
+    if (error instanceof CurrentUserMissingError) {
       res.status(404).json({ message: error.message });
       return;
     }
@@ -76,10 +76,10 @@ export async function validatePasswordResetToken(req: Request, res: Response) {
   const { token } = req.query as { token: string };
 
   try {
-    const result = await validatePasswordResetTokenService(token);
+    const result = await validateResetTokenService(token);
     res.status(200).json(result);
   } catch (error) {
-    if (error instanceof InvalidPasswordResetTokenError) {
+    if (error instanceof InvalidResetTokenError) {
       res.status(400).json({ message: error.message });
       return;
     }
@@ -95,7 +95,7 @@ export async function confirmPasswordReset(req: Request, res: Response) {
     const result = await confirmPasswordResetService(input);
     res.status(200).json(result);
   } catch (error) {
-    if (error instanceof InvalidPasswordResetTokenError) {
+    if (error instanceof InvalidResetTokenError) {
       res.status(400).json({ message: error.message });
       return;
     }

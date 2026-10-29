@@ -40,6 +40,8 @@
 - Keep `docs/database-schema.md` and `CONTEXT.md` aligned with canonical `docs/user-journeys.md` whenever product behaviour changes.
 
 ### Preferences
+- Refactors must preserve observable behaviour, prioritize performance, keep code names to four
+  words or fewer, and extract reusable code only when it creates a real shared seam.
 - For AI-assisted Sprint delivery, assign the entire story, including design integration and automated testing, to one fixed two-person pair.
 - Treat `docs/user-journeys.md` as behavioural authority and `apps/backend/prisma/schema.prisma` as the authority for what the database currently contains.
 - Ask before changing the Prisma schema or modifying database data directly.

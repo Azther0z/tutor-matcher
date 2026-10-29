@@ -184,7 +184,9 @@ it("lets any upcoming day be picked, marks open days and keeps the day in the UR
   expect(screen.getByRole("button", { name: emptyDay })).toBeEnabled();
   const pastDay = dates.find((date) => date < today);
   if (pastDay) expect(screen.getByRole("button", { name: pastDay })).toBeDisabled();
-  expect(screen.getByRole("button", { name: "Previous month" })).toBeDisabled();
+  const previousMonth = screen.getByRole("button", { name: "Previous month" });
+  if (day.slice(0, 7) === today.slice(0, 7)) expect(previousMonth).toBeDisabled();
+  else expect(previousMonth).toBeEnabled();
 
   fireEvent.click(screen.getByRole("button", { name: `${otherDay}, has open times` }));
   expect(mockReplace).toHaveBeenCalledWith(`/tutors/${TUTOR_ID}/${SUBJECT_ID}?date=${otherDay}`, {

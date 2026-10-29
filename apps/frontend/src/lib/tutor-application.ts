@@ -1,4 +1,4 @@
-import { clearAuthToken, getAuthToken } from "@/src/lib/auth";
+import { apiRequest } from "@/src/lib/api-client";
 import { normalizeHttpsUrl, type TutorDetails } from "@/src/lib/tutor-details";
 import type { SubjectOffering } from "@/src/lib/subjects";
 
@@ -82,30 +82,27 @@ export class TutorApiError extends Error {
 }
 
 export async function tutorApi<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getAuthToken();
-  if (!token) throw new TutorApiError("Please log in to continue.", 401);
-  const response = await fetch(path, {
+  return apiRequest<T>(path, {
     ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
+    auth: "required",
+    clearOnUnauthorized: true,
+    missingAuthError: () => new TutorApiError("Please log in to continue.", 401),
+    headers: options.body
+      ? { "Content-Type": "application/json", ...options.headers }
+      : options.headers,
+    errorMessage: "Could not complete the request. Please try again.",
+    makeError: ({ body, response }) => {
+      if (response.ok) return new Error("The server returned an empty response. Please refresh.");
+      const serverMessage = (body as { message?: unknown } | null)?.message;
+      const message = Array.isArray(serverMessage) ? serverMessage.join(" ") : serverMessage;
+      return new TutorApiError(
+        response.status === 403
+          ? "You do not have permission to perform this action."
+          : typeof message === "string"
+            ? message
+            : "Could not complete the request. Please try again.",
+        response.status
+      );
     },
   });
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
-    if (response.status === 401) clearAuthToken();
-    const serverMessage = data?.message;
-    const message = Array.isArray(serverMessage) ? serverMessage.join(" ") : serverMessage;
-    throw new TutorApiError(
-      response.status === 403
-        ? "You do not have permission to perform this action."
-        : typeof message === "string"
-          ? message
-          : "Could not complete the request. Please try again.",
-      response.status
-    );
-  }
-  if (data === null) throw new Error("The server returned an empty response. Please refresh.");
-  return data as T;
 }

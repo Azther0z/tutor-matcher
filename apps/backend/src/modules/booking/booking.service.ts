@@ -1,11 +1,9 @@
-import { createHash } from "node:crypto";
 import { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
 import { isTransactionConflict } from "../../lib/transaction-conflict.ts";
 import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
 import { subjectSnapshot } from "../subject/subject.public.ts";
 import { notifyUser } from "../notification/notification.service.ts";
-import { setTimeout, clearTimeout } from "node:timers";
 import { appendWalletMovement, InsufficientWalletBalance } from "../wallet/wallet-ledger.ts";
 import type {
   CancelBookingInput,
@@ -13,307 +11,38 @@ import type {
   RescheduleBookingInput,
   TutorCancelBookingInput,
 } from "./booking.schema.ts";
+import {
+  BookingConflictError,
+  BookingDomainError,
+  BookingForbiddenError,
+  BookingNotFoundError,
+  BookingPaymentError,
+} from "./booking.errors.ts";
+import {
+  assertSlotBlock,
+  CANCELLATION_POLICY_WINDOW_HOURS,
+  decimalString,
+  PAYMENT_HOLD_MINUTES,
+  SLOT_MS,
+  studentQuote,
+  tutorQuote,
+  ZERO,
+} from "./booking.policy.ts";
+import { detailInclude, mapBookingResponse, type BookingDetailRecord } from "./booking.view.ts";
+import { waitForBookingNotifications } from "./booking.notifications.ts";
+import { releaseExpiredBookings } from "./booking.expiry.ts";
 
-// Best-effort notifications may continue after the response, but cannot delay it indefinitely.
-// allSettled also consumes late rejections after the timeout; this is not a durable queue.
-export async function waitForBookingNotifications(notifications: Promise<unknown>[]) {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    await Promise.race([
-      Promise.allSettled(notifications).then((results) => {
-        for (const [index, result] of results.entries()) {
-          if (result.status === "rejected") {
-            // Do not log recipient data or raw errors that may contain private details.
-            console.warn("[notification:booking] Notification failed", { recipientIndex: index });
-          }
-        }
-      }),
-      new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, 1000);
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-const SLOT_MS = 30 * 60_000;
-const BANGKOK_TIME_ZONE = "Asia/Bangkok";
-const ZERO = new Prisma.Decimal(0);
-
-function positiveSetting(name: string, fallback: number) {
-  const parsed = Number(process.env[name]);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function rateSetting(name: string, fallback: number) {
-  const parsed = Number(process.env[name]);
-  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : fallback;
-}
-
-// Approved BOOK-3 defaults; deployments may explicitly configure a different policy.
-export const CANCELLATION_POLICY_WINDOW_HOURS = positiveSetting(
-  "BOOKING_CANCELLATION_WINDOW_HOURS",
-  24
-);
-export const LATE_CANCELLATION_REFUND_RATE = rateSetting("BOOKING_LATE_REFUND_RATE", 0.7);
-export const PAYMENT_HOLD_MINUTES = positiveSetting("BOOKING_PAYMENT_HOLD_MINUTES", 15);
-
-export type BookingErrorCode =
-  | "BOOKING_NOT_FOUND"
-  | "SUBJECT_NOT_FOUND"
-  | "BOOKING_FORBIDDEN"
-  | "SLOT_TAKEN"
-  | "INVALID_SLOT_BLOCK"
-  | "BOOKING_EXPIRED"
-  | "BOOKING_ALREADY_PAID"
-  | "BOOKING_NOT_CANCELLABLE"
-  | "BOOKING_NOT_RESCHEDULABLE"
-  | "PAYMENT_NOT_FOUND"
-  | "INSUFFICIENT_BALANCE"
-  | "CANCELLATION_QUOTE_CHANGED";
-
-export class BookingDomainError extends Error {
-  constructor(
-    public readonly code: BookingErrorCode,
-    public readonly status: number,
-    message: string,
-    public readonly details?: Record<string, unknown>
-  ) {
-    super(message);
-    this.name = "BookingDomainError";
-  }
-}
-
-export class BookingNotFoundError extends BookingDomainError {
-  constructor(
-    message = "Booking not found",
-    code: "BOOKING_NOT_FOUND" | "SUBJECT_NOT_FOUND" = "BOOKING_NOT_FOUND"
-  ) {
-    super(code, 404, message);
-  }
-}
-
-export class BookingForbiddenError extends BookingDomainError {
-  constructor(message: string) {
-    super("BOOKING_FORBIDDEN", 403, message);
-  }
-}
-
-type ConflictCode = Exclude<
-  BookingErrorCode,
-  | "BOOKING_NOT_FOUND"
-  | "SUBJECT_NOT_FOUND"
-  | "BOOKING_FORBIDDEN"
-  | "PAYMENT_NOT_FOUND"
-  | "INSUFFICIENT_BALANCE"
->;
-
-export class BookingConflictError extends BookingDomainError {
-  constructor(code: ConflictCode, message: string, details?: Record<string, unknown>) {
-    super(code, 409, message, details);
-  }
-}
-
-export class BookingPaymentError extends BookingDomainError {
-  constructor(
-    code: "PAYMENT_NOT_FOUND" | "INSUFFICIENT_BALANCE",
-    message: string,
-    details?: Record<string, unknown>
-  ) {
-    super(code, code === "INSUFFICIENT_BALANCE" ? 402 : 409, message, details);
-  }
-}
-
-const detailInclude = {
-  user: { select: { id: true, firstName: true, lastName: true, balance: true } },
-  subject: {
-    include: {
-      tutor: {
-        include: {
-          user: { select: { id: true, firstName: true, lastName: true } },
-          currentProfileVersion: { select: { avatarUrl: true, ...publicPortfolioSelect } },
-        },
-      },
-    },
-  },
-  availabilities: { orderBy: { startedAt: "asc" as const } },
-  walletTransactions: { orderBy: { createdAt: "asc" as const } },
-} satisfies Prisma.BookingInclude;
-
-type BookingDetailRecord = Prisma.BookingGetPayload<{ include: typeof detailInclude }>;
-type QuoteSource = Pick<
-  BookingDetailRecord,
-  "id" | "status" | "totalAmount" | "startedAt" | "walletTransactions"
->;
-
-function decimalString(value: Prisma.Decimal) {
-  return value.toDecimalPlaces(2).toFixed(2);
-}
-
-function bangkokCalendarDay(value: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: BANGKOK_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(value);
-  const read = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? "";
-  return `${read("year")}-${read("month")}-${read("day")}`;
-}
-
-// BOOK-1 only accepts one continuous block that stays on one Bangkok calendar day.
-export function assertSlotBlock(slots: Array<{ startedAt: Date }>, subjectId: string) {
-  if (slots.length === 0)
-    throw new BookingConflictError("INVALID_SLOT_BLOCK", "Select at least one slot", {
-      subjectId,
-    });
-  const day = bangkokCalendarDay(slots[0]!.startedAt);
-  for (let index = 0; index < slots.length; index++) {
-    if (bangkokCalendarDay(slots[index]!.startedAt) !== day)
-      throw new BookingConflictError(
-        "INVALID_SLOT_BLOCK",
-        "Selected slots must be on the same day",
-        { subjectId }
-      );
-    if (
-      index > 0 &&
-      slots[index]!.startedAt.getTime() - slots[index - 1]!.startedAt.getTime() !== SLOT_MS
-    )
-      throw new BookingConflictError("INVALID_SLOT_BLOCK", "Selected slots must be consecutive", {
-        subjectId,
-      });
-  }
-}
-
-// BOOK-3 calculates refunds from server time; the client never supplies money values.
-export function cancellationRefund(amount: Prisma.Decimal, startsAt: Date, now = new Date()) {
-  const policyMs = CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
-  const late = startsAt.getTime() - now.getTime() <= policyMs;
-  const rate = late ? LATE_CANCELLATION_REFUND_RATE : 1;
-  return { late, rate, amount: amount.mul(rate).toDecimalPlaces(2) };
-}
-
-function quoteFor(booking: QuoteSource, now: Date) {
-  const transfer = booking.walletTransactions.find((payment) => payment.type === "LESSON_PAYMENT");
-  const originalAmount = transfer?.amount ?? ZERO;
-  const late =
-    booking.startedAt.getTime() - now.getTime() <= CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
-  const policy = transfer
-    ? cancellationRefund(transfer.amount, booking.startedAt, now)
-    : { late, rate: 0, amount: ZERO };
-  const fee = originalAmount.minus(policy.amount).toDecimalPlaces(2);
-  const token = createHash("sha256")
-    .update(
-      [
-        booking.id,
-        booking.status,
-        booking.startedAt.toISOString(),
-        transfer?.id ?? "unpaid",
-        decimalString(originalAmount),
-        decimalString(policy.amount),
-        String(policy.rate),
-        String(policy.late),
-      ].join("|")
-    )
-    .digest("hex");
-  return {
-    token,
-    generatedAt: now.toISOString(),
-    bookingId: booking.id,
-    lateCancellation: policy.late,
-    policyWindowHours: CANCELLATION_POLICY_WINDOW_HOURS,
-    refundRate: policy.rate,
-    originalAmount: decimalString(originalAmount),
-    refundAmount: decimalString(policy.amount),
-    cancellationFee: decimalString(fee),
-  };
-}
-
-export function mapBookingResponse(
-  booking: BookingDetailRecord,
-  viewerUserId: string,
-  now = new Date()
-) {
-  const isStudent = booking.userId === viewerUserId;
-  const isTutor = booking.subject.tutor.user?.id === viewerUserId;
-  const transfer = booking.walletTransactions.find((payment) => payment.type === "LESSON_PAYMENT");
-  const amountDue = booking.status === "PENDING_PAYMENT" ? booking.totalAmount : ZERO;
-  const walletBalance = booking.user.balance;
-  const shortfall = amountDue.greaterThan(walletBalance) ? amountDue.minus(walletBalance) : ZERO;
-  // A pending paid lesson needs a deadline; a legacy/null pending row is never payable.
-  const beforeDeadline =
-    booking.paymentExpiresAt !== null && booking.paymentExpiresAt.getTime() > now.getTime();
-  const beforeLesson = booking.startedAt.getTime() > now.getTime();
-  const payEligible =
-    isStudent &&
-    booking.status === "PENDING_PAYMENT" &&
-    !transfer &&
-    beforeDeadline &&
-    beforeLesson;
-  const canPay = payEligible && shortfall.isZero();
-  const canCancel =
-    isStudent && ["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) && beforeLesson;
-  const canReschedule =
-    isStudent &&
-    booking.status === "CONFIRMED" &&
-    booking.startedAt.getTime() - now.getTime() > CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
-  // BOOK-4 lets the tutor cancel any class that has not started, including payment holds.
-  const canTutorCancel =
-    isTutor && ["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) && beforeLesson;
-
-  return {
-    id: booking.id,
-    status: booking.status,
-    viewerRole: isStudent ? ("STUDENT" as const) : ("TUTOR" as const),
-    description: booking.description,
-    zoomMeetingUrl: booking.zoomMeetingUrl,
-    createdAt: booking.createdAt.toISOString(),
-    isTrial: booking.isTrial,
-    totalAmount: decimalString(booking.totalAmount),
-    startedAt: booking.startedAt.toISOString(),
-    endedAt: booking.endedAt.toISOString(),
-    paymentExpiresAt: booking.paymentExpiresAt?.toISOString() ?? null,
-    cancelledAt: booking.cancelledAt?.toISOString() ?? null,
-    cancellationReason: booking.cancellationReason,
-    cancelledBy: booking.cancelledBy,
-    student: {
-      id: booking.user.id,
-      name: `${booking.user.firstName} ${booking.user.lastName}`,
-    },
-    subject: {
-      id: booking.subject.id,
-      name: booking.subjectName ?? booking.subject.name,
-      description:
-        booking.subjectName == null ? booking.subject.description : booking.subjectDescription,
-      hourlyRate: decimalString(booking.subjectHourlyRate ?? booking.subject.hourlyRate),
-      format: booking.subjectFormat ?? booking.subject.format,
-      tutor: {
-        id: booking.subject.tutor.id,
-        name: booking.subject.tutor.user
-          ? `${booking.subject.tutor.user.firstName} ${booking.subject.tutor.user.lastName}`
-          : "Tutor",
-        avatarUrl: booking.subject.tutor.currentProfileVersion.avatarUrl,
-        certificationUrls: publicCertificationUrls(booking.subject.tutor.currentProfileVersion),
-      },
-    },
-    availabilities: booking.availabilities.map((slot) => ({
-      id: slot.id,
-      startedAt: slot.startedAt.toISOString(),
-    })),
-    payment: {
-      // Compatibility display value only; ledger rows have no status.
-      status: transfer ? "COMPLETED" : booking.status === "PENDING_PAYMENT" ? "PENDING" : null,
-      amountDue: decimalString(amountDue),
-      walletBalance: isStudent ? decimalString(walletBalance) : null,
-      shortfall: isStudent ? decimalString(shortfall) : null,
-      canPay,
-      expiresAt: booking.paymentExpiresAt?.toISOString() ?? null,
-    },
-    actions: { canPay: payEligible, canCancel, canReschedule, canTutorCancel },
-  };
-}
+export * from "./booking.errors.ts";
+export {
+  assertSlotBlock,
+  cancellationRefund,
+  CANCELLATION_POLICY_WINDOW_HOURS,
+  LATE_CANCELLATION_REFUND_RATE,
+  PAYMENT_HOLD_MINUTES,
+} from "./booking.policy.ts";
+export { mapBookingResponse } from "./booking.view.ts";
+export { waitForBookingNotifications } from "./booking.notifications.ts";
+export { releaseExpiredBookings } from "./booking.expiry.ts";
 
 function isSerializationError(error: unknown) {
   return isTransactionConflict(error);
@@ -321,57 +50,6 @@ function isSerializationError(error: unknown) {
 
 async function loadDetail(id: string) {
   return prisma.booking.findUnique({ where: { id }, include: detailInclude });
-}
-
-// Lazily expires abandoned payment-due bookings before relevant reads and writes.
-export async function releaseExpiredBookings(
-  now = new Date(),
-  filter: { id?: string; userId?: string; subjectId?: string; tutorId?: string } = {}
-) {
-  const { tutorId, ...bookingFilter } = filter;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      return await prisma.$transaction(
-        async (tx) => {
-          const expired = await tx.booking.findMany({
-            where: {
-              ...bookingFilter,
-              ...(tutorId ? { subject: { tutorId } } : {}),
-              status: "PENDING_PAYMENT",
-              OR: [{ paymentExpiresAt: { lte: now } }, { paymentExpiresAt: null }],
-            },
-            select: { id: true },
-          });
-          let released = 0;
-          for (const candidate of expired) {
-            const claimed = await tx.booking.updateMany({
-              where: {
-                id: candidate.id,
-                status: "PENDING_PAYMENT",
-                OR: [{ paymentExpiresAt: { lte: now } }, { paymentExpiresAt: null }],
-              },
-              data: {
-                status: "CANCELLED",
-                cancelledAt: now,
-                cancellationReason: "PAYMENT_EXPIRED",
-              },
-            });
-            if (claimed.count !== 1) continue;
-            await tx.availability.updateMany({
-              where: { bookingId: candidate.id },
-              data: { bookingId: null },
-            });
-            released += 1;
-          }
-          return released;
-        },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-      );
-    } catch (error) {
-      if (!isSerializationError(error) || attempt === 1) throw error;
-    }
-  }
-  return 0;
 }
 
 // BOOK-1 returns future, unclaimed slots for a published tutor subject.
@@ -718,7 +396,7 @@ export async function getCancellationQuote(userId: string, id: string) {
     !booking.walletTransactions.some((movement) => movement.type === "LESSON_PAYMENT")
   )
     throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
-  return quoteFor(booking, now);
+  return studentQuote(booking, now);
 }
 
 export async function cancelBooking(userId: string, id: string, input: CancelBookingInput) {
@@ -738,7 +416,7 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
         )
           throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
 
-        const quote = quoteFor(booking, transactionNow);
+        const quote = studentQuote(booking, transactionNow);
         const transfer = booking.walletTransactions.find(
           (payment) => payment.type === "LESSON_PAYMENT"
         );
@@ -824,38 +502,6 @@ export async function listTutorUpcomingBookings(userId: string) {
   return bookings.map((booking) => mapBookingResponse(booking, userId, now));
 }
 
-// BOOK-4: a tutor cancellation always refunds the full payment; the window only adds a warning.
-function tutorQuoteFor(booking: QuoteSource, now: Date) {
-  const transfer = booking.walletTransactions.find((payment) => payment.type === "LESSON_PAYMENT");
-  const originalAmount = transfer?.amount ?? ZERO;
-  const late =
-    booking.startedAt.getTime() - now.getTime() <= CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
-  const token = createHash("sha256")
-    .update(
-      [
-        "TUTOR",
-        booking.id,
-        booking.status,
-        booking.startedAt.toISOString(),
-        transfer?.id ?? "unpaid",
-        decimalString(originalAmount),
-        String(late),
-      ].join("|")
-    )
-    .digest("hex");
-  return {
-    token,
-    generatedAt: now.toISOString(),
-    bookingId: booking.id,
-    lateCancellation: late,
-    policyWindowHours: CANCELLATION_POLICY_WINDOW_HOURS,
-    refundRate: transfer ? 1 : 0,
-    originalAmount: decimalString(originalAmount),
-    refundAmount: decimalString(originalAmount),
-    cancellationFee: decimalString(ZERO),
-  };
-}
-
 function assertTutorOwnsBooking(booking: BookingDetailRecord, userId: string) {
   if (booking.subject.tutor.user?.id !== userId)
     throw new BookingForbiddenError("You cannot cancel this booking");
@@ -878,7 +524,7 @@ export async function getTutorCancellationQuote(userId: string, id: string) {
     !booking.walletTransactions.some((movement) => movement.type === "LESSON_PAYMENT")
   )
     throw new BookingPaymentError("PAYMENT_NOT_FOUND", "Confirmed lesson payment not found");
-  return tutorQuoteFor(booking, now);
+  return tutorQuote(booking, now);
 }
 
 export async function cancelBookingAsTutor(
@@ -902,7 +548,7 @@ export async function cancelBookingAsTutor(
         )
           throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
 
-        const quote = tutorQuoteFor(booking, transactionNow);
+        const quote = tutorQuote(booking, transactionNow);
         const transfer = booking.walletTransactions.find(
           (payment) => payment.type === "LESSON_PAYMENT"
         );

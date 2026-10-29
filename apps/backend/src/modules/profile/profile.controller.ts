@@ -1,17 +1,17 @@
 import type { Request, Response } from "express";
 import {
   AccountNotFoundError,
-  EmailAlreadyInUseError,
+  EmailInUseError,
   enrollTutor,
   getAccount,
   getStudentProfile,
   getTutorApplication,
   InvalidCurrentPasswordError,
-  LearningAreaNotFoundError,
+  LearningAreaMissingError,
   ProfileForbiddenError,
   saveStudentProfile,
   searchLearningAreas,
-  StudentProfileNotFoundError,
+  StudentProfileMissingError,
   TutorAlreadyApprovedError,
   updateAccount,
   updateTutorProfile,
@@ -44,7 +44,7 @@ export async function updateProfile(req: Request, res: Response) {
   }
 }
 
-export async function getTutorApplicationForCurrentUser(req: Request, res: Response) {
+export async function getOwnTutorApplication(req: Request, res: Response) {
   try {
     const application = await getTutorApplication(req.user!.sub);
     res.status(200).json(application);
@@ -54,7 +54,7 @@ export async function getTutorApplicationForCurrentUser(req: Request, res: Respo
   }
 }
 
-export async function enrollTutorForCurrentUser(req: Request, res: Response) {
+export async function enrollCurrentTutor(req: Request, res: Response) {
   try {
     const result = await enrollTutor(req.user!.sub, req.body as TutorEnrollmentRequest);
     res.status(200).json(result);
@@ -69,12 +69,12 @@ export async function enrollTutorForCurrentUser(req: Request, res: Response) {
   }
 }
 
-export async function getStudentProfileForCurrentUser(req: Request, res: Response) {
+export async function getOwnStudentProfile(req: Request, res: Response) {
   try {
     const profile = await getStudentProfile(req.user!.sub);
     res.status(200).json(profile);
   } catch (error) {
-    if (error instanceof StudentProfileNotFoundError) {
+    if (error instanceof StudentProfileMissingError) {
       res.status(404).json({ message: error.message });
       return;
     }
@@ -83,12 +83,12 @@ export async function getStudentProfileForCurrentUser(req: Request, res: Respons
   }
 }
 
-export async function saveStudentProfileForCurrentUser(req: Request, res: Response) {
+export async function saveOwnStudentProfile(req: Request, res: Response) {
   try {
     const profile = await saveStudentProfile(req.user!.sub, req.body);
     res.status(200).json(profile);
   } catch (error) {
-    if (error instanceof LearningAreaNotFoundError) {
+    if (error instanceof LearningAreaMissingError) {
       res.status(400).json({ message: error.message });
       return;
     }
@@ -119,7 +119,7 @@ function handleAccountError(error: unknown, res: Response) {
     return true;
   }
 
-  if (error instanceof EmailAlreadyInUseError) {
+  if (error instanceof EmailInUseError) {
     res.status(409).json({ message: error.message });
     return true;
   }
@@ -127,7 +127,7 @@ function handleAccountError(error: unknown, res: Response) {
   return false;
 }
 
-export async function getAccountForCurrentUser(req: Request, res: Response) {
+export async function getOwnAccount(req: Request, res: Response) {
   try {
     const account = await getAccount(req.user!.sub);
     res.status(200).json(account);
@@ -137,7 +137,7 @@ export async function getAccountForCurrentUser(req: Request, res: Response) {
   }
 }
 
-export async function updateAccountForCurrentUser(req: Request, res: Response) {
+export async function updateOwnAccount(req: Request, res: Response) {
   try {
     const account = await updateAccount(req.user!.sub, req.body as AccountUpdateRequest);
     // The token carries the email, so a changed address would leave the caller
@@ -167,7 +167,7 @@ function handleTutorError(error: unknown, res: Response) {
   return false;
 }
 
-export async function saveDraftForCurrentUser(req: Request, res: Response) {
+export async function saveOwnTutorDraft(req: Request, res: Response) {
   try {
     res.json(await saveTutorDraft(req.user!.sub, req.body));
   } catch (error) {
@@ -175,7 +175,7 @@ export async function saveDraftForCurrentUser(req: Request, res: Response) {
     throw error;
   }
 }
-export async function submitDraftForCurrentUser(req: Request, res: Response) {
+export async function submitOwnTutorDraft(req: Request, res: Response) {
   try {
     res.json(await submitTutorDraft(req.user!.sub));
   } catch (error) {
@@ -183,7 +183,7 @@ export async function submitDraftForCurrentUser(req: Request, res: Response) {
     throw error;
   }
 }
-export async function withdrawRequestForCurrentUser(req: Request, res: Response) {
+export async function withdrawTutorProfile(req: Request, res: Response) {
   try {
     res.json(await withdrawTutorRequest(req.user!.sub));
   } catch (error) {
@@ -191,7 +191,7 @@ export async function withdrawRequestForCurrentUser(req: Request, res: Response)
     throw error;
   }
 }
-export async function setPublicationForCurrentUser(req: Request, res: Response) {
+export async function setOwnTutorPublication(req: Request, res: Response) {
   try {
     res.json(await setTutorPublication(req.user!.sub, req.body.published));
   } catch (error) {
@@ -200,7 +200,7 @@ export async function setPublicationForCurrentUser(req: Request, res: Response) 
   }
 }
 
-export async function createDraftForCurrentUser(req: Request, res: Response) {
+export async function createOwnTutorDraft(req: Request, res: Response) {
   try {
     res.json(await createTutorDraft(req.user!.sub, req.body));
   } catch (error) {
@@ -208,7 +208,7 @@ export async function createDraftForCurrentUser(req: Request, res: Response) {
     throw error;
   }
 }
-export async function updateDraftForCurrentUser(req: Request, res: Response) {
+export async function updateOwnTutorDraft(req: Request, res: Response) {
   try {
     const { draftId } = tutorDraftParamsSchema.parse(req.params);
     res.json(await updateTutorDraft(req.user!.sub, draftId, req.body));
@@ -217,7 +217,7 @@ export async function updateDraftForCurrentUser(req: Request, res: Response) {
     throw error;
   }
 }
-export async function discardDraftForCurrentUser(req: Request, res: Response) {
+export async function discardOwnTutorDraft(req: Request, res: Response) {
   try {
     const { draftId } = tutorDraftParamsSchema.parse(req.params);
     res.json(await discardTutorDraft(req.user!.sub, draftId));
@@ -226,7 +226,7 @@ export async function discardDraftForCurrentUser(req: Request, res: Response) {
     throw error;
   }
 }
-export async function submitSelectedDraftForCurrentUser(req: Request, res: Response) {
+export async function submitChosenTutorDraft(req: Request, res: Response) {
   try {
     const { draftId } = tutorDraftParamsSchema.parse(req.params);
     res.json(await submitTutorDraft(req.user!.sub, draftId));
@@ -236,7 +236,7 @@ export async function submitSelectedDraftForCurrentUser(req: Request, res: Respo
   }
 }
 
-export async function copySubmissionForCurrentUser(req: Request, res: Response) {
+export async function copyOwnSubmission(req: Request, res: Response) {
   try {
     res.json(await copyTutorSubmission(req.user!.sub, req.params.draftId as string));
   } catch (error) {
