@@ -69,6 +69,8 @@ export type BookingErrorCode =
   | "BOOKING_ALREADY_PAID"
   | "BOOKING_NOT_CANCELLABLE"
   | "BOOKING_NOT_COMPLETABLE"
+  | "BOOKING_ALREADY_COMPLETED"
+  | "BOOKING_CANCELLED"
   | "BOOKING_NOT_RESCHEDULABLE"
   | "MEETING_LINK_NOT_EDITABLE"
   | "PAYMENT_NOT_FOUND"
@@ -918,6 +920,13 @@ export async function confirmBookingCompletionAsTutor(userId: string, id: string
         if (!booking) throw new BookingNotFoundError();
         if (booking.subject.tutor.user?.id !== userId)
           throw new BookingForbiddenError("Only the assigned Tutor can confirm this lesson");
+        if (booking.status === "COMPLETED")
+          throw new BookingConflictError(
+            "BOOKING_ALREADY_COMPLETED",
+            "This lesson has already been completed"
+          );
+        if (booking.status === "CANCELLED")
+          throw new BookingConflictError("BOOKING_CANCELLED", "This booking was cancelled");
         if (booking.status !== "CONFIRMED" || booking.endedAt.getTime() > now.getTime())
           throw new BookingConflictError(
             "BOOKING_NOT_COMPLETABLE",

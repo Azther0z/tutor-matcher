@@ -165,7 +165,27 @@ run("CLASS-2 Tutor lesson completion confirmation", () => {
       (await authorize(request(app).get("/api/bookings/tutor/needs-confirmation")).expect(200)).body
         .bookings
     ).toEqual([]);
-    await authorize(request(app).post(`/api/bookings/${id}/confirm-completion`)).expect(409);
+    const repeated = await authorize(
+      request(app).post(`/api/bookings/${id}/confirm-completion`)
+    ).expect(409);
+    expect(repeated.body).toMatchObject({
+      code: "BOOKING_ALREADY_COMPLETED",
+      message: "This lesson has already been completed",
+    });
+  });
+
+  it("reports a distinct conflict when the Tutor tries to confirm a cancelled lesson", async () => {
+    const { id } = await createLesson(72);
+    await moveLessonToPast(id);
+    await prisma.booking.update({ where: { id }, data: { status: "CANCELLED" } });
+
+    const response = await authorize(
+      request(app).post(`/api/bookings/${id}/confirm-completion`)
+    ).expect(409);
+    expect(response.body).toMatchObject({
+      code: "BOOKING_CANCELLED",
+      message: "This booking was cancelled",
+    });
   });
 
   it("rejects confirmation before scheduled end", async () => {

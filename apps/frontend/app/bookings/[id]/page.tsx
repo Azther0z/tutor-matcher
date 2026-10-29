@@ -77,6 +77,7 @@ function BookingDetailContent() {
   const [meetingUrlDraft, setMeetingUrlDraft] = useState("");
   const [meetingLinkBusy, setMeetingLinkBusy] = useState(false);
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
+  const [completionError, setCompletionError] = useState<string | null>(null);
   const [clientNow, setClientNow] = useState(() => Date.now());
   const quoteRequestId = useRef(0);
   const cancellationInFlight = useRef(false);
@@ -121,6 +122,41 @@ function BookingDetailContent() {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [booking, clientNow]);
+
+  useEffect(() => {
+    if (booking?.viewerRole !== "TUTOR" || booking.status !== "CONFIRMED") return;
+
+    const endedAt = new Date(booking.endedAt).getTime();
+    if (endedAt <= Date.now()) return;
+
+    const refreshBookingAtEnd = () => {
+      setClientNow(Date.now());
+      void loadBooking();
+    };
+    let endTimer: number;
+    const scheduleRefreshAtEnd = () => {
+      const remaining = endedAt - Date.now() + 250;
+      endTimer = window.setTimeout(
+        () => {
+          if (Date.now() >= endedAt) refreshBookingAtEnd();
+          else scheduleRefreshAtEnd();
+        },
+        Math.min(remaining, 2_147_483_647)
+      );
+    };
+    scheduleRefreshAtEnd();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() >= endedAt) {
+        refreshBookingAtEnd();
+      }
+    };
+
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearTimeout(endTimer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [booking?.endedAt, booking?.status, booking?.viewerRole, loadBooking]);
 
   const requiredSlotCount = booking?.availabilities.length ?? 0;
   const startsAt = booking?.startedAt ?? booking?.availabilities[0]?.startedAt;
@@ -213,13 +249,36 @@ function BookingDetailContent() {
     if (!booking?.actions.canConfirmCompletion || busy) return;
     setBusy(true);
     setMessage(null);
+    setCompletionError(null);
     try {
       setBooking(await confirmBookingCompletion(booking.id));
       setCompletionDialogOpen(false);
       setMessage("Session marked completed.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not confirm this lesson.");
-      await loadBooking();
+      const errorMessage =
+        error instanceof Error ? error.message : "Could not confirm this lesson.";
+      let refreshedBooking: Booking | null = null;
+      try {
+        refreshedBooking = await getBooking(booking.id);
+        setBooking(refreshedBooking);
+        setMeetingUrlDraft(refreshedBooking.customMeetingUrl ?? "");
+      } catch {
+        // Keep the retryable confirmation failure visible in the open dialog.
+      }
+
+      const errorCode = error instanceof BookingApiError ? error.code : undefined;
+      if (errorCode === "BOOKING_ALREADY_COMPLETED" || refreshedBooking?.status === "COMPLETED") {
+        setCompletionDialogOpen(false);
+        setMessage("This lesson has already been completed.");
+      } else if (errorCode === "BOOKING_CANCELLED" || refreshedBooking?.status === "CANCELLED") {
+        setCompletionDialogOpen(false);
+        setMessage("This booking was cancelled.");
+      } else if (!refreshedBooking?.actions.canConfirmCompletion) {
+        setCompletionDialogOpen(false);
+        setMessage(errorMessage);
+      } else {
+        setCompletionError(errorMessage);
+      }
     } finally {
       setBusy(false);
     }
@@ -477,7 +536,10 @@ function BookingDetailContent() {
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => setCompletionDialogOpen(true)}
+                onClick={() => {
+                  setCompletionError(null);
+                  setCompletionDialogOpen(true);
+                }}
                 className="mt-3 h-11 rounded-full bg-violet-600 px-5 font-semibold text-white disabled:opacity-50"
               >
                 Confirm session completed
@@ -611,6 +673,11 @@ function BookingDetailContent() {
           <p className="px-6 py-5 text-sm text-zinc-600 dark:text-zinc-300">
             This will mark the lesson completed. You cannot undo this confirmation.
           </p>
+          {completionError && (
+            <p role="alert" className="px-6 pb-5 text-sm text-red-600">
+              {completionError}
+            </p>
+          )}
         </TutorDialog>
       )}
 

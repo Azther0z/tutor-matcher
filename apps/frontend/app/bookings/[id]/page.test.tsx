@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import BookingDetailPage from "./page";
 import { subscribeToWalletBalance } from "@/src/lib/wallet-api";
 
@@ -70,6 +70,8 @@ beforeEach(() => {
 });
 
 afterEach(() => localStorage.clear());
+
+afterEach(() => jest.useRealTimers());
 
 it("shows server cancellation terms before sending the quote token", async () => {
   global.fetch = jest
@@ -154,6 +156,134 @@ it("lets the assigned Tutor confirm an ended lesson with an irreversible confirm
     `/api/bookings/${bookingId}/confirm-completion`,
     expect.objectContaining({ method: "POST" })
   );
+});
+
+it("shows retryable completion errors inside the open dialog", async () => {
+  const endedBooking = {
+    ...booking,
+    viewerRole: "TUTOR",
+    startedAt: "2020-01-10T09:00:00.000Z",
+    endedAt: "2020-01-10T09:30:00.000Z",
+    actions: {
+      ...booking.actions,
+      canCancel: false,
+      canReschedule: false,
+      canConfirmCompletion: true,
+    },
+  };
+  localStorage.setItem("authToken", "tutor-token");
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: endedBooking }) })
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      json: async () => ({ message: "Temporary service issue" }),
+    })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: endedBooking }) });
+
+  render(<BookingDetailPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Confirm session completed" }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirm completed" }));
+
+  const dialog = await screen.findByRole("dialog", { name: "Confirm session completed?" });
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent("Temporary service issue");
+  expect(within(dialog).getByRole("button", { name: "Confirm completed" })).toBeEnabled();
+});
+
+it("closes the completion dialog when a refresh shows the lesson was cancelled", async () => {
+  const endedBooking = {
+    ...booking,
+    viewerRole: "TUTOR",
+    startedAt: "2020-01-10T09:00:00.000Z",
+    endedAt: "2020-01-10T09:30:00.000Z",
+    actions: {
+      ...booking.actions,
+      canCancel: false,
+      canReschedule: false,
+      canConfirmCompletion: true,
+    },
+  };
+  const cancelledBooking = {
+    ...endedBooking,
+    status: "CANCELLED",
+    actions: { ...endedBooking.actions, canConfirmCompletion: false },
+  };
+  localStorage.setItem("authToken", "tutor-token");
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: endedBooking }) })
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      json: async () => ({ code: "BOOKING_CANCELLED", message: "This booking was cancelled." }),
+    })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: cancelledBooking }) });
+
+  render(<BookingDetailPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Confirm session completed" }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirm completed" }));
+
+  expect(await screen.findByText("CANCELLED")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("dialog", { name: "Confirm session completed?" })
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("This booking was cancelled.");
+});
+
+it("reloads the booking when the scheduled end passes while its page is open", async () => {
+  jest.useFakeTimers({ now: new Date("2030-01-10T09:29:59.000Z") });
+  const beforeEnd = {
+    ...booking,
+    viewerRole: "TUTOR",
+    actions: { ...booking.actions, canConfirmCompletion: false },
+  };
+  const afterEnd = { ...beforeEnd, actions: { ...beforeEnd.actions, canConfirmCompletion: true } };
+  localStorage.setItem("authToken", "tutor-token");
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: beforeEnd }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: afterEnd }) });
+
+  render(<BookingDetailPage />);
+  await screen.findByText("CONFIRMED");
+  await act(async () => {
+    await jest.advanceTimersByTimeAsync(1_500);
+  });
+
+  expect(global.fetch).toHaveBeenCalledTimes(2);
+  expect(
+    await screen.findByRole("button", { name: "Confirm session completed" })
+  ).toBeInTheDocument();
+});
+
+it("reloads an ended booking when a suspended page becomes visible", async () => {
+  jest.useFakeTimers({ now: new Date("2030-01-10T09:29:59.000Z") });
+  const beforeEnd = {
+    ...booking,
+    viewerRole: "TUTOR",
+    actions: { ...booking.actions, canConfirmCompletion: false },
+  };
+  const afterEnd = { ...beforeEnd, actions: { ...beforeEnd.actions, canConfirmCompletion: true } };
+  localStorage.setItem("authToken", "tutor-token");
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: beforeEnd }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: afterEnd }) });
+
+  render(<BookingDetailPage />);
+  await screen.findByText("CONFIRMED");
+  await act(async () => {
+    jest.setSystemTime(new Date("2030-01-10T09:30:02.000Z"));
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await Promise.resolve();
+  });
+
+  expect(global.fetch).toHaveBeenCalledTimes(2);
+  expect(
+    await screen.findByRole("button", { name: "Confirm session completed" })
+  ).toBeInTheDocument();
 });
 
 it("shows the completed status to the Student without a Tutor confirmation action", async () => {
