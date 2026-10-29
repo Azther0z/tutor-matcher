@@ -23,6 +23,7 @@ const PENDING_SLOT_ID = "41000000-0000-4000-8000-000000000005";
 const PAID_SLOT_ID = "41000000-0000-4000-8000-000000000006";
 const INVALID_EXPIRY_SLOT_ID = "41000000-0000-4000-8000-000000000007";
 const LINK_STUDENT_ID = "41000000-0000-4000-8000-000000000008";
+const RESCHEDULE_SLOT_ID = "41000000-0000-4000-8000-000000000009";
 
 const token = signAuthToken({
   sub: STUDENT_ID,
@@ -52,13 +53,17 @@ async function cleanFixtures() {
     where: { userId: { in: [STUDENT_ID, TUTOR_USER_ID, LINK_STUDENT_ID] } },
   });
   await prisma.availability.updateMany({
-    where: { id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID] } },
+    where: {
+      id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID, RESCHEDULE_SLOT_ID] },
+    },
     data: { bookingId: null },
   });
   await prisma.booking.deleteMany({ where: { subjectId: SUBJECT_ID } });
   await prisma.availabilitySubject.deleteMany({ where: { subjectId: SUBJECT_ID } });
   await prisma.availability.deleteMany({
-    where: { id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID] } },
+    where: {
+      id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID, RESCHEDULE_SLOT_ID] },
+    },
   });
   await prisma.subject.deleteMany({ where: { id: SUBJECT_ID } });
   await prisma.user.updateMany({ where: { id: TUTOR_USER_ID }, data: { tutorId: null } });
@@ -146,11 +151,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     const pendingStartsAt = new Date(Date.now() + 48 * 60 * 60_000);
     const paidStartsAt = new Date(Date.now() + 12 * 60 * 60_000);
     const invalidExpiryStartsAt = new Date(Date.now() + 72 * 60 * 60_000);
+    const rescheduleStartsAt = new Date(Date.now() + 96 * 60 * 60_000);
     await prisma.availability.createMany({
       data: [
         { id: PENDING_SLOT_ID, startedAt: pendingStartsAt, tutorId: TUTOR_ID },
         { id: PAID_SLOT_ID, startedAt: paidStartsAt, tutorId: TUTOR_ID },
         { id: INVALID_EXPIRY_SLOT_ID, startedAt: invalidExpiryStartsAt, tutorId: TUTOR_ID },
+        { id: RESCHEDULE_SLOT_ID, startedAt: rescheduleStartsAt, tutorId: TUTOR_ID },
       ],
     });
     await prisma.availabilitySubject.createMany({
@@ -158,6 +165,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         { availabilityId: PENDING_SLOT_ID, subjectId: SUBJECT_ID },
         { availabilityId: PAID_SLOT_ID, subjectId: SUBJECT_ID },
         { availabilityId: INVALID_EXPIRY_SLOT_ID, subjectId: SUBJECT_ID },
+        { availabilityId: RESCHEDULE_SLOT_ID, subjectId: SUBJECT_ID },
       ],
     });
   });
@@ -260,7 +268,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     const rescheduled = await authorizeLinkStudent(
       request(app)
         .patch(`/api/bookings/${bookingId}/reschedule`)
-        .send({ availabilityIds: [INVALID_EXPIRY_SLOT_ID] })
+        .send({ availabilityIds: [RESCHEDULE_SLOT_ID] })
     ).expect(200);
     expect(rescheduled.body.booking).toMatchObject({
       status: "CONFIRMED",

@@ -21,7 +21,14 @@ export const rescheduleBookingSchema = z.object({ availabilityIds });
 export const updateMeetingLinkSchema = z.object({
   customMeetingUrl: z
     .url()
-    .refine((value) => new URL(value).protocol === "https:", "Meeting link must use HTTPS")
+    .max(2048)
+    .refine((value) => {
+      try {
+        return new URL(value).protocol === "https:";
+      } catch {
+        return false;
+      }
+    }, "Meeting link must use HTTPS")
     .nullable(),
 });
 // BOOK-3 allows the student to optionally record why the lesson was cancelled.

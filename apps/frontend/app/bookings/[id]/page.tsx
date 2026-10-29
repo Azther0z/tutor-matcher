@@ -21,6 +21,8 @@ import type { AvailabilitySlot, Booking, CancellationQuote } from "@/src/types/b
 import { publishWalletBalance } from "@/src/lib/wallet-api";
 
 const TIME_ZONE = "Asia/Bangkok";
+const MAX_MEETING_URL_LENGTH = 2048;
+const MAX_TIMEOUT_DELAY = 2_147_483_647;
 const money = new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" });
 const dateTime = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
@@ -42,6 +44,20 @@ function isCancellationQuote(value: unknown): value is CancellationQuote {
   if (!value || typeof value !== "object") return false;
   const quote = value as Partial<CancellationQuote>;
   return typeof quote.token === "string" && typeof quote.refundAmount === "string";
+}
+
+function meetingUrlValidationMessage(value: string) {
+  if (value.length > MAX_MEETING_URL_LENGTH) {
+    return `Meeting links must be ${MAX_MEETING_URL_LENGTH} characters or fewer.`;
+  }
+
+  try {
+    if (new URL(value).protocol === "https:") return null;
+  } catch {
+    // The URL constructor rejects relative, malformed, and incomplete URLs.
+  }
+
+  return "Enter a valid HTTPS meeting link.";
 }
 
 function BookingDetailContent() {
@@ -81,9 +97,27 @@ function BookingDetailContent() {
   }, [loadBooking]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => setClientNow(Date.now()), 1_000);
-    return () => window.clearInterval(interval);
-  }, []);
+    const endedAt = booking ? new Date(booking.endedAt).getTime() : Number.NaN;
+    const hasTimeSensitiveActions = Boolean(
+      booking?.actions.canJoin || booking?.actions.canEditMeetingLink
+    );
+    if (!hasTimeSensitiveActions || !Number.isFinite(endedAt) || endedAt <= clientNow) return;
+
+    const refreshClientTime = () => setClientNow(Date.now());
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refreshClientTime();
+    };
+    const delay = Math.min(Math.max(endedAt - Date.now(), 0), MAX_TIMEOUT_DELAY);
+    const timeout = window.setTimeout(refreshClientTime, delay);
+    window.addEventListener("focus", refreshClientTime);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearTimeout(timeout);
+      window.removeEventListener("focus", refreshClientTime);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [booking, clientNow]);
 
   const requiredSlotCount = booking?.availabilities.length ?? 0;
   const startsAt = booking?.startedAt ?? booking?.availabilities[0]?.startedAt;
@@ -254,6 +288,14 @@ function BookingDetailContent() {
 
   async function saveMeetingLink(customMeetingUrl: string | null) {
     if (!booking || !booking.actions.canEditMeetingLink || meetingLinkBusy) return;
+    if (customMeetingUrl !== null) {
+      const validationMessage = meetingUrlValidationMessage(customMeetingUrl);
+      if (validationMessage) {
+        setMessage(validationMessage);
+        return;
+      }
+    }
+
     setMeetingLinkBusy(true);
     setMessage(null);
     try {
@@ -269,7 +311,14 @@ function BookingDetailContent() {
       );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not update the meeting link.");
-      await loadBooking();
+      if (
+        error instanceof BookingApiError &&
+        (error.status === 403 ||
+          error.status === 404 ||
+          (error.status === 409 && error.code === "MEETING_LINK_NOT_EDITABLE"))
+      ) {
+        await loadBooking();
+      }
     } finally {
       setMeetingLinkBusy(false);
     }
@@ -402,7 +451,7 @@ function BookingDetailContent() {
           {canEditMeetingLink && (
             <div className="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-800">
               <label htmlFor="custom-meeting-url" className="block text-sm font-semibold">
-                Replace meeting link
+                {booking.customMeetingUrl ? "Replace meeting link" : "Add meeting link"}
               </label>
               <p className="mt-1 text-sm text-zinc-500">
                 Enter an HTTPS meeting link. The link is not checked with the provider.

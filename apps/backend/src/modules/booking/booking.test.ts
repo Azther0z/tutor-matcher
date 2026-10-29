@@ -1,6 +1,10 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { Prisma } from "../../generated/prisma/client.ts";
-import { createBookingSchema, tutorCancelBookingSchema } from "./booking.schema.ts";
+import {
+  createBookingSchema,
+  tutorCancelBookingSchema,
+  updateMeetingLinkSchema,
+} from "./booking.schema.ts";
 import {
   assertSlotBlock,
   BookingDomainError,
@@ -12,6 +16,31 @@ import {
 const SUBJECT_ID = "11111111-1111-4111-8111-111111111111";
 const SLOT_A = "22222222-2222-4222-8222-222222222222";
 const SLOT_B = "33333333-3333-4333-8333-333333333333";
+
+describe("Tutor meeting link rules", () => {
+  it("accepts HTTPS URLs up to 2048 characters and rejects longer URLs", () => {
+    const prefix = "https://meet.example.com/";
+    const maxLengthUrl = prefix + "a".repeat(2048 - prefix.length);
+
+    expect(updateMeetingLinkSchema.safeParse({ customMeetingUrl: maxLengthUrl }).success).toBe(
+      true
+    );
+    expect(
+      updateMeetingLinkSchema.safeParse({ customMeetingUrl: `${maxLengthUrl}a` }).success
+    ).toBe(false);
+  });
+
+  it("allows removing a Tutor URL and rejects non-HTTPS URLs", () => {
+    expect(updateMeetingLinkSchema.safeParse({ customMeetingUrl: null }).success).toBe(true);
+    expect(
+      updateMeetingLinkSchema.safeParse({ customMeetingUrl: "http://meet.example.com/room" })
+        .success
+    ).toBe(false);
+    expect(updateMeetingLinkSchema.safeParse({ customMeetingUrl: "not a URL" }).success).toBe(
+      false
+    );
+  });
+});
 
 it("bounds notification waiting and logs late lookup failures without private details", async () => {
   jest.useFakeTimers();
