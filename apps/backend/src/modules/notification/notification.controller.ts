@@ -6,7 +6,7 @@ import {
 } from "./notification.service.ts";
 import type { NotificationPreferencesUpdate } from "./notification.schema.ts";
 
-export async function getNotificationPreferencesForCurrentUser(req: Request, res: Response) {
+export async function getNotificationPrefs(req: Request, res: Response) {
   try {
     const preferences = await getNotificationPreferences(req.user!.sub);
     res.status(200).json(preferences);
@@ -20,7 +20,7 @@ export async function getNotificationPreferencesForCurrentUser(req: Request, res
   }
 }
 
-export async function updateNotificationPreferencesForCurrentUser(req: Request, res: Response) {
+export async function updateNotificationPrefs(req: Request, res: Response) {
   try {
     const preferences = await updateNotificationPreferences(
       req.user!.sub,

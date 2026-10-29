@@ -1,4 +1,5 @@
 import type { SubjectOffering } from "@/src/lib/subjects";
+import { readApi } from "@/src/lib/api-client";
 
 // DISC-3: what the public tutor profile page shows.
 export type ProfileSubject = SubjectOffering & {
@@ -38,11 +39,11 @@ export type ProfileResult = { kind: "profile"; profile: TutorProfile } | { kind:
 
 // A 404 means the tutor is unpublished or missing: the page shows no details for it.
 export async function getTutorProfile(tutorId: string, signal?: AbortSignal) {
-  const response = await fetch(`/api/discovery/tutors/${encodeURIComponent(tutorId)}/profile`, {
-    signal,
-  });
+  const { body: data, response } = await readApi<TutorProfile>(
+    `/api/discovery/tutors/${encodeURIComponent(tutorId)}/profile`,
+    { signal }
+  );
   if (response.status === 404) return { kind: "unavailable" } satisfies ProfileResult;
-  const data = (await response.json().catch(() => null)) as TutorProfile | null;
   if (!response.ok || data === null) throw new Error("Could not load this tutor's profile.");
   return { kind: "profile", profile: data } satisfies ProfileResult;
 }
@@ -67,11 +68,11 @@ export async function getTutorSubjectPage(
   signal?: AbortSignal
 ) {
   const path = `/api/discovery/tutors/${encodeURIComponent(tutorId)}/subjects/${encodeURIComponent(subjectId)}`;
-  const response = await fetch(date ? `${path}?date=${encodeURIComponent(date)}` : path, {
-    signal,
-  });
+  const { body: data, response } = await readApi<SubjectPage>(
+    date ? `${path}?date=${encodeURIComponent(date)}` : path,
+    { signal }
+  );
   if (response.status === 404) return { kind: "unavailable" } satisfies SubjectPageResult;
-  const data = (await response.json().catch(() => null)) as SubjectPage | null;
   if (!response.ok || data === null) throw new Error("Could not load this subject.");
   return { kind: "subject", page: data } satisfies SubjectPageResult;
 }
@@ -113,24 +114,26 @@ export function videoSource(url: string | null): VideoSource | null {
 }
 
 const bangkok = "Asia/Bangkok";
+const openingDayFormat = new Intl.DateTimeFormat("en-GB", {
+  timeZone: bangkok,
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+});
+const openingTimeFormat = new Intl.DateTimeFormat("en-GB", {
+  timeZone: bangkok,
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
 
 // Openings are shown in the tutor's timezone, which is also how slots are published.
 export function openingDay(startedAt: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: bangkok,
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  }).format(new Date(startedAt));
+  return openingDayFormat.format(new Date(startedAt));
 }
 
 export function openingTime(startedAt: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: bangkok,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(startedAt));
+  return openingTimeFormat.format(new Date(startedAt));
 }
 
 export function openingDateTime(startedAt: string) {

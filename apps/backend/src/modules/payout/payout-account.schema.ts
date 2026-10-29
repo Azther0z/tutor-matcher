@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { payoutBankCodes } from "./payout-banks.ts";
 
-export const payoutAccountIdParamsSchema = z.object({ id: z.uuid() });
+export const payoutAccountParamsSchema = z.object({ id: z.uuid() });
 // PROF-7 saves Thai bank accounts only; spaces and dashes in the number are ignored.
 export const createPayoutAccountSchema = z.object({
   bankCode: z.enum(payoutBankCodes),

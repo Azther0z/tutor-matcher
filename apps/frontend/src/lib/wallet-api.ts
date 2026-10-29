@@ -1,4 +1,4 @@
-import { getAuthToken } from "@/src/lib/auth";
+import { apiRequest } from "@/src/lib/api-client";
 
 export type WalletSummary = { balance: string };
 export type ConfirmedTopup = WalletSummary & {
@@ -30,18 +30,16 @@ export function subscribeToWalletBalance(callback: (balance: string) => void) {
 }
 
 async function walletRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getAuthToken();
-  const response = await fetch(`/api/wallet${path}`, {
+  return apiRequest<T>(`/api/wallet${path}`, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
+    auth: "optional",
+    emptyBody: () => ({}) as T,
+    errorMessage: "Could not complete the wallet top-up.",
+    makeError: ({ body }) => {
+      const message = (body as { message?: string } | null)?.message;
+      return new Error(message || "Could not complete the wallet top-up.");
     },
   });
-  const body = (await response.json().catch(() => ({}))) as { message?: string } & T;
-  if (!response.ok) throw new Error(body.message || "Could not complete the wallet top-up.");
-  return body;
 }
 
 export function getWallet() {
@@ -55,6 +53,7 @@ export async function confirmTopup(
 ) {
   const confirmed = await walletRequest<ConfirmedTopup>("/topups/confirm", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ amount, reference, simulation }),
   });
 

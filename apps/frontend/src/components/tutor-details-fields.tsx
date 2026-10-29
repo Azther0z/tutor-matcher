@@ -7,10 +7,10 @@ import type {
   TutorDetailsFieldName,
 } from "@/src/lib/tutor-details";
 
-export const tutorDetailsInputClassName =
+export const tutorInputClass =
   "h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18]";
 
-const tutorDetailsTextAreaClassName =
+const tutorTextAreaClass =
   "rounded-lg border border-black/[.12] bg-transparent px-3 py-2 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18]";
 
 type TutorFieldProps = {
@@ -59,7 +59,7 @@ function TutorField({
           onChange={(event) => onChange(name, event.target.value)}
           aria-invalid={!!error}
           aria-describedby={describedBy}
-          className={tutorDetailsTextAreaClassName}
+          className={tutorTextAreaClass}
         />
       ) : (
         <input
@@ -72,7 +72,7 @@ function TutorField({
           onChange={(event) => onChange(name, event.target.value)}
           aria-invalid={!!error}
           aria-describedby={describedBy}
-          className={tutorDetailsInputClassName}
+          className={tutorInputClass}
         />
       )}
       {helper && (

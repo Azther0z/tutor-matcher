@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/db.ts";
-import { sendTutorRequestRejectedEmail } from "../../lib/email.ts";
+import { sendTutorRejectionEmail } from "../../lib/email.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
 import {
   TutorWorkflowError,
@@ -103,7 +103,7 @@ export async function reviewTutorRequest(adminId: string, id: string, input: Tut
   // recorded decision, since the applicant also sees the reason in their submission history.
   if (reviewed.status === "REJECTED" && reviewed.rejectionReason) {
     try {
-      await sendTutorRequestRejectedEmail({
+      await sendTutorRejectionEmail({
         to: applicant.email,
         firstName: applicant.firstName,
         reason: reviewed.rejectionReason,

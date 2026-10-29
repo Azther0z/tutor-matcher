@@ -1,4 +1,4 @@
-import { getAuthToken } from "@/src/lib/auth";
+import { apiRequest } from "@/src/lib/api-client";
 
 export type PayoutBank = { code: string; name: string };
 // The API only returns the masked number; the full number never reaches the browser.
@@ -21,18 +21,16 @@ export type NewPayoutAccount = {
 export const MAX_PAYOUT_ACCOUNTS = 5;
 
 async function payoutAccountsRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getAuthToken();
-  const response = await fetch(`/api/payout-accounts${path}`, {
+  return apiRequest<T>(`/api/payout-accounts${path}`, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
+    auth: "optional",
+    emptyBody: () => ({}) as T,
+    errorMessage: "Could not update your payout accounts.",
+    makeError: ({ body }) => {
+      const message = (body as { message?: string } | null)?.message;
+      return new Error(message || "Could not update your payout accounts.");
     },
   });
-  const body = (await response.json().catch(() => ({}))) as { message?: string } & T;
-  if (!response.ok) throw new Error(body.message || "Could not update your payout accounts.");
-  return body;
 }
 
 export async function getPayoutAccounts() {
