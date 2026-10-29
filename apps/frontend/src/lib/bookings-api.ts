@@ -12,6 +12,9 @@ export type BookingErrorCode =
   | "BOOKING_EXPIRED"
   | "BOOKING_ALREADY_PAID"
   | "BOOKING_NOT_CANCELLABLE"
+  | "BOOKING_NOT_COMPLETABLE"
+  | "BOOKING_ALREADY_COMPLETED"
+  | "BOOKING_CANCELLED"
   | "BOOKING_NOT_RESCHEDULABLE"
   | "INSUFFICIENT_BALANCE"
   | "CANCELLATION_QUOTE_CHANGED"
@@ -141,6 +144,21 @@ export async function getTutorUpcomingBookings(): Promise<Booking[]> {
     headers: authHeaders(),
   });
   return data.bookings;
+}
+
+export async function getTutorBookingsNeedingConfirmation(): Promise<Booking[]> {
+  const data = await request<{ bookings: Booking[] }>("/api/bookings/tutor/needs-confirmation", {
+    headers: authHeaders(),
+  });
+  return data.bookings;
+}
+
+export async function confirmBookingCompletion(id: string): Promise<Booking> {
+  const data = await request<{ booking: Booking }>(
+    `/api/bookings/${encodeURIComponent(id)}/confirm-completion`,
+    { method: "POST", headers: authHeaders(true), body: JSON.stringify({}) }
+  );
+  return data.booking;
 }
 
 export async function getTutorCancellationQuote(id: string): Promise<CancellationQuote> {

@@ -58,6 +58,7 @@
 - `/dashboard` always shows the Student dashboard; only approved Tutors get a Tutor tab on that same page. Keep legacy `/dashboard/tutor` links forwarding to the Tutor tab.
 - Student accounts must continue to see **Become a tutor** in the navbar.
 - CLASS-1 issue #146 depends on closed BOOK-8 #144. Use a platform-owned Google Meet organizer via OAuth, with separate generated and Tutor-provided URLs. Implement Tutor-provided URLs first; Google Meet room creation can follow later. The custom URL wins and survives rescheduling; rescheduling replaces the generated room. Co-host automation and Google-account linking are deferred. Follow the confirmed contract in `docs/adr/0004-google-meet-lesson-links.md`.
+- For CLASS-2 issue #147, a paid and scheduled Booking stays `CONFIRMED` until its scheduled end and remains so indefinitely until the assigned Tutor confirms completion. The Tutor sees ended lessons in a separate **Needs confirmation** list; confirmation is one-way and sets `COMPLETED`. Elapsed time alone never completes a lesson, and CLASS-2 adds no earnings, reviews, or notifications; CLASS-3 handles earnings and reviews.
 
 ### Open Threads
 - Question: Is rescheduling a booking in scope?

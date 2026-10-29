@@ -43,6 +43,7 @@ export type BookingActions = {
   canTutorCancel: boolean;
   canEditMeetingLink: boolean;
   canJoin: boolean;
+  canConfirmCompletion: boolean;
 };
 
 export type CancellationQuote = {

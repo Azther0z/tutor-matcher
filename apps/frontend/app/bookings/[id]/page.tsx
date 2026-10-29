@@ -5,10 +5,12 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ContinuousSlotPicker } from "@/src/components/continuous-slot-picker";
 import { RequireAuth } from "@/src/components/require-auth";
+import { TutorDialog } from "@/src/components/tutor-dialog";
 import {
   BookingApiError,
   cancelBooking,
   cancelBookingAsTutor,
+  confirmBookingCompletion,
   confirmPayment,
   getAvailability,
   getBooking,
@@ -74,6 +76,8 @@ function BookingDetailContent() {
   const [message, setMessage] = useState<string | null>(null);
   const [meetingUrlDraft, setMeetingUrlDraft] = useState("");
   const [meetingLinkBusy, setMeetingLinkBusy] = useState(false);
+  const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
+  const [completionError, setCompletionError] = useState<string | null>(null);
   const [clientNow, setClientNow] = useState(() => Date.now());
   const quoteRequestId = useRef(0);
   const cancellationInFlight = useRef(false);
@@ -118,6 +122,41 @@ function BookingDetailContent() {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [booking, clientNow]);
+
+  useEffect(() => {
+    if (booking?.viewerRole !== "TUTOR" || booking.status !== "CONFIRMED") return;
+
+    const endedAt = new Date(booking.endedAt).getTime();
+    if (endedAt <= Date.now()) return;
+
+    const refreshBookingAtEnd = () => {
+      setClientNow(Date.now());
+      void loadBooking();
+    };
+    let endTimer: number;
+    const scheduleRefreshAtEnd = () => {
+      const remaining = endedAt - Date.now() + 250;
+      endTimer = window.setTimeout(
+        () => {
+          if (Date.now() >= endedAt) refreshBookingAtEnd();
+          else scheduleRefreshAtEnd();
+        },
+        Math.min(remaining, 2_147_483_647)
+      );
+    };
+    scheduleRefreshAtEnd();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() >= endedAt) {
+        refreshBookingAtEnd();
+      }
+    };
+
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearTimeout(endTimer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [booking?.endedAt, booking?.status, booking?.viewerRole, loadBooking]);
 
   const requiredSlotCount = booking?.availabilities.length ?? 0;
   const startsAt = booking?.startedAt ?? booking?.availabilities[0]?.startedAt;
@@ -200,6 +239,45 @@ function BookingDetailContent() {
         await loadBooking();
       } else {
         setMessage(error instanceof Error ? error.message : "Payment could not be confirmed.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmCompletion() {
+    if (!booking?.actions.canConfirmCompletion || busy) return;
+    setBusy(true);
+    setMessage(null);
+    setCompletionError(null);
+    try {
+      setBooking(await confirmBookingCompletion(booking.id));
+      setCompletionDialogOpen(false);
+      setMessage("Session marked completed.");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Could not confirm this lesson.";
+      let refreshedBooking: Booking | null = null;
+      try {
+        refreshedBooking = await getBooking(booking.id);
+        setBooking(refreshedBooking);
+        setMeetingUrlDraft(refreshedBooking.customMeetingUrl ?? "");
+      } catch {
+        // Keep the retryable confirmation failure visible in the open dialog.
+      }
+
+      const errorCode = error instanceof BookingApiError ? error.code : undefined;
+      if (errorCode === "BOOKING_ALREADY_COMPLETED" || refreshedBooking?.status === "COMPLETED") {
+        setCompletionDialogOpen(false);
+        setMessage("This lesson has already been completed.");
+      } else if (errorCode === "BOOKING_CANCELLED" || refreshedBooking?.status === "CANCELLED") {
+        setCompletionDialogOpen(false);
+        setMessage("This booking was cancelled.");
+      } else if (!refreshedBooking?.actions.canConfirmCompletion) {
+        setCompletionDialogOpen(false);
+        setMessage(errorMessage);
+      } else {
+        setCompletionError(errorMessage);
       }
     } finally {
       setBusy(false);
@@ -354,6 +432,7 @@ function BookingDetailContent() {
   const beforeLessonEnd = new Date(booking.endedAt).getTime() > clientNow;
   const canJoinLesson = booking.actions.canJoin && beforeLessonEnd;
   const canEditMeetingLink = booking.actions.canEditMeetingLink && beforeLessonEnd;
+  const canConfirmCompletion = booking.actions.canConfirmCompletion && !beforeLessonEnd;
   const topUpHref = `/wallet/topup?${new URLSearchParams({
     amount: String(shortfall),
     returnTo: `/bookings/${booking.id}`,
@@ -447,6 +526,25 @@ function BookingDetailContent() {
               Meeting link last updated on {dateTime.format(new Date(booking.meetingLinkUpdatedAt))}
               .
             </p>
+          )}
+          {canConfirmCompletion && (
+            <div className="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+              <h3 className="font-semibold">Confirm this lesson</h3>
+              <p className="mt-1 text-sm text-zinc-500">
+                The scheduled lesson time has ended. Confirm when the session is complete.
+              </p>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setCompletionError(null);
+                  setCompletionDialogOpen(true);
+                }}
+                className="mt-3 h-11 rounded-full bg-violet-600 px-5 font-semibold text-white disabled:opacity-50"
+              >
+                Confirm session completed
+              </button>
+            </div>
           )}
           {canEditMeetingLink && (
             <div className="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-800">
@@ -544,6 +642,44 @@ function BookingDetailContent() {
           )}
         </aside>
       </div>
+
+      {completionDialogOpen && (
+        <TutorDialog
+          title="Confirm session completed?"
+          titleId="confirm-session-completed-title"
+          onClose={() => setCompletionDialogOpen(false)}
+          busy={busy}
+          footer={
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setCompletionDialogOpen(false)}
+                className="h-10 rounded-full border border-zinc-300 px-4 font-medium disabled:opacity-50"
+              >
+                Go back
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void confirmCompletion()}
+                className="h-10 rounded-full bg-violet-600 px-4 font-semibold text-white disabled:opacity-50"
+              >
+                {busy ? "Confirming…" : "Confirm completed"}
+              </button>
+            </div>
+          }
+        >
+          <p className="px-6 py-5 text-sm text-zinc-600 dark:text-zinc-300">
+            This will mark the lesson completed. You cannot undo this confirmation.
+          </p>
+          {completionError && (
+            <p role="alert" className="px-6 pb-5 text-sm text-red-600">
+              {completionError}
+            </p>
+          )}
+        </TutorDialog>
+      )}
 
       {mode === "cancel" && (
         <section className="mt-6 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">

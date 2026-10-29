@@ -68,6 +68,9 @@ export type BookingErrorCode =
   | "BOOKING_EXPIRED"
   | "BOOKING_ALREADY_PAID"
   | "BOOKING_NOT_CANCELLABLE"
+  | "BOOKING_NOT_COMPLETABLE"
+  | "BOOKING_ALREADY_COMPLETED"
+  | "BOOKING_CANCELLED"
   | "BOOKING_NOT_RESCHEDULABLE"
   | "MEETING_LINK_NOT_EDITABLE"
   | "PAYMENT_NOT_FOUND"
@@ -265,6 +268,8 @@ export function mapBookingResponse(
   const canTutorCancel =
     isTutor && ["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) && beforeLesson;
   const beforeLessonEnd = booking.endedAt.getTime() > now.getTime();
+  const canConfirmCompletion =
+    isTutor && booking.status === "CONFIRMED" && booking.endedAt.getTime() <= now.getTime();
   const canEditMeetingLink = isTutor && booking.status === "CONFIRMED" && beforeLessonEnd;
   const canJoin = booking.status === "CONFIRMED" && Boolean(effectiveMeetingUrl) && beforeLessonEnd;
 
@@ -326,6 +331,7 @@ export function mapBookingResponse(
       canTutorCancel,
       canEditMeetingLink,
       canJoin,
+      canConfirmCompletion,
     },
   };
 }
@@ -883,6 +889,74 @@ export async function listTutorUpcomingBookings(userId: string) {
     orderBy: [{ startedAt: "asc" }, { id: "asc" }],
   });
   return bookings.map((booking) => mapBookingResponse(booking, userId, now));
+}
+
+// CLASS-2 lists ended, paid lessons that still need the assigned Tutor's confirmation.
+export async function listTutorBookingsNeedingConfirmation(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { tutorId: true } });
+  if (!user?.tutorId)
+    throw new BookingForbiddenError("Only approved Tutors can view lessons needing confirmation");
+  const now = new Date();
+  const bookings = await prisma.booking.findMany({
+    where: {
+      subject: { tutorId: user.tutorId },
+      status: "CONFIRMED",
+      endedAt: { lte: now },
+    },
+    include: detailInclude,
+    orderBy: [{ endedAt: "asc" }, { id: "asc" }],
+  });
+  return bookings.map((booking) => mapBookingResponse(booking, userId, now));
+}
+
+// CLASS-2 changes only BookingStatus; earnings and review effects belong to CLASS-3.
+export async function confirmBookingCompletionAsTutor(userId: string, id: string) {
+  let completed: BookingDetailRecord | null;
+  try {
+    completed = await prisma.$transaction(
+      async (tx) => {
+        const booking = await tx.booking.findUnique({ where: { id }, include: detailInclude });
+        const now = new Date();
+        if (!booking) throw new BookingNotFoundError();
+        if (booking.subject.tutor.user?.id !== userId)
+          throw new BookingForbiddenError("Only the assigned Tutor can confirm this lesson");
+        if (booking.status === "COMPLETED")
+          throw new BookingConflictError(
+            "BOOKING_ALREADY_COMPLETED",
+            "This lesson has already been completed"
+          );
+        if (booking.status === "CANCELLED")
+          throw new BookingConflictError("BOOKING_CANCELLED", "This booking was cancelled");
+        if (booking.status !== "CONFIRMED" || booking.endedAt.getTime() > now.getTime())
+          throw new BookingConflictError(
+            "BOOKING_NOT_COMPLETABLE",
+            "This lesson is not ready for completion confirmation"
+          );
+
+        const updated = await tx.booking.updateMany({
+          where: { id, status: "CONFIRMED", endedAt: { lte: now } },
+          data: { status: "COMPLETED" },
+        });
+        if (updated.count !== 1)
+          throw new BookingConflictError(
+            "BOOKING_NOT_COMPLETABLE",
+            "This lesson was already changed and can no longer be confirmed"
+          );
+
+        return tx.booking.findUnique({ where: { id }, include: detailInclude });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+  } catch (error) {
+    if (error instanceof BookingDomainError || !isSerializationError(error)) throw error;
+    throw new BookingConflictError(
+      "BOOKING_NOT_COMPLETABLE",
+      "This lesson was already changed and can no longer be confirmed"
+    );
+  }
+
+  if (!completed) throw new BookingNotFoundError();
+  return mapBookingResponse(completed, userId);
 }
 
 // BOOK-4: a tutor cancellation always refunds the full payment; the window only adds a warning.
