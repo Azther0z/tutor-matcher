@@ -79,3 +79,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/pay-7-policy-confirmation.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
 - Scope: Tutor-only payout (issue #161 changed 2026-10-25), simulated and off in production, `/wallet/payout` page with a saved payout account (default picked first), one PAYOUT row with `payoutAccountId` per payout, no status or request table
+
+## [2026-10-30] ingest | PAY-5 wallet page decisions
+
+- Disposition: Update
+- Raw: docs/sources/pay-5-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Direction derived from type and status always Completed, a Payment due box on `/wallet` linking to `/bookings/:id` with no pending ledger row, and four summary figures with Tutor-only pending earnings at the provisional 15% fee
