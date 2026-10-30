@@ -206,6 +206,13 @@ export function Navbar() {
                     Signed in as <strong className="text-zinc-200">{displayName(user)}</strong>
                   </p>
                   <Link
+                    href="/wallet"
+                    onClick={() => setMenuOpen(false)}
+                    className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
+                  >
+                    Wallet
+                  </Link>
+                  <Link
                     href="/settings/account"
                     onClick={() => setMenuOpen(false)}
                     className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"

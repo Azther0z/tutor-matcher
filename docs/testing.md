@@ -139,6 +139,27 @@ npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/wallet/
 
 The decisions are recorded in [PAY-7 user evidence](sources/pay-7-policy-confirmation.md).
 
+### PAY-5 wallet page acceptance
+
+Wallet read tests (`wallet-read.test.ts`) mock Prisma. They cover the overview's single
+balance, Tutor-only pending earnings with the 15% fee rounded per booking, the Asia/Bangkok
+month window for earnings this month, all-time paid out, and unexpired Payment due
+bookings; the list's owner-only query, every type with its derived direction and Completed
+status, the type filter, paging, masked payout accounts, and 400s for an unknown type or bad
+page; and the owner-only detail with 404 for another user's or a missing id and 400 for a
+malformed one. Page tests cover the summary cards and navbar balance, hiding Tutor-only
+figures, one list of every type with its signed amount and detail link, the filter and page
+in the URL, the Payment due links to `/bookings/:id`, empty and retry states, and a read-only
+detail page with no actions, the booking link, the payout account and not-found handling.
+No database integration suite was added; these reads use plain Prisma queries.
+
+```powershell
+npm.cmd --prefix apps/backend test -- --runInBand wallet-read.test.ts
+npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath app/wallet/page.test.tsx "app/wallet/transactions/[id]/page.test.tsx"
+```
+
+The decisions are recorded in [PAY-5 user evidence](sources/pay-5-policy-confirmation.md).
+
 ### General commands
 
 Run commands from `apps/backend` unless otherwise noted:

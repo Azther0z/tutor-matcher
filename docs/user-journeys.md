@@ -346,6 +346,15 @@ earnings this month, and all-time paid out, above one transaction list filterabl
 All / Top-ups / Lesson payments / Lesson earnings / Payouts / Refunds. There are no
 separate Payments and Earnings pages.
 
+PAY-5 details: the available balance is the same stored balance the navbar shows, and
+loading `/wallet` refreshes the navbar with it. Pending earnings appear only for Tutors.
+Earnings this month sum LESSON_EARNING rows in the current Asia/Bangkok calendar month;
+all-time paid out sums every PAYOUT row. The list is newest first, 20 per page, and keeps
+its filter and page in the URL; each row shows the signed amount and resulting balance and
+opens its detail. A **Payment due** box lists the user's unpaid bookings whose hold has not
+expired, each with a link to `/bookings/:id`, where payment is made. The account menu
+links to `/wallet`. See the [PAY-5 confirmation](sources/pay-5-policy-confirmation.md).
+
 The approved [ledger decision](sources/tutormatcher-wallet-ledger-decision.md) and
 [implementation guide](sources/tutormatcher-wallet-ledger-implementation.md) supersede
 the earlier pending-transaction design (and the separately supplied PDF).
@@ -357,7 +366,12 @@ LESSON_PAYMENT and PAYOUT subtract. Entries are never updated or deleted by appl
 flows; failures and zero movements write no entry.
 
 **`/wallet/transactions/:id`** is read-only history of completed movements.
-Unpaid bookings appear only on `/bookings`, not in wallet history.
+Unpaid bookings appear only on `/bookings`, not in wallet history. Only the owner can open
+a transaction; any other id shows "not found". The page shows the type, amount, direction
+(In or Out, derived from the type), status (always Completed), date, resulting balance,
+reference, the related booking (if any) and, for a payout, the masked payout account. It
+has no actions; a lesson payment tells the user that payment is made only on its booking
+page.
 
 **Top-up.** Preset or custom amounts followed by simulated confirmation in PAY-1.
 The QR is a non-payable demonstration, explicitly labelled; do not send real money.
@@ -369,7 +383,8 @@ a verified payment provider is required before real-money use.
 confirms completion, CLASS-3 handles the Tutor's share after the platform fee and makes
 the Student review available. CLASS-2 changes BookingStatus only and creates no wallet
 movement. The provisional fee is 15%. Pending earnings are computed from CONFIRMED
-bookings minus the fee; no pending ledger row exists. Until settlement, the money is held
+bookings minus the fee, rounded to cents per booking; no pending ledger row exists. PAY-5
+shows this figure on `/wallet` using the provisional fee. Until settlement, the money is held
 by the platform for that booking, not in the Tutor's available wallet.
 
 **Refunds.** Paid cancellation appends REFUND and leaves LESSON_PAYMENT unchanged.
@@ -391,7 +406,7 @@ nothing. Repeating the same request reference does not pay out twice. The payout
 simulated, labelled "Simulated payout, no real money is transferred", and turned off in
 production like top-up. With no saved payout account the page asks the user to add one in
 Wallet settings. An asynchronous provider would need a separate request table, not a ledger
-status. The full wallet dashboard and lesson completion remain separate work. See the [PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
+status. Lesson-earning settlement remains separate work. See the [PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
 
 **Payout accounts (`/settings/wallet`, PROF-7).** Any logged-in user can open Wallet
 settings from the Settings navigation, not only Tutors (PROF-7). Requesting a payout is tutor-only (PAY-7).
