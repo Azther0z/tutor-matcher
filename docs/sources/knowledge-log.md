@@ -79,3 +79,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/pay-7-policy-confirmation.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
 - Scope: Tutor-only payout (issue #161 changed 2026-10-25), simulated and off in production, `/wallet/payout` page with a saved payout account (default picked first), one PAYOUT row with `payoutAccountId` per payout, no status or request table
+
+## [2026-11-03] ingest | PROF-7 payout accounts become tutor-only
+
+- Disposition: Update; supersedes the PROF-7 answer that any logged-in user manages payout accounts
+- Raw: docs/sources/prof-7-tutor-only-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Only Tutors list, add, set default or remove payout accounts; Wallet settings keeps the balance and Top up for everyone
