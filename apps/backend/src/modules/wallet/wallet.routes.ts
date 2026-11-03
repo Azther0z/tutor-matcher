@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { validate } from "../../middleware/validate.ts";
-import { confirmPromptPayTopup, summary } from "./wallet.controller.ts";
-import { confirmTopupSchema } from "./wallet.schema.ts";
+import { cancelMyTopup, myTopups, submitTopup, summary } from "./wallet.controller.ts";
+import { createTopupSchema, topupIdParamsSchema } from "./wallet.schema.ts";
 
 export const walletRouter = Router();
 
@@ -20,9 +20,11 @@ export const topupRateLimiter = rateLimit({
 });
 
 walletRouter.get("/", summary);
+walletRouter.get("/topups", myTopups);
+walletRouter.post("/topups", topupRateLimiter, validate(createTopupSchema), submitTopup);
 walletRouter.post(
-  "/topups/confirm",
+  "/topups/:id/cancel",
   topupRateLimiter,
-  validate(confirmTopupSchema),
-  confirmPromptPayTopup
+  validate(topupIdParamsSchema, "params"),
+  cancelMyTopup
 );
