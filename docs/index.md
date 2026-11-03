@@ -24,6 +24,7 @@ disagree.
 | DISC-2 recommendation implementation and checks | [Tutor recommendations change](change/implement-disc-2-recommendations/proposal.md)                               |
 | PROF-6 implementation decisions and checks      | [Subject management change](change/implement-prof-6-subjects/proposal.md)                                         |
 | PROF-3 implementation decisions and checks      | [Availability change](change/implement-prof-3-availability/proposal.md)                                           |
+| PAY-1 slip top-up decisions                     | [PAY-1 slip evidence](sources/pay-1-slip-topup-confirmation.md)                                                   |
 | PROF-7 payout account decisions                 | [PROF-7 evidence](sources/prof-7-policy-confirmation.md), [tutor-only](sources/prof-7-tutor-only-confirmation.md) |
 | CLASS-1 custom URL first slice                  | [Custom meeting URL change](change/class-1-custom-meeting-url/proposal.md)                                        |
 | The database schema and its known gaps          | [`database-schema.md`](database-schema.md)                                                                        |

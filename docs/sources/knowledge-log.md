@@ -86,3 +86,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/prof-7-tutor-only-confirmation.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
 - Scope: Only Tutors list, add, set default or remove payout accounts; Wallet settings keeps the balance and Top up for everyone
+
+## [2026-11-03] ingest | PAY-1 top-up by slip and admin approval
+
+- Disposition: Update; supersedes the simulated top-up confirmation
+- Raw: docs/sources/pay-1-slip-topup-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Slip URL top-up requests, one pending per user, admin approve or reject with a reason, new `topup_requests` table; no simulation, placeholder QR, no PromptPay API

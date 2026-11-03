@@ -108,7 +108,7 @@ Guards run before render, not after.
 | `/bookings/:id`            | One booking — payment, confirmation, meeting link, review               | Requires login |
 | `/messages/:id`            | Conversation thread with student ⇄ tutor context switch                 | Requires login |
 | `/wallet`                  | Combined ledger: top-ups, lesson payments, earnings, refunds, payouts   | Requires login |
-| `/wallet/topup`            | Add money by PromptPay QR (Thai mobile-banking QR payment)              | Requires login |
+| `/wallet/topup`            | Add money by PromptPay transfer and slip link, checked by an admin      | Requires login |
 | `/wallet/payout`           | Request a simulated payout to a saved payout account                    | Requires login |
 | `/wallet/transactions/:id` | Read-only transaction detail                                            | Requires login |
 | `/settings/account`        | Email, password, deactivate account                                     | Requires login |
@@ -117,6 +117,7 @@ Guards run before render, not after.
 | `/settings/tutor`          | Tutor profile — public listing, verification, subjects                  | Role: tutor    |
 | `/reviews/:tutorId`        | Read-only review list for a tutor                                       | Requires login |
 | `/admin/tutor-requests`    | Tutor application queue — approve or reject                             | Role: admin    |
+| `/admin/topups`            | Top-up slip queue — approve or reject                                   | Role: admin    |
 
 ### Access rules
 
@@ -335,7 +336,7 @@ one balance, not two.
 
 | Movement           | Direction | Where it starts                      |
 | ------------------ | --------- | ------------------------------------ |
-| **Top-up**         | in        | `/wallet/topup` — PromptPay QR       |
+| **Top-up**         | in        | `/wallet/topup` — slip, admin check  |
 | **Lesson payment** | out       | `/bookings/:id` in payment-due state |
 | **Lesson earning** | in        | settlement after a completed lesson  |
 | **Refund**         | in        | eligible cancellation or dispute     |
@@ -359,11 +360,18 @@ flows; failures and zero movements write no entry.
 **`/wallet/transactions/:id`** is read-only history of completed movements.
 Unpaid bookings appear only on `/bookings`, not in wallet history.
 
-**Top-up.** Preset or custom amounts followed by simulated confirmation in PAY-1.
-The QR is a non-payable demonstration, explicitly labelled; do not send real money.
-Success atomically credits balance and appends TOP_UP. Failure writes nothing.
-Retrying the same reference cannot credit twice. Simulation is disabled in production;
-a verified payment provider is required before real-money use.
+**Top-up (PAY-1, slip check since 2026-11-03).** The user picks a preset or custom
+amount, sees a PromptPay QR and pastes a link to the transfer slip. The QR is a labelled
+placeholder because the platform has no receiving account yet. Sending the slip creates a
+pending top-up request and credits nothing. An admin opens the slip at `/admin/topups` and
+approves or rejects it; a rejection needs a reason the user sees, and the amount cannot be
+changed. Approval appends one TOP_UP row whose id is the request id and credits the balance
+in the same serializable transaction, so a request is credited at most once. A user can
+have one pending request at a time and can cancel it. `/wallet/topup` shows the pending
+request with its slip link and the recent requests with their status and reason. An admin
+cannot review their own top-up. The same flow runs in development and production; there
+is no simulation. A booking's payment hold can expire while a slip waits for review. See
+the [PAY-1 slip confirmation](sources/pay-1-slip-topup-confirmation.md).
 
 **Lesson earnings (planned for CLASS-3, outside PAY-1 and CLASS-2).** After the Tutor
 confirms completion, CLASS-3 handles the Tutor's share after the platform fee and makes

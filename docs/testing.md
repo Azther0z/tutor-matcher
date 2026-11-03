@@ -143,6 +143,31 @@ npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/wallet/
 
 The decisions are recorded in [PAY-7 user evidence](sources/pay-7-policy-confirmation.md).
 
+### PAY-1 slip top-up acceptance
+
+Wallet unit tests mock Prisma. They cover authentication, a pending request that credits
+nothing, amount and slip URL rules (HTTP or HTTPS only), one pending request per user, the
+rate limit, the user's recent requests, cancelling only one's own pending request, admin-only
+listing and review, approval appending one TOP_UP with the request id, a required rejection
+reason with no credit, no self-review, and refusing a request that is no longer pending.
+Top-up page tests cover sending a slip, slip link validation, the pending view with Cancel,
+recent requests with reasons, the booking hold note and the one-pending error. Admin page
+tests cover the 403 state, the slip link, approve, reject with a reason, a stale review and
+the status filter.
+
+`wallet.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true`. Run it on a
+disposable database such as `tutor_matcher_pay1_test` with the schema pushed. It covers two
+admins approving the same request at once (one TOP_UP, one credit), the one-pending index,
+a rejection that credits nothing and approving a cancelled request.
+
+```powershell
+$env:RUN_DATABASE_INTEGRATION = "true"
+npm.cmd --prefix apps/backend test -- --runInBand wallet.integration.test.ts
+npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/wallet/topup/page.test.tsx" "app/admin/topups/page.test.tsx"
+```
+
+The decisions are recorded in [PAY-1 slip evidence](sources/pay-1-slip-topup-confirmation.md).
+
 ### General commands
 
 Run commands from `apps/backend` unless otherwise noted:
