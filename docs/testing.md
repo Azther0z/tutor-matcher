@@ -87,20 +87,23 @@ The decisions are recorded in [BOOK-4 user evidence](sources/book-4-policy-confi
 
 ### PROF-7 payout account acceptance
 
-Payout account unit tests use mocked Prisma. They cover authentication, the bank list, the
+Payout account unit tests use mocked Prisma. They cover authentication, rejecting a user who
+is not a Tutor on every route, the bank list, the
 first account becoming the default, `makeDefault`, input rules (bank from the list, trimmed
 holder name up to 100 characters, 10 to 15 digits after removing spaces and dashes), the
 5 account limit, duplicate accounts, the add and remove rate limit, the retry on a one-default race, owner-only 404s, and soft removal that
 promotes the oldest account. Wallet settings page tests cover the balance and Top up link,
 the empty state, masked rows with the Default badge, form validation, adding, setting the
-default, the inline remove confirm (no `window.confirm`), the limit and the error states.
+default, the inline remove confirm (no `window.confirm`), the limit and the error states,
+and that a user who is not a Tutor sees only the balance and Top up and never loads payout
+accounts.
 
 `payout-account.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true`.
 It refuses any database except `tutor_matcher_prof7_test` on loopback; create that dedicated
-disposable database and synchronize the schema first. It covers a Student who is not a
-Tutor and a Tutor, the first default, `makeDefault`, atomic and concurrent default switches,
+disposable database and synchronize the schema first. It covers rejecting a Student who is
+not a Tutor, a Tutor's first default, `makeDefault`, atomic and concurrent default switches,
 the one-default index, removal that promotes the oldest account, the 5 account limit,
-owner-only access, and that no response contains a full account number. Fixture cleanup is
+owner-only access between two Tutors, and that no response contains a full account number. Fixture cleanup is
 restricted to PROF-7 IDs.
 
 ```powershell
@@ -110,7 +113,8 @@ npm.cmd --prefix apps/backend test -- --runInBand payout-account.integration.tes
 npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/settings/wallet/page.test.tsx"
 ```
 
-The decisions are recorded in [PROF-7 user evidence](sources/prof-7-policy-confirmation.md).
+The decisions are recorded in [PROF-7 user evidence](sources/prof-7-policy-confirmation.md)
+and the [tutor-only change](sources/prof-7-tutor-only-confirmation.md).
 
 ### PAY-7 payout request acceptance
 
