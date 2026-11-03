@@ -4,6 +4,7 @@ import request from "supertest";
 type Mock = jest.Mock<(...args: unknown[]) => Promise<unknown>>;
 const mock = () => jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const listAccounts = mock();
+const findUser = mock();
 const tx = {
   payoutAccount: {
     findMany: mock(),
@@ -16,7 +17,11 @@ const tx = {
 const transaction =
   jest.fn<(callback: (client: typeof tx) => Promise<unknown>) => Promise<unknown>>();
 jest.unstable_mockModule("../../lib/db.ts", () => ({
-  prisma: { payoutAccount: { findMany: listAccounts }, $transaction: transaction },
+  prisma: {
+    payoutAccount: { findMany: listAccounts },
+    user: { findUnique: findUser },
+    $transaction: transaction,
+  },
 }));
 const { app } = await import("../../app.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");
@@ -56,6 +61,7 @@ beforeEach(() => {
   for (const fn of Object.values(tx.payoutAccount)) fn.mockReset().mockResolvedValue(null);
   tx.payoutAccount.findMany.mockResolvedValue([]);
   listAccounts.mockReset().mockResolvedValue([account()]);
+  findUser.mockReset().mockResolvedValue({ tutorId: "77000000-0000-4000-8000-000000000009" });
   transaction.mockReset().mockImplementation((callback) => callback(tx));
 });
 
@@ -64,6 +70,24 @@ describe("PROF-7 payout account settings", () => {
     await request(app).get("/api/payout-accounts").expect(401);
     await request(app).get("/api/payout-accounts/banks").expect(401);
     await request(app).post("/api/payout-accounts").send({}).expect(401);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a user who is not a Tutor before touching any account", async () => {
+    findUser.mockResolvedValue({ tutorId: null });
+    const attempts = [
+      request(app).get("/api/payout-accounts"),
+      request(app).get("/api/payout-accounts/banks"),
+      request(app).post("/api/payout-accounts").send({}),
+      request(app).patch(`/api/payout-accounts/${accountId}/default`),
+      request(app).delete(`/api/payout-accounts/${accountId}`),
+    ];
+    for (const attempt of attempts) {
+      const response = await authorize(attempt).expect(403);
+      expect(response.body.code).toBe("PAYOUT_ACCOUNT_TUTOR_ONLY");
+    }
+    expect(calls(findUser)[0]).toEqual({ where: { id: userId }, select: { tutorId: true } });
+    expect(listAccounts).not.toHaveBeenCalled();
     expect(transaction).not.toHaveBeenCalled();
   });
 

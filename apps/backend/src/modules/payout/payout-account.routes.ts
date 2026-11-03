@@ -1,7 +1,14 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { validate } from "../../middleware/validate.ts";
-import { banks, create, list, remove, setDefault } from "./payout-account.controller.ts";
+import {
+  banks,
+  create,
+  list,
+  remove,
+  requireTutor,
+  setDefault,
+} from "./payout-account.controller.ts";
 import { createPayoutAccountSchema, payoutAccountIdParamsSchema } from "./payout-account.schema.ts";
 
 export const payoutAccountRouter = Router();
@@ -19,8 +26,10 @@ export const payoutAccountRateLimiter = rateLimit({
   },
 });
 
+// PROF-7: a Tutor manages their own accounts; another user's id is not found.
+// The Tutor check runs first so other users never reach the rate limiter.
+payoutAccountRouter.use(requireTutor);
 payoutAccountRouter.get("/", list);
-// PROF-7: any user manages their own accounts; another user's id is not found.
 payoutAccountRouter.get("/banks", banks);
 payoutAccountRouter.post(
   "/",
