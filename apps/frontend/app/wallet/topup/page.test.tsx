@@ -36,7 +36,11 @@ function respond(body: unknown, ok = true) {
 }
 
 // Routes each request by URL and method so the order of calls does not matter.
-function mockApi(recent: unknown[], next: Record<string, unknown> = {}) {
+function mockApi(
+  recent: unknown[],
+  next: Record<string, unknown> = {},
+  promptPayId = "0000000000"
+) {
   global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
     const key = `${init?.method ?? "GET"} ${url}`;
     if (key in next) {
@@ -44,7 +48,7 @@ function mockApi(recent: unknown[], next: Record<string, unknown> = {}) {
       return respond(value.body, value.ok ?? true);
     }
     if (url === "/api/wallet") return respond({ balance: "250.00" });
-    if (url === "/api/wallet/topups") return respond({ requests: recent });
+    if (url === "/api/wallet/topups") return respond({ requests: recent, promptPayId });
     throw new Error(`Unexpected ${key}`);
   }) as jest.Mock;
 }
@@ -70,7 +74,7 @@ describe("wallet top-up by slip", () => {
     expect(screen.getByLabelText("Or enter an amount (฿)")).toHaveValue(750);
     fireEvent.click(screen.getByRole("button", { name: "Show PromptPay QR" }));
     expect(screen.getByRole("img", { name: "PromptPay QR code" })).toBeInTheDocument();
-    expect(screen.getByText(/this QR does not collect money/)).toBeInTheDocument();
+    expect(screen.getByText(/The amount is already filled in/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Simulate/ })).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Link to your transfer slip"), {
@@ -90,10 +94,6 @@ describe("wallet top-up by slip", () => {
     expect(screen.getByRole("heading", { name: "Top-up of ฿750.00" })).toBeInTheDocument();
     expect(screen.getByText("฿250.00")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View slip" })).toHaveAttribute("href", slipUrl);
-    expect(screen.getByRole("link", { name: "Return to booking" })).toHaveAttribute(
-      "href",
-      "/bookings/booking-1"
-    );
     expect(screen.getByText(/Your booking is held for a limited time/)).toBeInTheDocument();
   });
 
@@ -126,22 +126,23 @@ describe("wallet top-up by slip", () => {
     expect(screen.queryByLabelText("Link to your transfer slip")).not.toBeInTheDocument();
   });
 
-  it("shows a pending top-up instead of the form and lets the user cancel it", async () => {
-    mockApi([pending], {
-      [`POST /api/wallet/topups/${pending.id}/cancel`]: {
-        body: { ...pending, status: "CANCELLED" },
-      },
-    });
+  it("shows a pending top-up with no way to cancel it or leave", async () => {
+    mockApi([pending]);
     render(<WalletTopupPage />);
 
     expect(await screen.findByRole("heading", { name: "Top-up of ฿750.00" })).toBeInTheDocument();
+    expect(screen.getAllByText("Pending approval").length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: "Show PromptPay QR" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel top-up" }));
+    expect(screen.queryByRole("button", { name: /Cancel/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /booking/i })).not.toBeInTheDocument();
+  });
 
-    expect(await screen.findByRole("status")).toHaveTextContent("Top-up cancelled");
-    expect(screen.getByRole("button", { name: "Show PromptPay QR" })).toBeInTheDocument();
-    const recent = screen.getByRole("region", { name: "Recent top-ups" });
-    expect(within(recent).getByText("Cancelled")).toBeInTheDocument();
+  it("turns top-up off when the PromptPay ID is not valid", async () => {
+    mockApi([], {}, "081-234-5678");
+    render(<WalletTopupPage />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Top-up is not available");
+    expect(screen.getByRole("button", { name: "Show PromptPay QR" })).toBeDisabled();
   });
 
   it("lists recent top-ups with the rejection reason", async () => {

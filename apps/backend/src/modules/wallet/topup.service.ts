@@ -4,6 +4,7 @@ import {
   type TopupRequestStatus,
 } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
+import { env } from "../../lib/env.ts";
 import { isTransactionConflict } from "../../lib/transaction-conflict.ts";
 import { appendWalletMovement } from "./wallet-ledger.ts";
 import { WalletDomainError } from "./wallet.service.ts";
@@ -26,13 +27,19 @@ export function topupRequestResponse(request: TopupRequest) {
 
 const RECENT_TOPUPS = 10;
 
+// Banking apps can scan this QR and show its details, but cannot complete the transfer.
+const PLACEHOLDER_PROMPTPAY_ID = "0000000000";
+
 export async function listMyTopups(userId: string) {
   const requests = await prisma.topupRequest.findMany({
     where: { userId },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: RECENT_TOPUPS,
   });
-  return { requests: requests.map(topupRequestResponse) };
+  return {
+    requests: requests.map(topupRequestResponse),
+    promptPayId: env.promptPayId || PLACEHOLDER_PROMPTPAY_ID,
+  };
 }
 
 export async function createTopup(userId: string, input: CreateTopupInput) {
@@ -46,7 +53,7 @@ export async function createTopup(userId: string, input: CreateTopupInput) {
     if ((error as { code?: string }).code === "P2002") {
       throw new WalletDomainError(
         "TOPUP_PENDING_EXISTS",
-        "You already have a top-up waiting for review. Cancel it or wait for an admin.",
+        "You already have a top-up waiting for review. Wait for an admin to review it.",
         409
       );
     }
@@ -62,17 +69,6 @@ function notPending() {
   return new WalletDomainError("TOPUP_NOT_PENDING", "This top-up is no longer pending", 409);
 }
 
-export async function cancelTopup(userId: string, id: string) {
-  const cancelled = await prisma.topupRequest.updateMany({
-    where: { id, userId, status: "PENDING" },
-    data: { status: "CANCELLED" },
-  });
-  const request = await prisma.topupRequest.findFirst({ where: { id, userId } });
-  if (!request) throw notFound();
-  if (cancelled.count !== 1) throw notPending();
-  return topupRequestResponse(request);
-}
-
 async function requireAdmin(client: Prisma.TransactionClient, adminId: string) {
   const user = await client.user.findUnique({ where: { id: adminId }, select: { isAdmin: true } });
   if (!user?.isAdmin) {
@@ -80,12 +76,17 @@ async function requireAdmin(client: Prisma.TransactionClient, adminId: string) {
   }
 }
 
-export async function listTopupsForReview(adminId: string, status: TopupRequestStatus) {
+export async function listTopupsForReview(adminId: string, status?: TopupRequestStatus) {
   await requireAdmin(prisma, adminId);
   const requests = await prisma.topupRequest.findMany({
     where: { status },
-    // Pending requests are reviewed oldest first; history shows the newest first.
-    orderBy: status === "PENDING" ? [{ createdAt: "asc" }] : [{ createdAt: "desc" }],
+    // Pending requests are reviewed oldest first; history shows the newest first. With no
+    // status filter, pending comes first because the enum declares it first.
+    orderBy: !status
+      ? [{ status: "asc" }, { createdAt: "desc" }]
+      : status === "PENDING"
+        ? [{ createdAt: "asc" }]
+        : [{ createdAt: "desc" }],
     take: 100,
     include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
   });

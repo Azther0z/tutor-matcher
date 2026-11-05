@@ -318,7 +318,7 @@ PAY-1 keeps each top-up here until an admin checks its transfer slip (since 2026
 | topup_request_id | UUID          | PK                                       | Prisma `id`; also the TOP_UP row id        |
 | amount           | DECIMAL(12,2) | NOT NULL                                 | Requested amount, 0.01 to 100,000          |
 | slip_url         | TEXT          | NOT NULL                                 | HTTP(S) link to the transfer slip          |
-| status           | ENUM          | NOT NULL, DEFAULT PENDING                | PENDING, APPROVED, REJECTED or CANCELLED   |
+| status           | ENUM          | NOT NULL, DEFAULT PENDING                | PENDING, APPROVED or REJECTED              |
 | created_at       | TIMESTAMP     | NOT NULL, DEFAULT now()                  | When the slip was sent                     |
 | reviewed_at      | TIMESTAMP     | NULL                                     | When an admin approved or rejected it      |
 | rejection_reason | TEXT          | NULL                                     | Required on rejection, shown to the user   |

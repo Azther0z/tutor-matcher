@@ -46,11 +46,11 @@ it("shows only the access message to a user who is not an admin", async () => {
   expect(screen.queryByRole("button", { name: "Approve top-up" })).not.toBeInTheDocument();
 });
 
-it("lists pending slips with the amount, requester and a slip link", async () => {
+it("lists every top-up by default with the amount, requester and a slip link", async () => {
   fetchMock.mockResolvedValueOnce(respond({ requests: [pending] }));
   render(<TopupRequestsPage />);
   const row = await screen.findByRole("region", { name: "Top-up from Sam Lee" });
-  expect(fetchMock).toHaveBeenCalledWith("/api/admin/topups?status=PENDING", expect.anything());
+  expect(fetchMock).toHaveBeenCalledWith("/api/admin/topups", expect.anything());
   expect(within(row).getByText("฿500.00")).toBeInTheDocument();
   expect(within(row).getByText("sam@example.com")).toBeInTheDocument();
   const link = within(row).getByRole("link", { name: `Open slip: ${slipUrl}` });
@@ -58,10 +58,18 @@ it("lists pending slips with the amount, requester and a slip link", async () =>
   expect(link).toHaveAttribute("rel", "noopener noreferrer");
 });
 
-it("approves a slip and removes it from the pending list", async () => {
-  fetchMock
-    .mockResolvedValueOnce(respond({ requests: [pending] }))
-    .mockResolvedValueOnce(respond({ ...pending, status: "APPROVED" }));
+it("approves a slip and updates its row in the full list", async () => {
+  fetchMock.mockResolvedValueOnce(respond({ requests: [pending] })).mockResolvedValueOnce(
+    respond({
+      id: pending.id,
+      amount: pending.amount,
+      slipUrl,
+      status: "APPROVED",
+      createdAt: pending.createdAt,
+      reviewedAt: pending.createdAt,
+      rejectionReason: null,
+    })
+  );
   render(<TopupRequestsPage />);
   fireEvent.click(await screen.findByRole("button", { name: "Approve top-up" }));
 
@@ -72,8 +80,31 @@ it("approves a slip and removes it from the pending list", async () => {
     `/api/admin/topups/${pending.id}/review`,
     expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "APPROVED" }) })
   );
+  const row = screen.getByRole("region", { name: "Top-up from Sam Lee" });
+  expect(within(row).getByText("Approved")).toBeInTheDocument();
+  expect(within(row).getByText("sam@example.com")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Approve top-up" })).not.toBeInTheDocument();
+});
+
+it("removes a reviewed slip from the Pending filter", async () => {
+  fetchMock
+    .mockResolvedValueOnce(respond({ requests: [] }))
+    .mockResolvedValueOnce(respond({ requests: [pending] }))
+    .mockResolvedValueOnce(respond({ ...pending, status: "APPROVED" }));
+  render(<TopupRequestsPage />);
+  await screen.findByText("No top-ups yet.");
+  fireEvent.change(screen.getByRole("combobox", { name: "Status" }), {
+    target: { value: "PENDING" },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Approve top-up" }));
+
+  expect(await screen.findByText("No top-ups waiting for review.")).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    2,
+    "/api/admin/topups?status=PENDING",
+    expect.anything()
+  );
   expect(screen.queryByRole("region", { name: "Top-up from Sam Lee" })).not.toBeInTheDocument();
-  expect(screen.getByText("No top-ups waiting for review.")).toBeInTheDocument();
 });
 
 it("needs a reason to reject and sends it trimmed", async () => {
@@ -107,7 +138,7 @@ it("shows the error and reloads when another admin already reviewed the slip", a
     .mockResolvedValueOnce(respond({ requests: [] }));
   render(<TopupRequestsPage />);
   fireEvent.click(await screen.findByRole("button", { name: "Approve top-up" }));
-  expect(await screen.findByText("No top-ups waiting for review.")).toBeInTheDocument();
+  expect(await screen.findByText("No top-ups yet.")).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(3);
 });
 
@@ -125,7 +156,7 @@ it("loads reviewed top-ups for the chosen status", async () => {
     })
   );
   render(<TopupRequestsPage />);
-  await screen.findByText("No top-ups waiting for review.");
+  await screen.findByText("No top-ups yet.");
   fireEvent.change(screen.getByRole("combobox", { name: "Status" }), {
     target: { value: "REJECTED" },
   });

@@ -19,8 +19,25 @@ export const topupReviewSchema = z
   });
 
 export const topupListQuerySchema = z.object({
-  status: z.enum(["PENDING", "APPROVED", "REJECTED", "CANCELLED"]).default("PENDING"),
+  status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
 });
 
 export type CreateTopupInput = z.infer<typeof createTopupSchema>;
 export type TopupReviewInput = z.infer<typeof topupReviewSchema>;
+
+export const walletTransactionTypes = [
+  "TOP_UP",
+  "LESSON_PAYMENT",
+  "LESSON_EARNING",
+  "REFUND",
+  "PAYOUT",
+] as const;
+
+export const walletTransactionsQuerySchema = z.object({
+  type: z.enum(walletTransactionTypes).optional(),
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
+});
+
+export const walletTransactionParamsSchema = z.object({ id: z.uuid() });
+
+export type WalletTransactionsQuery = z.infer<typeof walletTransactionsQuerySchema>;

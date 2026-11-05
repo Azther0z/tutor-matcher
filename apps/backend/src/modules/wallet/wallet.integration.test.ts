@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 import { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
 import { appendWalletMovement } from "./wallet-ledger.ts";
-import { cancelTopup, createTopup, reviewTopup } from "./topup.service.ts";
+import { createTopup, reviewTopup } from "./topup.service.ts";
 
 const databaseTests = process.env.RUN_DATABASE_INTEGRATION === "true" ? describe : describe.skip;
 const userId = randomUUID();
@@ -60,7 +60,7 @@ databaseTests("PAY-1 PostgreSQL ledger atomicity", () => {
       (await prisma.user.findUniqueOrThrow({ where: { id: userId } })).balance.toFixed(2)
     ).toBe("500.00");
     const next = await createTopup(userId, { amount: 200, slipUrl: "https://example.com/b" });
-    await cancelTopup(userId, next.id);
+    await reviewTopup(adminId, next.id, { decision: "REJECTED", rejectionReason: "Wrong slip" });
     await expect(reviewTopup(adminId, next.id, { decision: "APPROVED" })).rejects.toMatchObject({
       code: "TOPUP_NOT_PENDING",
     });

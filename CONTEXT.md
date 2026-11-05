@@ -121,7 +121,7 @@ _Avoid_: Deposit, recharge, buying credits
 
 **Top-up Request**:
 A user's pending top-up with its amount and slip link, waiting for an admin. It ends
-approved, rejected (with a reason) or cancelled by the user; one may be pending per user.
+approved or rejected (with a reason); one may be pending per user.
 _Avoid_: Transfer proof, deposit request
 
 **Lesson Payment**:

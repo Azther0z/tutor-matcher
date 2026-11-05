@@ -347,6 +347,20 @@ earnings this month, and all-time paid out, above one transaction list filterabl
 All / Top-ups / Lesson payments / Lesson earnings / Payouts / Refunds. There are no
 separate Payments and Earnings pages.
 
+PAY-5 details: the available balance is the same stored balance the navbar shows, and
+loading `/wallet` refreshes the navbar with it. Pending earnings, earnings this month and
+all-time paid out (shown as **Total paid out**: every payout sent from the wallet to the
+Tutor's bank account) appear only for Tutors, because only Tutors earn and pay out. For
+the same reason a Student's filter shows only All / Top-ups / Lesson payments / Refunds,
+and a Tutor-only filter in a Student's URL falls back to All.
+Earnings this month sum LESSON_EARNING rows in the current Asia/Bangkok calendar month;
+all-time paid out sums every PAYOUT row. The list is newest first, 20 per page, and keeps
+its filter and page in the URL; each row shows the signed amount and resulting balance and
+opens its detail. A **Payment due** box lists the user's unpaid bookings whose hold has not
+expired, each with a link to `/bookings/:id`, where payment is made. The account menu
+links to `/wallet`. See the [PAY-5 confirmation](sources/pay-5-policy-confirmation.md)
+and the [PAY-5 review comments](sources/pay-5-review-comments.md).
+
 The approved [ledger decision](sources/tutormatcher-wallet-ledger-decision.md) and
 [implementation guide](sources/tutormatcher-wallet-ledger-implementation.md) supersede
 the earlier pending-transaction design (and the separately supplied PDF).
@@ -358,26 +372,38 @@ LESSON_PAYMENT and PAYOUT subtract. Entries are never updated or deleted by appl
 flows; failures and zero movements write no entry.
 
 **`/wallet/transactions/:id`** is read-only history of completed movements.
-Unpaid bookings appear only on `/bookings`, not in wallet history.
+Unpaid bookings appear only on `/bookings`, not in wallet history. Only the owner can open
+a transaction; any other id shows "not found". The page shows the type, amount, direction
+(In or Out, derived from the type), status (always Completed), date, resulting balance,
+reference, the related booking (if any) and, for a payout, the masked payout account. It
+has no actions; a lesson payment tells the user that payment is made only on its booking
+page.
 
 **Top-up (PAY-1, slip check since 2026-11-03).** The user picks a preset or custom
-amount, sees a PromptPay QR and pastes a link to the transfer slip. The QR is a labelled
-placeholder because the platform has no receiving account yet. Sending the slip creates a
-pending top-up request and credits nothing. An admin opens the slip at `/admin/topups` and
+amount, sees a real PromptPay QR with that amount locked and pastes a link to the transfer
+slip. The QR uses the PromptPay ID in the backend's `PROMPTPAY_ID` setting. While that is
+blank it uses the placeholder `0000000000`, which a banking app can scan and show but cannot
+pay. Sending the slip creates a
+pending top-up request and credits nothing. `/admin/topups` lists every request, pending first, and can filter by status. An admin
+opens the slip there and
 approves or rejects it; a rejection needs a reason the user sees, and the amount cannot be
 changed. Approval appends one TOP_UP row whose id is the request id and credits the balance
 in the same serializable transaction, so a request is credited at most once. A user can
-have one pending request at a time and can cancel it. `/wallet/topup` shows the pending
-request with its slip link and the recent requests with their status and reason. An admin
+have one pending request at a time. `/wallet/topup` shows the pending request as pending
+approval with its slip link and the recent requests with their status and reason; it has
+no cancel or back button, so a wrong slip waits for an admin to reject it. After a rejection
+the user can send a new request. An admin
 cannot review their own top-up. The same flow runs in development and production; there
 is no simulation. A booking's payment hold can expire while a slip waits for review. See
-the [PAY-1 slip confirmation](sources/pay-1-slip-topup-confirmation.md).
+the [PAY-1 slip confirmation](sources/pay-1-slip-topup-confirmation.md) and the
+[PAY-1 demo feedback](sources/pay-1-demo-feedback.md).
 
 **Lesson earnings (planned for CLASS-3, outside PAY-1 and CLASS-2).** After the Tutor
 confirms completion, CLASS-3 handles the Tutor's share after the platform fee and makes
 the Student review available. CLASS-2 changes BookingStatus only and creates no wallet
 movement. The provisional fee is 15%. Pending earnings are computed from CONFIRMED
-bookings minus the fee; no pending ledger row exists. Until settlement, the money is held
+bookings minus the fee, rounded to cents per booking; no pending ledger row exists. PAY-5
+shows this figure on `/wallet` using the provisional fee. Until settlement, the money is held
 by the platform for that booking, not in the Tutor's available wallet.
 
 **Refunds.** Paid cancellation appends REFUND and leaves LESSON_PAYMENT unchanged.
@@ -399,7 +425,7 @@ nothing. Repeating the same request reference does not pay out twice. The payout
 simulated, labelled "Simulated payout, no real money is transferred", and turned off in
 production like top-up. With no saved payout account the page asks the user to add one in
 Wallet settings. An asynchronous provider would need a separate request table, not a ledger
-status. The full wallet dashboard and lesson completion remain separate work. See the [PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
+status. Lesson-earning settlement remains separate work. See the [PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
 
 **Payout accounts (`/settings/wallet`, PROF-7).** Any logged-in user can open Wallet
 settings from the Settings navigation. The page starts with the wallet balance and a **Top up**

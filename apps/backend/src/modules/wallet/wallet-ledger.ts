@@ -9,7 +9,8 @@ export class InsufficientWalletBalance extends Error {
   }
 }
 
-const signs: Record<WalletTransactionType, 1 | -1> = {
+// PAY-5 reads direction from the same map, because the ledger stores no direction.
+export const walletTransactionSigns: Record<WalletTransactionType, 1 | -1> = {
   TOP_UP: 1,
   LESSON_EARNING: 1,
   REFUND: 1,
@@ -35,7 +36,7 @@ export async function appendWalletMovement(
     throw new Error("Wallet amounts must be non-negative finite values with at most two decimals");
   }
   if (amount.isZero()) return null;
-  const debit = signs[input.type] === -1;
+  const debit = walletTransactionSigns[input.type] === -1;
   const updated = await tx.user.updateMany({
     where: { id: input.userId, ...(debit ? { balance: { gte: amount } } : {}) },
     data: { balance: debit ? { decrement: amount } : { increment: amount } },

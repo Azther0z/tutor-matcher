@@ -20,7 +20,6 @@ enum TopupRequestStatus {
   PENDING
   APPROVED
   REJECTED
-  CANCELLED
 }
 
 enum TutorStatus {

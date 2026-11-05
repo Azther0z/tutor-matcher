@@ -5,7 +5,7 @@ import request from "supertest";
 type Fn = jest.Mock<(...args: unknown[]) => Promise<unknown>>;
 const mock = (): Fn => jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const findUser = mock();
-const topupRequest = { create: mock(), findMany: mock(), updateMany: mock(), findFirst: mock() };
+const topupRequest = { create: mock(), findMany: mock() };
 const tx = {
   user: { findUnique: mock(), updateMany: mock(), findUniqueOrThrow: mock() },
   topupRequest: { findUnique: mock(), updateMany: mock(), findUniqueOrThrow: mock() },
@@ -19,6 +19,7 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
 const { app } = await import("../../app.ts");
 const { topupRateLimiter } = await import("./wallet.routes.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");
+const { env } = await import("../../lib/env.ts");
 
 const userId = "11111111-1111-4111-8111-111111111111";
 const adminId = "44444444-4444-4444-8444-444444444444";
@@ -135,20 +136,12 @@ describe("PAY-1 slip top-up requests", () => {
     expect(response.body.requests[0]).toMatchObject({ status: "REJECTED", rejectionReason: "x" });
   });
 
-  it("cancels only the user's own pending request", async () => {
-    topupRequest.updateMany.mockResolvedValue({ count: 1 });
-    topupRequest.findFirst.mockResolvedValue(topup({ status: "CANCELLED" }));
-    const cancel = () => as(request(app).post(`/api/wallet/topups/${requestId}/cancel`));
-    expect((await cancel().expect(200)).body.status).toBe("CANCELLED");
-    expect(topupRequest.updateMany).toHaveBeenCalledWith({
-      where: { id: requestId, userId, status: "PENDING" },
-      data: { status: "CANCELLED" },
-    });
-
-    topupRequest.updateMany.mockResolvedValue({ count: 0 });
-    expect((await cancel().expect(409)).body.code).toBe("TOPUP_NOT_PENDING");
-    topupRequest.findFirst.mockResolvedValue(null);
-    expect((await cancel().expect(404)).body.code).toBe("TOPUP_NOT_FOUND");
+  it("tells the page which PromptPay ID to pay, or the placeholder when none is set", async () => {
+    const list = () => as(request(app).get("/api/wallet/topups")).expect(200);
+    env.promptPayId = "0812345678";
+    expect((await list()).body.promptPayId).toBe("0812345678");
+    env.promptPayId = "";
+    expect((await list()).body.promptPayId).toBe("0000000000");
   });
 });
 
@@ -160,19 +153,26 @@ describe("PAY-1 admin slip review", () => {
     expect(tx.topupRequest.updateMany).not.toHaveBeenCalled();
   });
 
-  it("lists pending requests oldest first with the requester", async () => {
+  it("lists every request by default, or one status, with the requester", async () => {
     topupRequest.findMany.mockResolvedValue([
       { ...topup(), user: { id: userId, firstName: "Sam", lastName: "Lee", email: "s@x.com" } },
     ]);
     const response = await as(request(app).get("/api/admin/topups"), adminId).expect(200);
     expect(topupRequest.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { status: "PENDING" }, orderBy: [{ createdAt: "asc" }] })
+      expect.objectContaining({
+        where: {},
+        orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      })
     );
     expect(response.body.requests[0]).toMatchObject({
       amount: "500.00",
       slipUrl,
       user: { firstName: "Sam", email: "s@x.com" },
     });
+    await as(request(app).get("/api/admin/topups?status=PENDING"), adminId).expect(200);
+    expect(topupRequest.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: { status: "PENDING" }, orderBy: [{ createdAt: "asc" }] })
+    );
     await as(request(app).get("/api/admin/topups?status=APPROVED"), adminId).expect(200);
     expect(topupRequest.findMany).toHaveBeenLastCalledWith(
       expect.objectContaining({ where: { status: "APPROVED" }, orderBy: [{ createdAt: "desc" }] })
@@ -239,7 +239,7 @@ describe("PAY-1 admin slip review", () => {
     expect(tx.topupRequest.updateMany).not.toHaveBeenCalled();
   });
 
-  it("refuses a request that is already reviewed or cancelled", async () => {
+  it("refuses a request that is already reviewed", async () => {
     tx.topupRequest.updateMany.mockResolvedValue({ count: 0 });
     const response = await review({ decision: "APPROVED" }).expect(409);
     expect(response.body.code).toBe("TOPUP_NOT_PENDING");

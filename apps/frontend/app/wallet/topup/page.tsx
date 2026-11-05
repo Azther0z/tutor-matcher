@@ -1,17 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { useEffect, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
 import { TopupStatusBadge } from "@/src/components/topup-status";
-import {
-  cancelTopup,
-  getMyTopups,
-  getWallet,
-  submitTopup,
-  type TopupRequest,
-} from "@/src/lib/wallet-api";
+import { isPromptPayId, promptPayPayload } from "@/src/lib/promptpay";
+import { getMyTopups, getWallet, submitTopup, type TopupRequest } from "@/src/lib/wallet-api";
 
 const presets = [300, 500, 1000, 2000];
 const amountFormat = new Intl.NumberFormat("en-US", {
@@ -28,10 +23,6 @@ function safeAmount(value: string | null) {
   return Number.isFinite(parsed) && parsed >= 0.01 && parsed <= 100_000 ? parsed : 500;
 }
 
-function safeReturnTo(value: string | null) {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/bookings";
-}
-
 function isHttpUrl(value: string) {
   try {
     const { protocol } = new URL(value);
@@ -41,53 +32,11 @@ function isHttpUrl(value: string) {
   }
 }
 
-// A placeholder QR: TutorMatcher has no account to receive money yet.
-function PromptPayQr({ value }: { value: string }) {
-  const cells = useMemo(() => {
-    const seed = Array.from(value).reduce(
-      (hash, character) => (hash * 31 + character.charCodeAt(0)) >>> 0,
-      0
-    );
-    return Array.from({ length: 21 * 21 }, (_, index) => {
-      const row = Math.floor(index / 21);
-      const column = index % 21;
-      const finder =
-        ((row < 7 && column < 7) || (row < 7 && column > 13) || (row > 13 && column < 7)) &&
-        (row % 6 === 0 || column % 6 === 0 || (row > 1 && row < 5 && column > 1 && column < 5));
-      const cellHash = (Math.imul(seed ^ index, 1664525) + 1013904223) >>> 0;
-      return finder || (cellHash & 3) === 0;
-    });
-  }, [value]);
-
-  return (
-    <svg
-      role="img"
-      aria-label="PromptPay QR code"
-      viewBox="0 0 21 21"
-      className="h-52 w-52 rounded-2xl bg-white p-3 shadow-sm"
-      shapeRendering="crispEdges"
-    >
-      {cells.map(
-        (filled, index) =>
-          filled && (
-            <rect
-              key={index}
-              x={index % 21}
-              y={Math.floor(index / 21)}
-              width="1"
-              height="1"
-              fill="#312e81"
-            />
-          )
-      )}
-    </svg>
-  );
-}
-
 function TopupContent() {
   const searchParams = useSearchParams();
   const [balance, setBalance] = useState<string | null>(null);
   const [requests, setRequests] = useState<TopupRequest[]>([]);
+  const [promptPayId, setPromptPayId] = useState<string | null>(null);
   const [amount, setAmount] = useState(() => safeAmount(searchParams.get("amount")));
   const [stage, setStage] = useState<"amount" | "slip">("amount");
   const [slipUrl, setSlipUrl] = useState("");
@@ -96,15 +45,15 @@ function TopupContent() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const returnTo = safeReturnTo(searchParams.get("returnTo"));
-  const fromBooking = returnTo.startsWith("/bookings/");
+  const fromBooking = searchParams.get("returnTo")?.startsWith("/bookings/");
   const pending = requests.find((request) => request.status === "PENDING");
 
   useEffect(() => {
     Promise.all([getWallet(), getMyTopups()])
-      .then(([wallet, recent]) => {
+      .then(([wallet, topups]) => {
         setBalance(wallet.balance);
-        setRequests(recent);
+        setRequests(topups.requests);
+        setPromptPayId(topups.promptPayId);
       })
       .catch((reason: unknown) =>
         setError(reason instanceof Error ? reason.message : "Could not load your wallet.")
@@ -150,27 +99,6 @@ function TopupContent() {
     }
   }
 
-  async function cancelPending(request: TopupRequest) {
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const cancelled = await cancelTopup(request.id);
-      setRequests((current) =>
-        current.map((item) => (item.id === cancelled.id ? cancelled : item))
-      );
-      setMessage("Top-up cancelled. No money was added.");
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not cancel this top-up.");
-      // The request may have been reviewed meanwhile; show its real status.
-      getMyTopups()
-        .then(setRequests)
-        .catch(() => undefined);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12 lg:py-16">
       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">PromptPay</p>
@@ -210,7 +138,7 @@ function TopupContent() {
             </div>
             <p className="mt-2 text-zinc-500">
               Your balance updates once an admin approves the slip. You can send another top-up
-              after this one is reviewed or cancelled.
+              after this one is reviewed.
             </p>
             {fromBooking && (
               <p className="mt-2 text-sm text-amber-800 dark:text-amber-300">
@@ -229,22 +157,6 @@ function TopupContent() {
                 View slip
               </a>
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href={returnTo}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-violet-600 px-6 font-semibold text-white transition hover:bg-violet-500"
-              >
-                {fromBooking ? "Return to booking" : "Back to bookings"}
-              </Link>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void cancelPending(pending)}
-                className="h-11 rounded-full border border-red-600/40 px-6 font-semibold text-red-700 disabled:opacity-50 dark:border-red-400/40 dark:text-red-400"
-              >
-                {busy ? "Cancelling…" : "Cancel top-up"}
-              </button>
-            </div>
           </div>
         )}
 
@@ -281,9 +193,15 @@ function TopupContent() {
               onChange={(event) => setAmount(Number(event.target.value))}
               className="mt-2 h-12 w-full rounded-2xl border border-black/15 bg-transparent px-4 text-lg outline-none focus:border-violet-600 dark:border-white/20"
             />
+            {balance !== null && !isPromptPayId(promptPayId) && (
+              <p role="alert" className="mt-6 text-sm text-red-700 dark:text-red-400">
+                Top-up is not available right now because the PromptPay account is not set up
+                correctly.
+              </p>
+            )}
             <button
               type="button"
-              disabled={balance === null}
+              disabled={balance === null || !isPromptPayId(promptPayId)}
               onClick={showQr}
               className="mt-6 h-12 w-full rounded-full bg-violet-600 font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -292,12 +210,20 @@ function TopupContent() {
           </div>
         )}
 
-        {!loading && !pending && stage === "slip" && (
+        {!loading && !pending && stage === "slip" && isPromptPayId(promptPayId) && (
           <div className="flex flex-col items-center p-6 text-center sm:p-8">
-            <PromptPayQr value={`promptpay:${amount.toFixed(2)}`} />
+            <QRCodeSVG
+              role="img"
+              aria-label="PromptPay QR code"
+              value={promptPayPayload(promptPayId, amount)}
+              size={208}
+              marginSize={2}
+              level="M"
+              className="rounded-2xl"
+            />
             <h2 className="mt-5 text-2xl font-bold">Transfer {money(amount)}</h2>
-            <p className="mt-2 text-xs text-zinc-500">
-              Demo QR: TutorMatcher has no receiving account yet, so this QR does not collect money.
+            <p className="mt-2 text-sm text-zinc-500">
+              Scan with your banking app. The amount is already filled in.
             </p>
             <form onSubmit={sendSlip} noValidate className="mt-6 flex w-full flex-col text-left">
               <label className="text-sm font-medium" htmlFor="slip-url">
