@@ -93,6 +93,7 @@ describe("Navbar", () => {
 
     expect(screen.getByText("Mina K.")).toBeInTheDocument();
     expect(accountButton.querySelector('img[src="/profile-circle.svg"]')).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Wallet" })).toHaveAttribute("href", "/wallet");
     expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
   });
