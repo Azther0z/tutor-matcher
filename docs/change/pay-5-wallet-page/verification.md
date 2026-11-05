@@ -24,17 +24,20 @@
 
 - Backend `npm run build` (tsc) and `npm run lint`: passed.
 - Backend `npm test -- --runInBand`: 350 passed, 130 database tests skipped (opt-in).
-  `wallet-read.test.ts`: 17 new tests passed.
+  `wallet-read.test.ts`: 15 new tests passed.
 - Backend `npm run test:bdd`: 1 scenario passed.
 - Frontend `npx tsc --noEmit` and `npm run lint`: passed.
-- Frontend `npm test -- --runInBand`: 31 suites, 293 tests passed, including the new
-  `/wallet` (9) and `/wallet/transactions/[id]` (5) suites and the navbar Wallet link.
+- Frontend `npm test -- --runInBand`: 31 suites, 294 tests passed, including the new
+  `/wallet` (10) and `/wallet/transactions/[id]` (5) suites and the navbar Wallet link.
 - Frontend `npm run build -- --webpack`: passed; `/wallet` and `/wallet/transactions/[id]`
   are built.
 - `npx prettier --check --end-of-line auto .`: only two untracked files outside this change
   (`docs/change/tutor-profile-update-api/`) are flagged. Strict `npm run format:check` on
   this Windows checkout (`core.autocrlf=true`) flags CRLF in untouched files, as noted in
   PAY-1.
+
+Rerun after the 2026-11-03 review fixes (Students no longer see Tutor-only figures or
+filters): the same commands pass with the counts above.
 
 ## Requirement mapping
 

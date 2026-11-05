@@ -35,6 +35,17 @@ Pending earnings = sum over the Tutor's CONFIRMED bookings of
 LESSON_EARNING would credit. The fee is a single backend constant, `PLATFORM_FEE_RATE`,
 for CLASS-3 to reuse. Non-Tutors get `null`.
 
+### Decision: Tutor-only figures and filters are hidden from Students
+
+Review on 2026-11-03 (`docs/sources/pay-5-review-comments.md`) noted that Students saw
+Earnings this month, All-time paid out, Lesson earnings and Payouts, which only Tutors can
+have: LESSON_EARNING is credited to the booked Tutor and PAYOUT is Tutor-only (PAY-7). The
+API now returns `earningsThisMonth` and `totalPaidOut` as null for non-Tutors and skips
+their queries; the page hides those cards and filters. All-time paid out stays for Tutors,
+relabelled **Total paid out** with a note, because it reconciles what a Tutor earned with
+what reached their bank. Removing it everywhere was rejected: the approved ledger guide
+lists it as a `/wallet` figure.
+
 ### Decision: Bangkok calendar month
 
 Earnings this month use the Asia/Bangkok month (UTC+7, no daylight saving), matching the

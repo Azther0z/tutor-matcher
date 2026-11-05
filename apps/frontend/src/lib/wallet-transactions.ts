@@ -10,13 +10,17 @@ export const transactionTypeLabels: Record<WalletTransactionType, string> = {
   PAYOUT: "Payout",
 };
 
-// Filter order follows docs/user-journeys.md §4.
-export const transactionFilters: { type: WalletTransactionType | null; label: string }[] = [
+// Filter order follows docs/user-journeys.md §4. Only Tutors earn and pay out.
+export const transactionFilters: {
+  type: WalletTransactionType | null;
+  label: string;
+  tutorOnly?: true;
+}[] = [
   { type: null, label: "All" },
   { type: "TOP_UP", label: "Top-ups" },
   { type: "LESSON_PAYMENT", label: "Lesson payments" },
-  { type: "LESSON_EARNING", label: "Lesson earnings" },
-  { type: "PAYOUT", label: "Payouts" },
+  { type: "LESSON_EARNING", label: "Lesson earnings", tutorOnly: true },
+  { type: "PAYOUT", label: "Payouts", tutorOnly: true },
   { type: "REFUND", label: "Refunds" },
 ];
 

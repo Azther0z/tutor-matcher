@@ -39,13 +39,21 @@ function SummaryCard({ label, value, note }: { label: string; value: string; not
 function WalletContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const typeParam = searchParams.get("type");
-  const type: WalletTransactionType | null = isTransactionType(typeParam) ? typeParam : null;
-  const pageParam = Number(searchParams.get("page"));
-  const page = Number.isInteger(pageParam) && pageParam > 1 ? pageParam : 1;
-
   const [overview, setOverview] = useState<WalletOverview | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
+
+  // Students never earn or pay out, so their wallet drops the Tutor-only filters.
+  const filters =
+    overview?.isTutor === false
+      ? transactionFilters.filter((filter) => !filter.tutorOnly)
+      : transactionFilters;
+  const typeParam = searchParams.get("type");
+  const type: WalletTransactionType | null =
+    isTransactionType(typeParam) && filters.some((filter) => filter.type === typeParam)
+      ? typeParam
+      : null;
+  const pageParam = Number(searchParams.get("page"));
+  const page = Number.isInteger(pageParam) && pageParam > 1 ? pageParam : 1;
   const [listAttempt, setListAttempt] = useState(0);
   // Each result remembers the request it answers, so loading is derived, not set in effects.
   const requestKey = `${type ?? "ALL"}:${page}:${listAttempt}`;
@@ -101,7 +109,7 @@ function WalletContent() {
   }
 
   const pages = list ? Math.max(1, Math.ceil(list.total / list.pageSize)) : 1;
-  const activeFilter = transactionFilters.find((filter) => filter.type === type)!;
+  const activeFilter = filters.find((filter) => filter.type === type)!;
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12 lg:py-16">
@@ -112,7 +120,9 @@ function WalletContent() {
           </p>
           <h1 className="mt-2 text-4xl font-bold tracking-tight">Your wallet</h1>
           <p className="mt-3 text-zinc-500">
-            One balance for top-ups, lesson payments, earnings, refunds and payouts.
+            {overview?.isTutor === false
+              ? "One balance for top-ups, lesson payments and refunds."
+              : "One balance for top-ups, lesson payments, earnings, refunds and payouts."}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -156,14 +166,20 @@ function WalletContent() {
               note="Confirmed lessons after the 15% platform fee. Not yet in your balance."
             />
           )}
-          <SummaryCard
-            label="Earnings this month"
-            value={overview ? money(overview.earningsThisMonth) : "Loading…"}
-          />
-          <SummaryCard
-            label="All-time paid out"
-            value={overview ? money(overview.totalPaidOut) : "Loading…"}
-          />
+          {overview?.earningsThisMonth != null && (
+            <SummaryCard
+              label="Earnings this month"
+              value={money(overview.earningsThisMonth)}
+              note="Lesson earnings added to your balance this month."
+            />
+          )}
+          {overview?.totalPaidOut != null && (
+            <SummaryCard
+              label="Total paid out"
+              value={money(overview.totalPaidOut)}
+              note="All payouts sent from your wallet to your bank account."
+            />
+          )}
         </section>
       )}
 
@@ -208,7 +224,7 @@ function WalletContent() {
           Transactions
         </h2>
         <div role="group" aria-label="Filter transactions" className="mt-4 flex flex-wrap gap-2">
-          {transactionFilters.map((filter) => {
+          {filters.map((filter) => {
             const active = filter.type === type;
             return (
               <button

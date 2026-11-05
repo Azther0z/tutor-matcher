@@ -102,7 +102,13 @@ describe("/wallet", () => {
     expect(within(summary).getByText("฿708.33")).toBeInTheDocument();
     expect(within(summary).getByText(/after the 15% platform fee/)).toBeInTheDocument();
     expect(within(summary).getByText("฿425.00")).toBeInTheDocument();
+    expect(within(summary).getByText("Total paid out")).toBeInTheDocument();
+    expect(
+      within(summary).getByText(/sent from your wallet to your bank account/)
+    ).toBeInTheDocument();
     expect(within(summary).getByText("฿300.00")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lesson earnings" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Payouts" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Request payout" })).toHaveAttribute(
       "href",
       "/wallet/payout"
@@ -111,12 +117,44 @@ describe("/wallet", () => {
     unsubscribe();
   });
 
-  it("hides pending earnings and payout for a user who is not a Tutor", async () => {
-    mockApi({ overview: { ...tutorOverview, isTutor: false, pendingEarnings: null } });
+  const studentOverview = {
+    ...tutorOverview,
+    isTutor: false,
+    pendingEarnings: null,
+    earningsThisMonth: null,
+    totalPaidOut: null,
+  };
+
+  it("hides Tutor-only figures, filters and payout for a user who is not a Tutor", async () => {
+    mockApi({ overview: studentOverview });
     render(<WalletPage />);
     expect(await screen.findByText("฿1,200.00")).toBeInTheDocument();
-    expect(screen.queryByText("Pending earnings")).not.toBeInTheDocument();
+    expect(screen.getByText("One balance for top-ups, lesson payments and refunds.")).toBeVisible();
+    for (const label of ["Pending earnings", "Earnings this month", "Total paid out"]) {
+      expect(screen.queryByText(label)).not.toBeInTheDocument();
+    }
     expect(screen.queryByRole("link", { name: "Request payout" })).not.toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole("button")
+        .filter((button) => button.hasAttribute("aria-pressed"))
+        .map((button) => button.textContent)
+    ).toEqual(["All", "Top-ups", "Lesson payments", "Refunds"]);
+  });
+
+  it("shows a Student all transactions when the URL asks for a Tutor-only type", async () => {
+    mockParams = new URLSearchParams("type=PAYOUT");
+    mockApi({ overview: studentOverview });
+    render(<WalletPage />);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true")
+    );
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenLastCalledWith(
+        "/api/wallet/transactions?page=1",
+        expect.anything()
+      )
+    );
   });
 
   it("lists every type in one list, signed by direction, each opening its detail", async () => {

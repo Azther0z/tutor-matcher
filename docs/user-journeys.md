@@ -347,13 +347,18 @@ All / Top-ups / Lesson payments / Lesson earnings / Payouts / Refunds. There are
 separate Payments and Earnings pages.
 
 PAY-5 details: the available balance is the same stored balance the navbar shows, and
-loading `/wallet` refreshes the navbar with it. Pending earnings appear only for Tutors.
+loading `/wallet` refreshes the navbar with it. Pending earnings, earnings this month and
+all-time paid out (shown as **Total paid out**: every payout sent from the wallet to the
+Tutor's bank account) appear only for Tutors, because only Tutors earn and pay out. For
+the same reason a Student's filter shows only All / Top-ups / Lesson payments / Refunds,
+and a Tutor-only filter in a Student's URL falls back to All.
 Earnings this month sum LESSON_EARNING rows in the current Asia/Bangkok calendar month;
 all-time paid out sums every PAYOUT row. The list is newest first, 20 per page, and keeps
 its filter and page in the URL; each row shows the signed amount and resulting balance and
 opens its detail. A **Payment due** box lists the user's unpaid bookings whose hold has not
 expired, each with a link to `/bookings/:id`, where payment is made. The account menu
-links to `/wallet`. See the [PAY-5 confirmation](sources/pay-5-policy-confirmation.md).
+links to `/wallet`. See the [PAY-5 confirmation](sources/pay-5-policy-confirmation.md)
+and the [PAY-5 review comments](sources/pay-5-review-comments.md).
 
 The approved [ledger decision](sources/tutormatcher-wallet-ledger-decision.md) and
 [implementation guide](sources/tutormatcher-wallet-ledger-implementation.md) supersede

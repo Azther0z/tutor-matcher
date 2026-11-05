@@ -76,8 +76,8 @@ export type PaymentDueBooking = {
 export type WalletOverview = WalletSummary & {
   isTutor: boolean;
   pendingEarnings: string | null;
-  earningsThisMonth: string;
-  totalPaidOut: string;
+  earningsThisMonth: string | null;
+  totalPaidOut: string | null;
   paymentDue: PaymentDueBooking[];
 };
 

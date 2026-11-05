@@ -11,9 +11,10 @@ Earnings pages.
 
 In scope:
 
-- `/wallet`: available balance, pending earnings, earnings this month and all-time paid out,
-  above one transaction list filterable by All / Top-ups / Lesson payments / Lesson earnings /
-  Payouts / Refunds.
+- `/wallet`: available balance and, for Tutors only, pending earnings, earnings this month
+  and all-time paid out, above one transaction list filterable by All / Top-ups / Lesson
+  payments / Lesson earnings / Payouts / Refunds. Students see only the filters that can
+  contain their rows.
 - A **Payment due** notice on `/wallet` listing the user's unpaid bookings, each linking to
   `/bookings/:id` to pay there. Unpaid bookings stay out of the ledger.
 - `/wallet/transactions/:id`: read-only detail with type, amount, direction (derived from the

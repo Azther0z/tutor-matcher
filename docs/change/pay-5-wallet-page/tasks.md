@@ -37,9 +37,19 @@
   - Verify: `npm run format:check`
   - Files: `docs/`, `AGENTS.md`
 
-## 4. Verify
+## 4. Review fixes
 
-- [x] 4.1 Run backend and frontend build, lint, tests and the format check.
+- [x] 4.1 Hide Tutor-only figures and filters from Students; relabel All-time paid out.
+  - Acceptance: non-Tutor overview returns null earnings and paid-out figures without
+    querying them; the page hides those cards and the Lesson earnings and Payouts filters,
+    and a Tutor-only URL filter falls back to All; Tutors see **Total paid out** with a note.
+  - Verify: wallet read and `/wallet` page tests.
+  - Files: `apps/backend/src/modules/wallet/wallet.service.ts`, `apps/frontend/app/wallet/page.tsx`,
+    `apps/frontend/src/lib/wallet-transactions.ts`, `apps/frontend/src/lib/wallet-api.ts`
+
+## 5. Verify
+
+- [x] 5.1 Run backend and frontend build, lint, tests and the format check.
   - Acceptance: all pass, or failures are recorded with a reason.
   - Verify: commands in `design.md`
   - Files: none

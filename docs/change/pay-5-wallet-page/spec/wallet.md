@@ -5,8 +5,8 @@
 ### Requirement: One wallet overview
 
 The system SHALL show each logged-in user one available balance on `/wallet`, read from the
-same stored balance as the navbar, plus pending earnings (Tutors only), earnings this month
-and all-time paid out.
+same stored balance as the navbar. Tutors also see pending earnings, earnings this month
+and all-time paid out (labelled Total paid out).
 
 #### Scenario: A Student who is also a Tutor
 
@@ -25,7 +25,8 @@ and all-time paid out.
 
 - GIVEN a user who is not a Tutor
 - WHEN they open `/wallet`
-- THEN pending earnings are not shown
+- THEN pending earnings, earnings this month and total paid out are not shown, and the API
+  returns them as null without querying earnings or payouts
 
 #### Scenario: Earnings this month and paid out
 
@@ -49,6 +50,13 @@ filter of All / Top-ups / Lesson payments / Lesson earnings / Payouts / Refunds.
 
 - WHEN the user picks a type filter
 - THEN only rows of that type are listed, and the filter is kept in the URL
+
+#### Scenario: Student filters
+
+- GIVEN a user who is not a Tutor
+- WHEN `/wallet` opens
+- THEN the filter offers only All / Top-ups / Lesson payments / Refunds, and a Lesson
+  earnings or Payouts filter in the URL falls back to All
 
 #### Scenario: Unknown filter
 

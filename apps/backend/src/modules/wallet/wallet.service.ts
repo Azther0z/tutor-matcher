@@ -103,18 +103,28 @@ export async function getWalletOverview(userId: string, now = new Date()) {
   });
   if (!user) throw new WalletDomainError("WALLET_NOT_FOUND", "Wallet not found", 404);
   const month = bangkokMonthWindow(now);
+  // Earnings and payouts are Tutor-only movements, so Students get null instead of zeros.
+  const tutorId = user.tutorId;
   const [earnedThisMonth, paidOut, tutorBookings, paymentDue] = await Promise.all([
-    prisma.walletTransaction.aggregate({
-      where: { userId, type: "LESSON_EARNING", createdAt: { gte: month.start, lt: month.end } },
-      _sum: { amount: true },
-    }),
-    prisma.walletTransaction.aggregate({
-      where: { userId, type: "PAYOUT" },
-      _sum: { amount: true },
-    }),
-    user.tutorId
+    tutorId
+      ? prisma.walletTransaction.aggregate({
+          where: {
+            userId,
+            type: "LESSON_EARNING",
+            createdAt: { gte: month.start, lt: month.end },
+          },
+          _sum: { amount: true },
+        })
+      : null,
+    tutorId
+      ? prisma.walletTransaction.aggregate({
+          where: { userId, type: "PAYOUT" },
+          _sum: { amount: true },
+        })
+      : null,
+    tutorId
       ? prisma.booking.findMany({
-          where: { status: "CONFIRMED", subject: { tutorId: user.tutorId } },
+          where: { status: "CONFIRMED", subject: { tutorId } },
           select: { totalAmount: true },
         })
       : null,
@@ -139,14 +149,14 @@ export async function getWalletOverview(userId: string, now = new Date()) {
   const zero = new Prisma.Decimal(0);
   return {
     balance: user.balance.toFixed(2),
-    isTutor: Boolean(user.tutorId),
+    isTutor: Boolean(tutorId),
     pendingEarnings:
       tutorBookings &&
       tutorBookings
         .reduce((sum, booking) => sum.plus(tutorShare(booking.totalAmount)), zero)
         .toFixed(2),
-    earningsThisMonth: (earnedThisMonth._sum.amount ?? zero).toFixed(2),
-    totalPaidOut: (paidOut._sum.amount ?? zero).toFixed(2),
+    earningsThisMonth: earnedThisMonth && (earnedThisMonth._sum.amount ?? zero).toFixed(2),
+    totalPaidOut: paidOut && (paidOut._sum.amount ?? zero).toFixed(2),
     paymentDue: paymentDue.map((booking) => ({
       bookingId: booking.id,
       subjectName: booking.subjectName ?? booking.subject.name,

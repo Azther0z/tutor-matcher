@@ -79,20 +79,18 @@ describe("wallet overview", () => {
     expect(findUser).not.toHaveBeenCalled();
   });
 
-  it("returns one balance and no pending earnings for a user who is not a Tutor", async () => {
-    aggregate
-      .mockResolvedValueOnce({ _sum: { amount: null } })
-      .mockResolvedValueOnce({ _sum: { amount: new Prisma.Decimal(0) } });
+  it("returns one balance and no Tutor-only figures for a user who is not a Tutor", async () => {
     const response = await get("/overview").expect(200);
     expect(response.body).toEqual({
       balance: "750.00",
       isTutor: false,
       pendingEarnings: null,
-      earningsThisMonth: "0.00",
-      totalPaidOut: "0.00",
+      earningsThisMonth: null,
+      totalPaidOut: null,
       paymentDue: [],
     });
-    // Only the user's unpaid bookings are read; no Tutor booking query runs.
+    // Only the user's unpaid bookings are read; no earnings, payout or Tutor booking query runs.
+    expect(aggregate).not.toHaveBeenCalled();
     expect(findBookings).toHaveBeenCalledTimes(1);
     expect(findBookings.mock.calls[0]![0]).toMatchObject({
       where: { userId, status: "PENDING_PAYMENT" },
@@ -144,6 +142,7 @@ describe("wallet overview", () => {
 
   it("sums earnings only inside the Bangkok month and every payout", async () => {
     const now = new Date("2026-10-31T18:00:00Z"); // 1 November, 01:00 in Bangkok.
+    findUser.mockResolvedValue({ balance: new Prisma.Decimal(750), tutorId });
     await getWalletOverview(userId, now);
     expect(aggregate.mock.calls[0]![0]).toEqual({
       where: {
@@ -160,7 +159,7 @@ describe("wallet overview", () => {
       where: { userId, type: "PAYOUT" },
       _sum: { amount: true },
     });
-    expect(findBookings.mock.calls[0]![0]).toMatchObject({
+    expect(findBookings.mock.calls[1]![0]).toMatchObject({
       where: { OR: [{ paymentExpiresAt: null }, { paymentExpiresAt: { gt: now } }] },
     });
   });
