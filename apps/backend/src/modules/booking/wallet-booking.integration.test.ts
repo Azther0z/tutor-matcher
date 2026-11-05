@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import { URL } from "node:url";
 import { prisma } from "../../lib/db.ts";
 import { appendWalletMovement } from "../wallet/wallet-ledger.ts";
-import { confirmTopup } from "../wallet/wallet.service.ts";
 import { createBooking, confirmBookingPayment } from "./booking.service.ts";
 
 const databaseDescribe = process.env.RUN_DATABASE_INTEGRATION === "true" ? describe : describe.skip;
@@ -102,11 +101,10 @@ databaseDescribe("BOOK-8 wallet and slot acceptance", () => {
       createBooking(otherId, { subjectId, availabilityIds: [slotId], isTrial: true })
     ).rejects.toMatchObject({ code: "SLOT_TAKEN" });
     expect(await prisma.booking.count({ where: { userId: otherId } })).toBe(0);
-    await confirmTopup(studentId, {
-      amount: 150,
-      reference: randomUUID(),
-      simulation: "confirmed",
-    });
+    await prisma.$transaction(
+      (tx) => appendWalletMovement(tx, { userId: studentId, type: "TOP_UP", amount: 150 }),
+      { isolationLevel: "Serializable" }
+    );
     const paid = await confirmBookingPayment(studentId, booking.id);
     expect(paid.status).toBe("CONFIRMED");
     expect((await prisma.availability.findUniqueOrThrow({ where: { id: slotId } })).bookingId).toBe(

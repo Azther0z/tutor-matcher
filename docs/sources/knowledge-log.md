@@ -94,9 +94,23 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
 - Scope: Only Tutors list, add, set default or remove payout accounts; Wallet settings keeps the balance and Top up for everyone
 
+## [2026-11-03] ingest | PAY-1 top-up by slip and admin approval
+
+- Disposition: Update; supersedes the simulated top-up confirmation
+- Raw: docs/sources/pay-1-slip-topup-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Slip URL top-up requests, one pending per user, admin approve or reject with a reason, new `topup_requests` table; no simulation, placeholder QR, no PromptPay API
+
 ## [2026-11-03] ingest | PAY-5 review comments
 
 - Disposition: Update
 - Raw: docs/sources/pay-5-review-comments.md
 - Updated: docs/user-journeys.md, docs/testing.md, AGENTS.md Wiki Memory
 - Scope: Students no longer see Earnings this month, All-time paid out, or the Lesson earnings and Payouts filters; Tutors keep All-time paid out, labelled Total paid out
+
+## [2026-11-06] ingest | PAY-1 demo feedback
+
+- Disposition: Update; supersedes the placeholder QR and the cancel button in the PAY-1 slip confirmation
+- Raw: docs/sources/pay-1-demo-feedback.md
+- Updated: docs/user-journeys.md, docs/testing.md, deploy/README.md, AGENTS.md Wiki Memory
+- Scope: Scannable PromptPay QR with the amount locked, using `PROMPTPAY_ID` or the placeholder `0000000000`; no cancel or back button on a pending top-up; CANCELLED status and the cancel route removed; the admin page lists every request by default

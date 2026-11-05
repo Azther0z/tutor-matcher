@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import WalletTopupPage from "./page";
 
 const replace = jest.fn();
@@ -13,18 +13,52 @@ jest.mock("next/navigation", () => ({
   }),
 }));
 
-const reference = "22222222-2222-4222-8222-222222222222";
+const slipUrl = "https://drive.example.com/slip-750";
+const pending = {
+  id: "22222222-2222-4222-8222-222222222222",
+  amount: "750.00",
+  slipUrl,
+  status: "PENDING",
+  createdAt: "2026-11-03T04:00:00.000Z",
+  reviewedAt: null,
+  rejectionReason: null,
+};
+const rejected = {
+  ...pending,
+  id: "33333333-3333-4333-8333-333333333333",
+  amount: "50.00",
+  status: "REJECTED",
+  rejectionReason: "The slip shows ฿5",
+};
 
-describe("wallet top-up", () => {
+function respond(body: unknown, ok = true) {
+  return { ok, json: async () => body };
+}
+
+// Routes each request by URL and method so the order of calls does not matter.
+function mockApi(
+  recent: unknown[],
+  next: Record<string, unknown> = {},
+  promptPayId = "0000000000"
+) {
+  global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
+    const key = `${init?.method ?? "GET"} ${url}`;
+    if (key in next) {
+      const value = next[key] as { body: unknown; ok?: boolean };
+      return respond(value.body, value.ok ?? true);
+    }
+    if (url === "/api/wallet") return respond({ balance: "250.00" });
+    if (url === "/api/wallet/topups") return respond({ requests: recent, promptPayId });
+    throw new Error(`Unexpected ${key}`);
+  }) as jest.Mock;
+}
+
+describe("wallet top-up by slip", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     amountParam = "750";
     returnToParam = "/bookings/booking-1";
     localStorage.setItem("authToken", "student-token");
-    Object.defineProperty(global.crypto, "randomUUID", {
-      configurable: true,
-      value: jest.fn(() => reference),
-    });
   });
 
   afterEach(() => {
@@ -32,97 +66,117 @@ describe("wallet top-up", () => {
     jest.restoreAllMocks();
   });
 
-  it("confirms a simulated transfer, updates the balance, and returns to the booking", async () => {
-    global.fetch = jest
-      .fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ balance: "250.00" }) })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          balance: "1000.00",
-          transaction: {
-            id: reference,
-            type: "TOP_UP",
-            amount: "750.00",
-            balanceAfter: "1000.00",
-            userId: "student-1",
-            bookingId: null,
-            createdAt: "2026-10-11T04:00:00.000Z",
-          },
-        }),
-      });
-
+  it("sends the amount with a slip link and waits for review", async () => {
+    mockApi([], { "POST /api/wallet/topups": { body: pending } });
     render(<WalletTopupPage />);
+
     expect(await screen.findByText("฿250.00")).toBeInTheDocument();
     expect(screen.getByLabelText("Or enter an amount (฿)")).toHaveValue(750);
-
     fireEvent.click(screen.getByRole("button", { name: "Show PromptPay QR" }));
     expect(screen.getByRole("img", { name: "PromptPay QR code" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Simulate successful transfer" }));
+    expect(screen.getByText(/The amount is already filled in/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Simulate/ })).not.toBeInTheDocument();
 
-    expect(await screen.findByRole("heading", { name: "Wallet topped up" })).toBeInTheDocument();
-    expect(screen.getByText(/new balance ฿1,000\.00/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Return to booking" })).toHaveAttribute(
-      "href",
-      "/bookings/booking-1"
-    );
-    expect(global.fetch).toHaveBeenLastCalledWith(
-      "/api/wallet/topups/confirm",
+    fireEvent.change(screen.getByLabelText("Link to your transfer slip"), {
+      target: { value: ` ${slipUrl} ` },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send slip for review" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Slip sent");
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/wallet/topups",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ amount: 750, reference, simulation: "confirmed" }),
+        body: JSON.stringify({ amount: 750, slipUrl }),
+        headers: expect.objectContaining({ Authorization: "Bearer student-token" }),
       })
     );
-  });
-
-  it("prefills the booking shortfall and lets the student change it before topping up", async () => {
-    amountParam = "50.25";
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ balance: "49.75" }),
-    });
-
-    render(<WalletTopupPage />);
-    expect(await screen.findByText("฿49.75")).toBeInTheDocument();
-    const amount = screen.getByLabelText("Or enter an amount (฿)");
-    expect(amount).toHaveValue(50.25);
-
-    fireEvent.change(amount, { target: { value: "125.50" } });
-    fireEvent.click(screen.getByRole("button", { name: "Show PromptPay QR" }));
-    expect(screen.getByRole("heading", { name: "Add ฿125.50" })).toBeInTheDocument();
-  });
-
-  it("shows a failed confirmation and leaves the displayed balance unchanged", async () => {
-    global.fetch = jest
-      .fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ balance: "250.00" }) })
-      .mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ message: "The transfer was not confirmed." }),
-      });
-
-    render(<WalletTopupPage />);
-    expect(await screen.findByText("฿250.00")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Show PromptPay QR" }));
-    fireEvent.click(screen.getByRole("button", { name: "Simulate failed transfer" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("The transfer was not confirmed.");
+    expect(screen.getByRole("heading", { name: "Top-up of ฿750.00" })).toBeInTheDocument();
     expect(screen.getByText("฿250.00")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Wallet topped up" })).not.toBeInTheDocument();
-    expect(global.fetch).toHaveBeenLastCalledWith(
-      "/api/wallet/topups/confirm",
-      expect.objectContaining({
-        body: JSON.stringify({ amount: 750, reference, simulation: "failed" }),
-      })
+    expect(screen.getByRole("link", { name: "View slip" })).toHaveAttribute("href", slipUrl);
+    expect(screen.getByText(/Your booking is held for a limited time/)).toBeInTheDocument();
+  });
+
+  it("checks the slip link before sending anything", async () => {
+    mockApi([]);
+    render(<WalletTopupPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Show PromptPay QR" }));
+    fireEvent.change(screen.getByLabelText("Link to your transfer slip"), {
+      target: { value: "my slip" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send slip for review" }));
+
+    expect(screen.getByText("Paste a link that starts with http:// or https://.")).toBeVisible();
+    expect(screen.getByLabelText("Link to your transfer slip")).toHaveAttribute(
+      "aria-invalid",
+      "true"
     );
+    const calls = (global.fetch as jest.Mock).mock.calls as [string, RequestInit?][];
+    expect(calls.some(([, init]) => init?.method === "POST")).toBe(false);
+  });
+
+  it("validates the amount before showing the QR", async () => {
+    mockApi([]);
+    render(<WalletTopupPage />);
+    fireEvent.change(await screen.findByLabelText("Or enter an amount (฿)"), {
+      target: { value: "0" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Show PromptPay QR" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter an amount between");
+    expect(screen.queryByLabelText("Link to your transfer slip")).not.toBeInTheDocument();
+  });
+
+  it("shows a pending top-up with no way to cancel it or leave", async () => {
+    mockApi([pending]);
+    render(<WalletTopupPage />);
+
+    expect(await screen.findByRole("heading", { name: "Top-up of ฿750.00" })).toBeInTheDocument();
+    expect(screen.getAllByText("Pending approval").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Show PromptPay QR" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Cancel/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /booking/i })).not.toBeInTheDocument();
+  });
+
+  it("turns top-up off when the PromptPay ID is not valid", async () => {
+    mockApi([], {}, "081-234-5678");
+    render(<WalletTopupPage />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Top-up is not available");
+    expect(screen.getByRole("button", { name: "Show PromptPay QR" })).toBeDisabled();
+  });
+
+  it("lists recent top-ups with the rejection reason", async () => {
+    mockApi([rejected]);
+    render(<WalletTopupPage />);
+
+    const recent = await screen.findByRole("region", { name: "Recent top-ups" });
+    expect(within(recent).getByText("฿50.00")).toBeInTheDocument();
+    expect(within(recent).getByText("Rejected")).toBeInTheDocument();
+    expect(within(recent).getByText("Reason: The slip shows ฿5")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show PromptPay QR" })).toBeInTheDocument();
+  });
+
+  it("shows the server message when a second pending top-up is refused", async () => {
+    mockApi([], {
+      "POST /api/wallet/topups": {
+        ok: false,
+        body: { code: "TOPUP_PENDING_EXISTS", message: "You already have a top-up waiting" },
+      },
+    });
+    returnToParam = null;
+    render(<WalletTopupPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Show PromptPay QR" }));
+    fireEvent.change(screen.getByLabelText("Link to your transfer slip"), {
+      target: { value: slipUrl },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send slip for review" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("You already have a top-up waiting");
   });
 
   it("redirects guests before loading wallet data", async () => {
     localStorage.clear();
     global.fetch = jest.fn();
-
     render(<WalletTopupPage />);
-
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?next=%2Fwallet%2Ftopup"));
     expect(global.fetch).not.toHaveBeenCalled();
   });
