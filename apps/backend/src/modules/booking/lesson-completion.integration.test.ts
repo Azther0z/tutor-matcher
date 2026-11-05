@@ -188,6 +188,80 @@ run("CLASS-2 Tutor lesson completion confirmation", () => {
     });
   });
 
+  it("keeps the net earning pending across completion and unlocks only the Student's review eligibility", async () => {
+    const { id } = await createLesson(48);
+    await moveLessonToPast(id);
+    const before = await authorize(request(app).get(`/api/bookings/${id}`), STUDENT).expect(200);
+    expect(before.body.booking.actions.canReview).toBe(false);
+    const walletBefore = await authorize(request(app).get("/api/wallet/overview")).expect(200);
+    expect(walletBefore.body).toMatchObject({
+      balance: "0.00",
+      pendingEarnings: "85.00",
+      earningsThisMonth: "0.00",
+    });
+
+    const completed = await authorize(
+      request(app).post(`/api/bookings/${id}/confirm-completion`)
+    ).expect(200);
+    expect(completed.body.booking).toMatchObject({
+      status: "COMPLETED",
+      earnings: { amount: "85.00", status: "PENDING" },
+      actions: { canReview: false },
+    });
+    const studentView = await authorize(request(app).get(`/api/bookings/${id}`), STUDENT).expect(
+      200
+    );
+    expect(studentView.body.booking).toMatchObject({
+      actions: { canReview: true },
+      earnings: null,
+    });
+    await authorize(request(app).get(`/api/bookings/${id}`), OTHER).expect(403);
+    await authorize(request(app).post(`/api/bookings/${id}/confirm-completion`)).expect(409);
+    const walletAfter = await authorize(request(app).get("/api/wallet/overview")).expect(200);
+    expect(walletAfter.body).toMatchObject({
+      balance: "0.00",
+      pendingEarnings: "85.00",
+      earningsThisMonth: "0.00",
+    });
+    const history = await authorize(request(app).get("/api/wallet/transactions")).expect(200);
+    expect(history.body.transactions).toEqual([]);
+
+    // A future PAY-6 release is represented by an actual ledger movement, never a pending row.
+    await prisma.$transaction(
+      (tx) =>
+        appendWalletMovement(tx, {
+          userId: TEACHER,
+          type: "LESSON_EARNING",
+          amount: "85.00",
+          bookingId: id,
+        }),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+    const cleared = await authorize(request(app).get("/api/wallet/overview")).expect(200);
+    expect(cleared.body).toMatchObject({
+      balance: "85.00",
+      pendingEarnings: "0.00",
+      earningsThisMonth: "85.00",
+    });
+    const released = await authorize(request(app).get(`/api/bookings/${id}`)).expect(200);
+    expect(released.body.booking.earnings).toEqual({ amount: "85.00", status: "RELEASED" });
+  });
+
+  it("does not duplicate pending earnings or write credit when confirmations race", async () => {
+    const { id } = await createLesson(48);
+    await moveLessonToPast(id);
+    const responses = await Promise.all([
+      authorize(request(app).post(`/api/bookings/${id}/confirm-completion`)),
+      authorize(request(app).post(`/api/bookings/${id}/confirm-completion`)),
+    ]);
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    const overview = await authorize(request(app).get("/api/wallet/overview")).expect(200);
+    expect(overview.body).toMatchObject({ balance: "0.00", pendingEarnings: "85.00" });
+    expect(
+      await prisma.walletTransaction.count({ where: { bookingId: id, type: "LESSON_EARNING" } })
+    ).toBe(0);
+  });
+
   it("rejects confirmation before scheduled end", async () => {
     const { id } = await createLesson(48);
     await authorize(request(app).post(`/api/bookings/${id}/confirm-completion`)).expect(409);

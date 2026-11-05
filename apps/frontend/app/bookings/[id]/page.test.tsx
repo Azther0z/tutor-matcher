@@ -113,6 +113,7 @@ it("lets the assigned Tutor confirm an ended lesson with an irreversible confirm
   const endedBooking = {
     ...booking,
     viewerRole: "TUTOR",
+    earnings: { amount: "85.00", status: "PENDING" },
     startedAt: "2020-01-10T09:00:00.000Z",
     endedAt: "2020-01-10T09:30:00.000Z",
     actions: {
@@ -149,6 +150,10 @@ it("lets the assigned Tutor confirm an ended lesson with an irreversible confirm
 
   expect(await screen.findByText("COMPLETED")).toBeInTheDocument();
   expect(screen.getByRole("status")).toHaveTextContent("Session marked completed.");
+  const earnings = screen.getByRole("region", { name: "Lesson earnings" });
+  expect(earnings).toHaveTextContent("Pending earnings");
+  expect(earnings).toHaveTextContent("85.00");
+  expect(earnings).toHaveTextContent("not in your available balance");
   expect(
     screen.queryByRole("button", { name: "Confirm session completed" })
   ).not.toBeInTheDocument();
@@ -309,6 +314,27 @@ it("shows the completed status to the Student without a Tutor confirmation actio
   expect(
     screen.queryByRole("button", { name: "Confirm session completed" })
   ).not.toBeInTheDocument();
+});
+
+it.each([
+  ["CONFIRMED", false, "Review not yet eligible"],
+  ["COMPLETED", true, "Eligible to review"],
+])("shows review eligibility for the Student's %s booking", async (status, canReview, heading) => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      booking: {
+        ...booking,
+        status,
+        viewerRole: "STUDENT",
+        earnings: null,
+        actions: { ...booking.actions, canReview },
+      },
+    }),
+  });
+  render(<BookingDetailPage />);
+  expect(await screen.findByRole("heading", { name: heading as string })).toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Lesson earnings" })).not.toBeInTheDocument();
 });
 
 it("disables payment and links to wallet top-up for the server shortfall", async () => {

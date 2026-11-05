@@ -100,7 +100,9 @@ describe("/wallet", () => {
     await waitFor(() => expect(within(summary).getByText("฿1,200.00")).toBeInTheDocument());
     expect(within(summary).getAllByText("Available balance")).toHaveLength(1);
     expect(within(summary).getByText("฿708.33")).toBeInTheDocument();
-    expect(within(summary).getByText(/after the 15% platform fee/)).toBeInTheDocument();
+    expect(
+      within(summary).getByText(/after the 15% platform fee.*pending after lesson completion/i)
+    ).toBeInTheDocument();
     expect(within(summary).getByText("฿425.00")).toBeInTheDocument();
     expect(within(summary).getByText("Total paid out")).toBeInTheDocument();
     expect(

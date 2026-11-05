@@ -295,8 +295,11 @@ At the scheduled end time, a confirmed lesson appears in the Tutor dashboard's s
 **Needs confirmation** list. The assigned Tutor opens the booking and confirms completion
 in a one-way dialog. The booking then changes to `COMPLETED`. Until the Tutor confirms,
 the booking stays `CONFIRMED` and remains in the list; the system does not complete or
-expire it automatically. CLASS-2 records this status change only. Earnings release and
-Student review eligibility are handled by CLASS-3.
+expire it automatically. CLASS-3 keeps the net earning pending after completion and
+exposes review eligibility only to the booking's Student, provided no review exists.
+It does not credit available balance or write a pending ledger entry. PAY-6 owns
+earnings clearing; REV-1 owns the review form and submission. See the
+[CLASS-3 confirmation](sources/class-3-policy-confirmation.md).
 
 ### Cancellation
 
@@ -384,13 +387,18 @@ Success atomically credits balance and appends TOP_UP. Failure writes nothing.
 Retrying the same reference cannot credit twice. Simulation is disabled in production;
 a verified payment provider is required before real-money use.
 
-**Lesson earnings (planned for CLASS-3, outside PAY-1 and CLASS-2).** After the Tutor
-confirms completion, CLASS-3 handles the Tutor's share after the platform fee and makes
-the Student review available. CLASS-2 changes BookingStatus only and creates no wallet
-movement. The provisional fee is 15%. Pending earnings are computed from CONFIRMED
-bookings minus the fee, rounded to cents per booking; no pending ledger row exists. PAY-5
-shows this figure on `/wallet` using the provisional fee. Until settlement, the money is held
-by the platform for that booking, not in the Tutor's available wallet.
+**Lesson earnings.** Tutor confirmation leaves earnings pending. CLASS-3 uses the same
+15% fee calculation as PAY-5 against the booking's agreed total, with the fee rounded
+to cents per booking. Pending earnings include CONFIRMED and COMPLETED bookings
+without a LESSON_EARNING row, so the amount remains visible after completion and is
+excluded once it has cleared. The Tutor's booking page shows the net amount and its
+pending status; the Student does not receive the Tutor's earning details.
+
+Confirmation changes neither available balance nor wallet history. PAY-6 will define
+the hold period and release earnings into available balance with a LESSON_EARNING row.
+No pending ledger row or historical reconciliation is added. This confirmed policy
+supersedes issue #212's original immediate-release wording; see the
+[CLASS-3 confirmation](sources/class-3-policy-confirmation.md).
 
 **Refunds.** Paid cancellation appends REFUND and leaves LESSON_PAYMENT unchanged.
 PAY-1 retains the existing configurable cancellation window and late-refund rate,
