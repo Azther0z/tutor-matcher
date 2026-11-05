@@ -97,7 +97,7 @@ describe("wallet overview", () => {
     });
   });
 
-  it("computes Tutor pending earnings per CONFIRMED booking after the 15% fee", async () => {
+  it("computes pending earnings for confirmed and completed unsettled bookings after the 15% fee", async () => {
     findUser.mockResolvedValue({ balance: new Prisma.Decimal(1200), tutorId });
     aggregate
       .mockResolvedValueOnce({ _sum: { amount: new Prisma.Decimal(425) } })
@@ -136,7 +136,11 @@ describe("wallet overview", () => {
       ],
     });
     expect(findBookings.mock.calls[0]![0]).toMatchObject({
-      where: { status: "CONFIRMED", subject: { tutorId } },
+      where: {
+        status: { in: ["CONFIRMED", "COMPLETED"] },
+        subject: { tutorId },
+        walletTransactions: { none: { type: "LESSON_EARNING" } },
+      },
     });
   });
 

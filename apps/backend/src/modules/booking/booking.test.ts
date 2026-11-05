@@ -211,6 +211,7 @@ describe("trial booking rules", () => {
       },
       availabilities: [],
       walletTransactions: [],
+      reviews: [],
     } satisfies Parameters<typeof mapBookingResponse>[0];
     const booking = mapBookingResponse(record, SUBJECT_ID, now);
 
@@ -300,6 +301,7 @@ describe("trial booking rules", () => {
       },
       availabilities: [],
       walletTransactions: [],
+      reviews: [],
     } satisfies Parameters<typeof mapBookingResponse>[0];
 
     const asTutor = mapBookingResponse(record, SLOT_B, now);
@@ -369,7 +371,26 @@ describe("trial booking rules", () => {
       canEditMeetingLink: false,
       canJoin: false,
       canConfirmCompletion: false,
+      canReview: false,
     });
+    expect(completed.earnings).toEqual({ amount: "63.75", status: "PENDING" });
+    const completedForStudent = mapBookingResponse(
+      { ...record, status: "COMPLETED" },
+      SUBJECT_ID,
+      now
+    );
+    expect(completedForStudent.actions.canReview).toBe(true);
+    expect(completedForStudent.earnings).toBeNull();
+    expect(asStudent.actions.canReview).toBe(false);
+    expect(cancelled.actions.canReview).toBe(false);
+    expect(cancelled.earnings).toBeNull();
+    expect(
+      mapBookingResponse(
+        { ...record, status: "COMPLETED", reviews: [{ id: SLOT_A }] },
+        SUBJECT_ID,
+        now
+      ).actions.canReview
+    ).toBe(false);
   });
 
   it("refunds the full credit more than 24 hours before the lesson", () => {

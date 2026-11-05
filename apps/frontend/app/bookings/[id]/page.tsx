@@ -594,6 +594,45 @@ function BookingDetailContent() {
         <aside className="rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
           <p className="text-sm text-zinc-500">Total</p>
           <p className="mt-1 text-2xl font-bold">{money.format(Number(booking.totalAmount))}</p>
+          {isTutorView && booking.earnings && (
+            <section
+              aria-label="Lesson earnings"
+              className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-800"
+            >
+              <h3 className="font-semibold">
+                {booking.earnings.status === "PENDING" ? "Pending earnings" : "Released earnings"}
+              </h3>
+              <p className="mt-1 text-xl font-bold">
+                {money.format(Number(booking.earnings.amount))}
+              </p>
+              <p className="mt-2 text-sm text-zinc-500">
+                {booking.earnings.status === "PENDING"
+                  ? "After the 15% platform fee. This amount stays pending after completion and is not in your available balance."
+                  : "This earning has been released into your wallet."}
+              </p>
+              <Link
+                href="/wallet"
+                className="mt-3 inline-block text-sm font-semibold text-violet-600 underline"
+              >
+                View wallet
+              </Link>
+            </section>
+          )}
+          {!isTutorView && (booking.status === "CONFIRMED" || booking.actions.canReview) && (
+            <section
+              aria-label="Review eligibility"
+              className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-800"
+            >
+              <h3 className="font-semibold">
+                {booking.actions.canReview ? "Eligible to review" : "Review not yet eligible"}
+              </h3>
+              <p className="mt-2 text-sm text-zinc-500">
+                {booking.actions.canReview
+                  ? `Your Tutor confirmed completion of your ${booking.subject.name} lesson. This booking is eligible for a review of ${booking.subject.tutor.name} for this subject.`
+                  : "Your Tutor must confirm completion before this booking is eligible for a review."}
+              </p>
+            </section>
+          )}
           {booking.status === "PENDING_PAYMENT" && booking.payment.expiresAt && (
             <p className="mt-2 text-xs text-zinc-500">
               Payment hold expires {dateTime.format(new Date(booking.payment.expiresAt))}
