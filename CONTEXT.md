@@ -138,8 +138,8 @@ tutor-only: a Tutor with available balance can request one; students cannot with
 _Avoid_: Withdrawal request, cash-out, transfer
 
 **Payout Account**:
-The bank account a user's payouts are sent to. A user may hold more than one and marks
-one as default.
+The bank account a Tutor's payouts are sent to. Only Tutors hold them; a Tutor may hold
+more than one and marks one as default.
 _Avoid_: Payment method, bank details
 
 **Refund**:

@@ -41,9 +41,15 @@ function PayoutContent() {
   const account = accounts.find((item) => item.id === accountId);
 
   useEffect(() => {
-    Promise.all([getWallet(), getPayoutAccounts(), isTutor()])
-      .then(([wallet, saved, tutor]) => {
-        if (!tutor) setStage("tutorOnly");
+    // Payout accounts are tutor-only too, so load them only after the Tutor check.
+    Promise.all([getWallet(), isTutor()])
+      .then(async ([wallet, tutor]) => {
+        if (!tutor) {
+          setStage("tutorOnly");
+          setBalance(wallet.balance);
+          return;
+        }
+        const saved = await getPayoutAccounts();
         setBalance(wallet.balance);
         setAccounts(saved);
         setAccountId((saved.find((item) => item.isDefault) ?? saved[0])?.id ?? "");

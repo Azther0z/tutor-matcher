@@ -310,8 +310,8 @@ Do not synchronize an existing populated database with an unattended destructive
 
 ### payout_accounts
 
-PROF-7 adds each user's saved Thai bank accounts for payouts. Any user can have them, not
-only Tutors.
+PROF-7 adds each Tutor's saved Thai bank accounts for payouts. Only Tutors can manage them
+(changed 2026-11-03); the rows still reference `users`, not `tutors`.
 
 | Column              | Type      | Constraints                              | Meaning                                                  |
 | ------------------- | --------- | ---------------------------------------- | -------------------------------------------------------- |

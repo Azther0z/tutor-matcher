@@ -35,8 +35,12 @@ function ok(body: unknown) {
   return { ok: true, json: async () => body };
 }
 
-// The page loads the wallet, then the accounts and the bank list.
-function mockLoad(accounts: unknown[], balance = "1250.50", tutorStatus: string | null = "NONE") {
+// The page loads the wallet and the Tutor check, then a Tutor's accounts and the bank list.
+function mockLoad(
+  accounts: unknown[],
+  balance = "1250.50",
+  tutorStatus: string | null = "APPROVED"
+) {
   fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
     if (url === "/api/wallet") return ok({ balance });
     if (url === "/api/profiles/me/tutor")
@@ -65,8 +69,8 @@ beforeEach(() => {
 });
 
 describe("WalletSettingsPage", () => {
-  it("shows Request payout only to Tutors", async () => {
-    mockLoad([], "1250.50", "APPROVED");
+  it("shows Request payout to Tutors", async () => {
+    mockLoad([]);
     render(<WalletSettingsPage />);
 
     expect(await screen.findByRole("link", { name: "Request payout" })).toHaveAttribute(
@@ -75,11 +79,33 @@ describe("WalletSettingsPage", () => {
     );
   });
 
-  it("keeps Request payout when the Tutor check fails", async () => {
+  it("shows only the balance and Top up to a user who is not a Tutor", async () => {
+    mockLoad([], "1250.50", "NONE");
+    render(<WalletSettingsPage />);
+
+    expect(await screen.findByText("฿1,250.50")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Top up" })).toHaveAttribute("href", "/wallet/topup");
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith("/api/profiles/me/tutor", expect.anything())
+    );
+    expect(screen.getByText("Check your wallet balance and top up.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Request payout" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Payout accounts" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add account" })).not.toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(([url]) => String(url).startsWith("/api/payout-accounts"))
+    ).toBe(false);
+  });
+
+  it("keeps Request payout and shows a load error when the Tutor check fails", async () => {
     mockLoad([], "1250.50", null);
     render(<WalletSettingsPage />);
 
     expect(await screen.findByRole("link", { name: "Request payout" })).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "We could not load your payout accounts. Please refresh and try again."
+    );
+    expect(screen.queryByRole("button", { name: "Add account" })).not.toBeInTheDocument();
   });
 
   it("shows the balance with a top-up link and the empty state", async () => {
@@ -88,7 +114,6 @@ describe("WalletSettingsPage", () => {
 
     expect(await screen.findByText("฿1,250.50")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Top up" })).toHaveAttribute("href", "/wallet/topup");
-    expect(screen.queryByRole("link", { name: "Request payout" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Wallet" })).toHaveAttribute("aria-current", "page");
     expect(await screen.findByText(/No payout accounts yet/)).toBeInTheDocument();
     expect(screen.getByText("Your first account becomes your default.")).toBeInTheDocument();

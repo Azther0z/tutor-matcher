@@ -113,7 +113,7 @@ Guards run before render, not after.
 | `/wallet/transactions/:id` | Read-only transaction detail                                            | Requires login |
 | `/settings/account`        | Email, password, deactivate account                                     | Requires login |
 | `/settings/notifications`  | Per-event email and push preferences                                    | Requires login |
-| `/settings/wallet`         | Balance shortcut and payout account details                             | Requires login |
+| `/settings/wallet`         | Balance shortcut; payout account details for Tutors                     | Requires login |
 | `/settings/tutor`          | Tutor profile — public listing, verification, subjects                  | Role: tutor    |
 | `/reviews/:tutorId`        | Read-only review list for a tutor                                       | Requires login |
 | `/admin/tutor-requests`    | Tutor application queue — approve or reject                             | Role: admin    |
@@ -409,9 +409,11 @@ Wallet settings. An asynchronous provider would need a separate request table, n
 status. Lesson-earning settlement remains separate work. See the [PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
 
 **Payout accounts (`/settings/wallet`, PROF-7).** Any logged-in user can open Wallet
-settings from the Settings navigation, not only Tutors (PROF-7). Requesting a payout is tutor-only (PAY-7).
-The page starts with the wallet balance and a **Top up** link to `/wallet/topup`. Below it,
-the user's saved payout accounts are listed with bank, account holder name, masked number
+settings from the Settings navigation. The page starts with the wallet balance and a **Top up**
+link to `/wallet/topup`. Payout accounts are tutor-only, like requesting a payout (PAY-7): a
+user who is not a Tutor sees only the balance and Top up, and the server rejects their payout
+account requests (changed 2026-11-03, see the [tutor-only confirmation](sources/prof-7-tutor-only-confirmation.md)).
+For a Tutor, the saved payout accounts are listed with bank, account holder name, masked number
 (`•••• 1234`). The default has a **Default** badge, the others a **Set default** action,
 and every row has **Remove**, which asks for an inline confirm. An **Add account** form takes a Thai bank from the list, the account
 holder name and a 10 to 15 digit account number (spaces and dashes are ignored). A user can
