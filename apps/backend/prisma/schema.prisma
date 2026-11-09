@@ -22,6 +22,18 @@ enum TopupRequestStatus {
   REJECTED
 }
 
+// PAY-3: why a Student asks for a refund after the lesson's scheduled end.
+enum RefundRequestReason {
+  TUTOR_NO_SHOW
+  UNSATISFACTORY_LESSON
+}
+
+enum RefundRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum TutorStatus {
   UNPUBLISHED
   PUBLISHED
@@ -97,10 +109,12 @@ model User {
   sentMessages     Message[] @relation("MessagesSent")
   receivedMessages Message[] @relation("MessagesReceived")
 
-  walletTransactions    WalletTransaction[]
-  payoutAccounts        PayoutAccount[]
-  topupRequests         TopupRequest[]      @relation("TopupRequestOwner")
-  reviewedTopupRequests TopupRequest[]      @relation("TopupRequestReviewer")
+  walletTransactions     WalletTransaction[]
+  payoutAccounts         PayoutAccount[]
+  topupRequests          TopupRequest[]      @relation("TopupRequestOwner")
+  reviewedTopupRequests  TopupRequest[]      @relation("TopupRequestReviewer")
+  refundRequests         RefundRequest[]     @relation("RefundRequestOwner")
+  reviewedRefundRequests RefundRequest[]     @relation("RefundRequestReviewer")
 
   reportsFiledAsAdmin Report[] @relation("ReportsHandledByAdmin")
   reportsMade         Report[] @relation("ReportsMadeByReporter")
@@ -290,6 +304,7 @@ model Booking {
   availabilities     Availability[]
   walletTransactions WalletTransaction[]
   reviews            Review[]
+  refundRequest      RefundRequest?
 
   @@index([userId])
   @@index([subjectId])
@@ -338,6 +353,30 @@ model TopupRequest {
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@map("topup_requests")
+}
+
+// PAY-3: one refund request per booking. A Tutor no-show is approved when filed; an
+// unsatisfactory lesson waits for an admin. Approval appends one REFUND row.
+model RefundRequest {
+  id              String              @id @default(uuid()) @map("refund_request_id") @db.Uuid
+  reason          RefundRequestReason
+  details         String?
+  amount          Decimal             @db.Decimal(12, 2)
+  status          RefundRequestStatus @default(PENDING)
+  createdAt       DateTime            @default(now()) @map("created_at")
+  reviewedAt      DateTime?           @map("reviewed_at")
+  rejectionReason String?             @map("rejection_reason")
+
+  bookingId    String  @unique @map("booking_id") @db.Uuid
+  booking      Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  userId       String  @map("user_id") @db.Uuid
+  user         User    @relation("RefundRequestOwner", fields: [userId], references: [id], onDelete: Restrict)
+  reviewedById String? @map("reviewed_by_id") @db.Uuid
+  reviewedBy   User?   @relation("RefundRequestReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("refund_requests")
 }
 
 // PROF-7: a Tutor's saved bank accounts for payouts. Removed accounts stay for payout history.

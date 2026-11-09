@@ -212,6 +212,7 @@ describe("trial booking rules", () => {
       availabilities: [],
       walletTransactions: [],
       reviews: [],
+      refundRequest: null,
     } satisfies Parameters<typeof mapBookingResponse>[0];
     const booking = mapBookingResponse(record, SUBJECT_ID, now);
 
@@ -302,6 +303,7 @@ describe("trial booking rules", () => {
       availabilities: [],
       walletTransactions: [],
       reviews: [],
+      refundRequest: null,
     } satisfies Parameters<typeof mapBookingResponse>[0];
 
     const asTutor = mapBookingResponse(record, SLOT_B, now);
@@ -391,6 +393,79 @@ describe("trial booking rules", () => {
         now
       ).actions.canReview
     ).toBe(false);
+
+    // PAY-3: a paid lesson can be refunded any time after payment, with no deadline.
+    const payment = {
+      id: SLOT_A,
+      type: "LESSON_PAYMENT" as const,
+      amount: new Prisma.Decimal("75.00"),
+      balanceAfter: new Prisma.Decimal("0.00"),
+      createdAt: now,
+      userId: SUBJECT_ID,
+      bookingId: record.id,
+      payoutAccountId: null,
+    };
+    const upcomingPaid = { ...record, walletTransactions: [payment] };
+    // Before the lesson starts, only an admin-reviewed request is possible.
+    expect(mapBookingResponse(upcomingPaid, SUBJECT_ID, now).actions).toMatchObject({
+      canRequestRefund: true,
+      canReportTutorNoShow: false,
+    });
+    expect(mapBookingResponse(record, SUBJECT_ID, now).actions.canRequestRefund).toBe(false);
+    const endedPaid = { ...ended, startedAt: now, walletTransactions: [payment] };
+    expect(mapBookingResponse(endedPaid, SUBJECT_ID, now).actions).toMatchObject({
+      canRequestRefund: true,
+      canReportTutorNoShow: true,
+    });
+    expect(mapBookingResponse(endedPaid, SLOT_B, now).actions).toMatchObject({
+      canRequestRefund: false,
+      canReportTutorNoShow: false,
+    });
+    const yearLater = new Date("2027-09-12T00:00:00.000Z");
+    expect(mapBookingResponse(endedPaid, SUBJECT_ID, yearLater).actions.canRequestRefund).toBe(
+      true
+    );
+
+    const completedPaid = mapBookingResponse(
+      { ...endedPaid, status: "COMPLETED" },
+      SUBJECT_ID,
+      now
+    );
+    expect(completedPaid.actions.canRequestRefund).toBe(false);
+    expect(completedPaid.refundBlockedReason).toBe(
+      "Your Tutor confirmed this lesson was completed, so it can't be refunded."
+    );
+
+    const refundRequest = {
+      id: SLOT_B,
+      reason: "UNSATISFACTORY_LESSON" as const,
+      details: "The tutor left after ten minutes",
+      amount: new Prisma.Decimal("75.00"),
+      status: "PENDING" as const,
+      createdAt: now,
+      reviewedAt: null,
+      rejectionReason: null,
+      bookingId: record.id,
+      userId: SUBJECT_ID,
+      reviewedById: null,
+    };
+    const underReview = { ...endedPaid, refundRequest };
+    expect(mapBookingResponse(underReview, SLOT_B, now).actions.canConfirmCompletion).toBe(false);
+    expect(mapBookingResponse(underReview, SUBJECT_ID, now).actions.canRequestRefund).toBe(false);
+    expect(mapBookingResponse(underReview, SUBJECT_ID, now).refundRequest).toMatchObject({
+      status: "PENDING",
+      details: "The tutor left after ten minutes",
+    });
+    // The Tutor sees that a refund was requested, not the Student's complaint text.
+    expect(mapBookingResponse(underReview, SLOT_B, now).refundRequest).toMatchObject({
+      status: "PENDING",
+      details: null,
+    });
+    const rejected = {
+      ...underReview,
+      refundRequest: { ...refundRequest, status: "REJECTED" as const },
+    };
+    expect(mapBookingResponse(rejected, SLOT_B, now).actions.canConfirmCompletion).toBe(true);
   });
 
   it("refunds the full credit more than 24 hours before the lesson", () => {

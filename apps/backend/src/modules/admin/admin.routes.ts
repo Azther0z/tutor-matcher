@@ -8,6 +8,12 @@ import {
   topupListQuerySchema,
   topupReviewSchema,
 } from "../wallet/wallet.schema.ts";
+import { refundsForReview, reviewRefundRequest } from "../refund/refund.controller.ts";
+import {
+  refundIdParamsSchema,
+  refundListQuerySchema,
+  refundReviewSchema,
+} from "../refund/refund.schema.ts";
 export const adminRouter = Router();
 adminRouter.get("/tutor-requests", listRequests);
 adminRouter.post(
@@ -23,4 +29,12 @@ adminRouter.post(
   validate(topupIdParamsSchema, "params"),
   validate(topupReviewSchema),
   reviewTopupRequest
+);
+// PAY-3: admins decide refund requests for unsatisfactory lessons.
+adminRouter.get("/refunds", validate(refundListQuerySchema, "query"), refundsForReview);
+adminRouter.post(
+  "/refunds/:id/review",
+  validate(refundIdParamsSchema, "params"),
+  validate(refundReviewSchema),
+  reviewRefundRequest
 );
