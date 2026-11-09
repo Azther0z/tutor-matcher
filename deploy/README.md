@@ -48,6 +48,8 @@ only for ordinary accounts. To disable admin signups after creating the intended
 encrypt an empty `ADMIN_SIGNUP_KEY` in the file. Existing Admin accounts keep their access when the
 signup key is disabled.
 
+`PROMPTPAY_ID` is optional. It is the phone number, national ID or e-wallet ID that top-up QR codes pay. While it is blank, QR codes use the placeholder `0000000000`, which banking apps can scan but cannot pay. Do not commit a real value: this repository is public.
+
 Do not commit plaintext dotenv files.
 
 The production `compose.yaml` is the single source of truth for deployment and image builds. It explicitly builds the frontend with `BACKEND_URL=http://backend:8000`, publishes the frontend on host port `3333`, runs the backend on port `8000`, and stores PostgreSQL data at `/srv/platform/tutor-matcher/postgres`. GitHub Actions executes those Compose build definitions before publishing the image names declared in the same file.
