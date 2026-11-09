@@ -296,7 +296,8 @@ At the scheduled end time, a confirmed lesson appears in the Tutor dashboard's s
 **Needs confirmation** list. The assigned Tutor opens the booking and confirms completion
 in a one-way dialog. The booking then changes to `COMPLETED`. Until the Tutor confirms,
 the booking stays `CONFIRMED` and remains in the list; the system does not complete or
-expire it automatically. CLASS-3 keeps the net earning pending after completion and
+expire it automatically. While the Student's refund request waits for an admin (PAY-3,
+§4), the Tutor cannot confirm it. CLASS-3 keeps the net earning pending after completion and
 exposes review eligibility only to the booking's Student, provided no review exists.
 It does not credit available balance or write a pending ledger entry. PAY-6 owns
 earnings clearing; REV-1 owns the review form and submission. See the
@@ -420,6 +421,39 @@ whose approved defaults are 24 hours and 70%. No late-cancellation tutor share i
 The earlier prototype's 12-hour window is superseded for BOOK-3 by the
 [user confirmation](sources/book-3-policy-confirmation.md); late-cancellation allocation
 remains separate work.
+
+**Refund requests (PAY-3).** Once a lesson payment succeeds, the Student can ask for a
+refund from `/bookings/:id` at any time, with no deadline (changed on 2026-11-10 from "lesson
+end until 3 days later"). One request is allowed per booking. The Student picks **My tutor
+didn't show up** or **The lesson was unsatisfactory**; the second needs a short explanation
+(up to 1,000 characters), a no-show may add one.
+
+- A **Tutor no-show** can be reported only once the lesson has started, on a lesson the
+  Tutor has not confirmed. It is approved at once: the full paid amount returns to the
+  wallet as one REFUND row and the booking becomes `CANCELLED`, in one serializable
+  transaction.
+- Before the lesson starts, only the admin-reviewed option is offered, labelled **There's a
+  problem with this lesson**, so the BOOK-3 cancellation rate cannot be avoided. The
+  Student can still cancel the lesson instead.
+- An **unsatisfactory lesson or other problem** waits for an admin at `/admin/refunds`
+  (pending first, filter by status). Approval refunds the full amount and cancels the
+  booking the same way, freeing its slots; rejection needs a reason the Student sees on
+  the booking. Neither can be undone, and the Student cannot file again. An admin cannot
+  decide a refund for a lesson they booked or taught.
+- If the lesson is cancelled (BOOK-3 or BOOK-4) while a request waits, the cancellation
+  refund applies and the request is closed as rejected with "The lesson was cancelled, so
+  its cancellation refund applies instead."
+- While a request waits, the Tutor cannot confirm completion and sees **Refund requested**
+  on the booking, with the reason type but not the Student's text. After a rejection the
+  Tutor can confirm it as usual.
+- A lesson the Tutor has confirmed as `COMPLETED` cannot be refunded. Its booking page shows
+  "Your Tutor confirmed this lesson was completed, so it can't be refunded", and the server
+  rejects a request with the same reason.
+- Approving cancels the booking, so its pending earning disappears and no money is taken
+  from the Tutor (PAY-6 has not released any). Notifications are not sent for refunds yet.
+
+See the [PAY-3 confirmation](sources/pay-3-policy-confirmation.md) and the
+[timing change](sources/pay-3-refund-timing-change.md).
 
 **Payouts (PAY-7).** A Tutor with available balance can request a payout on
 `/wallet/payout`. Payouts are tutor-only: the server rejects anyone else and the page tells
@@ -677,7 +711,7 @@ Related stories: US8-1 … US8-4.
 | Tutor applications           | Approve → tutor capability granted · Reject → applicant told why  |
 | Listing and document changes | Approve → public listing updates · Reject → tutor revises         |
 | Flagged reviews and messages | Keep, hide, or remove, with an audit trail                        |
-| Payment disputes and refunds | Resolve, and the wallet ledger reflects the decision              |
+| Payment disputes and refunds | `/admin/refunds`: approve a full refund or reject with a reason   |
 | Policy violations            | Suspend or ban; protected actions are blocked with a reason shown |
 
 Related stories: US9-1 … US9-5.

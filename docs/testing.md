@@ -198,6 +198,38 @@ npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath app/wallet/p
 
 The decisions are recorded in [PAY-5 user evidence](sources/pay-5-policy-confirmation.md).
 
+### PAY-3 refund request acceptance
+
+`refund.test.ts` covers requests opening at payment with no deadline, no-shows only once
+the lesson starts, the completed-lesson rejection, one
+request per paid, uncancelled lesson, the required explanation for an unsatisfactory lesson
+and the required rejection reason. Booking unit tests cover `canRequestRefund` and `canReportTutorNoShow` before and after
+the start,
+the completed-lesson reason, blocking Tutor completion while a request is pending and hiding
+the Student's text from the Tutor. Booking page tests cover the no-show refund and wallet
+balance, the required explanation, the pending, approved and rejected states, the completed
+lesson reason, a request rejected because the lesson changed, the admin-only option before
+the lesson starts, and the Tutor's note. Admin
+page tests cover the 403 state, the pending default, approve, reject with a reason, a stale
+review and automatic no-show refunds in history.
+
+`refund.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true` and refuses any
+database except `tutor_matcher_pay3_test` on loopback; create it and push the schema first.
+It covers each acceptance criterion through the HTTP API: the instant no-show refund and
+dropped pending earning, admin approval and rejection, the completed-lesson rejection, no
+deadline, no-shows only after the start, approval before the start freeing slots, a Tutor
+cancellation closing a pending request, ownership, admin self-review, a doubled request refunding once, and a request racing
+the Tutor's confirmation.
+
+```powershell
+$env:RUN_DATABASE_INTEGRATION = "true"
+$env:EMAIL_DELIVERY_MODE = "log"
+npm.cmd --prefix apps/backend test -- --runInBand src/modules/refund
+npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/bookings/[id]/page.test.tsx" app/admin/refunds/page.test.tsx
+```
+
+The decisions are recorded in [PAY-3 user evidence](sources/pay-3-policy-confirmation.md).
+
 ### General commands
 
 Run commands from `apps/backend` unless otherwise noted:
