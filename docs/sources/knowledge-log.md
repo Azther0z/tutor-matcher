@@ -108,6 +108,12 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Updated: docs/user-journeys.md, docs/testing.md, AGENTS.md Wiki Memory
 - Scope: Students no longer see Earnings this month, All-time paid out, or the Lesson earnings and Payouts filters; Tutors keep All-time paid out, labelled Total paid out
 
+## [2026-11-06] ingest | CLASS-3 pending earnings and review eligibility
+
+- Disposition: Update; the user's correction supersedes immediate wallet release in issue #212
+- Raw: docs/sources/class-3-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Completion preserves calculated pending earnings at the existing 15% fee; no available-balance credit, pending ledger row or historical reconciliation. PAY-6 owns clearing; REV-1 owns review submission, with eligibility exposed by CLASS-3.
 ## [2026-11-06] ingest | PAY-1 demo feedback
 
 - Disposition: Update; supersedes the placeholder QR and the cancel button in the PAY-1 slip confirmation

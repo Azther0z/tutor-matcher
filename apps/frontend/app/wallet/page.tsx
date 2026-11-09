@@ -163,7 +163,7 @@ function WalletContent() {
             <SummaryCard
               label="Pending earnings"
               value={money(overview.pendingEarnings)}
-              note="Confirmed lessons after the 15% platform fee. Not yet in your balance."
+              note="After the 15% platform fee. Stays pending after lesson completion."
             />
           )}
           {overview?.earningsThisMonth != null && (

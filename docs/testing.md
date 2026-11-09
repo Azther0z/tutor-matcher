@@ -184,7 +184,12 @@ figures and the Lesson earnings and Payouts filters from Students (a Tutor-only 
 falls back to All), one list of every type with its signed amount and detail link, the filter and page
 in the URL, the Payment due links to `/bookings/:id`, empty and retry states, and a read-only
 detail page with no actions, the booking link, the payout account and not-found handling.
-No database integration suite was added; these reads use plain Prisma queries.
+CLASS-3 extends the completion integration suite to verify that pending earnings remain
+unchanged after confirmation, available balance and ledger history receive no credit,
+only the booking's Student becomes review-eligible, and retries/concurrent confirmations
+do not duplicate money. It also seeds an actual cleared movement to verify that the
+pending calculation excludes released earnings. These tests require the dedicated local
+`tutor_matcher_book4_test` database and `RUN_DATABASE_INTEGRATION=true`.
 
 ```powershell
 npm.cmd --prefix apps/backend test -- --runInBand wallet-read.test.ts

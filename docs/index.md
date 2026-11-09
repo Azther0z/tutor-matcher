@@ -72,8 +72,9 @@ Things the product needs but does not yet have an answer for:
 - API routes and request/response contracts are not documented separately from the code.
 - The authentication mechanism (JWT vs. session vs. federated login) is not settled — see
   [`../README.md`](../README.md#architecture).
-- The earnings clearing period, platform fee, and late-cancellation allocation still need
-  product sign-off; BOOK-3's 24-hour / 70% defaults are confirmed, and BOOK-4 tutor
+- The earnings clearing period and late-cancellation allocation still need
+  product sign-off. CLASS-3 keeps earnings pending using the existing 15% fee;
+  PAY-6 owns clearing. BOOK-3's 24-hour / 70% defaults are confirmed, and BOOK-4 tutor
   cancellations always refund the student in full — see
   [`user-journeys.md`](user-journeys.md#4--money).
 - Whether lesson rescheduling is in scope at all is still open.

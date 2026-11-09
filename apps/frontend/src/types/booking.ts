@@ -44,6 +44,7 @@ export type BookingActions = {
   canEditMeetingLink: boolean;
   canJoin: boolean;
   canConfirmCompletion: boolean;
+  canReview: boolean;
 };
 
 export type CancellationQuote = {
@@ -77,6 +78,7 @@ export type Booking = {
   description?: string | null;
   isTrial: boolean;
   totalAmount: string;
+  earnings: { amount: string; status: "PENDING" | "RELEASED" } | null;
   startedAt: string;
   endedAt: string;
   paymentExpiresAt: string | null;

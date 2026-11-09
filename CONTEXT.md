@@ -131,10 +131,10 @@ difference and come back; the slot stays locked to the booking meanwhile.
 _Avoid_: Checkout, transfer proof, invoice
 
 **Lesson Earning**:
-The tutor's share after the platform fee. CLASS-3 will append LESSON_EARNING after the
-assigned Tutor confirms lesson completion. Until settlement, pending earnings are
-calculated from CONFIRMED bookings, with no tutor ledger row. Settlement is outside
-PAY-1 and CLASS-2; see the approved ledger design in docs/user-journeys.md §4.
+The Tutor's share after the platform fee. Pending earnings are calculated from
+CONFIRMED and COMPLETED bookings without a LESSON_EARNING row. Tutor confirmation
+keeps the amount pending; it does not credit available balance. PAY-6 will clear
+earnings into available balance and append LESSON_EARNING. See docs/user-journeys.md §4.
 _Avoid_: Income, revenue, salary
 
 **Payout**:

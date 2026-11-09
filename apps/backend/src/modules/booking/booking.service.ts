@@ -7,6 +7,7 @@ import { subjectSnapshot } from "../subject/subject.public.ts";
 import { notifyUser } from "../notification/notification.service.ts";
 import { setTimeout, clearTimeout } from "node:timers";
 import { appendWalletMovement, InsufficientWalletBalance } from "../wallet/wallet-ledger.ts";
+import { tutorShare } from "../wallet/wallet.service.ts";
 import type {
   CancelBookingInput,
   CreateBookingInput,
@@ -143,6 +144,7 @@ const detailInclude = {
   },
   availabilities: { orderBy: { startedAt: "asc" as const } },
   walletTransactions: { orderBy: { createdAt: "asc" as const } },
+  reviews: { select: { id: true }, take: 1 },
 } satisfies Prisma.BookingInclude;
 
 type BookingDetailRecord = Prisma.BookingGetPayload<{ include: typeof detailInclude }>;
@@ -272,6 +274,8 @@ export function mapBookingResponse(
     isTutor && booking.status === "CONFIRMED" && booking.endedAt.getTime() <= now.getTime();
   const canEditMeetingLink = isTutor && booking.status === "CONFIRMED" && beforeLessonEnd;
   const canJoin = booking.status === "CONFIRMED" && Boolean(effectiveMeetingUrl) && beforeLessonEnd;
+  const canReview = isStudent && booking.status === "COMPLETED" && booking.reviews.length === 0;
+  const earning = booking.walletTransactions.find((entry) => entry.type === "LESSON_EARNING");
 
   return {
     id: booking.id,
@@ -285,6 +289,13 @@ export function mapBookingResponse(
     createdAt: booking.createdAt.toISOString(),
     isTrial: booking.isTrial,
     totalAmount: decimalString(booking.totalAmount),
+    earnings:
+      isTutor && ["CONFIRMED", "COMPLETED"].includes(booking.status)
+        ? {
+            amount: decimalString(earning?.amount ?? tutorShare(booking.totalAmount)),
+            status: earning ? ("RELEASED" as const) : ("PENDING" as const),
+          }
+        : null,
     startedAt: booking.startedAt.toISOString(),
     endedAt: booking.endedAt.toISOString(),
     paymentExpiresAt: booking.paymentExpiresAt?.toISOString() ?? null,
@@ -332,6 +343,7 @@ export function mapBookingResponse(
       canEditMeetingLink,
       canJoin,
       canConfirmCompletion,
+      canReview,
     },
   };
 }
@@ -909,7 +921,7 @@ export async function listTutorBookingsNeedingConfirmation(userId: string) {
   return bookings.map((booking) => mapBookingResponse(booking, userId, now));
 }
 
-// CLASS-2 changes only BookingStatus; earnings and review effects belong to CLASS-3.
+// Completion unlocks review eligibility; earnings remain calculated pending amounts until PAY-6.
 export async function confirmBookingCompletionAsTutor(userId: string, id: string) {
   let completed: BookingDetailRecord | null;
   try {

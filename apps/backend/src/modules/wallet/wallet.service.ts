@@ -107,7 +107,11 @@ export async function getWalletOverview(userId: string, now = new Date()) {
       : null,
     tutorId
       ? prisma.booking.findMany({
-          where: { status: "CONFIRMED", subject: { tutorId } },
+          where: {
+            status: { in: ["CONFIRMED", "COMPLETED"] },
+            subject: { tutorId },
+            walletTransactions: { none: { type: "LESSON_EARNING" } },
+          },
           select: { totalAmount: true },
         })
       : null,
