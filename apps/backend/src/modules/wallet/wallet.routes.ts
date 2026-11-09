@@ -2,14 +2,15 @@ import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { validate } from "../../middleware/validate.ts";
 import {
-  confirmPromptPayTopup,
+  myTopups,
   overview,
+  submitTopup,
   summary,
   transaction,
   transactions,
 } from "./wallet.controller.ts";
 import {
-  confirmTopupSchema,
+  createTopupSchema,
   walletTransactionParamsSchema,
   walletTransactionsQuerySchema,
 } from "./wallet.schema.ts";
@@ -37,9 +38,5 @@ walletRouter.get(
   validate(walletTransactionParamsSchema, "params"),
   transaction
 );
-walletRouter.post(
-  "/topups/confirm",
-  topupRateLimiter,
-  validate(confirmTopupSchema),
-  confirmPromptPayTopup
-);
+walletRouter.get("/topups", myTopups);
+walletRouter.post("/topups", topupRateLimiter, validate(createTopupSchema), submitTopup);

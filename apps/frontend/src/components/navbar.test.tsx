@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AuthProvider } from "./auth-provider";
 import { Navbar } from "./navbar";
 import { clearAuthToken, setAuthToken } from "@/src/lib/auth";
-import { confirmTopup } from "@/src/lib/wallet-api";
+import { publishWalletBalance } from "@/src/lib/wallet-api";
 
 const mockPush = jest.fn();
 const fetchMock = jest.fn();
@@ -44,23 +44,6 @@ function mockAuthedUser(
     if (url === "/api/wallet") {
       return Promise.resolve({ ok: true, json: async () => ({ balance: "1250.50" }) });
     }
-    if (url === "/api/wallet/topups/confirm") {
-      return Promise.resolve({
-        ok: true,
-        json: async () => ({
-          balance: "1750.50",
-          transaction: {
-            id: "topup-1",
-            type: "TOP_UP",
-            amount: "500.00",
-            balanceAfter: "1750.50",
-            userId: "student-1",
-            bookingId: null,
-            createdAt: "2026-10-12T00:00:00.000Z",
-          },
-        }),
-      });
-    }
     return Promise.resolve({ ok: false, json: async () => ({}) });
   });
 }
@@ -98,7 +81,7 @@ describe("Navbar", () => {
     expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
   });
 
-  it("updates the displayed balance as soon as a top-up is confirmed", async () => {
+  it("updates the displayed balance as soon as a wallet change is published", async () => {
     setAuthToken("student-token");
     mockAuthedUser({ firstName: "Mina", lastName: "Kittirat", email: "mina@example.com" });
     renderNavbar();
@@ -107,7 +90,7 @@ describe("Navbar", () => {
       expect(screen.getByLabelText("Wallet balance")).toHaveTextContent("฿ 1,250.50")
     );
 
-    await confirmTopup(500, "topup-1");
+    publishWalletBalance("1750.50");
 
     await waitFor(() =>
       expect(screen.getByLabelText("Wallet balance")).toHaveTextContent("฿ 1,750.50")
@@ -172,6 +155,10 @@ it("shows the review queue in the admin account menu", async () => {
     "href",
     "/admin/tutor-requests"
   );
+  expect(screen.getByRole("link", { name: "Top-up requests" })).toHaveAttribute(
+    "href",
+    "/admin/topups"
+  );
 });
 
 it("does not show the review queue to a nonadmin", async () => {
@@ -180,6 +167,7 @@ it("does not show the review queue to a nonadmin", async () => {
   renderNavbar();
   fireEvent.click(await screen.findByRole("button", { name: "Open account menu" }));
   expect(screen.queryByRole("link", { name: "Tutor requests" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Top-up requests" })).not.toBeInTheDocument();
 });
 
 it("retains tutor navigation while the latest profile edit is pending", async () => {

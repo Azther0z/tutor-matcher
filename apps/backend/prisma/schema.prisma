@@ -16,6 +16,12 @@ enum WalletTransactionType {
   PAYOUT
 }
 
+enum TopupRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum TutorStatus {
   UNPUBLISHED
   PUBLISHED
@@ -91,8 +97,10 @@ model User {
   sentMessages     Message[] @relation("MessagesSent")
   receivedMessages Message[] @relation("MessagesReceived")
 
-  walletTransactions WalletTransaction[]
-  payoutAccounts     PayoutAccount[]
+  walletTransactions    WalletTransaction[]
+  payoutAccounts        PayoutAccount[]
+  topupRequests         TopupRequest[]      @relation("TopupRequestOwner")
+  reviewedTopupRequests TopupRequest[]      @relation("TopupRequestReviewer")
 
   reportsFiledAsAdmin Report[] @relation("ReportsHandledByAdmin")
   reportsMade         Report[] @relation("ReportsMadeByReporter")
@@ -249,20 +257,20 @@ model AvailabilitySubject {
 }
 
 model Booking {
-  id                     String        @id @default(uuid()) @map("booking_id") @db.Uuid
-  description            String?
-  zoomMeetingUrl         String?       @map("zoom_meeting_url")
-  customMeetingUrl       String?       @map("custom_meeting_url")
-  meetingLinkUpdatedAt   DateTime?     @map("meeting_link_updated_at")
-  createdAt              DateTime      @default(now()) @map("created_at")
-  status                 BookingStatus @default(PENDING_PAYMENT)
-  isTrial                Boolean       @default(true) @map("is_trial")
-  totalAmount            Decimal       @map("total_amount") @db.Decimal(12, 2)
-  startedAt              DateTime      @map("started_at")
-  endedAt                DateTime      @map("ended_at")
-  paymentExpiresAt       DateTime?     @map("payment_expires_at")
-  cancelledAt            DateTime?     @map("cancelled_at")
-  cancellationReason     String?       @map("cancellation_reason")
+  id                   String        @id @default(uuid()) @map("booking_id") @db.Uuid
+  description          String?
+  zoomMeetingUrl       String?       @map("zoom_meeting_url")
+  customMeetingUrl     String?       @map("custom_meeting_url")
+  meetingLinkUpdatedAt DateTime?     @map("meeting_link_updated_at")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  status               BookingStatus @default(PENDING_PAYMENT)
+  isTrial              Boolean       @default(true) @map("is_trial")
+  totalAmount          Decimal       @map("total_amount") @db.Decimal(12, 2)
+  startedAt            DateTime      @map("started_at")
+  endedAt              DateTime      @map("ended_at")
+  paymentExpiresAt     DateTime?     @map("payment_expires_at")
+  cancelledAt          DateTime?     @map("cancelled_at")
+  cancellationReason   String?       @map("cancellation_reason")
 
   // BOOK-4: null for payment-hold expiry and bookings cancelled before this field existed.
   cancelledBy BookingCancelledBy? @map("cancelled_by")
@@ -310,7 +318,29 @@ model WalletTransaction {
   @@map("wallet_transactions")
 }
 
-// PROF-7: any user's saved bank accounts for payouts. Removed accounts stay for payout history.
+// PAY-1: a top-up waits here until an admin checks the transfer slip. Approval appends the
+// TOP_UP ledger row with this request's id; the ledger itself has no status.
+model TopupRequest {
+  id              String             @id @default(uuid()) @map("topup_request_id") @db.Uuid
+  amount          Decimal            @db.Decimal(12, 2)
+  slipUrl         String             @map("slip_url")
+  status          TopupRequestStatus @default(PENDING)
+  createdAt       DateTime           @default(now()) @map("created_at")
+  reviewedAt      DateTime?          @map("reviewed_at")
+  rejectionReason String?            @map("rejection_reason")
+
+  userId       String  @map("user_id") @db.Uuid
+  user         User    @relation("TopupRequestOwner", fields: [userId], references: [id], onDelete: Restrict)
+  reviewedById String? @map("reviewed_by_id") @db.Uuid
+  reviewedBy   User?   @relation("TopupRequestReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  @@unique([userId], map: "topup_requests_one_pending_per_user", where: { status: "PENDING" })
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("topup_requests")
+}
+
+// PROF-7: a Tutor's saved bank accounts for payouts. Removed accounts stay for payout history.
 model PayoutAccount {
   id                String    @id @default(uuid()) @map("payout_account_id") @db.Uuid
   bankCode          String    @map("bank_code")

@@ -294,7 +294,8 @@ Refunds append a new row without changing the lesson payment. BookingStatus is u
 The booking API's legacy `payment.status` is derived presentation compatibility, not
 a stored ledger status.
 
-PAY-1 implements simulated TOP_UP plus existing LESSON_PAYMENT/REFUND paths.
+PAY-1 writes TOP_UP when an admin approves a top-up request (the row id is the request id),
+plus the existing LESSON_PAYMENT/REFUND paths.
 LESSON_EARNING is an enum value for separate future work. The wallet
 dashboard and calculated pending earnings are not implemented by this change.
 
@@ -307,6 +308,28 @@ each payout was sent. The debit and the row commit in one serializable transacti
 
 Do not synchronize an existing populated database with an unattended destructive
 `db push`. See [safe rollout](change/pay-1-wallet-ledger/design.md).
+
+### topup_requests
+
+PAY-1 keeps each top-up here until an admin checks its transfer slip (since 2026-11-03).
+
+| Column           | Type          | Constraints                              | Meaning                                    |
+| ---------------- | ------------- | ---------------------------------------- | ------------------------------------------ |
+| topup_request_id | UUID          | PK                                       | Prisma `id`; also the TOP_UP row id        |
+| amount           | DECIMAL(12,2) | NOT NULL                                 | Requested amount, 0.01 to 100,000          |
+| slip_url         | TEXT          | NOT NULL                                 | HTTP(S) link to the transfer slip          |
+| status           | ENUM          | NOT NULL, DEFAULT PENDING                | PENDING, APPROVED or REJECTED              |
+| created_at       | TIMESTAMP     | NOT NULL, DEFAULT now()                  | When the slip was sent                     |
+| reviewed_at      | TIMESTAMP     | NULL                                     | When an admin approved or rejected it      |
+| rejection_reason | TEXT          | NULL                                     | Required on rejection, shown to the user   |
+| user_id          | UUID          | NOT NULL, FK → users, ON DELETE RESTRICT | Requester                                  |
+| reviewed_by_id   | UUID          | NULL, FK → users, ON DELETE RESTRICT     | Admin who reviewed it; never the requester |
+
+Partial unique index `topup_requests_one_pending_per_user` on `(user_id) WHERE status =
+'PENDING'` allows one pending request per user. Indexes: `(user_id, created_at)` and
+`(status, created_at)`. Approval changes the status from PENDING and appends the TOP_UP row
+in one serializable transaction, so a request is credited at most once. Rows are never
+deleted.
 
 ### payout_accounts
 

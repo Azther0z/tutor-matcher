@@ -115,9 +115,14 @@ The signed ledger reconciles to the user's available balance; unpaid bookings ha
 _Avoid_: Payment record, ledger line, charge
 
 **Top-up**:
-Money entering a wallet, intended to be paid by PromptPay QR. PAY-1 currently simulates
-confirmation only; no real transfer is accepted. A successful confirmation appends TOP_UP.
+Money entering a wallet by PromptPay transfer. The user sends a slip link as a **Top-up
+Request**; an admin checks the slip and approval appends TOP_UP. Nothing is credited before.
 _Avoid_: Deposit, recharge, buying credits
+
+**Top-up Request**:
+A user's pending top-up with its amount and slip link, waiting for an admin. It ends
+approved or rejected (with a reason); one may be pending per user.
+_Avoid_: Transfer proof, deposit request
 
 **Lesson Payment**:
 The debit that a student makes from wallet balance on the booking page to confirm a

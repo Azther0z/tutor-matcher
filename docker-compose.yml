@@ -28,6 +28,7 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
       ADMIN_SIGNUP_KEY: ${ADMIN_SIGNUP_KEY:-}
+      PROMPTPAY_ID: ${PROMPTPAY_ID:-}
       FRONTEND_URL: http://localhost:${FRONTEND_PORT:-3000}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
