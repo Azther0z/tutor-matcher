@@ -4,6 +4,7 @@ import type {
   Booking,
   CancellationQuote,
   CancellationResult,
+  RefundRequestReason,
 } from "@/src/types/booking";
 
 export type BookingErrorCode =
@@ -21,7 +22,12 @@ export type BookingErrorCode =
   | "BOOKING_NOT_FOUND"
   | "BOOKING_FORBIDDEN"
   | "MEETING_LINK_NOT_EDITABLE"
-  | "PAYMENT_FAILED";
+  | "PAYMENT_FAILED"
+  | "REFUND_ALREADY_REQUESTED"
+  | "REFUND_LESSON_COMPLETED"
+  | "REFUND_NOT_ELIGIBLE"
+  | "REFUND_LESSON_NOT_ENDED"
+  | "REFUND_WINDOW_CLOSED";
 
 export class BookingApiError extends Error {
   constructor(
@@ -207,4 +213,16 @@ export async function updateMeetingLink(
     }
   );
   return data.booking ?? data;
+}
+
+// PAY-3: the Student asks for a refund after the lesson's scheduled end.
+export async function requestRefund(
+  id: string,
+  input: { reason: RefundRequestReason; details?: string }
+): Promise<Booking> {
+  const data = await request<{ booking: Booking }>(
+    `/api/bookings/${encodeURIComponent(id)}/refund-request`,
+    { method: "POST", headers: authHeaders(true), body: JSON.stringify(input) }
+  );
+  return data.booking;
 }
