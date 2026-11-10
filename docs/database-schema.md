@@ -335,26 +335,27 @@ deleted.
 
 PAY-3 keeps a Student's request for a refund after a lesson's scheduled end.
 
-| Column            | Type                | Constraints                                         | Meaning                                                   |
-| ----------------- | ------------------- | --------------------------------------------------- | --------------------------------------------------------- |
-| refund_request_id | UUID                | PK                                                  | Prisma `id`                                               |
-| reason            | RefundRequestReason | NOT NULL                                            | `TUTOR_NO_SHOW` or `UNSATISFACTORY_LESSON`                |
-| details           | TEXT                | NULL                                                | Student's explanation; required for an unsatisfactory one |
-| amount            | DECIMAL(12,2)       | NOT NULL                                            | The booking's LESSON_PAYMENT amount, refunded in full     |
-| status            | RefundRequestStatus | NOT NULL, DEFAULT PENDING                           | PENDING, APPROVED or REJECTED                             |
-| created_at        | TIMESTAMP           | NOT NULL, DEFAULT now()                             | When the Student filed it                                 |
-| reviewed_at       | TIMESTAMP           | NULL                                                | When it was approved or rejected                          |
-| rejection_reason  | TEXT                | NULL                                                | Required on rejection, shown to the Student               |
-| booking_id        | UUID                | NOT NULL, UNIQUE, FK → bookings, ON DELETE RESTRICT | One request per booking                                   |
-| user_id           | UUID                | NOT NULL, FK → users, ON DELETE RESTRICT            | The Student                                               |
-| reviewed_by_id    | UUID                | NULL, FK → users, ON DELETE RESTRICT                | Deciding admin; NULL for a no-show approved automatically |
+| Column                | Type                | Constraints                                                | Meaning                                               |
+| --------------------- | ------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| refund_request_id     | UUID                | PK                                                         | Prisma `id`                                           |
+| reason                | RefundRequestReason | NOT NULL                                                   | `TUTOR_NO_SHOW`, `UNSATISFACTORY_LESSON` or `OTHER`   |
+| details               | TEXT                | NULL                                                       | Student's explanation; required unless a no-show      |
+| amount                | DECIMAL(12,2)       | NOT NULL                                                   | The booking's LESSON_PAYMENT amount, refunded in full |
+| status                | RefundRequestStatus | NOT NULL, DEFAULT PENDING                                  | PENDING, APPROVED or REJECTED                         |
+| created_at            | TIMESTAMP           | NOT NULL, DEFAULT now()                                    | When the Student filed it                             |
+| reviewed_at           | TIMESTAMP           | NULL                                                       | When it was approved or rejected                      |
+| rejection_reason      | TEXT                | NULL                                                       | Required on rejection, shown to the Student           |
+| booking_id            | UUID                | NOT NULL, UNIQUE, FK → bookings, ON DELETE RESTRICT        | One request per booking                               |
+| user_id               | UUID                | NOT NULL, FK → users, ON DELETE RESTRICT                   | The Student                                           |
+| reviewed_by_id        | UUID                | NULL, FK → users, ON DELETE RESTRICT                       | Deciding admin; NULL while pending                    |
+| wallet_transaction_id | UUID                | NULL, UNIQUE, FK → wallet_transactions, ON DELETE RESTRICT | The REFUND row an approval appended                   |
 
-Indexes: `(user_id, created_at)` and `(status, created_at)`. A no-show is stored APPROVED
-when filed. Every approval appends one REFUND row for `amount` and changes the booking from
-`CONFIRMED` to `CANCELLED` in the same serializable transaction; the
-`(booking_id, type)` unique key on `wallet_transactions` also limits a booking to one
-REFUND. A BOOK-3 or BOOK-4 cancellation closes a pending request as REJECTED in its own
-transaction. Rows are never deleted.
+Indexes: `(user_id, created_at)` and `(status, created_at)`. Every request is filed
+PENDING after the lesson's scheduled end. Approval appends one REFUND row for `amount`,
+stores its id in `wallet_transaction_id` and changes the booking from `CONFIRMED` or
+`COMPLETED` to `CANCELLED` in the same serializable transaction; the `(booking_id, type)`
+unique key on `wallet_transactions` also limits a booking to one REFUND. Rows are never
+deleted.
 
 ### payout_accounts
 
@@ -431,7 +432,7 @@ Indexes: `admin_user_id`, `reporter_user_id`, `reported_user_id`.
 | `TutorProfileVersionStatus` | `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED`          |
 | `WalletTransactionType`     | `TOP_UP`, `LESSON_PAYMENT`, `LESSON_EARNING`, `REFUND`, `PAYOUT` |
 | `BookingCancelledBy`        | `STUDENT`, `TUTOR`                                               |
-| `RefundRequestReason`       | `TUTOR_NO_SHOW`, `UNSATISFACTORY_LESSON`                         |
+| `RefundRequestReason`       | `TUTOR_NO_SHOW`, `UNSATISFACTORY_LESSON`, `OTHER`                |
 | `RefundRequestStatus`       | `PENDING`, `APPROVED`, `REJECTED`                                |
 
 ---

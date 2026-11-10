@@ -134,3 +134,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/pay-3-refund-timing-change.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, CONTEXT.md, AGENTS.md Wiki Memory
 - Scope: Refund requests open when payment succeeds with no deadline; a Tutor no-show only once the lesson starts, otherwise admin review; completed lessons still rejected; a cancellation closes a pending request
+
+## [2026-11-10] ingest | PAY-3 review decisions (PR #224)
+
+- Disposition: Update; supersedes the instant no-show refund and the any-time-after-payment timing
+- Raw: docs/sources/pay-3-review-decisions.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Requests open after the lesson ends with no deadline, including completed lessons; reasons no-show, unsatisfactory or Other; every request goes to an admin; approval links its REFUND row; the Tutor is notified; shared serializable retry helper

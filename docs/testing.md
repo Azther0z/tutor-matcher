@@ -200,26 +200,25 @@ The decisions are recorded in [PAY-5 user evidence](sources/pay-5-policy-confirm
 
 ### PAY-3 refund request acceptance
 
-`refund.test.ts` covers requests opening at payment with no deadline, no-shows only once
-the lesson starts, the completed-lesson rejection, one
-request per paid, uncancelled lesson, the required explanation for an unsatisfactory lesson
-and the required rejection reason. Booking unit tests cover `canRequestRefund` and `canReportTutorNoShow` before and after
-the start,
-the completed-lesson reason, blocking Tutor completion while a request is pending and hiding
-the Student's text from the Tutor. Booking page tests cover the no-show refund and wallet
-balance, the required explanation, the pending, approved and rejected states, the completed
-lesson reason, a request rejected because the lesson changed, the admin-only option before
-the lesson starts, and the Tutor's note. Admin
-page tests cover the 403 state, the pending default, approve, reject with a reason, a stale
-review and automatic no-show refunds in history.
+`refund.test.ts` covers requests opening at the lesson's scheduled end with no deadline,
+lessons the Tutor already confirmed, one request per paid, uncancelled lesson, the required
+explanation for an unsatisfactory lesson or Other, and the required rejection reason.
+`serializable.test.ts` covers the shared retry helper, including the retry error (not a raw
+Prisma error) after the last conflicting attempt. Booking unit tests cover `canRequestRefund`
+before and after the end and after completion, blocking Tutor completion while a request is
+pending and hiding the Student's text from the Tutor. Booking page tests cover a no-show going
+to an admin with no balance change, the required explanation for Unsatisfactory and Other,
+no request before the lesson ends, a completed lesson, a refused request, the approved and
+rejected states and the Tutor's note. Admin page tests cover the 403 state, the pending
+default, approve, reject with a reason, a stale review, history and the Other reason.
 
 `refund.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true` and refuses any
 database except `tutor_matcher_pay3_test` on loopback; create it and push the schema first.
-It covers each acceptance criterion through the HTTP API: the instant no-show refund and
-dropped pending earning, admin approval and rejection, the completed-lesson rejection, no
-deadline, no-shows only after the start, approval before the start freeing slots, a Tutor
-cancellation closing a pending request, ownership, admin self-review, a doubled request refunding once, and a request racing
-the Tutor's confirmation.
+It covers each acceptance criterion through the HTTP API: a no-show approved by an admin with
+the REFUND row linked and the pending earning dropped, the admin queue blocking Tutor
+confirmation, Other, rejection with a reason, a request after the Tutor confirmed, opening at
+the lesson end with no deadline, the Tutor notification, ownership, admin self-review, two
+admins approving at once and a doubled request.
 
 ```powershell
 $env:RUN_DATABASE_INTEGRATION = "true"
@@ -228,7 +227,8 @@ npm.cmd --prefix apps/backend test -- --runInBand src/modules/refund
 npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/bookings/[id]/page.test.tsx" app/admin/refunds/page.test.tsx
 ```
 
-The decisions are recorded in [PAY-3 user evidence](sources/pay-3-policy-confirmation.md).
+The decisions are recorded in [PAY-3 user evidence](sources/pay-3-policy-confirmation.md)
+and the [PR #224 review decisions](sources/pay-3-review-decisions.md).
 
 ### General commands
 
