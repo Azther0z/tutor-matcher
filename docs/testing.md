@@ -198,6 +198,24 @@ npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath app/wallet/p
 
 The decisions are recorded in [PAY-5 user evidence](sources/pay-5-policy-confirmation.md).
 
+### REV-1 review acceptance
+
+`review.test.ts` mocks Prisma and covers authentication, publishing a review of the
+Student's own completed lesson with the subject taken from the booking, an empty comment,
+ratings 0, 6, 4.5, "5" and null rejected with "Choose a rating from 1 to 5 stars.", the
+2,000-character comment limit, another Student's lesson (403), lessons that are not
+completed (409), a missing lesson (404) and one review per lesson, including a race settled
+by the unique `booking_id` key. Booking page tests cover publishing with a star rating and
+comment, the required rating, a server rejection shown as an alert, an existing review shown
+instead of the form, and no form for the Tutor.
+
+```powershell
+npm.cmd --prefix apps/backend test -- --runInBand src/modules/review
+npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/bookings/[id]/page.test.tsx"
+```
+
+The decisions are recorded in [REV-1 user evidence](sources/rev-1-policy-confirmation.md).
+
 ### General commands
 
 Run commands from `apps/backend` unless otherwise noted:

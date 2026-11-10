@@ -61,6 +61,8 @@
 - CLASS-1 issue #146 depends on closed BOOK-8 #144. Use a platform-owned Google Meet organizer via OAuth, with separate generated and Tutor-provided URLs. Implement Tutor-provided URLs first; Google Meet room creation can follow later. The custom URL wins and survives rescheduling; rescheduling replaces the generated room. Co-host automation and Google-account linking are deferred. Follow the confirmed contract in `docs/adr/0004-google-meet-lesson-links.md`.
 - For CLASS-2 issue #147, a paid and scheduled Booking stays `CONFIRMED` until its scheduled end and remains so indefinitely until the assigned Tutor confirms completion. The Tutor sees ended lessons in a separate **Needs confirmation** list; confirmation is one-way and sets `COMPLETED`. Elapsed time alone never completes a lesson, and CLASS-2 adds no earnings, reviews, or notifications; CLASS-3 handles earnings and reviews.
 
+- For REV-1, the user confirmed (2026-11-10) adding a UNIQUE key on `reviews.booking_id` so a completed booking has at most one review.
+
 - For CLASS-3 issue #212, Tutor confirmation keeps the net earning pending at the existing 15% fee; it does not credit available balance or write a pending ledger row. Pending earnings include CONFIRMED and COMPLETED bookings without a LESSON_EARNING row. PAY-6 owns clearing and its hold period; CLASS-3 exposes Student review eligibility only, while REV-1 owns submission. No historical reconciliation is required.
 
 ### Open Threads
