@@ -260,9 +260,9 @@ first subject edit. Values overwritten before this feature are not reconstructib
 
 BOOK-4 also adds a nullable column to `bookings` saying who cancelled:
 
-| Column       | Type               | Purpose                                                                                 |
-| ------------ | ------------------ | --------------------------------------------------------------------------------------- |
-| cancelled_by | BookingCancelledBy | `STUDENT` or `TUTOR`; NULL for payment-hold expiry, an approved PAY-3 refund, and older |
+| Column       | Type               | Purpose                                                              |
+| ------------ | ------------------ | -------------------------------------------------------------------- |
+| cancelled_by | BookingCancelledBy | `STUDENT` or `TUTOR`; NULL for payment-hold expiry and older records |
 
 ### wallet_transactions
 
@@ -347,14 +347,18 @@ PAY-3 keeps a Student's request for a refund after a lesson's scheduled end.
 | rejection_reason  | TEXT                | NULL                                                | Required on rejection, shown to the Student               |
 | booking_id        | UUID                | NOT NULL, UNIQUE, FK → bookings, ON DELETE RESTRICT | One request per booking                                   |
 | user_id           | UUID                | NOT NULL, FK → users, ON DELETE RESTRICT            | The Student                                               |
-| reviewed_by_id    | UUID                | NULL, FK → users, ON DELETE RESTRICT                | Deciding admin; NULL for a no-show approved automatically |
+| reviewed_by_id    | UUID                | NULL, FK → users, ON DELETE RESTRICT                | Deciding admin                                            |
 
-Indexes: `(user_id, created_at)` and `(status, created_at)`. A no-show is stored APPROVED
-when filed. Every approval appends one REFUND row for `amount` and changes the booking from
-`CONFIRMED` to `CANCELLED` in the same serializable transaction; the
-`(booking_id, type)` unique key on `wallet_transactions` also limits a booking to one
-REFUND. A BOOK-3 or BOOK-4 cancellation closes a pending request as REJECTED in its own
-transaction. Rows are never deleted.
+Indexes: `(user_id, created_at)` and `(status, created_at)`. The product contract is that
+every request is admin-reviewed and an approval appends one Student-owned REFUND row for
+`amount`; the booking and the Tutor's earning remain unchanged. `reviewed_by_id` records the
+Admin who made the decision, not a payer. The `(booking_id, type)` unique key on
+`wallet_transactions` limits a booking to one REFUND. Rows are never deleted.
+
+The current PAY-3 service still implements the superseded immediate-no-show and
+`CONFIRMED`-to-`CANCELLED` behavior. It must be changed to match the canonical contract in
+`user-journeys.md`; the schema already contains the fields needed for the revised review
+record.
 
 ### payout_accounts
 

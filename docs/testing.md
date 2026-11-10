@@ -200,26 +200,22 @@ The decisions are recorded in [PAY-5 user evidence](sources/pay-5-policy-confirm
 
 ### PAY-3 refund request acceptance
 
-`refund.test.ts` covers requests opening at payment with no deadline, no-shows only once
-the lesson starts, the completed-lesson rejection, one
-request per paid, uncancelled lesson, the required explanation for an unsatisfactory lesson
-and the required rejection reason. Booking unit tests cover `canRequestRefund` and `canReportTutorNoShow` before and after
-the start,
-the completed-lesson reason, blocking Tutor completion while a request is pending and hiding
-the Student's text from the Tutor. Booking page tests cover the no-show refund and wallet
-balance, the required explanation, the pending, approved and rejected states, the completed
-lesson reason, a request rejected because the lesson changed, the admin-only option before
-the lesson starts, and the Tutor's note. Admin
-page tests cover the 403 state, the pending default, approve, reject with a reason, a stale
-review and automatic no-show refunds in history.
+The current `refund.test.ts` suite reflects the superseded implementation: requests opening at
+payment, automatic no-show approval, completed-lesson rejection, cancelled bookings, and
+dropped Tutor earnings. Rework it with the PAY-3 implementation so it verifies one request
+from scheduled lesson end with no deadline, admin review for both reasons, availability after
+Tutor completion, a Student REFUND row on approval, an unchanged booking, and an unchanged
+Tutor earning. Booking and page tests must also verify that a pending request does not block
+Tutor confirmation and that the Tutor cannot read the Student's text. Admin-page tests should
+cover the pending default, approval, rejection with a reason, stale review, and reviewer
+authorization.
 
 `refund.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true` and refuses any
 database except `tutor_matcher_pay3_test` on loopback; create it and push the schema first.
-It covers each acceptance criterion through the HTTP API: the instant no-show refund and
-dropped pending earning, admin approval and rejection, the completed-lesson rejection, no
-deadline, no-shows only after the start, approval before the start freeing slots, a Tutor
-cancellation closing a pending request, ownership, admin self-review, a doubled request refunding once, and a request racing
-the Tutor's confirmation.
+It currently covers the superseded behavior through the HTTP API. Once PAY-3 is revised, it
+must instead cover post-end filing, post-completion filing, admin decisions for both reasons,
+the Student refund without cancelling the booking or removing Tutor earnings, ownership,
+admin self-review, and one approved refund per booking.
 
 ```powershell
 $env:RUN_DATABASE_INTEGRATION = "true"
@@ -228,7 +224,9 @@ npm.cmd --prefix apps/backend test -- --runInBand src/modules/refund
 npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/bookings/[id]/page.test.tsx" app/admin/refunds/page.test.tsx
 ```
 
-The decisions are recorded in [PAY-3 user evidence](sources/pay-3-policy-confirmation.md).
+The decisions are recorded in the [PAY-3 user evidence](sources/pay-3-policy-confirmation.md),
+[timing change](sources/pay-3-refund-timing-change.md), and
+[platform-funded revision](sources/pay-3-platform-funded-refund-confirmation.md).
 
 ### General commands
 

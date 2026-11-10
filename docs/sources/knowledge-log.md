@@ -134,3 +134,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/pay-3-refund-timing-change.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, CONTEXT.md, AGENTS.md Wiki Memory
 - Scope: Refund requests open when payment succeeds with no deadline; a Tutor no-show only once the lesson starts, otherwise admin review; completed lessons still rejected; a cancellation closes a pending request
+
+## [2026-11-10] ingest | PAY-3 platform-funded refund revision
+
+- Disposition: Update; supersedes the timing and completed-lesson decisions in the prior PAY-3 evidence
+- Raw: docs/sources/pay-3-platform-funded-refund-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Refund requests open after scheduled lesson end with no deadline; every request is admin-reviewed; approval credits only the Student from platform funds, leaves the booking and Tutor earning unchanged, and records the Admin as reviewer rather than payer

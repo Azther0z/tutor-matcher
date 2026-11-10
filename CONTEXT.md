@@ -153,11 +153,11 @@ dispute is resolved in the student's favour.
 _Avoid_: Chargeback, reversal, credit note
 
 **Refund Request**:
-A Student's request, any time after a lesson is paid, for the full paid amount back. A
-Tutor no-show (reportable once the lesson starts) is approved at once; an unsatisfactory
-lesson or other problem waits for an admin, who approves it or rejects it with a reason.
-Approval refunds and cancels the booking. One per booking; a completed lesson cannot be
-refunded.
+A Student's one-time request, available from a lesson's scheduled end with no deadline, for
+the full paid amount back. A Tutor no-show or unsatisfactory lesson waits for an admin, who
+approves it or rejects it with a reason. Approval credits the Student's wallet as a
+platform-funded refund; it does not cancel the booking or change the Tutor's earning. The
+approving Admin is a reviewer, not the wallet payer, and a completed lesson may be refunded.
 _Avoid_: Dispute ticket, claim, chargeback request
 
 **Review**:
