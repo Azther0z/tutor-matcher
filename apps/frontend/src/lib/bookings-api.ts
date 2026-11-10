@@ -24,10 +24,8 @@ export type BookingErrorCode =
   | "MEETING_LINK_NOT_EDITABLE"
   | "PAYMENT_FAILED"
   | "REFUND_ALREADY_REQUESTED"
-  | "REFUND_LESSON_COMPLETED"
   | "REFUND_NOT_ELIGIBLE"
-  | "REFUND_LESSON_NOT_ENDED"
-  | "REFUND_WINDOW_CLOSED";
+  | "REFUND_LESSON_NOT_ENDED";
 
 export class BookingApiError extends Error {
   constructor(

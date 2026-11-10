@@ -49,6 +49,13 @@ const statusStyle: Record<Booking["status"], string> = {
   CANCELLED: "bg-zinc-200 text-zinc-700",
 };
 
+// PAY-3: the reasons a Student can give; an admin decides every request.
+const REFUND_OPTIONS: Array<{ reason: RefundRequestReason; label: string }> = [
+  { reason: "TUTOR_NO_SHOW", label: "My tutor didn't show up" },
+  { reason: "UNSATISFACTORY_LESSON", label: "The lesson was unsatisfactory" },
+  { reason: "OTHER", label: "Other" },
+];
+
 function isCancellationQuote(value: unknown): value is CancellationQuote {
   if (!value || typeof value !== "object") return false;
   const quote = value as Partial<CancellationQuote>;
@@ -353,18 +360,17 @@ function BookingDetailContent() {
   function openRefund() {
     if (busy || !booking?.actions.canRequestRefund) return;
     setMode("refund");
-    // Before the lesson starts, an admin-reviewed request is the only option.
-    setRefundReason(booking.actions.canReportTutorNoShow ? null : "UNSATISFACTORY_LESSON");
+    setRefundReason(null);
     setRefundDetails("");
     setRefundError(null);
     setMessage(null);
   }
 
-  // PAY-3: a no-show is refunded at once; an unsatisfactory lesson goes to an admin.
+  // PAY-3: every request goes to an admin; only a no-show may be sent without an explanation.
   async function submitRefund() {
     if (!booking || !refundReason || busy) return;
     const details = refundDetails.trim();
-    if (refundReason === "UNSATISFACTORY_LESSON" && !details) {
+    if (refundReason !== "TUTOR_NO_SHOW" && !details) {
       setRefundError("Tell us what went wrong with the lesson.");
       return;
     }
@@ -378,18 +384,12 @@ function BookingDetailContent() {
       });
       setBooking(updated);
       setMode(null);
-      if (updated.payment.walletBalance !== null)
-        publishWalletBalance(updated.payment.walletBalance);
-      setMessage(
-        updated.refundRequest?.status === "APPROVED"
-          ? `Refund approved. ${money.format(Number(updated.refundRequest.amount))} was returned to your wallet.`
-          : "Refund request sent. An admin will review it and you'll see the decision here."
-      );
+      setMessage("Refund request sent. An admin will review it and you'll see the decision here.");
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Could not send your refund request.";
       if (error instanceof BookingApiError && error.code?.startsWith("REFUND_")) {
-        // The lesson changed (for example, the Tutor confirmed it); show why on the page.
+        // The lesson changed (for example, it was already refunded); show why on the page.
         setMode(null);
         setMessage(errorMessage);
         await loadBooking();
@@ -921,54 +921,31 @@ function BookingDetailContent() {
           <h2 id="refund-request-title" className="text-lg font-semibold">
             Request a refund
           </h2>
+          <p className="mt-2 text-sm text-zinc-500">
+            An admin reviews every request. If it&apos;s approved, the full{" "}
+            {money.format(Number(booking.totalAmount))} goes back to your wallet.
+          </p>
           <fieldset disabled={busy} className="mt-4 grid gap-3">
             <legend className="text-sm font-medium">What happened?</legend>
-            {booking.actions.canReportTutorNoShow ? (
-              <label className="flex gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
+            {REFUND_OPTIONS.map((option) => (
+              <label
+                key={option.reason}
+                className="flex gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800"
+              >
                 <input
                   type="radio"
                   name="refund-reason"
-                  checked={refundReason === "TUTOR_NO_SHOW"}
-                  onChange={() => setRefundReason("TUTOR_NO_SHOW")}
+                  checked={refundReason === option.reason}
+                  onChange={() => setRefundReason(option.reason)}
                 />
-                <span>
-                  <span className="block font-medium">My tutor didn&apos;t show up</span>
-                  <span className="block text-sm text-zinc-500">
-                    The full {money.format(Number(booking.totalAmount))} goes back to your wallet
-                    right away.
-                  </span>
-                </span>
+                <span className="font-medium">{option.label}</span>
               </label>
-            ) : (
-              <p className="text-sm text-zinc-500">
-                You can report that your tutor didn&apos;t show up once the lesson starts. To cancel
-                instead, use Cancel lesson.
-              </p>
-            )}
-            <label className="flex gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
-              <input
-                type="radio"
-                name="refund-reason"
-                checked={refundReason === "UNSATISFACTORY_LESSON"}
-                onChange={() => setRefundReason("UNSATISFACTORY_LESSON")}
-              />
-              <span>
-                <span className="block font-medium">
-                  {booking.actions.canReportTutorNoShow
-                    ? "The lesson was unsatisfactory"
-                    : "There's a problem with this lesson"}
-                </span>
-                <span className="block text-sm text-zinc-500">
-                  An admin reviews your request. If it&apos;s approved, the full amount goes back to
-                  your wallet.
-                </span>
-              </span>
-            </label>
+            ))}
           </fieldset>
           <label className="mt-4 block text-sm font-medium">
             What went wrong?{" "}
             <span className="font-normal text-zinc-500">
-              {refundReason === "UNSATISFACTORY_LESSON" ? "(required)" : "(optional)"}
+              {refundReason === "TUTOR_NO_SHOW" ? "(optional)" : "(required)"}
             </span>
             <textarea
               maxLength={1000}
@@ -1044,7 +1021,7 @@ function BookingDetailContent() {
   );
 }
 
-// PAY-3: the Student's refund request status, the request action, or why a refund isn't possible.
+// PAY-3: the Student's refund request and its status, or the action to request one.
 function StudentRefundStatus({
   booking,
   busy,
@@ -1055,7 +1032,7 @@ function StudentRefundStatus({
   onRequest: () => void;
 }) {
   const request = booking.refundRequest;
-  if (!request && !booking.actions.canRequestRefund && !booking.refundBlockedReason) return null;
+  if (!request && !booking.actions.canRequestRefund) return null;
   return (
     <section
       aria-label="Refund"
@@ -1081,13 +1058,12 @@ function StudentRefundStatus({
             <p className="mt-2 text-sm">Reason: {request.rejectionReason}</p>
           )}
         </>
-      ) : booking.actions.canRequestRefund ? (
+      ) : (
         <>
           <h3 className="font-semibold">Problem with this lesson?</h3>
           <p className="mt-2 text-sm text-zinc-500">
-            {booking.actions.canReportTutorNoShow
-              ? "If your tutor didn't show up or the lesson was unsatisfactory, you can ask for a full refund."
-              : "If there's a problem with this lesson, you can ask an admin for a full refund."}
+            If your tutor didn&apos;t show up or something went wrong, you can ask an admin for a
+            full refund.
           </p>
           <button
             type="button"
@@ -1097,11 +1073,6 @@ function StudentRefundStatus({
           >
             Request a refund
           </button>
-        </>
-      ) : (
-        <>
-          <h3 className="font-semibold">Refund not available</h3>
-          <p className="mt-2 text-sm text-zinc-500">{booking.refundBlockedReason}</p>
         </>
       )}
     </section>

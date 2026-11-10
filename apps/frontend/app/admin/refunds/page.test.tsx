@@ -17,7 +17,6 @@ const pending = {
   createdAt: "2026-11-08T04:00:00.000Z",
   reviewedAt: null,
   rejectionReason: null,
-  reviewedByAdmin: false,
   student: { id: "u1", firstName: "Sam", lastName: "Lee", email: "sam@example.com" },
   booking: {
     id: "33333333-3333-4333-8333-333333333333",
@@ -61,7 +60,7 @@ it("opens on pending requests with the lesson, amount and the Student's explanat
   const row = await screen.findByRole("region", { name: "Refund request from Sam Lee" });
   expect(fetchMock).toHaveBeenCalledWith("/api/admin/refunds?status=PENDING", expect.anything());
   expect(within(row).getByText("฿100.00")).toBeInTheDocument();
-  expect(within(row).getByText("Unsatisfactory lesson or other problem")).toBeInTheDocument();
+  expect(within(row).getByText("Unsatisfactory lesson")).toBeInTheDocument();
   expect(within(row).getByText(/English with Alice Johnson/)).toBeInTheDocument();
   expect(within(row).getByText("The tutor left after ten minutes")).toBeInTheDocument();
   expect(within(row).getByRole("link", { name: "Booking" })).toHaveAttribute(
@@ -73,7 +72,7 @@ it("opens on pending requests with the lesson, amount and the Student's explanat
 it("approves a full refund and removes it from the pending list", async () => {
   fetchMock
     .mockResolvedValueOnce(respond({ requests: [pending] }))
-    .mockResolvedValueOnce(respond({ ...pending, status: "APPROVED", reviewedByAdmin: true }));
+    .mockResolvedValueOnce(respond({ ...pending, status: "APPROVED" }));
   render(<RefundRequestsPage />);
   fireEvent.click(await screen.findByRole("button", { name: "Approve full refund" }));
 
@@ -128,7 +127,7 @@ it("reloads when another admin already decided the request", async () => {
   expect(fetchMock).toHaveBeenCalledTimes(3);
 });
 
-it("shows automatic no-show refunds in history without review actions", async () => {
+it("shows reviewed requests in history without review actions", async () => {
   fetchMock.mockResolvedValueOnce(respond({ requests: [] })).mockResolvedValueOnce(
     respond({
       requests: [
@@ -148,10 +147,20 @@ it("shows automatic no-show refunds in history without review actions", async ()
     target: { value: "APPROVED" },
   });
   expect(await screen.findByText("Tutor didn't show up")).toBeInTheDocument();
-  expect(screen.getByText(/Refunded automatically/)).toBeInTheDocument();
+  expect(screen.getByText(/^Reviewed/)).toBeInTheDocument();
   expect(fetchMock).toHaveBeenLastCalledWith(
     "/api/admin/refunds?status=APPROVED",
     expect.anything()
   );
   expect(screen.queryByRole("button", { name: "Approve full refund" })).not.toBeInTheDocument();
+});
+
+it("shows the Other reason with the Student's explanation", async () => {
+  fetchMock.mockResolvedValueOnce(
+    respond({ requests: [{ ...pending, reason: "OTHER", details: "Wrong subject taught" }] })
+  );
+  render(<RefundRequestsPage />);
+  const row = await screen.findByRole("region", { name: "Refund request from Sam Lee" });
+  expect(within(row).getByText("Other")).toBeInTheDocument();
+  expect(within(row).getByText("Wrong subject taught")).toBeInTheDocument();
 });

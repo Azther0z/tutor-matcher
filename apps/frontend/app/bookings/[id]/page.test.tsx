@@ -833,13 +833,11 @@ describe("PAY-3 refund requests", () => {
     startedAt: "2020-01-10T09:00:00.000Z",
     endedAt: "2020-01-10T09:30:00.000Z",
     refundRequest: null,
-    refundBlockedReason: null,
     actions: {
       ...booking.actions,
       canCancel: false,
       canReschedule: false,
       canRequestRefund: true,
-      canReportTutorNoShow: true,
     },
   };
   const refundRequest = {
@@ -849,45 +847,40 @@ describe("PAY-3 refund requests", () => {
     details: null,
     rejectionReason: null,
   };
-  const completedReason =
-    "Your Tutor confirmed this lesson was completed, so it can't be refunded.";
+  const pendingAfter = (reason: string, details: string | null) => ({
+    ok: true,
+    status: 201,
+    json: async () => ({
+      booking: {
+        ...endedBooking,
+        refundRequest: { ...refundRequest, reason, details, status: "PENDING", reviewedAt: null },
+        actions: { ...endedBooking.actions, canRequestRefund: false },
+      },
+    }),
+  });
 
-  it("refunds a Tutor no-show in full right away and updates the wallet balance", async () => {
+  it("sends a Tutor no-show to an admin instead of refunding at once", async () => {
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: endedBooking }) })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          booking: {
-            ...endedBooking,
-            status: "CANCELLED",
-            payment: { ...booking.payment, walletBalance: "350.00" },
-            refundRequest: {
-              ...refundRequest,
-              reason: "TUTOR_NO_SHOW",
-              status: "APPROVED",
-              reviewedAt: refundRequest.createdAt,
-            },
-            actions: { ...endedBooking.actions, canRequestRefund: false },
-          },
-        }),
-      });
+      .mockResolvedValueOnce(pendingAfter("TUTOR_NO_SHOW", null));
     const onBalance = jest.fn();
     const unsubscribe = subscribeToWalletBalance(onBalance);
     render(<BookingDetailPage />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Request a refund" }));
+    expect(screen.getByText(/An admin reviews every request/)).toBeInTheDocument();
     const send = screen.getByRole("button", { name: "Send refund request" });
     expect(send).toBeDisabled();
     fireEvent.click(screen.getByRole("radio", { name: /My tutor didn.t show up/ }));
     fireEvent.click(send);
 
     expect(
-      await screen.findByText(/Refund approved\. .*100\.00 was returned to your wallet\./)
+      await screen.findByText(/Refund request sent\. An admin will review it/)
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Refunded" })).toBeInTheDocument();
-    expect(onBalance).toHaveBeenCalledWith("350.00");
+    expect(screen.getByRole("heading", { name: "Refund under review" })).toBeInTheDocument();
+    // Nothing is refunded yet, so the wallet balance does not change.
+    expect(onBalance).not.toHaveBeenCalled();
     unsubscribe();
     expect(global.fetch).toHaveBeenLastCalledWith(
       `/api/bookings/${bookingId}/refund-request`,
@@ -898,30 +891,18 @@ describe("PAY-3 refund requests", () => {
     );
   });
 
-  it("needs details for an unsatisfactory lesson and shows it under admin review", async () => {
+  it.each([
+    ["The lesson was unsatisfactory", "UNSATISFACTORY_LESSON"],
+    ["Other", "OTHER"],
+  ])("needs an explanation for %s", async (label, reason) => {
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: endedBooking }) })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          booking: {
-            ...endedBooking,
-            refundRequest: {
-              ...refundRequest,
-              reason: "UNSATISFACTORY_LESSON",
-              status: "PENDING",
-              reviewedAt: null,
-              details: "The tutor left early",
-            },
-            actions: { ...endedBooking.actions, canRequestRefund: false },
-          },
-        }),
-      });
+      .mockResolvedValueOnce(pendingAfter(reason, "The tutor left early"));
     render(<BookingDetailPage />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Request a refund" }));
-    fireEvent.click(screen.getByRole("radio", { name: /The lesson was unsatisfactory/ }));
+    fireEvent.click(screen.getByRole("radio", { name: label }));
     fireEvent.click(screen.getByRole("button", { name: "Send refund request" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Tell us what went wrong with the lesson.");
     expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -930,116 +911,93 @@ describe("PAY-3 refund requests", () => {
       target: { value: "  The tutor left early  " },
     });
     fireEvent.click(screen.getByRole("button", { name: "Send refund request" }));
-
-    expect(
-      await screen.findByText(/Refund request sent\. An admin will review it/)
-    ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Refund under review" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Refund under review" })).toBeInTheDocument();
     expect(global.fetch).toHaveBeenLastCalledWith(
       `/api/bookings/${bookingId}/refund-request`,
       expect.objectContaining({
-        body: JSON.stringify({ reason: "UNSATISFACTORY_LESSON", details: "The tutor left early" }),
+        body: JSON.stringify({ reason, details: "The tutor left early" }),
       })
     );
   });
 
-  it("shows why a completed lesson can't be refunded", async () => {
+  it("offers the request on a lesson the Tutor already confirmed", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         booking: {
           ...endedBooking,
           status: "COMPLETED",
-          refundBlockedReason: completedReason,
-          actions: { ...endedBooking.actions, canRequestRefund: false, canReview: true },
+          actions: { ...endedBooking.actions, canReview: true },
         },
       }),
     });
     render(<BookingDetailPage />);
-    expect(
-      await screen.findByRole("heading", { name: "Refund not available" })
-    ).toBeInTheDocument();
-    expect(screen.getByText(completedReason)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Request a refund" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Request a refund" })).toBeInTheDocument();
   });
 
-  it("closes the form and shows the server's reason when the lesson was completed meanwhile", async () => {
-    const completed = {
-      ...endedBooking,
-      status: "COMPLETED",
-      refundBlockedReason: completedReason,
-      actions: { ...endedBooking.actions, canRequestRefund: false },
-    };
+  it("offers no refund request before the lesson ends, only cancellation", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        booking: {
+          ...booking,
+          viewerRole: "STUDENT",
+          refundRequest: null,
+          actions: { ...booking.actions, canRequestRefund: false },
+        },
+      }),
+    });
+    render(<BookingDetailPage />);
+    expect(await screen.findByRole("button", { name: "Cancel lesson" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Request a refund" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Refund" })).not.toBeInTheDocument();
+  });
+
+  it("closes the form and shows the server's reason when the request is refused", async () => {
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: endedBooking }) })
       .mockResolvedValueOnce({
         ok: false,
         status: 409,
-        json: async () => ({ code: "REFUND_LESSON_COMPLETED", message: completedReason }),
+        json: async () => ({
+          code: "REFUND_ALREADY_REQUESTED",
+          message: "You already requested a refund for this lesson.",
+        }),
       })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: completed }) });
+      .mockResolvedValueOnce(pendingAfter("TUTOR_NO_SHOW", null));
     render(<BookingDetailPage />);
     fireEvent.click(await screen.findByRole("button", { name: "Request a refund" }));
     fireEvent.click(screen.getByRole("radio", { name: /My tutor didn.t show up/ }));
     fireEvent.click(screen.getByRole("button", { name: "Send refund request" }));
 
-    expect(await screen.findByText("COMPLETED")).toBeInTheDocument();
+    expect(
+      await screen.findByText("You already requested a refund for this lesson.")
+    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Refund under review" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Request a refund" })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Refund not available" })).toBeInTheDocument();
   });
 
-  it("offers only an admin-reviewed request before the lesson starts", async () => {
-    const upcoming = {
-      ...booking,
-      viewerRole: "STUDENT",
-      refundRequest: null,
-      refundBlockedReason: null,
-      actions: { ...booking.actions, canRequestRefund: true, canReportTutorNoShow: false },
-    };
-    global.fetch = jest
-      .fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: upcoming }) })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          booking: {
-            ...upcoming,
-            refundRequest: {
-              ...refundRequest,
-              reason: "UNSATISFACTORY_LESSON",
-              status: "PENDING",
-              reviewedAt: null,
-              details: "The tutor asked me to pay outside the platform",
-            },
-            actions: { ...upcoming.actions, canRequestRefund: false },
+  it("shows an approved refund", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        booking: {
+          ...endedBooking,
+          status: "CANCELLED",
+          refundRequest: {
+            ...refundRequest,
+            reason: "TUTOR_NO_SHOW",
+            status: "APPROVED",
+            reviewedAt: "2020-01-11T00:00:00.000Z",
           },
-        }),
-      });
-    render(<BookingDetailPage />);
-
-    expect(await screen.findByText(/you can ask an admin for a full refund/)).toBeInTheDocument();
-    // Cancelling stays available beside the refund request.
-    expect(screen.getByRole("button", { name: "Cancel lesson" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Request a refund" }));
-    expect(screen.queryByRole("radio", { name: /didn.t show up/ })).not.toBeInTheDocument();
-    expect(screen.getByText(/once the lesson starts/)).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /problem with this lesson/ })).toBeChecked();
-
-    fireEvent.change(screen.getByLabelText(/What went wrong\?/), {
-      target: { value: "The tutor asked me to pay outside the platform" },
+          actions: { ...endedBooking.actions, canRequestRefund: false },
+        },
+      }),
     });
-    fireEvent.click(screen.getByRole("button", { name: "Send refund request" }));
-    expect(await screen.findByRole("heading", { name: "Refund under review" })).toBeInTheDocument();
-    expect(global.fetch).toHaveBeenLastCalledWith(
-      `/api/bookings/${bookingId}/refund-request`,
-      expect.objectContaining({
-        body: JSON.stringify({
-          reason: "UNSATISFACTORY_LESSON",
-          details: "The tutor asked me to pay outside the platform",
-        }),
-      })
-    );
+    render(<BookingDetailPage />);
+    expect(await screen.findByRole("heading", { name: "Refunded" })).toBeInTheDocument();
+    expect(screen.getByText(/100\.00 was returned to your wallet/)).toBeInTheDocument();
   });
 
   it("shows the admin's rejection reason to the Student", async () => {
@@ -1076,7 +1034,7 @@ describe("PAY-3 refund requests", () => {
           earnings: { amount: "85.00", status: "PENDING" },
           refundRequest: {
             ...refundRequest,
-            reason: "UNSATISFACTORY_LESSON",
+            reason: "OTHER",
             status: "PENDING",
             reviewedAt: null,
           },
@@ -1090,9 +1048,7 @@ describe("PAY-3 refund requests", () => {
     });
     render(<BookingDetailPage />);
     const note = await screen.findByRole("region", { name: "Refund request" });
-    expect(note).toHaveTextContent(
-      "Student One asked for a refund: unsatisfactory lesson or other problem."
-    );
+    expect(note).toHaveTextContent("Student One asked for a refund: other.");
     expect(note).toHaveTextContent("you can't confirm this lesson yet");
     expect(
       screen.queryByRole("button", { name: "Confirm session completed" })

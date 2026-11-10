@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
-import { TopupStatusBadge } from "@/src/components/topup-status";
+import { StatusBadge } from "@/src/components/status-badge";
 import { isPromptPayId, promptPayPayload } from "@/src/lib/promptpay";
 import { getMyTopups, getWallet, submitTopup, type TopupRequest } from "@/src/lib/wallet-api";
 
@@ -134,7 +134,7 @@ function TopupContent() {
           <div className="p-6 sm:p-8">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Top-up of {money(Number(pending.amount))}</h2>
-              <TopupStatusBadge status="PENDING" />
+              <StatusBadge status="PENDING" />
             </div>
             <p className="mt-2 text-zinc-500">
               Your balance updates once an admin approves the slip. You can send another top-up
@@ -283,7 +283,7 @@ function TopupContent() {
               <li key={request.id} className="flex flex-col gap-1 px-5 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="font-medium">{money(Number(request.amount))}</span>
-                  <TopupStatusBadge status={request.status} />
+                  <StatusBadge status={request.status} />
                 </div>
                 <span className="text-sm text-zinc-500">
                   Sent {new Date(request.createdAt).toLocaleString()}

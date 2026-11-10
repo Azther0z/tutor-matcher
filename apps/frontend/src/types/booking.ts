@@ -46,11 +46,10 @@ export type BookingActions = {
   canConfirmCompletion: boolean;
   canReview: boolean;
   canRequestRefund: boolean;
-  canReportTutorNoShow: boolean;
 };
 
-// PAY-3: a Tutor no-show is refunded at once; an unsatisfactory lesson waits for an admin.
-export type RefundRequestReason = "TUTOR_NO_SHOW" | "UNSATISFACTORY_LESSON";
+// PAY-3: every refund request waits for an admin; the reason tells the admin what happened.
+export type RefundRequestReason = "TUTOR_NO_SHOW" | "UNSATISFACTORY_LESSON" | "OTHER";
 export type RefundRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 // The Tutor's copy omits the Student's details and the admin's rejection reason.
@@ -109,7 +108,6 @@ export type Booking = {
   cancellationReason?: string | null;
   cancelledBy?: "STUDENT" | "TUTOR" | null;
   refundRequest?: BookingRefundRequest | null;
-  refundBlockedReason?: string | null;
   student: {
     id: string;
     name: string;

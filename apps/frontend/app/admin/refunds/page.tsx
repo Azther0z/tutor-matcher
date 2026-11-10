@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
-import { TopupStatusBadge } from "@/src/components/topup-status";
+import { StatusBadge } from "@/src/components/status-badge";
 import { TutorRefreshButton } from "@/src/components/tutor-refresh-button";
 import {
   getRefundsForReview,
@@ -69,9 +69,10 @@ function RefundRequests() {
         <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Admin</p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight">Refund requests</h1>
         <p className="mt-3 text-zinc-500">
-          Students ask for a refund when a lesson was unsatisfactory. Approval returns the full
-          amount to the Student&apos;s wallet and cancels the lesson; a rejection needs a reason the
-          Student will see. Tutor no-shows are refunded automatically and appear here as history.
+          Students ask for a refund after a lesson ends: the tutor didn&apos;t show up, the lesson
+          was unsatisfactory, or another problem. Approval returns the full amount to the
+          Student&apos;s wallet and cancels the lesson; a rejection needs a reason the Student will
+          see.
         </p>
       </div>
       {error && (
@@ -203,7 +204,7 @@ function RefundRow({
           <span className="break-all text-zinc-500">{request.student.email}</span>
         </p>
         <div className="flex items-center gap-2">
-          <TopupStatusBadge status={request.status} />
+          <StatusBadge status={request.status} />
           <span className="font-semibold">฿{amountFormat.format(Number(request.amount))}</span>
         </div>
       </div>
@@ -229,8 +230,7 @@ function RefundRow({
         </time>
         {request.reviewedAt && (
           <time dateTime={request.reviewedAt}>
-            {request.reviewedByAdmin ? "Reviewed" : "Refunded automatically"}{" "}
-            {new Date(request.reviewedAt).toLocaleString(undefined, dateFormat)}
+            Reviewed {new Date(request.reviewedAt).toLocaleString(undefined, dateFormat)}
           </time>
         )}
       </div>

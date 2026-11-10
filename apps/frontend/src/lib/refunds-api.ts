@@ -1,8 +1,7 @@
 import { getAuthToken } from "@/src/lib/auth";
 import type { RefundRequestReason, RefundRequestStatus } from "@/src/types/booking";
 
-// PAY-3: the admin queue for refund requests. A no-show is approved when filed, so it shows
-// in history without a reviewing admin.
+// PAY-3: the admin queue for refund requests. Every request waits here for a decision.
 export type AdminRefundRequest = {
   id: string;
   reason: RefundRequestReason;
@@ -12,7 +11,6 @@ export type AdminRefundRequest = {
   createdAt: string;
   reviewedAt: string | null;
   rejectionReason: string | null;
-  reviewedByAdmin: boolean;
   student: { id: string; firstName: string; lastName: string; email: string };
   booking: {
     id: string;
@@ -26,7 +24,8 @@ export type AdminRefundRequest = {
 
 export const refundReasonLabels: Record<RefundRequestReason, string> = {
   TUTOR_NO_SHOW: "Tutor didn't show up",
-  UNSATISFACTORY_LESSON: "Unsatisfactory lesson or other problem",
+  UNSATISFACTORY_LESSON: "Unsatisfactory lesson",
+  OTHER: "Other",
 };
 
 export class RefundApiError extends Error {
