@@ -211,7 +211,7 @@ describe("trial booking rules", () => {
       },
       availabilities: [],
       walletTransactions: [],
-      reviews: [],
+      review: null,
     } satisfies Parameters<typeof mapBookingResponse>[0];
     const booking = mapBookingResponse(record, SUBJECT_ID, now);
 
@@ -301,7 +301,7 @@ describe("trial booking rules", () => {
       },
       availabilities: [],
       walletTransactions: [],
-      reviews: [],
+      review: null,
     } satisfies Parameters<typeof mapBookingResponse>[0];
 
     const asTutor = mapBookingResponse(record, SLOT_B, now);
@@ -386,7 +386,16 @@ describe("trial booking rules", () => {
     expect(cancelled.earnings).toBeNull();
     expect(
       mapBookingResponse(
-        { ...record, status: "COMPLETED", reviews: [{ id: SLOT_A }] },
+        {
+          ...record,
+          status: "COMPLETED",
+          review: {
+            id: SLOT_A,
+            ratingStars: 5,
+            text: null,
+            createdAt: now,
+          },
+        },
         SUBJECT_ID,
         now
       ).actions.canReview

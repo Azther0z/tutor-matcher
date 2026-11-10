@@ -289,7 +289,7 @@ model Booking {
 
   availabilities     Availability[]
   walletTransactions WalletTransaction[]
-  reviews            Review[]
+  review             Review?
 
   @@index([userId])
   @@index([subjectId])
@@ -372,12 +372,12 @@ model Review {
   subjectId String  @map("subject_id") @db.Uuid
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
-  bookingId String  @map("booking_id") @db.Uuid
+  // REV-1: one review per completed booking.
+  bookingId String  @unique @map("booking_id") @db.Uuid
   booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([subjectId])
-  @@index([bookingId])
   @@map("reviews")
 }
 
