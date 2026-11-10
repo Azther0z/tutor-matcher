@@ -8,13 +8,7 @@ import { notifyUser } from "../notification/notification.service.ts";
 import { setTimeout, clearTimeout } from "node:timers";
 import { appendWalletMovement, InsufficientWalletBalance } from "../wallet/wallet-ledger.ts";
 import { tutorShare } from "../wallet/wallet.service.ts";
-import {
-  CANCELLED_REFUND_REJECTION,
-  canReportNoShow,
-  refundBlock,
-  refundBlockMessages,
-  refundRequestResponse,
-} from "../refund/refund.policy.ts";
+import { refundBlock, refundRequestResponse } from "../refund/refund.policy.ts";
 import type {
   CancelBookingInput,
   CreateBookingInput,
@@ -292,20 +286,14 @@ export function mapBookingResponse(
   const refundBlockCode = refundBlock(
     {
       status: booking.status,
-      startedAt: booking.startedAt,
+      endedAt: booking.endedAt,
       paid: Boolean(transfer),
       hasRequest: booking.refundRequest !== null,
     },
     now
   );
+  // PAY-3: the Student may ask an admin for a refund once the lesson's scheduled end passes.
   const canRequestRefund = isStudent && refundBlockCode === null;
-  // A Tutor no-show (instant refund) can only be reported once the lesson has started.
-  const canReportTutorNoShow = canRequestRefund && canReportNoShow(booking, now);
-  // AC3: a completed lesson shows the Student why it cannot be refunded.
-  const refundBlockedReason =
-    isStudent && refundBlockCode === "REFUND_LESSON_COMPLETED"
-      ? refundBlockMessages.REFUND_LESSON_COMPLETED
-      : null;
 
   return {
     id: booking.id,
@@ -335,7 +323,6 @@ export function mapBookingResponse(
     refundRequest: booking.refundRequest
       ? refundRequestResponse(booking.refundRequest, isStudent)
       : null,
-    refundBlockedReason,
     student: {
       id: booking.user.id,
       name: `${booking.user.firstName} ${booking.user.lastName}`,
@@ -379,22 +366,8 @@ export function mapBookingResponse(
       canConfirmCompletion,
       canReview,
       canRequestRefund,
-      canReportTutorNoShow,
     },
   };
-}
-
-// PAY-3: a cancellation refunds the booking by its own policy, so a waiting refund request
-// is closed in the same transaction and can no longer be approved.
-async function closePendingRefundRequest(
-  tx: Prisma.TransactionClient,
-  bookingId: string,
-  now: Date
-) {
-  await tx.refundRequest.updateMany({
-    where: { bookingId, status: "PENDING" },
-    data: { status: "REJECTED", reviewedAt: now, rejectionReason: CANCELLED_REFUND_REJECTION },
-  });
 }
 
 function isSerializationError(error: unknown) {
@@ -895,7 +868,6 @@ export async function cancelBooking(userId: string, id: string, input: CancelBoo
         });
         if (claimed.count !== 1)
           throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
-        await closePendingRefundRequest(tx, id, transactionNow);
 
         let refund = ZERO;
         if (transfer) {
@@ -1133,7 +1105,6 @@ export async function cancelBookingAsTutor(
         });
         if (claimed.count !== 1)
           throw new BookingConflictError("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
-        await closePendingRefundRequest(tx, id, transactionNow);
 
         let refund = ZERO;
         if (transfer) {

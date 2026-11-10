@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { URL } from "node:url";
-import { afterAll, beforeEach, describe, expect, it } from "@jest/globals";
+import { afterAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import request from "supertest";
 import { app } from "../../app.ts";
 import { prisma } from "../../lib/db.ts";
@@ -100,7 +100,8 @@ run("PAY-3 refund requests", () => {
         email: `pay3-${index}@example.com`,
         password: "unused-fixture",
         isAdmin: id === ADMIN,
-        notifyOnBooking: false,
+        // Only the Tutor receives booking updates, so the refund notification can be observed.
+        notifyOnBooking: id === TEACHER,
         notifyOnPayment: false,
       })),
     });
@@ -122,38 +123,48 @@ run("PAY-3 refund requests", () => {
   });
   afterAll(cleanFixtures);
 
-  it("refunds a Tutor no-show in full at once and cancels the booking (AC1)", async () => {
+  const approve = (requestId: string, by = ADMIN) =>
+    authorize(
+      request(app).post(`/api/admin/refunds/${requestId}/review`).send({ decision: "APPROVED" }),
+      by
+    );
+  const requestFor = (bookingId: string) =>
+    prisma.refundRequest.findUniqueOrThrow({ where: { bookingId } });
+
+  it("sends a Tutor no-show to an admin, whose approval refunds the full amount (AC1)", async () => {
     const id = await endedLesson();
     expect(await balanceOf(STUDENT)).toBe("400.00");
     await fileRefund(id, { reason: "TUTOR_NO_SHOW" }, OTHER).expect(403);
     await fileRefund(id, { reason: "TUTOR_NO_SHOW" }, TEACHER).expect(403);
 
-    const response = await fileRefund(id, { reason: "TUTOR_NO_SHOW" }).expect(201);
-    expect(response.body.booking).toMatchObject({
-      status: "CANCELLED",
-      refundRequest: { reason: "TUTOR_NO_SHOW", status: "APPROVED", amount: "100.00" },
+    // Nothing is refunded until an admin decides, because a no-show claim can't be verified.
+    const filed = await fileRefund(id, { reason: "TUTOR_NO_SHOW" }).expect(201);
+    expect(filed.body.booking).toMatchObject({
+      status: "CONFIRMED",
+      refundRequest: { reason: "TUTOR_NO_SHOW", status: "PENDING", amount: "100.00" },
       actions: { canRequestRefund: false },
     });
+    expect(await balanceOf(STUDENT)).toBe("400.00");
+
+    const approved = await approve((await requestFor(id)).id).expect(200);
+    expect(approved.body).toMatchObject({ status: "APPROVED", reason: "TUTOR_NO_SHOW" });
     expect(await balanceOf(STUDENT)).toBe("500.00");
-    expect(
-      await prisma.walletTransaction.findMany({
-        where: { bookingId: id },
-        select: { type: true, amount: true },
-        orderBy: { createdAt: "asc" },
-      })
-    ).toEqual([
-      { type: "LESSON_PAYMENT", amount: new Prisma.Decimal("100.00") },
-      { type: "REFUND", amount: new Prisma.Decimal("100.00") },
-    ]);
+
+    // The approved request links the REFUND row it appended.
+    const refund = await prisma.walletTransaction.findFirstOrThrow({
+      where: { bookingId: id, type: "REFUND" },
+    });
+    expect(refund.amount).toEqual(new Prisma.Decimal("100.00"));
+    expect((await requestFor(id)).walletTransactionId).toBe(refund.id);
+
     // The Tutor's pending earning disappears with the cancelled booking.
     const overview = await authorize(request(app).get("/api/wallet/overview"), TEACHER).expect(200);
     expect(overview.body.pendingEarnings).toBe("0.00");
-
     const repeated = await fileRefund(id, { reason: "TUTOR_NO_SHOW" }).expect(409);
     expect(repeated.body.code).toBe("REFUND_ALREADY_REQUESTED");
   });
 
-  it("sends an unsatisfactory lesson to an admin, who approves the full refund (AC2)", async () => {
+  it("routes an unsatisfactory lesson to the admin queue and blocks Tutor confirmation (AC2)", async () => {
     const id = await endedLesson();
     await fileRefund(id, { reason: "UNSATISFACTORY_LESSON" }).expect(400);
     const filed = await fileRefund(id, unsatisfactory).expect(201);
@@ -161,9 +172,7 @@ run("PAY-3 refund requests", () => {
       status: "CONFIRMED",
       refundRequest: { status: "PENDING", details: "The tutor left early" },
     });
-    expect(await balanceOf(STUDENT)).toBe("400.00");
 
-    // The Tutor cannot confirm completion while the admin decides.
     const tutorView = await authorize(request(app).get(`/api/bookings/${id}`), TEACHER).expect(200);
     expect(tutorView.body.booking).toMatchObject({
       actions: { canConfirmCompletion: false },
@@ -179,47 +188,42 @@ run("PAY-3 refund requests", () => {
       ADMIN
     ).expect(200);
     expect(queue.body.requests).toHaveLength(1);
-    const [pending] = queue.body.requests;
-    expect(pending).toMatchObject({
+    expect(queue.body.requests[0]).toMatchObject({
       reason: "UNSATISFACTORY_LESSON",
       amount: "100.00",
       student: { id: STUDENT },
       booking: { id, subjectName: "PAY-3 Test", tutorName: "Tutor PAY3" },
     });
 
-    const approved = await authorize(
-      request(app).post(`/api/admin/refunds/${pending.id}/review`).send({ decision: "APPROVED" }),
-      ADMIN
-    ).expect(200);
-    expect(approved.body).toMatchObject({ status: "APPROVED", reviewedByAdmin: true });
+    await approve(queue.body.requests[0].id).expect(200);
     expect(await balanceOf(STUDENT)).toBe("500.00");
-    const studentView = await authorize(request(app).get(`/api/bookings/${id}`), STUDENT).expect(
-      200
-    );
-    expect(studentView.body.booking).toMatchObject({
-      status: "CANCELLED",
-      refundRequest: { status: "APPROVED" },
-    });
-
-    const again = await authorize(
-      request(app).post(`/api/admin/refunds/${pending.id}/review`).send({ decision: "APPROVED" }),
-      ADMIN
-    ).expect(409);
+    const again = await approve(queue.body.requests[0].id).expect(409);
     expect(again.body.code).toBe("REFUND_NOT_PENDING");
     expect(await balanceOf(STUDENT)).toBe("500.00");
   });
 
-  it("lets an admin reject with a reason the Student sees, then the Tutor can confirm", async () => {
+  it("accepts Other with an explanation", async () => {
+    const id = await endedLesson();
+    await fileRefund(id, { reason: "OTHER" }).expect(400);
+    const filed = await fileRefund(id, { reason: "OTHER", details: "Wrong subject" }).expect(201);
+    expect(filed.body.booking.refundRequest).toMatchObject({
+      reason: "OTHER",
+      status: "PENDING",
+      details: "Wrong subject",
+    });
+  });
+
+  it("lets an admin reject with a reason the Student sees, then the Tutor can confirm (AC3)", async () => {
     const id = await endedLesson();
     await fileRefund(id, unsatisfactory).expect(201);
-    const request_ = await prisma.refundRequest.findUniqueOrThrow({ where: { bookingId: id } });
+    const pending = await requestFor(id);
     await authorize(
-      request(app).post(`/api/admin/refunds/${request_.id}/review`).send({ decision: "REJECTED" }),
+      request(app).post(`/api/admin/refunds/${pending.id}/review`).send({ decision: "REJECTED" }),
       ADMIN
     ).expect(400);
     await authorize(
       request(app)
-        .post(`/api/admin/refunds/${request_.id}/review`)
+        .post(`/api/admin/refunds/${pending.id}/review`)
         .send({ decision: "REJECTED", rejectionReason: "The lesson ran for the full time" }),
       ADMIN
     ).expect(200);
@@ -233,127 +237,79 @@ run("PAY-3 refund requests", () => {
       actions: { canRequestRefund: false },
     });
     expect(await balanceOf(STUDENT)).toBe("400.00");
+    expect((await requestFor(id)).walletTransactionId).toBeNull();
     await authorize(request(app).post(`/api/bookings/${id}/confirm-completion`), TEACHER).expect(
       200
     );
   });
 
-  it("rejects a refund for a completed lesson and shows the reason (AC3)", async () => {
+  it("accepts a request for a lesson the Tutor already confirmed", async () => {
     const id = await endedLesson();
     await authorize(request(app).post(`/api/bookings/${id}/confirm-completion`), TEACHER).expect(
       200
     );
     const view = await authorize(request(app).get(`/api/bookings/${id}`), STUDENT).expect(200);
-    expect(view.body.booking).toMatchObject({
-      actions: { canRequestRefund: false },
-      refundBlockedReason:
-        "Your Tutor confirmed this lesson was completed, so it can't be refunded.",
-    });
-
-    const response = await fileRefund(id, { reason: "TUTOR_NO_SHOW" }).expect(409);
-    expect(response.body).toEqual({
-      code: "REFUND_LESSON_COMPLETED",
-      message: "Your Tutor confirmed this lesson was completed, so it can't be refunded.",
-    });
-    expect(await prisma.refundRequest.count({ where: { bookingId: id } })).toBe(0);
-    expect(await balanceOf(STUDENT)).toBe("400.00");
+    expect(view.body.booking.actions.canRequestRefund).toBe(true);
+    await fileRefund(id, unsatisfactory).expect(201);
+    await approve((await requestFor(id)).id).expect(200);
+    expect(await balanceOf(STUDENT)).toBe("500.00");
+    expect((await prisma.booking.findUniqueOrThrow({ where: { id } })).status).toBe("CANCELLED");
   });
 
-  it("accepts requests any time after payment, with no deadline", async () => {
+  it("opens only after the lesson's scheduled end, with no deadline", async () => {
+    const upcoming = await paidLesson();
+    const view = await authorize(request(app).get(`/api/bookings/${upcoming}`), STUDENT).expect(
+      200
+    );
+    expect(view.body.booking.actions.canRequestRefund).toBe(false);
+    const early = await fileRefund(upcoming, unsatisfactory).expect(409);
+    expect(early.body.code).toBe("REFUND_LESSON_NOT_ENDED");
+
     const longAgo = await endedLesson(24 * 30);
-    expect(await balanceOf(STUDENT)).toBe("400.00");
     await fileRefund(longAgo, { reason: "TUTOR_NO_SHOW" }).expect(201);
-    expect(await balanceOf(STUDENT)).toBe("500.00");
   });
 
-  it("allows only an admin-reviewed request before the lesson starts", async () => {
-    const id = await paidLesson();
-    const view = await authorize(request(app).get(`/api/bookings/${id}`), STUDENT).expect(200);
-    expect(view.body.booking.actions).toMatchObject({
-      canRequestRefund: true,
-      canReportTutorNoShow: false,
-    });
-    const early = await fileRefund(id, { reason: "TUTOR_NO_SHOW" }).expect(409);
-    expect(early.body.code).toBe("REFUND_NO_SHOW_TOO_EARLY");
-    expect(await prisma.refundRequest.count({ where: { bookingId: id } })).toBe(0);
-
-    await fileRefund(id, unsatisfactory).expect(201);
-    const pending = await prisma.refundRequest.findUniqueOrThrow({ where: { bookingId: id } });
-    await authorize(
-      request(app).post(`/api/admin/refunds/${pending.id}/review`).send({ decision: "APPROVED" }),
-      ADMIN
-    ).expect(200);
-    // The full amount comes back and the freed slot can be booked again.
-    expect(await balanceOf(STUDENT)).toBe("500.00");
-    expect(await prisma.availability.count({ where: { bookingId: id } })).toBe(0);
-  });
-
-  it("closes a pending request when the lesson is cancelled, so it can't refund twice", async () => {
-    const id = await paidLesson();
-    await fileRefund(id, unsatisfactory).expect(201);
-    const quote = await authorize(
-      request(app).get(`/api/bookings/${id}/tutor-cancellation-quote`),
-      TEACHER
-    ).expect(200);
-    await authorize(
-      request(app)
-        .post(`/api/bookings/${id}/tutor-cancel`)
-        .send({ reason: "I am sick", quoteToken: quote.body.quote.token }),
-      TEACHER
-    ).expect(200);
-    expect(await balanceOf(STUDENT)).toBe("500.00");
-
-    const closed = await prisma.refundRequest.findUniqueOrThrow({ where: { bookingId: id } });
-    expect(closed).toMatchObject({
-      status: "REJECTED",
-      rejectionReason: "The lesson was cancelled, so its cancellation refund applies instead.",
-    });
-    await authorize(
-      request(app).post(`/api/admin/refunds/${closed.id}/review`).send({ decision: "APPROVED" }),
-      ADMIN
-    ).expect(409);
-    expect(await balanceOf(STUDENT)).toBe("500.00");
+  it("tells the Tutor that the Student asked for a refund", async () => {
+    const info = jest.spyOn(console, "info").mockImplementation(() => undefined);
+    try {
+      const id = await endedLesson();
+      await fileRefund(id, unsatisfactory).expect(201);
+      expect(info).toHaveBeenCalledWith(
+        expect.stringContaining("[notification:booking] pay3-1@example.com: PAY-3 Test")
+      );
+    } finally {
+      info.mockRestore();
+    }
   });
 
   it("stops an admin deciding a refund for their own lesson", async () => {
     const id = await endedLesson();
     await fileRefund(id, unsatisfactory).expect(201);
     await prisma.user.update({ where: { id: TEACHER }, data: { isAdmin: true } });
-    const request_ = await prisma.refundRequest.findUniqueOrThrow({ where: { bookingId: id } });
-    const response = await authorize(
-      request(app).post(`/api/admin/refunds/${request_.id}/review`).send({ decision: "APPROVED" }),
-      TEACHER
-    ).expect(403);
+    const response = await approve((await requestFor(id)).id, TEACHER).expect(403);
     expect(response.body.code).toBe("REFUND_SELF_REVIEW");
   });
 
-  it("refunds once when the Student files twice at the same time", async () => {
+  it("refunds once when two admins approve at the same time", async () => {
     const id = await endedLesson();
-    const responses = await Promise.all([
-      fileRefund(id, { reason: "TUTOR_NO_SHOW" }),
-      fileRefund(id, { reason: "TUTOR_NO_SHOW" }),
-    ]);
-    expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
+    await fileRefund(id, unsatisfactory).expect(201);
+    await prisma.user.update({ where: { id: OTHER }, data: { isAdmin: true } });
+    const requestId = (await requestFor(id)).id;
+    const responses = await Promise.all([approve(requestId), approve(requestId, OTHER)]);
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
     expect(await balanceOf(STUDENT)).toBe("500.00");
     expect(await prisma.walletTransaction.count({ where: { bookingId: id, type: "REFUND" } })).toBe(
       1
     );
   });
 
-  it("does not let a refund request and the Tutor's confirmation both succeed", async () => {
+  it("files once when the Student submits twice at the same time", async () => {
     const id = await endedLesson();
-    const [refund, confirm] = await Promise.all([
+    const responses = await Promise.all([
       fileRefund(id, unsatisfactory),
-      authorize(request(app).post(`/api/bookings/${id}/confirm-completion`), TEACHER),
+      fileRefund(id, unsatisfactory),
     ]);
-    const succeeded = [refund.status === 201, confirm.status === 200].filter(Boolean);
-    expect(succeeded).toHaveLength(1);
-    const booking = await prisma.booking.findUniqueOrThrow({
-      where: { id },
-      include: { refundRequest: true },
-    });
-    // Either the lesson completed with no request, or the request is pending on a confirmed lesson.
-    if (booking.status === "COMPLETED") expect(booking.refundRequest).toBeNull();
-    else expect(booking.refundRequest?.status).toBe("PENDING");
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
+    expect(await prisma.refundRequest.count({ where: { bookingId: id } })).toBe(1);
   });
 });

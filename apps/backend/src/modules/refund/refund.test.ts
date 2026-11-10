@@ -2,28 +2,19 @@ import { describe, expect, it } from "@jest/globals";
 import { refundBlock } from "./refund.policy.ts";
 import { createRefundRequestSchema, refundReviewSchema } from "./refund.schema.ts";
 
-const startedAt = new Date("2026-11-01T10:00:00.000Z");
-const base = { status: "CONFIRMED" as const, startedAt, paid: true, hasRequest: false };
-const hours = (count: number) => new Date(startedAt.getTime() + count * 3_600_000);
+const endedAt = new Date("2026-11-01T10:00:00.000Z");
+const base = { status: "CONFIRMED" as const, endedAt, paid: true, hasRequest: false };
+const hours = (count: number) => new Date(endedAt.getTime() + count * 3_600_000);
 
 describe("PAY-3 refund request timing", () => {
-  it("opens as soon as the lesson is paid, with no deadline", () => {
-    expect(refundBlock(base, hours(-240))).toBeNull();
-    expect(refundBlock(base, hours(-240), "UNSATISFACTORY_LESSON")).toBeNull();
+  it("opens at the lesson's scheduled end, with no deadline", () => {
+    expect(refundBlock(base, hours(-0.01))).toBe("REFUND_LESSON_NOT_ENDED");
+    expect(refundBlock(base, endedAt)).toBeNull();
     expect(refundBlock(base, hours(24 * 365))).toBeNull();
   });
 
-  it("allows reporting a Tutor no-show only once the lesson has started", () => {
-    expect(refundBlock(base, hours(-0.01), "TUTOR_NO_SHOW")).toBe("REFUND_NO_SHOW_TOO_EARLY");
-    expect(refundBlock(base, startedAt, "TUTOR_NO_SHOW")).toBeNull();
-    expect(refundBlock(base, hours(500), "TUTOR_NO_SHOW")).toBeNull();
-  });
-
-  it("rejects a completed lesson with its own reason", () => {
-    expect(refundBlock({ ...base, status: "COMPLETED" }, hours(1))).toBe("REFUND_LESSON_COMPLETED");
-    expect(refundBlock({ ...base, status: "COMPLETED" }, hours(100))).toBe(
-      "REFUND_LESSON_COMPLETED"
-    );
+  it("allows a lesson the Tutor confirmed, so an admin can decide", () => {
+    expect(refundBlock({ ...base, status: "COMPLETED" }, hours(1))).toBeNull();
   });
 
   it("allows one request per paid, uncancelled lesson", () => {
@@ -56,7 +47,13 @@ describe("PAY-3 refund request input", () => {
       createRefundRequestSchema.safeParse({ reason: "TUTOR_NO_SHOW", details: "x".repeat(1001) })
         .success
     ).toBe(false);
+    // "Other" also needs an explanation; unknown reasons are refused.
     expect(createRefundRequestSchema.safeParse({ reason: "OTHER" }).success).toBe(false);
+    expect(
+      createRefundRequestSchema.safeParse({ reason: "OTHER", details: "Wrong subject taught" })
+        .success
+    ).toBe(true);
+    expect(createRefundRequestSchema.safeParse({ reason: "SOMETHING" }).success).toBe(false);
   });
 
   it("needs a reason the Student will see when an admin rejects", () => {

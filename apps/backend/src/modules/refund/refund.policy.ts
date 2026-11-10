@@ -1,56 +1,33 @@
-import type {
-  BookingStatus,
-  RefundRequest,
-  RefundRequestReason,
-} from "../../generated/prisma/client.ts";
+import type { BookingStatus, RefundRequest } from "../../generated/prisma/client.ts";
 
-// PAY-3: a Student may ask for a refund at any time after the lesson payment succeeds, with
-// no deadline. A Tutor no-show can only be reported once the lesson has started; before that
-// only an admin-reviewed request is possible, so the BOOK-3 cancellation rate still applies.
+// PAY-3: a Student may ask for a refund of a paid lesson once its scheduled end has passed,
+// with no deadline, whether or not the Tutor has confirmed it. Every request waits for an
+// admin, because a Student's account of the lesson cannot be verified automatically.
 
 export type RefundBlockCode =
-  | "REFUND_ALREADY_REQUESTED"
-  | "REFUND_LESSON_COMPLETED"
-  | "REFUND_NOT_ELIGIBLE"
-  | "REFUND_NO_SHOW_TOO_EARLY";
+  "REFUND_ALREADY_REQUESTED" | "REFUND_NOT_ELIGIBLE" | "REFUND_LESSON_NOT_ENDED";
 
 export const refundBlockMessages: Record<RefundBlockCode, string> = {
   REFUND_ALREADY_REQUESTED: "You already requested a refund for this lesson.",
-  REFUND_LESSON_COMPLETED:
-    "Your Tutor confirmed this lesson was completed, so it can't be refunded.",
   REFUND_NOT_ELIGIBLE: "Only paid lessons that were not cancelled can be refunded.",
-  REFUND_NO_SHOW_TOO_EARLY: "You can report that your tutor didn't show up once the lesson starts.",
+  REFUND_LESSON_NOT_ENDED: "You can request a refund after the lesson's scheduled end.",
 };
 
 export type RefundEligibilitySource = {
   status: BookingStatus;
-  startedAt: Date;
+  endedAt: Date;
   paid: boolean;
   hasRequest: boolean;
 };
 
 // Returns why a refund cannot be requested now, or null when the Student may file one.
-// Pass a reason to also check whether that reason is allowed yet.
-export function refundBlock(
-  booking: RefundEligibilitySource,
-  now: Date,
-  reason?: RefundRequestReason
-): RefundBlockCode | null {
+export function refundBlock(booking: RefundEligibilitySource, now: Date): RefundBlockCode | null {
   if (booking.hasRequest) return "REFUND_ALREADY_REQUESTED";
-  if (booking.status === "COMPLETED") return "REFUND_LESSON_COMPLETED";
-  if (booking.status !== "CONFIRMED" || !booking.paid) return "REFUND_NOT_ELIGIBLE";
-  if (reason === "TUTOR_NO_SHOW" && !canReportNoShow(booking, now))
-    return "REFUND_NO_SHOW_TOO_EARLY";
+  if (!["CONFIRMED", "COMPLETED"].includes(booking.status) || !booking.paid)
+    return "REFUND_NOT_ELIGIBLE";
+  if (booking.endedAt.getTime() > now.getTime()) return "REFUND_LESSON_NOT_ENDED";
   return null;
 }
-
-export function canReportNoShow(booking: Pick<RefundEligibilitySource, "startedAt">, now: Date) {
-  return booking.startedAt.getTime() <= now.getTime();
-}
-
-// A cancellation refunds the booking its own way, so a pending request is closed with this reason.
-export const CANCELLED_REFUND_REJECTION =
-  "The lesson was cancelled, so its cancellation refund applies instead.";
 
 // The Student sees everything they wrote; the Tutor sees only that a request exists and its outcome.
 export function refundRequestResponse(request: RefundRequest, forStudent: boolean) {

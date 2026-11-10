@@ -394,7 +394,7 @@ describe("trial booking rules", () => {
       ).actions.canReview
     ).toBe(false);
 
-    // PAY-3: a paid lesson can be refunded any time after payment, with no deadline.
+    // PAY-3: a paid lesson can be refunded once its scheduled end passes, with no deadline.
     const payment = {
       id: SLOT_A,
       type: "LESSON_PAYMENT" as const,
@@ -405,36 +405,22 @@ describe("trial booking rules", () => {
       bookingId: record.id,
       payoutAccountId: null,
     };
+    // Before the lesson ends there is no refund request, only cancellation.
     const upcomingPaid = { ...record, walletTransactions: [payment] };
-    // Before the lesson starts, only an admin-reviewed request is possible.
-    expect(mapBookingResponse(upcomingPaid, SUBJECT_ID, now).actions).toMatchObject({
-      canRequestRefund: true,
-      canReportTutorNoShow: false,
-    });
+    expect(mapBookingResponse(upcomingPaid, SUBJECT_ID, now).actions.canRequestRefund).toBe(false);
     expect(mapBookingResponse(record, SUBJECT_ID, now).actions.canRequestRefund).toBe(false);
     const endedPaid = { ...ended, startedAt: now, walletTransactions: [payment] };
-    expect(mapBookingResponse(endedPaid, SUBJECT_ID, now).actions).toMatchObject({
-      canRequestRefund: true,
-      canReportTutorNoShow: true,
-    });
-    expect(mapBookingResponse(endedPaid, SLOT_B, now).actions).toMatchObject({
-      canRequestRefund: false,
-      canReportTutorNoShow: false,
-    });
+    expect(mapBookingResponse(endedPaid, SUBJECT_ID, now).actions.canRequestRefund).toBe(true);
+    expect(mapBookingResponse(endedPaid, SLOT_B, now).actions.canRequestRefund).toBe(false);
     const yearLater = new Date("2027-09-12T00:00:00.000Z");
     expect(mapBookingResponse(endedPaid, SUBJECT_ID, yearLater).actions.canRequestRefund).toBe(
       true
     );
-
-    const completedPaid = mapBookingResponse(
-      { ...endedPaid, status: "COMPLETED" },
-      SUBJECT_ID,
-      now
-    );
-    expect(completedPaid.actions.canRequestRefund).toBe(false);
-    expect(completedPaid.refundBlockedReason).toBe(
-      "Your Tutor confirmed this lesson was completed, so it can't be refunded."
-    );
+    // A lesson the Tutor confirmed can still be refunded; an admin decides.
+    expect(
+      mapBookingResponse({ ...endedPaid, status: "COMPLETED" }, SUBJECT_ID, now).actions
+        .canRequestRefund
+    ).toBe(true);
 
     const refundRequest = {
       id: SLOT_B,
@@ -448,6 +434,7 @@ describe("trial booking rules", () => {
       bookingId: record.id,
       userId: SUBJECT_ID,
       reviewedById: null,
+      walletTransactionId: null,
     };
     const underReview = { ...endedPaid, refundRequest };
     expect(mapBookingResponse(underReview, SLOT_B, now).actions.canConfirmCompletion).toBe(false);

@@ -5,7 +5,7 @@ import {
 } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
 import { env } from "../../lib/env.ts";
-import { isTransactionConflict } from "../../lib/transaction-conflict.ts";
+import { runSerializable } from "../../lib/serializable.ts";
 import { appendWalletMovement } from "./wallet-ledger.ts";
 import { WalletDomainError } from "./wallet.service.ts";
 import type { CreateTopupInput, TopupReviewInput } from "./wallet.schema.ts";
@@ -99,46 +99,38 @@ export async function listTopupsForReview(adminId: string, status?: TopupRequest
 }
 
 export async function reviewTopup(adminId: string, id: string, input: TopupReviewInput) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      return await prisma.$transaction(
-        async (tx) => {
-          await requireAdmin(tx, adminId);
-          const request = await tx.topupRequest.findUnique({ where: { id } });
-          if (!request) throw notFound();
-          if (request.userId === adminId) {
-            throw new WalletDomainError(
-              "TOPUP_SELF_REVIEW",
-              "Another admin has to review your own top-up",
-              403
-            );
-          }
-          const reviewed = await tx.topupRequest.updateMany({
-            where: { id, status: "PENDING" },
-            data: {
-              status: input.decision,
-              reviewedAt: new Date(),
-              reviewedById: adminId,
-              rejectionReason: input.decision === "REJECTED" ? input.rejectionReason! : null,
-            },
-          });
-          if (reviewed.count !== 1) throw notPending();
-          if (input.decision === "APPROVED") {
-            await appendWalletMovement(tx, {
-              id: request.id,
-              userId: request.userId,
-              type: "TOP_UP",
-              amount: request.amount,
-            });
-          }
-          return topupRequestResponse(await tx.topupRequest.findUniqueOrThrow({ where: { id } }));
+  return runSerializable(
+    async (tx) => {
+      await requireAdmin(tx, adminId);
+      const request = await tx.topupRequest.findUnique({ where: { id } });
+      if (!request) throw notFound();
+      if (request.userId === adminId) {
+        throw new WalletDomainError(
+          "TOPUP_SELF_REVIEW",
+          "Another admin has to review your own top-up",
+          403
+        );
+      }
+      const reviewed = await tx.topupRequest.updateMany({
+        where: { id, status: "PENDING" },
+        data: {
+          status: input.decision,
+          reviewedAt: new Date(),
+          reviewedById: adminId,
+          rejectionReason: input.decision === "REJECTED" ? input.rejectionReason! : null,
         },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-      );
-    } catch (error) {
-      if (attempt < 2 && isTransactionConflict(error)) continue;
-      throw error;
-    }
-  }
-  throw new WalletDomainError("TOPUP_RETRY", "Please try again in a moment", 409);
+      });
+      if (reviewed.count !== 1) throw notPending();
+      if (input.decision === "APPROVED") {
+        await appendWalletMovement(tx, {
+          id: request.id,
+          userId: request.userId,
+          type: "TOP_UP",
+          amount: request.amount,
+        });
+      }
+      return topupRequestResponse(await tx.topupRequest.findUniqueOrThrow({ where: { id } }));
+    },
+    { retryError: () => new WalletDomainError("TOPUP_RETRY", "Please try again in a moment", 409) }
+  );
 }

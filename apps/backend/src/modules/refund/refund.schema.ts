@@ -1,12 +1,13 @@
 import { z } from "zod";
 
-// PAY-3: the Student explains an unsatisfactory lesson so an admin can decide; a no-show needs no text.
+// PAY-3: the Student says what happened so an admin can decide. A no-show needs no text;
+// an unsatisfactory lesson or another problem must be explained.
 export const createRefundRequestSchema = z
   .object({
-    reason: z.enum(["TUTOR_NO_SHOW", "UNSATISFACTORY_LESSON"]),
+    reason: z.enum(["TUTOR_NO_SHOW", "UNSATISFACTORY_LESSON", "OTHER"]),
     details: z.string().trim().max(1000).optional(),
   })
-  .refine((input) => input.reason !== "UNSATISFACTORY_LESSON" || !!input.details, {
+  .refine((input) => input.reason === "TUTOR_NO_SHOW" || !!input.details, {
     message: "Tell us what went wrong with the lesson",
     path: ["details"],
   });

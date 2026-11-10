@@ -26,6 +26,7 @@ enum TopupRequestStatus {
 enum RefundRequestReason {
   TUTOR_NO_SHOW
   UNSATISFACTORY_LESSON
+  OTHER
 }
 
 enum RefundRequestStatus {
@@ -328,6 +329,9 @@ model WalletTransaction {
   payoutAccountId String?        @map("payout_account_id") @db.Uuid
   payoutAccount   PayoutAccount? @relation(fields: [payoutAccountId], references: [id], onDelete: Restrict)
 
+  // PAY-3: the approved refund request that appended this REFUND row.
+  refundRequest RefundRequest?
+
   @@unique([bookingId, type])
   @@index([userId, createdAt])
   @@map("wallet_transactions")
@@ -355,8 +359,8 @@ model TopupRequest {
   @@map("topup_requests")
 }
 
-// PAY-3: one refund request per booking. A Tutor no-show is approved when filed; an
-// unsatisfactory lesson waits for an admin. Approval appends one REFUND row.
+// PAY-3: one refund request per booking, filed after the lesson's scheduled end. Every request
+// waits for an admin; approval appends one REFUND row and links it here.
 model RefundRequest {
   id              String              @id @default(uuid()) @map("refund_request_id") @db.Uuid
   reason          RefundRequestReason
@@ -373,6 +377,10 @@ model RefundRequest {
   user         User    @relation("RefundRequestOwner", fields: [userId], references: [id], onDelete: Restrict)
   reviewedById String? @map("reviewed_by_id") @db.Uuid
   reviewedBy   User?   @relation("RefundRequestReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  // The REFUND row an approval appended; NULL while pending or after a rejection.
+  walletTransactionId String?            @unique @map("wallet_transaction_id") @db.Uuid
+  walletTransaction   WalletTransaction? @relation(fields: [walletTransactionId], references: [id], onDelete: Restrict)
 
   @@index([userId, createdAt])
   @@index([status, createdAt])

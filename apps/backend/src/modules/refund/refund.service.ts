@@ -1,19 +1,16 @@
-import {
-  Prisma,
-  type RefundRequest,
-  type RefundRequestStatus,
-} from "../../generated/prisma/client.ts";
+import type { Prisma, RefundRequest, RefundRequestStatus } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
-import { isTransactionConflict } from "../../lib/transaction-conflict.ts";
-import { getBooking } from "../booking/booking.service.ts";
+import { runSerializable } from "../../lib/serializable.ts";
+import { getBooking, waitForBookingNotifications } from "../booking/booking.service.ts";
+import { notifyUser } from "../notification/notification.service.ts";
 import { appendWalletMovement } from "../wallet/wallet-ledger.ts";
 import { refundBlock, refundBlockMessages, type RefundBlockCode } from "./refund.policy.ts";
 import type { CreateRefundRequestInput, RefundReviewInput } from "./refund.schema.ts";
 
-// PAY-3: a Student asks for a refund any time after paying. A Tutor no-show (once the lesson
-// has started) is refunded in full at once; an unsatisfactory lesson waits for an admin. Every approved
-// request appends one REFUND row for the full paid amount and cancels the booking in the same
-// serializable transaction, so the Tutor's pending earning disappears with it.
+// PAY-3: a Student asks for a refund once the lesson's scheduled end has passed. Every request
+// waits for an admin. Approval appends one REFUND row for the full paid amount, links it to the
+// request and cancels the booking in the same serializable transaction, so the Tutor's pending
+// earning disappears with it.
 
 export type RefundErrorCode =
   | RefundBlockCode
@@ -36,49 +33,31 @@ export class RefundDomainError extends Error {
   }
 }
 
-const blockStatus: Record<RefundBlockCode, number> = {
-  REFUND_ALREADY_REQUESTED: 409,
-  REFUND_LESSON_COMPLETED: 409,
-  REFUND_NOT_ELIGIBLE: 409,
-  REFUND_NO_SHOW_TOO_EARLY: 409,
-};
+// Every reason a refund cannot be requested is a conflict with the booking's current state.
+const BLOCKED_STATUS = 409;
 
 function blocked(code: RefundBlockCode) {
-  return new RefundDomainError(code, refundBlockMessages[code], blockStatus[code]);
+  return new RefundDomainError(code, refundBlockMessages[code], BLOCKED_STATUS);
 }
 
-const serializable = { isolationLevel: Prisma.TransactionIsolationLevel.Serializable };
+const retryError = () => new RefundDomainError("REFUND_RETRY", "Please try again in a moment", 409);
 
-// Retries a serializable transaction that lost a race; the retry re-reads the new state.
-async function withRetry<T>(work: () => Promise<T>) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      return await work();
-    } catch (error) {
-      if (attempt < 2 && isTransactionConflict(error)) continue;
-      throw error;
-    }
-  }
-  throw new RefundDomainError("REFUND_RETRY", "Please try again in a moment", 409);
-}
-
-// Approving cancels the still-confirmed booking and returns the full paid amount.
+// Approving cancels the paid booking, returns the full amount and links the REFUND row.
 async function refundBooking(tx: Prisma.TransactionClient, request: RefundRequest, now: Date) {
   const cancelled = await tx.booking.updateMany({
-    where: { id: request.bookingId, status: "CONFIRMED" },
+    where: { id: request.bookingId, status: { in: ["CONFIRMED", "COMPLETED"] } },
     data: { status: "CANCELLED", cancelledAt: now, paymentExpiresAt: null },
   });
   if (cancelled.count !== 1) throw blocked("REFUND_NOT_ELIGIBLE");
-  // A request approved before the lesson frees its slots, like a Student cancellation.
-  await tx.availability.updateMany({
-    where: { bookingId: request.bookingId },
-    data: { bookingId: null },
-  });
-  await appendWalletMovement(tx, {
+  const refund = await appendWalletMovement(tx, {
     userId: request.userId,
     type: "REFUND",
     amount: request.amount,
     bookingId: request.bookingId,
+  });
+  await tx.refundRequest.update({
+    where: { id: request.id },
+    data: { walletTransactionId: refund?.id ?? null },
   });
 }
 
@@ -87,16 +66,18 @@ export async function createRefundRequest(
   bookingId: string,
   input: CreateRefundRequestInput
 ) {
-  await withRetry(() =>
-    prisma.$transaction(async (tx) => {
+  const filed = await runSerializable(
+    async (tx) => {
       const booking = await tx.booking.findUnique({
         where: { id: bookingId },
         include: {
           refundRequest: { select: { id: true } },
           walletTransactions: { where: { type: "LESSON_PAYMENT" }, take: 1 },
+          subject: {
+            select: { name: true, tutor: { select: { user: { select: { id: true } } } } },
+          },
         },
       });
-      const now = new Date();
       if (!booking) throw new RefundDomainError("BOOKING_NOT_FOUND", "Booking not found", 404);
       if (booking.userId !== userId)
         throw new RefundDomainError(
@@ -108,28 +89,22 @@ export async function createRefundRequest(
       const code = refundBlock(
         {
           status: booking.status,
-          startedAt: booking.startedAt,
+          endedAt: booking.endedAt,
           paid: Boolean(payment),
           hasRequest: booking.refundRequest !== null,
         },
-        now,
-        input.reason
+        new Date()
       );
       if (code) throw blocked(code);
 
-      const noShow = input.reason === "TUTOR_NO_SHOW";
-      let request: RefundRequest;
       try {
-        request = await tx.refundRequest.create({
+        await tx.refundRequest.create({
           data: {
             bookingId,
             userId,
             reason: input.reason,
             details: input.details || null,
             amount: payment!.amount,
-            // AC1: a Tutor no-show is approved immediately; anything else waits for an admin.
-            status: noShow ? "APPROVED" : "PENDING",
-            reviewedAt: noShow ? now : null,
           },
         });
       } catch (error) {
@@ -137,9 +112,23 @@ export async function createRefundRequest(
           throw blocked("REFUND_ALREADY_REQUESTED");
         throw error;
       }
-      if (noShow) await refundBooking(tx, request, now);
-    }, serializable)
+      return {
+        tutorUserId: booking.subject.tutor.user?.id ?? null,
+        subjectName: booking.subjectName ?? booking.subject.name,
+        startedAt: booking.startedAt,
+      };
+    },
+    { retryError }
   );
+
+  // Tell the Tutor after the request commits; a failed email never fails the request.
+  if (filed.tutorUserId)
+    await waitForBookingNotifications([
+      notifyUser(filed.tutorUserId, {
+        eventType: "booking",
+        details: { subjectName: filed.subjectName, scheduledAt: filed.startedAt },
+      }),
+    ]);
   return getBooking(userId, bookingId);
 }
 
@@ -175,8 +164,6 @@ function adminRefundResponse(request: ReviewRecord) {
     createdAt: request.createdAt.toISOString(),
     reviewedAt: request.reviewedAt?.toISOString() ?? null,
     rejectionReason: request.rejectionReason,
-    // A no-show is approved by the system when filed, so it has no reviewing admin.
-    reviewedByAdmin: request.reviewedById !== null,
     student: request.user,
     booking: {
       id: request.booking.id,
@@ -212,8 +199,8 @@ export async function listRefundsForReview(adminId: string, status?: RefundReque
 }
 
 export async function reviewRefund(adminId: string, id: string, input: RefundReviewInput) {
-  return withRetry(() =>
-    prisma.$transaction(async (tx) => {
+  return runSerializable(
+    async (tx) => {
       await requireAdmin(tx, adminId);
       const request = await tx.refundRequest.findUnique({ where: { id }, include: reviewInclude });
       if (!request)
@@ -245,6 +232,7 @@ export async function reviewRefund(adminId: string, id: string, input: RefundRev
       return adminRefundResponse(
         await tx.refundRequest.findUniqueOrThrow({ where: { id }, include: reviewInclude })
       );
-    }, serializable)
+    },
+    { retryError }
   );
 }
