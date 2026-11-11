@@ -25,6 +25,7 @@ const profile = {
   introVideoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   rating: 4.5,
   reviewCount: 2,
+  teachingStats: { completedLessons: 18, studentsTaught: 7 },
   subjects: [
     {
       id: "calculus",
@@ -80,6 +81,21 @@ beforeEach(() => {
 });
 
 describe("DISC-3 tutor profile page", () => {
+  it("shows public completed teaching experience without private operational statistics", async () => {
+    respondWith(profile);
+    render(<TutorDetailPage />);
+    const experience = await screen.findByRole("region", { name: "Teaching experience" });
+    expect(within(experience).getByText("18")).toBeInTheDocument();
+    expect(within(experience).getByText("7")).toBeInTheDocument();
+    expect(
+      within(experience).getByText(/Lessons confirmed complete by the Tutor/)
+    ).toBeInTheDocument();
+    expect(within(experience).getByText(/do not measure teaching quality/)).toBeInTheDocument();
+    expect(screen.queryByText("Lesson status")).not.toBeInTheDocument();
+    expect(screen.queryByText("Returning student rate")).not.toBeInTheDocument();
+    expect(screen.queryByText("Earnings")).not.toBeInTheDocument();
+  });
+
   it("loads the public profile without a login", async () => {
     respondWith(profile);
 
@@ -201,6 +217,7 @@ describe("DISC-3 tutor profile page", () => {
       introVideoUrl: null,
       rating: null,
       reviewCount: 0,
+      teachingStats: { completedLessons: 0, studentsTaught: 0 },
       subjects: [],
       availability: [],
       reviews: [],
@@ -212,6 +229,8 @@ describe("DISC-3 tutor profile page", () => {
     expect(screen.getByText("This tutor hasn’t listed any subjects yet.")).toBeInTheDocument();
     expect(screen.getByText(/No open slots in the next two weeks/)).toBeInTheDocument();
     expect(screen.getByText("No reviews yet.")).toBeInTheDocument();
+    const experience = screen.getByRole("region", { name: "Teaching experience" });
+    expect(within(experience).getAllByText("0")).toHaveLength(2);
     expect(screen.queryByRole("link", { name: "Choose a subject" })).not.toBeInTheDocument();
   });
 

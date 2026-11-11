@@ -26,6 +26,7 @@ disagree.
 | DISC-2 recommendation implementation and checks | [Tutor recommendations change](change/implement-disc-2-recommendations/proposal.md)                               |
 | PROF-6 implementation decisions and checks      | [Subject management change](change/implement-prof-6-subjects/proposal.md)                                         |
 | PROF-3 implementation decisions and checks      | [Availability change](change/implement-prof-3-availability/proposal.md)                                           |
+| PROF-5 Tutor teaching overview and verification | [Teaching statistics change](change/prof-5-tutor-dashboard-stats/proposal.md)                                     |
 | REV-2 public Tutor replies and verification     | [Review reply change](change/rev-2-public-review-reply/proposal.md)                                               |
 | REV-2 approved reply storage                    | [Schema approval evidence](sources/rev-2-schema-confirmation.md)                                                  |
 | PAY-1 slip top-up decisions                     | [PAY-1 slip evidence](sources/pay-1-slip-topup-confirmation.md)                                                   |

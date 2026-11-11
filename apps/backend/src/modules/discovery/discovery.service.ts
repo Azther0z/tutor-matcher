@@ -138,33 +138,34 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
   const listedUntil = new Date(now.getTime() + OPENINGS_LISTED_DAYS * DAY_MS);
   const openingsUntil = new Date(now.getTime() + OPENINGS_WINDOW_DAYS * DAY_MS);
   const reviewWhere = { subject: { tutorId } };
-  const [aggregate, reviews, slots, subjectRatings, nextOpenings] = await Promise.all([
-    prisma.review.aggregate({ where: reviewWhere, _avg: { ratingStars: true }, _count: true }),
-    prisma.review.findMany({
-      where: reviewWhere,
-      select: publicReviewSelect,
-      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-      take: RECENT_REVIEW_LIMIT,
-    }),
-    prisma.availability.findMany({
-      where: {
-        tutorId,
-        isOpen: true,
-        bookingId: null,
-        startedAt: { gt: now, lt: listedUntil },
-        availabilitySubjects: { some: {} },
-      },
-      select: { startedAt: true, availabilitySubjects: { select: { subjectId: true } } },
-      orderBy: { startedAt: "asc" },
-    }),
-    prisma.review.groupBy({
-      by: ["subjectId"],
-      where: reviewWhere,
-      _avg: { ratingStars: true },
-      _count: true,
-    }),
-    // Return one timestamp per subject, not every slot/link across the 92-day horizon.
-    prisma.$queryRaw<Array<{ subjectId: string; startedAt: Date }>>`
+  const [aggregate, reviews, slots, subjectRatings, nextOpenings, completedStudents] =
+    await Promise.all([
+      prisma.review.aggregate({ where: reviewWhere, _avg: { ratingStars: true }, _count: true }),
+      prisma.review.findMany({
+        where: reviewWhere,
+        select: publicReviewSelect,
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+        take: RECENT_REVIEW_LIMIT,
+      }),
+      prisma.availability.findMany({
+        where: {
+          tutorId,
+          isOpen: true,
+          bookingId: null,
+          startedAt: { gt: now, lt: listedUntil },
+          availabilitySubjects: { some: {} },
+        },
+        select: { startedAt: true, availabilitySubjects: { select: { subjectId: true } } },
+        orderBy: { startedAt: "asc" },
+      }),
+      prisma.review.groupBy({
+        by: ["subjectId"],
+        where: reviewWhere,
+        _avg: { ratingStars: true },
+        _count: true,
+      }),
+      // Return one timestamp per subject, not every slot/link across the 92-day horizon.
+      prisma.$queryRaw<Array<{ subjectId: string; startedAt: Date }>>`
       SELECT links.subject_id AS "subjectId", MIN(slots.started_at) AS "startedAt"
       FROM availabilities slots
       JOIN availability_subjects links ON links.availability_id = slots.availability_id
@@ -173,7 +174,12 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
         AND slots.started_at > ${now} AND slots.started_at < ${openingsUntil}
       GROUP BY links.subject_id
     `,
-  ]);
+      prisma.booking.groupBy({
+        by: ["userId"],
+        where: { subject: { tutorId }, status: "COMPLETED" },
+        _count: true,
+      }),
+    ]);
 
   const ratingBySubject = new Map(subjectRatings.map((row) => [row.subjectId, row]));
   const nextOpening = new Map(nextOpenings.map((slot) => [slot.subjectId, slot.startedAt]));
@@ -189,6 +195,10 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
     introVideoUrl: tutor.currentProfileVersion.introVideoUrl,
     rating: roundedRating(aggregate._avg.ratingStars),
     reviewCount: aggregate._count,
+    teachingStats: {
+      completedLessons: completedStudents.reduce((total, student) => total + student._count, 0),
+      studentsTaught: completedStudents.length,
+    },
     subjects: tutor.subjects.map((subject) => {
       const stats = ratingBySubject.get(subject.id);
       return {

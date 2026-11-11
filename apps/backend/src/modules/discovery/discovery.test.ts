@@ -14,6 +14,7 @@ const reviewGroupBy = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const availabilityFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 // Assert that public profile reads never invoke booking cleanup or its write transaction.
 const bookingFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
+const bookingGroupBy = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const transaction = jest.fn(async (run: (tx: unknown) => unknown) =>
   run({ booking: { findMany: bookingFindMany } })
 );
@@ -30,6 +31,7 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
     review: { aggregate: reviewAggregate, findMany: reviewFindMany, groupBy: reviewGroupBy },
     availability: { findMany: availabilityFindMany },
     student: { findUnique: studentFindUnique },
+    booking: { groupBy: bookingGroupBy },
   },
 }));
 
@@ -544,6 +546,7 @@ describe("DISC-3 tutor profile", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     bookingFindMany.mockResolvedValue([]);
+    bookingGroupBy.mockResolvedValue([]);
     queryRaw.mockReset().mockResolvedValue([
       { subjectId: "calculus", startedAt: soon },
       { subjectId: "physics", startedAt: soon },
@@ -587,6 +590,7 @@ describe("DISC-3 tutor profile", () => {
       introVideoUrl: "https://www.youtube.com/watch?v=abc",
       rating: 4.3,
       reviewCount: 4,
+      teachingStats: { completedLessons: 0, studentsTaught: 0 },
     });
     expect(response.body.subjects).toEqual([
       expect.objectContaining({
@@ -619,6 +623,34 @@ describe("DISC-3 tutor profile", () => {
         },
       },
     ]);
+  });
+
+  it("publishes only completed-lesson and unique-Student totals scoped to this Tutor", async () => {
+    bookingGroupBy.mockResolvedValue([
+      { userId: "private-learner-a", _count: 3 },
+      { userId: "private-learner-b", _count: 1 },
+    ]);
+    const response = await request(app).get(url).expect(200);
+    expect(bookingGroupBy).toHaveBeenCalledWith({
+      by: ["userId"],
+      where: { subject: { tutorId: TUTOR_ID }, status: "COMPLETED" },
+      _count: true,
+    });
+    expect(response.body.teachingStats).toEqual({ completedLessons: 4, studentsTaught: 2 });
+    const serialized = JSON.stringify(response.body);
+    expect(serialized).not.toContain("private-learner");
+    for (const field of [
+      "lessons",
+      "students",
+      "balance",
+      "earnings",
+      "revenue",
+      "pendingPayment",
+      "returningRate",
+    ]) {
+      expect(response.body).not.toHaveProperty(field);
+      expect(response.body.teachingStats).not.toHaveProperty(field);
+    }
   });
 
   it("lists only the next two weeks of openings, each with its subjects", async () => {
@@ -745,6 +777,7 @@ describe("DISC-3 tutor profile", () => {
     expect(response.body).toEqual({ message: "This tutor profile is unavailable" });
     expect(reviewFindMany).not.toHaveBeenCalled();
     expect(availabilityFindMany).not.toHaveBeenCalled();
+    expect(bookingGroupBy).not.toHaveBeenCalled();
   });
 
   it("is unavailable when the tutor does not exist or the id is not a UUID", async () => {
@@ -755,6 +788,7 @@ describe("DISC-3 tutor profile", () => {
     const response = await request(app).get("/api/discovery/tutors/not-a-uuid/profile").expect(404);
     expect(response.body).toEqual({ message: "This tutor profile is unavailable" });
     expect(profileTutorFindUnique).not.toHaveBeenCalled();
+    expect(bookingGroupBy).not.toHaveBeenCalled();
   });
 });
 
