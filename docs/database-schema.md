@@ -356,21 +356,28 @@ be edited; the user removes one and adds it again.
 
 ### reviews
 
-| Column       | Type      | Constraints                                            | Notes                            |
-| ------------ | --------- | ------------------------------------------------------ | -------------------------------- |
-| review_id    | SERIAL    | PK                                                     |                                  |
-| rating_stars | INT       | NOT NULL, CHECK BETWEEN 1 AND 5                        | `reviews_rating_stars_range`     |
-| text         | TEXT      | NULL                                                   |                                  |
-| created_at   | TIMESTAMP | NOT NULL, DEFAULT now()                                |                                  |
-| user_id      | INT       | NOT NULL, FK → users.user_id, ON DELETE RESTRICT       | The reviewing student            |
-| subject_id   | INT       | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Makes reviews subject-scoped     |
-| booking_id   | INT       | NOT NULL, FK → bookings.booking_id, ON DELETE RESTRICT | Reviews originate from a booking |
+| Column          | Type      | Constraints                                            | Notes                                                     |
+| --------------- | --------- | ------------------------------------------------------ | --------------------------------------------------------- |
+| review_id       | UUID      | PK                                                     | Prisma `id`                                               |
+| rating_stars    | INT       | NOT NULL                                               | Review contract: 1–5                                      |
+| text            | TEXT      | NULL                                                   |                                                           |
+| reply_text      | TEXT      | NULL                                                   | One public reply by the reviewed Tutor                    |
+| replied_at      | TIMESTAMP | NULL                                                   | Written together with reply_text                          |
+| reply_edited_at | TIMESTAMP | NULL                                                   | Latest actual text edit; original replied_at is preserved |
+| created_at      | TIMESTAMP | NOT NULL, DEFAULT now()                                |                                                           |
+| user_id         | UUID      | NOT NULL, FK → users.user_id, ON DELETE RESTRICT       | The reviewing student                                     |
+| subject_id      | UUID      | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Makes reviews subject-scoped                              |
+| booking_id      | UUID      | NOT NULL, FK → bookings.booking_id, ON DELETE RESTRICT | Reviews originate from a booking                          |
 
 Indexes: `user_id`, `subject_id`, `booking_id`.
 
-The CHECK constraint lives in
-`prisma/migrations/20260831093000_add_review_rating_range_check/migration.sql` because
-Prisma cannot express it in the schema.
+The current Prisma schema has no rating CHECK or booking uniqueness constraint. REV-1
+PR #225 owns submission and its proposed unique booking relation; it is not yet merged
+into this work's base. REV-2 adds nullable reply fields; the endpoint enforces Tutor
+ownership. Creation updates only an unreplied row; editing conditionally updates the
+current text and revision timestamp, preventing stale overwrites. Public readers receive
+the latest reply and its Edited timestamp. Database
+synchronization remains a separate authorized action; no database was changed for the preview.
 
 ### messages
 
@@ -458,7 +465,7 @@ that the current schema is wrong to have shipped.
 | --- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
 | G10 | Resolved by PROF-7: `payout_accounts` stores each user's bank accounts with one default.                                             | §4 Payouts, `/settings/wallet` |
 | G11 | **Notification preference** per user and event type, with email and push flags                                                       | §8 Notifications               |
-| G12 | **Review reply** from the tutor, and a moderation status on reviews and messages                                                     | §9 Reviews, §10 Admin          |
+| G12 | Moderation status on reviews and messages remains missing; Tutor replies and their edit timestamp are implemented by REV-2           | §9 Reviews, §10 Admin          |
 | G13 | **Account suspension / ban** state on `users`                                                                                        | §10 Admin                      |
 | G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                        | §2 Search filters, §7 Subjects |
 | G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up | §10 Admin queues               |

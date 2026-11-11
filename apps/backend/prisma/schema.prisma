@@ -361,10 +361,13 @@ model PayoutAccount {
 }
 
 model Review {
-  id          String   @id @default(uuid()) @map("review_id") @db.Uuid
-  ratingStars Int      @map("rating_stars")
-  text        String?
-  createdAt   DateTime @default(now()) @map("created_at")
+  id            String    @id @default(uuid()) @map("review_id") @db.Uuid
+  ratingStars   Int       @map("rating_stars")
+  text          String?
+  replyText     String?   @map("reply_text")
+  repliedAt     DateTime? @map("replied_at")
+  replyEditedAt DateTime? @map("reply_edited_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
 
   userId String @map("user_id") @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
