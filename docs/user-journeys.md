@@ -266,24 +266,25 @@ student never picks the subject twice. **No booking record exists in this step.*
   back-to-back"_ and the selection restarts from that slot.
 - The summary shows the selected window, the duration, and the price. **Price = number
   of 30-minute slots × hourly rate ÷ 2.**
-- A free-text note — _"What do you want to learn?"_ — is captured for the tutor.
+- There is no focus-note input and no Trial lesson classification.
 - There is no weekly or recurring option, and no way to add another student.
 
-### Step 2 — Payment due (`/bookings/:id`)
+### Step 2 — Confirm and pay
 
-Continuing creates the booking record and its booking number, and opens the booking
-page with the subject, date, time, duration, and price locked. The tutor's slots are
-locked to this booking while payment is outstanding.
+The Student must have enough wallet credit before confirming. If the balance is short,
+show **Top up ฿<shortfall>** and return to the selected subject, date and times afterwards.
+No booking exists and no slots are held while the Student tops up.
 
-- Payment is a debit from **wallet balance**, taken on this page. Wallet history never
-  accepts payment.
-- If the balance is short, the page states the shortfall, disables **Pay**, and offers
-  **Top up ฿<shortfall>**, returning the student to this booking afterwards.
-- Creating the pending booking writes no wallet row; the amount due is Booking.totalAmount.
-- Paying atomically deducts the amount, appends one LESSON_PAYMENT row and changes
-  PENDING_PAYMENT to CONFIRMED. Failure leaves the booking and wallet unchanged.
-- Cancelling or expiring an unpaid booking writes no wallet row.
-- If payment never completes, no confirmed booking exists and the slots are released.
+Confirming creates a CONFIRMED Booking, claims its slots, debits the wallet and appends
+one LESSON_PAYMENT in a single serializable transaction. Insufficient funds or a slot
+conflict rolls back all changes. Notify both parties only after commit. There is no
+Payment due filter or box on Bookings or Wallet. Both booking list and detail show the
+start and end in Asia/Bangkok. Cancel remains available under the existing refund rules;
+rescheduling is not supported.
+
+This replaces the earlier pending-booking step and PAY-5 Payment due box per the
+[2026-11-06 confirmation](sources/booking-flow-confirmation-2026-11-06.md).
+Legacy pending rows remain readable for compatibility; new bookings never create them.
 
 ### Step 3 — Confirmed
 
@@ -331,8 +332,8 @@ See the [BOOK-4 confirmation](sources/book-4-policy-confirmation.md).
 
 ### `/bookings`
 
-Tabs: **All**, **Upcoming** (confirmed and paid), **Payment due** (slots held, booking
-number issued, not yet paid), and **Past** (completed and cancelled). Each row opens
+Tabs: **All**, **Upcoming** (confirmed and paid), and **Past** (completed and cancelled).
+Each row shows the lesson start and end, without a Trial badge, and opens
 the booking in its correct state.
 
 Related stories: US4-1 … US4-8, US11-1, US11-2.
@@ -367,8 +368,8 @@ and a Tutor-only filter in a Student's URL falls back to All.
 Earnings this month sum LESSON_EARNING rows in the current Asia/Bangkok calendar month;
 all-time paid out sums every PAYOUT row. The list is newest first, 20 per page, and keeps
 its filter and page in the URL; each row shows the signed amount and resulting balance and
-opens its detail. A **Payment due** box lists the user's unpaid bookings whose hold has not
-expired, each with a link to `/bookings/:id`, where payment is made. The account menu
+opens its detail. The former **Payment due** box was removed by the
+[booking flow confirmation](sources/booking-flow-confirmation-2026-11-06.md). The account menu
 links to `/wallet`. See the [PAY-5 confirmation](sources/pay-5-policy-confirmation.md)
 and the [PAY-5 review comments](sources/pay-5-review-comments.md).
 

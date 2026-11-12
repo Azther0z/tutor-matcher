@@ -142,8 +142,8 @@ function TopupContent() {
             </p>
             {fromBooking && (
               <p className="mt-2 text-sm text-amber-800 dark:text-amber-300">
-                Your booking is held for a limited time. If it expires before approval, book the
-                slot again once your balance is updated.
+                Your selected time is not reserved yet. Once your top-up is approved, return to
+                booking and choose an available time to confirm your lesson.
               </p>
             )}
             <p className="mt-4 text-sm">

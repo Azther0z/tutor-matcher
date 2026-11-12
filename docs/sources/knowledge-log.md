@@ -161,3 +161,8 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Evidence: GitHub issue #165 and docs/sources/rev-2-editable-reply-confirmation.md
 - Updated: docs/user-journeys.md, docs/testing.md, docs/index.md
 - Scope: Owner-only teaching overview with status/engagement and published reviews. Public Tutor profiles expose only aggregate completed lessons and distinct Students taught, alongside existing ratings/reviews; these metric definitions are the implementation choices previewed for the user. Private bookings, identities and earnings remain owner-only.
+## [2026-11-06] ingest | Booking flow confirmation
+
+- Disposition: Update; supersedes the pending-booking and Payment due UI requirements.
+- Raw: docs/sources/booking-flow-confirmation-2026-11-06.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, CONTEXT.md, docs/index.md

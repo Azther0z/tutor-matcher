@@ -1,3 +1,4 @@
+import { createLegacyPendingBooking } from "./legacy-booking.fixture.ts";
 import { randomUUID } from "node:crypto";
 import { URL } from "node:url";
 import { afterAll, beforeEach, describe, expect, it } from "@jest/globals";
@@ -56,6 +57,10 @@ async function createLesson(hoursAway: number, paid = true) {
       availabilitySubjects: { create: { subjectId: SUBJECT } },
     },
   });
+  if (!paid) {
+    const legacy = await createLegacyPendingBooking(STUDENT, SUBJECT, slotId);
+    return { id: legacy.id, slotId };
+  }
   const created = await authorize(
     request(app)
       .post("/api/bookings")
@@ -66,7 +71,6 @@ async function createLesson(hoursAway: number, paid = true) {
       })
   ).expect(201);
   const id = created.body.booking.id as string;
-  if (paid) await authorize(request(app).post(`/api/bookings/${id}/confirm-payment`)).expect(200);
   return { id, slotId };
 }
 

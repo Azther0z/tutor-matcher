@@ -7,6 +7,11 @@ const slotId = "073ea12c-9fb1-4c70-9910-554432c8dc21";
 const push = jest.fn();
 const replace = jest.fn();
 const router = { push, replace };
+const mockWallet = jest.fn();
+jest.mock("../../../../src/lib/wallet-api", () => ({
+  getWallet: () => mockWallet(),
+  publishWalletBalance: jest.fn(),
+}));
 let mockSearchParams = new URLSearchParams();
 
 jest.mock("next/navigation", () => ({
@@ -32,6 +37,7 @@ beforeEach(() => {
     doNotFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask"],
   });
   jest.clearAllMocks();
+  mockWallet.mockResolvedValue({ balance: "1000.00" });
   mockSearchParams = new URLSearchParams();
   localStorage.setItem("authToken", "student-token");
 });
@@ -58,11 +64,14 @@ it("opens the date passed by DISC-4 without selecting times or creating a bookin
   expect(push).not.toHaveBeenCalled();
 });
 
-it("creates a trial booking with UUID identifiers", async () => {
+it("creates a booking with UUID identifiers", async () => {
   global.fetch = jest
     .fn()
     .mockResolvedValueOnce({ ok: true, json: async () => availability })
-    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: { id: bookingId } }) });
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ booking: { id: bookingId, payment: { walletBalance: "990.00" } } }),
+    });
   render(<SubjectBookingPage />);
   fireEvent.click(await screen.findByRole("button", { name: "2030-01-10" }));
   expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -70,8 +79,8 @@ it("creates a trial booking with UUID identifiers", async () => {
   expect(screen.getByRole("button", { name: "00:00 Not available" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "23:30 Not available" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "16:00 Available" }));
-  expect(screen.getByText("Trial · 30 min")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
+  expect(screen.getByText("30 min")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
   await waitFor(() => expect(push).toHaveBeenCalledWith(`/bookings/${bookingId}`));
   expect(global.fetch).toHaveBeenLastCalledWith(
     "/api/bookings",
@@ -80,7 +89,7 @@ it("creates a trial booking with UUID identifiers", async () => {
       body: JSON.stringify({
         subjectId,
         availabilityIds: [slotId],
-        isTrial: true,
+        isTrial: false,
       }),
     })
   );
@@ -99,7 +108,7 @@ it("refreshes availability only for a structured slot-taken error", async () => 
   render(<SubjectBookingPage />);
   fireEvent.click(await screen.findByRole("button", { name: "2030-01-10" }));
   fireEvent.click(screen.getByRole("button", { name: "16:00 Available" }));
-  fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
   expect(await screen.findByText(/just booked by someone else/i)).toBeInTheDocument();
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
 });
@@ -120,7 +129,7 @@ it("calculates a continuous hour from the locked subject rate without creating a
   fireEvent.click(screen.getByRole("button", { name: "16:00 Available" }));
   expect(screen.getByText("฿10.00")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "16:30 Available" }));
-  expect(screen.getByText("Trial · 60 min")).toBeInTheDocument();
+  expect(screen.getByText("60 min")).toBeInTheDocument();
   expect(screen.getByText("฿20.00")).toBeInTheDocument();
   expect(global.fetch).toHaveBeenCalledTimes(1);
   expect(push).not.toHaveBeenCalled();
@@ -160,4 +169,20 @@ it("keeps certificates and ID references out of the subject booking UI", async (
   ).not.toBeInTheDocument();
   for (const url of certificates) expect(screen.queryByText(url)).not.toBeInTheDocument();
   expect(screen.queryByText("https://example.com/id-private")).not.toBeInTheDocument();
+});
+
+it("requires a top-up before booking and removes the focus and trial fields", async () => {
+  mockWallet.mockResolvedValue({ balance: "5.00" });
+  global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => availability });
+  render(<SubjectBookingPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "2030-01-10" }));
+  fireEvent.click(screen.getByRole("button", { name: "16:00 Available" }));
+  expect(screen.getByRole("button", { name: "Confirm booking" })).toBeDisabled();
+  expect(screen.getByRole("link", { name: /Top up/ })).toHaveAttribute(
+    "href",
+    expect.stringContaining("amount=5.00")
+  );
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  expect(screen.queryByText(/trial/i)).not.toBeInTheDocument();
+  expect(global.fetch).toHaveBeenCalledTimes(1);
 });

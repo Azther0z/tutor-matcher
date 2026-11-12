@@ -221,7 +221,7 @@ describe("/wallet", () => {
     expect(replace).toHaveBeenCalledWith("/wallet?type=TOP_UP");
   });
 
-  it("sends unpaid bookings to their booking page instead of taking payment", async () => {
+  it("does not show a payment-due box even for legacy pending records", async () => {
     mockApi({
       overview: {
         ...tutorOverview,
@@ -237,12 +237,8 @@ describe("/wallet", () => {
       },
     });
     render(<WalletPage />);
-    const notice = await screen.findByRole("region", { name: "Payment due" });
-    expect(within(notice).getByText("Algebra")).toBeInTheDocument();
-    expect(within(notice).getByRole("link", { name: "Pay on booking page" })).toHaveAttribute(
-      "href",
-      `/bookings/${bookingId}`
-    );
+    await screen.findAllByRole("link", { name: /Balance ฿750\.00/ });
+    expect(screen.queryByRole("region", { name: "Payment due" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Pay\b/ })).not.toBeInTheDocument();
   });
 

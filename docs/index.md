@@ -92,3 +92,5 @@ Things the product needs but does not yet have an answer for:
 - File storage for tutor verification documents is not chosen yet.
 - Most product flows have no Gherkin behaviour-test coverage yet — see
   [`testing.md`](testing.md#current-coverage-boundary).
+
+Booking flow update: [2026-11-06 confirmation](sources/booking-flow-confirmation-2026-11-06.md) — atomic wallet booking, no Trial, focus input, rescheduling or Payment due UI.

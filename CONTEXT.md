@@ -88,9 +88,9 @@ _Avoid_: Time slot, open slot, schedule entry, recurring availability schedule
 
 **Booking**:
 One student and one tutor, one subject, and one continuous block of back-to-back
-availability slots. A booking exists only once a time has been chosen; before that,
-the student is still in the subject booking flow with no booking record. Statuses are
-`payment due`, `confirmed`, `completed`, and `cancelled`. `Confirmed` means paid and
+availability slots. A new booking exists only after its slots and wallet payment commit together. Before
+that, the student selects times or tops up without holding slots. Current statuses are
+`confirmed`, `completed`, and `cancelled`; `payment due` is legacy compatibility only. `Confirmed` means paid and
 scheduled; after the lesson's scheduled end, it remains confirmed until the assigned
 Tutor manually confirms completion, which changes it to `completed`.
 _Avoid_: Reservation, appointment, order, class booking

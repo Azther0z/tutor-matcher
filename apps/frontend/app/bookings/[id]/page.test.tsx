@@ -388,7 +388,7 @@ it("confirms wallet payment immediately without a tutor approval step", async ()
   render(<BookingDetailPage />);
   fireEvent.click(await screen.findByRole("button", { name: "Confirm payment" }));
   expect(await screen.findByText("CONFIRMED")).toBeInTheDocument();
-  expect(screen.getByText("Payment confirmed. Your trial lesson is booked.")).toBeInTheDocument();
+  expect(screen.getByText("Payment confirmed. Your lesson is booked.")).toBeInTheDocument();
   expect(global.fetch).toHaveBeenLastCalledWith(
     `/api/bookings/${bookingId}/confirm-payment`,
     expect.objectContaining({ method: "POST" })
@@ -691,7 +691,7 @@ it("blocks duplicate cancellation and competing actions while a request is pendi
   expect(pending).toBeDisabled();
   expect(screen.getByRole("button", { name: "Keep lesson" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "Cancel lesson" })).toBeDisabled();
-  expect(screen.getByRole("button", { name: "Reschedule" })).toBeDisabled();
+  expect(screen.queryByRole("button", { name: "Reschedule" })).not.toBeInTheDocument();
   fireEvent.click(pending);
   expect(global.fetch).toHaveBeenCalledTimes(3);
   resolveCancellation({

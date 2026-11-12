@@ -12,7 +12,6 @@ import { refundBlock, refundRequestResponse } from "../refund/refund.policy.ts";
 import type {
   CancelBookingInput,
   CreateBookingInput,
-  RescheduleBookingInput,
   TutorCancelBookingInput,
 } from "./booking.schema.ts";
 
@@ -264,10 +263,7 @@ export function mapBookingResponse(
   const canPay = payEligible && shortfall.isZero();
   const canCancel =
     isStudent && ["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) && beforeLesson;
-  const canReschedule =
-    isStudent &&
-    booking.status === "CONFIRMED" &&
-    booking.startedAt.getTime() - now.getTime() > CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000;
+  const canReschedule = false;
   // BOOK-4 lets the tutor cancel any class that has not started, including payment holds.
   const canTutorCancel =
     isTutor && ["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) && beforeLesson;
@@ -507,7 +503,7 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
   const now = new Date();
   await releaseExpiredBookings(now, { subjectId: input.subjectId });
   try {
-    return await prisma.$transaction(
+    const confirmed = await prisma.$transaction(
       async (tx) => {
         const subject = await tx.subject.findUnique({
           where: { id: input.subjectId },
@@ -526,25 +522,18 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
         assertSlotBlock(slots, input.subjectId);
 
         const amount = new Prisma.Decimal(subject.hourlyRate).mul(slots.length).div(2);
-        const requiresPayment = !amount.isZero();
-        const expiresAt = requiresPayment
-          ? new Date(
-              Math.min(now.getTime() + PAYMENT_HOLD_MINUTES * 60_000, slots[0]!.startedAt.getTime())
-            )
-          : null;
         const booking = await tx.booking.create({
           data: {
             userId,
             subjectId: input.subjectId,
             ...subjectSnapshot(subject),
             description: input.description,
-            isTrial: input.isTrial,
+            isTrial: false,
             totalAmount: amount,
             startedAt: slots[0]!.startedAt,
             endedAt: new Date(slots.at(-1)!.startedAt.getTime() + SLOT_MS),
-            // Zero-priced legacy bookings bypass payment and its notifications; new rates are positive.
-            status: requiresPayment ? "PENDING_PAYMENT" : "CONFIRMED",
-            paymentExpiresAt: expiresAt,
+            status: "CONFIRMED",
+            paymentExpiresAt: null,
           },
         });
         const claimed = await tx.availability.updateMany({
@@ -559,14 +548,46 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
           throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable", {
             subjectId: input.subjectId,
           });
+        if (!amount.isZero()) {
+          try {
+            await appendWalletMovement(tx, {
+              userId,
+              type: "LESSON_PAYMENT",
+              amount,
+              bookingId: booking.id,
+            });
+          } catch (error) {
+            if (!(error instanceof InsufficientWalletBalance)) throw error;
+            throw new BookingPaymentError("INSUFFICIENT_BALANCE", "Insufficient balance", {
+              walletBalance: decimalString(error.balance),
+              amountDue: decimalString(error.amount),
+              shortfall: decimalString(error.amount.minus(error.balance)),
+            });
+          }
+        }
         const detailed = await tx.booking.findUniqueOrThrow({
           where: { id: booking.id },
           include: detailInclude,
         });
-        return mapBookingResponse(detailed, userId, now);
+        return {
+          response: mapBookingResponse(detailed, userId, now),
+          recipientIds: [userId, subject.tutor.user.id],
+        };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
+    await waitForBookingNotifications(
+      confirmed.recipientIds.map((recipientId) =>
+        notifyUser(recipientId, {
+          eventType: "booking",
+          details: {
+            subjectName: confirmed.response.subject.name,
+            scheduledAt: new Date(confirmed.response.startedAt),
+          },
+        })
+      )
+    );
+    return confirmed.response;
   } catch (error) {
     if (error instanceof BookingDomainError || !isSerializationError(error)) throw error;
     throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable", {
@@ -741,74 +762,6 @@ export async function confirmBookingPayment(userId: string, id: string) {
     }
   }
   throw new BookingConflictError("BOOKING_ALREADY_PAID", "Booking payment could not be claimed");
-}
-
-export async function rescheduleBooking(userId: string, id: string, input: RescheduleBookingInput) {
-  const now = new Date();
-  try {
-    return await prisma.$transaction(
-      async (tx) => {
-        const booking = await tx.booking.findUnique({ where: { id } });
-        if (!booking) throw new BookingNotFoundError();
-        if (booking.userId !== userId)
-          throw new BookingForbiddenError("You cannot reschedule this booking");
-        if (
-          booking.status !== "CONFIRMED" ||
-          booking.startedAt.getTime() - now.getTime() <=
-            CANCELLATION_POLICY_WINDOW_HOURS * 60 * 60_000
-        )
-          throw new BookingConflictError(
-            "BOOKING_NOT_RESCHEDULABLE",
-            `Rescheduling is allowed only more than ${CANCELLATION_POLICY_WINDOW_HOURS} hours before the lesson`
-          );
-
-        const currentSlotCount = await tx.availability.count({ where: { bookingId: id } });
-        if (input.availabilityIds.length !== currentSlotCount)
-          throw new BookingConflictError(
-            "INVALID_SLOT_BLOCK",
-            "The new time must keep the original lesson duration",
-            { subjectId: booking.subjectId }
-          );
-        const slots = await eligibleSlots(tx, booking.subjectId, input.availabilityIds, now);
-        if (slots.length !== input.availabilityIds.length)
-          throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable", {
-            subjectId: booking.subjectId,
-          });
-        assertSlotBlock(slots, booking.subjectId);
-        const claimed = await tx.availability.updateMany({
-          where: {
-            id: { in: input.availabilityIds },
-            bookingId: null,
-            startedAt: { gt: now },
-          },
-          data: { bookingId: id },
-        });
-        if (claimed.count !== input.availabilityIds.length)
-          throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable", {
-            subjectId: booking.subjectId,
-          });
-        await tx.availability.updateMany({
-          where: { bookingId: id, id: { notIn: input.availabilityIds } },
-          data: { bookingId: null },
-        });
-        const detailed = await tx.booking.update({
-          where: { id },
-          data: {
-            startedAt: slots[0]!.startedAt,
-            endedAt: new Date(slots.at(-1)!.startedAt.getTime() + SLOT_MS),
-            // A generated room belongs to the old schedule; the CLASS-1 override is retained.
-            zoomMeetingUrl: null,
-          },
-          include: detailInclude,
-        });
-        return mapBookingResponse(detailed, userId, now);
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-    );
-  } catch (error) {
-    if (error instanceof BookingDomainError || !isSerializationError(error)) throw error;
-    throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable");
-  }
 }
 
 export async function getCancellationQuote(userId: string, id: string) {

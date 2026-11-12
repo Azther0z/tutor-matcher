@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import BookingsPage from "./page";
 
 const replace = jest.fn();
@@ -11,7 +11,7 @@ const bookingId = "f0f21183-1af0-49a9-b35f-63d9431b2748";
 const bookings = [
   {
     id: bookingId,
-    status: "PENDING_PAYMENT",
+    status: "CONFIRMED",
     description: null,
     zoomMeetingUrl: null,
     createdAt: "2029-01-01T00:00:00.000Z",
@@ -60,7 +60,9 @@ describe("bookings list", () => {
     render(<BookingsPage />);
     expect(await screen.findByText("Mathematics")).toBeInTheDocument();
     expect(screen.getByText(/Alice Johnson/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Payment due" }));
+    expect(screen.queryByRole("button", { name: "Payment due" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Trial")).not.toBeInTheDocument();
+    expect(screen.getByText(/5:00.*5:30/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Mathematics/ })).toHaveAttribute(
       "href",
       `/bookings/${bookingId}`

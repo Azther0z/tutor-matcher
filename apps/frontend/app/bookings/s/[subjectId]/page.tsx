@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { SubjectBookingCalendar } from "@/src/components/subject-booking-calendar";
 import { RequireAuth } from "@/src/components/require-auth";
 import { BookingApiError, createBooking, getAvailability } from "@/src/lib/bookings-api";
+import { getWallet, publishWalletBalance } from "@/src/lib/wallet-api";
 import type { AvailabilityResponse } from "@/src/types/booking";
 
 const TIME_ZONE = "Asia/Bangkok";
@@ -15,10 +16,11 @@ function SubjectBookingContent() {
   // Read the reusable subject id from /bookings/s/[subjectId].
   const { subjectId } = useParams<{ subjectId: string }>();
   const router = useRouter();
-  const initialDate = useSearchParams().get("date");
+  const searchParams = useSearchParams();
+  const initialDate = searchParams.get("date");
   const [data, setData] = useState<AvailabilityResponse | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [description, setDescription] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => searchParams.getAll("slot"));
+  const [balance, setBalance] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -26,7 +28,8 @@ function SubjectBookingContent() {
   const load = useCallback(async () => {
     try {
       // Refresh slots and remove selections that are no longer available.
-      const next = await getAvailability(subjectId);
+      const [next, wallet] = await Promise.all([getAvailability(subjectId), getWallet()]);
+      setBalance(wallet.balance);
       setData(next);
       const valid = new Set(
         next.slots.filter((slot) => slot.available !== false).map((slot) => slot.id)
@@ -52,9 +55,23 @@ function SubjectBookingContent() {
 
   // A 30-minute slot costs half of the tutor's hourly rate.
   const total = (Number(data?.subject?.hourlyRate ?? 0) * selectedIds.length) / 2;
+  const shortfall = balance === null ? 0 : Math.max(0, total - Number(balance));
   const selectedSlots = openSlots
     .filter((slot) => selectedIds.includes(slot.id))
     .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  const selectedDate = selectedSlots[0]
+    ? new Intl.DateTimeFormat("en-CA", {
+        timeZone: TIME_ZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(selectedSlots[0].startedAt))
+    : initialDate;
+  const returnParams = new URLSearchParams();
+  if (selectedDate) returnParams.set("date", selectedDate);
+  selectedIds.forEach((id) => returnParams.append("slot", id));
+  const returnTo = `/bookings/s/${subjectId}?${returnParams.toString()}`;
+  const topUpHref = `/wallet/topup?amount=${shortfall.toFixed(2)}&returnTo=${encodeURIComponent(returnTo)}`;
   const windowFormat = new Intl.DateTimeFormat("en-GB", {
     timeZone: TIME_ZONE,
     dateStyle: "medium",
@@ -62,7 +79,7 @@ function SubjectBookingContent() {
   });
 
   async function submit() {
-    // BOOK-1 requires at least one slot before creating the trial booking.
+    // BOOK-1 requires at least one slot before creating the booking.
     if (!data || data.acceptingBookings === false || selectedIds.length === 0) {
       setMessage("Choose at least one available time.");
       return;
@@ -70,18 +87,22 @@ function SubjectBookingContent() {
     setSubmitting(true);
     setMessage(null);
     try {
-      // Create the pending booking and continue to its payment/detail page.
+      // The server books the slots and debits the wallet atomically.
       const booking = await createBooking({
         subjectId: data.subject.id,
         availabilityIds: selectedIds,
-        description: description.trim() || undefined,
-        isTrial: true,
+        isTrial: false,
       });
+      if (booking.payment.walletBalance !== null)
+        publishWalletBalance(booking.payment.walletBalance);
       router.push(`/bookings/${booking.id}`);
     } catch (error) {
       if (error instanceof BookingApiError && error.code === "SLOT_TAKEN") {
         // Another student took the slot, so show the conflict and reload times.
         setMessage("That time was just booked by someone else. We refreshed the available times.");
+        await load();
+      } else if (error instanceof BookingApiError && error.code === "INSUFFICIENT_BALANCE") {
+        setMessage("Your balance changed. Top up before confirming this booking.");
         await load();
       } else if (error instanceof BookingApiError && error.code === "INVALID_SLOT_BLOCK") {
         setMessage("Choose consecutive 30-minute times on the same day.");
@@ -103,9 +124,7 @@ function SubjectBookingContent() {
       </Link>
       <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_340px]">
         <section>
-          <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">
-            Trial lesson
-          </p>
+          <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">Lesson</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight">Choose a time</h1>
           {data && (
             <p className="mt-2 text-zinc-600">
@@ -165,7 +184,7 @@ function SubjectBookingContent() {
             )}
             <div className="flex justify-between gap-4">
               <dt className="text-zinc-500">Lesson</dt>
-              <dd className="text-right font-medium">Trial · {selectedIds.length * 30} min</dd>
+              <dd className="text-right font-medium">{selectedIds.length * 30} min</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-zinc-500">Rate</dt>
@@ -176,34 +195,33 @@ function SubjectBookingContent() {
               <dd>{money.format(total)}</dd>
             </div>
           </dl>
-          <label className="mt-6 block text-sm font-medium">
-            What would you like to focus on?{" "}
-            <span className="font-normal text-zinc-500">(optional)</span>
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={4}
-              maxLength={1000}
-              className="mt-2 w-full rounded-xl border border-zinc-200 bg-transparent p-3 outline-none focus:border-violet-500"
-            />
-          </label>
           {message && (
             <p role="alert" className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
               {message}
             </p>
           )}
+          {shortfall > 0 && (
+            <Link href={topUpHref} className="mt-5 block font-semibold text-violet-600 underline">
+              Top up {money.format(shortfall)}
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => void submit()}
             disabled={
-              submitting || loading || data?.acceptingBookings === false || selectedIds.length === 0
+              submitting ||
+              loading ||
+              balance === null ||
+              shortfall > 0 ||
+              data?.acceptingBookings === false ||
+              selectedIds.length === 0
             }
             className="mt-5 h-12 w-full rounded-full bg-violet-600 font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? "Booking…" : total > 0 ? "Continue to payment" : "Confirm booking"}
+            {submitting ? "Booking…" : "Confirm booking"}
           </button>
           <p className="mt-3 text-center text-xs text-zinc-500">
-            Continue to reserve these times temporarily. Payment confirms your booking.
+            Confirming deducts the total from your wallet and books your lesson immediately.
           </p>
         </aside>
       </div>

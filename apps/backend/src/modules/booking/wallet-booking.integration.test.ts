@@ -82,48 +82,45 @@ databaseDescribe("BOOK-8 wallet and slot acceptance", () => {
     await prisma.user.deleteMany({ where: { id: { in: [studentId, otherId, tutorUserId] } } });
   });
 
-  it("tops up only the shortfall, confirms once and prevents another student taking the slot", async () => {
-    const booking = await createBooking(studentId, {
-      subjectId,
-      availabilityIds: [slotId],
-      isTrial: true,
-    });
-    expect(booking.status).toBe("PENDING_PAYMENT");
-    expect(booking.totalAmount).toBe("200.00");
-    expect(await prisma.walletTransaction.count({ where: { bookingId: booking.id } })).toBe(0);
-    await expect(confirmBookingPayment(studentId, booking.id)).rejects.toMatchObject({
+  it("rejects insufficient funds without reserving a slot or creating a ledger row, then books after top-up", async () => {
+    const input = { subjectId, availabilityIds: [slotId], isTrial: false };
+    await expect(createBooking(studentId, input)).rejects.toMatchObject({
       code: "INSUFFICIENT_BALANCE",
     });
+    expect(await prisma.booking.count({ where: { userId: studentId } })).toBe(0);
+    expect(
+      (await prisma.availability.findUniqueOrThrow({ where: { id: slotId } })).bookingId
+    ).toBeNull();
+    expect(
+      await prisma.walletTransaction.count({ where: { userId: studentId, type: "LESSON_PAYMENT" } })
+    ).toBe(0);
     expect(
       (await prisma.user.findUniqueOrThrow({ where: { id: studentId } })).balance.toFixed(2)
     ).toBe("50.00");
-    await expect(
-      createBooking(otherId, { subjectId, availabilityIds: [slotId], isTrial: true })
-    ).rejects.toMatchObject({ code: "SLOT_TAKEN" });
-    expect(await prisma.booking.count({ where: { userId: otherId } })).toBe(0);
     await prisma.$transaction(
       (tx) => appendWalletMovement(tx, { userId: studentId, type: "TOP_UP", amount: 150 }),
       { isolationLevel: "Serializable" }
     );
-    const paid = await confirmBookingPayment(studentId, booking.id);
+    const paid = await createBooking(studentId, input);
     expect(paid.status).toBe("CONFIRMED");
+    expect(paid.isTrial).toBe(false);
+    expect(paid.paymentExpiresAt).toBeNull();
+    expect(paid.payment.walletBalance).toBe("0.00");
     expect((await prisma.availability.findUniqueOrThrow({ where: { id: slotId } })).bookingId).toBe(
-      booking.id
+      paid.id
     );
-    expect(
-      (await prisma.user.findUniqueOrThrow({ where: { id: studentId } })).balance.toFixed(2)
-    ).toBe("0.00");
-    await expect(confirmBookingPayment(studentId, booking.id)).rejects.toMatchObject({
+    await expect(createBooking(otherId, input)).rejects.toMatchObject({ code: "SLOT_TAKEN" });
+    await expect(confirmBookingPayment(studentId, paid.id)).rejects.toMatchObject({
       code: "BOOKING_ALREADY_PAID",
     });
     expect(
       await prisma.walletTransaction.count({
-        where: { bookingId: booking.id, type: "LESSON_PAYMENT" },
+        where: { bookingId: paid.id, type: "LESSON_PAYMENT" },
       })
     ).toBe(1);
   });
 
-  it("does not capture payment from an expired hold after another student takes its slot", async () => {
+  it("allows exactly one concurrent booking and charges only the winner", async () => {
     const slot = await prisma.availability.create({
       data: {
         tutorId,
@@ -131,29 +128,27 @@ databaseDescribe("BOOK-8 wallet and slot acceptance", () => {
         availabilitySubjects: { create: { subjectId } },
       },
     });
-    const stale = await createBooking(studentId, {
-      subjectId,
-      availabilityIds: [slot.id],
-      isTrial: true,
-    });
-    await prisma.booking.update({
-      where: { id: stale.id },
-      data: { paymentExpiresAt: new Date(Date.now() - 1000) },
-    });
-    const winner = await createBooking(otherId, {
-      subjectId,
-      availabilityIds: [slot.id],
-      isTrial: true,
-    });
-    await expect(confirmBookingPayment(studentId, stale.id)).rejects.toMatchObject({
-      code: "BOOKING_EXPIRED",
-    });
-    expect(await prisma.walletTransaction.count({ where: { bookingId: stale.id } })).toBe(0);
-    expect((await prisma.booking.findUniqueOrThrow({ where: { id: stale.id } })).status).toBe(
-      "CANCELLED"
+    for (const userId of [studentId, otherId]) {
+      await prisma.$transaction(
+        (tx) => appendWalletMovement(tx, { userId, type: "TOP_UP", amount: 200 }),
+        { isolationLevel: "Serializable" }
+      );
+    }
+    const results = await Promise.allSettled(
+      [studentId, otherId].map((userId) =>
+        createBooking(userId, { subjectId, availabilityIds: [slot.id], isTrial: false })
+      )
     );
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    const reserved = await prisma.availability.findUniqueOrThrow({ where: { id: slot.id } });
+    expect(reserved.bookingId).not.toBeNull();
     expect(
-      (await prisma.availability.findUniqueOrThrow({ where: { id: slot.id } })).bookingId
-    ).toBe(winner.id);
+      await prisma.walletTransaction.count({
+        where: { bookingId: reserved.bookingId!, type: "LESSON_PAYMENT" },
+      })
+    ).toBe(1);
+    const users = await prisma.user.findMany({ where: { id: { in: [studentId, otherId] } } });
+    expect(users.map((user) => user.balance.toFixed(2)).sort()).toEqual(["0.00", "200.00"]);
   });
 });

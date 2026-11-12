@@ -618,3 +618,11 @@ comparisons, and the embedded-document schema — read the immutable source dire
    [`user-journeys.md`](user-journeys.md) and [`CONTEXT.md`](../CONTEXT.md) too.
 4. Record constraints Prisma cannot express as an explicit schema gap until the team
    adopts a persistent-database migration workflow.
+
+## Booking flow compatibility (2026-11-06)
+
+Per the [confirmed booking flow](sources/booking-flow-confirmation-2026-11-06.md), new
+bookings explicitly store CONFIRMED with no payment expiry, and append LESSON_PAYMENT
+in the same transaction. The existing PENDING_PAYMENT enum/default and is_trial column
+are retained for old records without a schema migration. New bookings explicitly set
+is_trial to false; the application no longer displays Trial or permits rescheduling.

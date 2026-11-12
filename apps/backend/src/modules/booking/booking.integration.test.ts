@@ -1,3 +1,4 @@
+import { createLegacyPendingBooking } from "./legacy-booking.fixture.ts";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import request from "supertest";
 import { prisma } from "../../lib/db.ts";
@@ -175,15 +176,8 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
   });
 
   it("returns the actual tutor response shape and cancels an unpaid booking without writing money", async () => {
-    const created = await authorize(
-      request(app)
-        .post("/api/bookings")
-        .send({
-          subjectId: SUBJECT_ID,
-          availabilityIds: [PENDING_SLOT_ID],
-          isTrial: true,
-        })
-    ).expect(201);
+    const legacy = await createLegacyPendingBooking(STUDENT_ID, SUBJECT_ID, PENDING_SLOT_ID);
+    const created = await authorize(request(app).get(`/api/bookings/${legacy.id}`)).expect(200);
 
     expect(created.body.booking.subject.tutor).toEqual({
       id: TUTOR_ID,
@@ -212,16 +206,11 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     expect(slot.bookingId).toBeNull();
   });
 
-  it("keeps the Tutor override through rescheduling and retires the old generated URL", async () => {
+  it("rejects removed rescheduling without changing meeting links", async () => {
+    const legacy = await createLegacyPendingBooking(LINK_STUDENT_ID, SUBJECT_ID, PENDING_SLOT_ID);
     const created = await authorizeLinkStudent(
-      request(app)
-        .post("/api/bookings")
-        .send({
-          subjectId: SUBJECT_ID,
-          availabilityIds: [PENDING_SLOT_ID],
-          isTrial: true,
-        })
-    ).expect(201);
+      request(app).get(`/api/bookings/${legacy.id}`)
+    ).expect(200);
     const bookingId = created.body.booking.id as string;
     await authorizeLinkStudent(
       request(app).post(`/api/bookings/${bookingId}/confirm-payment`)
@@ -265,34 +254,20 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         .patch(`/api/bookings/${bookingId}/meeting-link`)
         .send({ customMeetingUrl: "https://meet.example.com/custom-room" })
     ).expect(200);
-    const rescheduled = await authorizeLinkStudent(
+    await authorizeLinkStudent(
       request(app)
         .patch(`/api/bookings/${bookingId}/reschedule`)
         .send({ availabilityIds: [RESCHEDULE_SLOT_ID] })
-    ).expect(200);
-    expect(rescheduled.body.booking).toMatchObject({
-      status: "CONFIRMED",
-      zoomMeetingUrl: null,
-      customMeetingUrl: "https://meet.example.com/custom-room",
-      effectiveMeetingUrl: "https://meet.example.com/custom-room",
-      actions: { canJoin: true },
-    });
+    ).expect(404);
     const persisted = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
-    expect(persisted.zoomMeetingUrl).toBeNull();
+    expect(persisted.zoomMeetingUrl).toBe("https://meet.example.com/old-room");
     expect(persisted.customMeetingUrl).toBe("https://meet.example.com/custom-room");
     expect(persisted.meetingLinkUpdatedAt).toBeInstanceOf(Date);
   });
 
   it("refunds from Platform while keeping the original payment and tutor wallet unchanged", async () => {
-    const created = await authorize(
-      request(app)
-        .post("/api/bookings")
-        .send({
-          subjectId: SUBJECT_ID,
-          availabilityIds: [PAID_SLOT_ID],
-          isTrial: true,
-        })
-    ).expect(201);
+    const legacy = await createLegacyPendingBooking(STUDENT_ID, SUBJECT_ID, PAID_SLOT_ID);
+    const created = await authorize(request(app).get(`/api/bookings/${legacy.id}`)).expect(200);
     const bookingId = created.body.booking.id as string;
 
     await authorize(request(app).post(`/api/bookings/${bookingId}/confirm-payment`)).expect(200);
@@ -379,15 +354,8 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
   });
 
   it("rejects and releases a pending booking whose payment expiry is missing", async () => {
-    const created = await authorize(
-      request(app)
-        .post("/api/bookings")
-        .send({
-          subjectId: SUBJECT_ID,
-          availabilityIds: [INVALID_EXPIRY_SLOT_ID],
-          isTrial: true,
-        })
-    ).expect(201);
+    const legacy = await createLegacyPendingBooking(STUDENT_ID, SUBJECT_ID, INVALID_EXPIRY_SLOT_ID);
+    const created = await authorize(request(app).get(`/api/bookings/${legacy.id}`)).expect(200);
     const bookingId = created.body.booking.id as string;
     await prisma.booking.update({ where: { id: bookingId }, data: { paymentExpiresAt: null } });
 
@@ -473,7 +441,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         .post("/api/bookings")
         .send({
           subjectId: SUBJECT_ID,
-          availabilityIds: [PENDING_SLOT_ID],
+          availabilityIds: [RESCHEDULE_SLOT_ID],
           isTrial: true,
         })
     ).expect(201);
