@@ -395,9 +395,12 @@ be edited; the user removes one and adds it again.
 Indexes: `user_id`, `subject_id`; unique `reviews_booking_id_key` on `booking_id`.
 
 REV-1 writes a review only for the Student's own `COMPLETED` booking, copying `subject_id`
-from that booking. The rating range was once a CHECK in a migration file, but the
-project now synchronizes with `prisma db push` and keeps no migrations, so a pushed
-database has no CHECK; the REV-1 API rejects ratings outside whole numbers 1 to 5.
+from that booking. Public ratings, review lists and search ranking count only reviews whose
+booking is not `CANCELLED`, so a lesson cancelled by an approved PAY-3 refund keeps its
+review row but no longer affects the Tutor's rating. The rating range was once a CHECK in
+a migration file, but the project now synchronizes with `prisma db push` and keeps no
+migrations, so a pushed database has no CHECK; the REV-1 API rejects ratings outside whole
+numbers 1 to 5.
 
 ### messages
 

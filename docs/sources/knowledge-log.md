@@ -148,3 +148,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/rev-1-policy-confirmation.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
 - Scope: Students publish a 1-5 star review with an optional comment from their own completed booking, scoped to its tutor and subject; one review per booking via a UNIQUE `reviews.booking_id`; the stale rating CHECK note corrected
+
+## [2026-11-12] ingest | PAY-3 refunded-lesson reviews (PR #224)
+
+- Disposition: Update
+- Raw: docs/sources/pay-3-refunded-review-decision.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Reviews of bookings cancelled by an approved refund are kept but left out of public ratings, review lists and search ranking; a Student may still review while a request is pending

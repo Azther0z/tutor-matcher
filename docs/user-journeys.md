@@ -445,10 +445,16 @@ verified, and requests open at the lesson end instead of at payment.
   can confirm it as usual.
 - Approving cancels the booking, so its pending earning disappears and no money is taken
   from the Tutor (PAY-6 has not released any).
+- A completed lesson may already have a review, and the Student may still publish one while
+  the request waits. Once approval cancels the booking, its review no longer counts: it is
+  left out of tutor and subject ratings, review lists and search ranking, but it is kept,
+  not deleted. A rejected request leaves the review counted. Decided on 2026-11-12 after
+  review of PR #224.
 
 See the [PAY-3 confirmation](sources/pay-3-policy-confirmation.md), the
-[timing change](sources/pay-3-refund-timing-change.md) and the
-[PR #224 review decisions](sources/pay-3-review-decisions.md).
+[timing change](sources/pay-3-refund-timing-change.md), the
+[PR #224 review decisions](sources/pay-3-review-decisions.md) and the
+[refunded-lesson review decision](sources/pay-3-refunded-review-decision.md).
 
 **Payouts (PAY-7).** A Tutor with available balance can request a payout on
 `/wallet/payout`. Payouts are tutor-only: the server rejects anyone else and the page tells
@@ -698,8 +704,9 @@ Related stories: US7-1 … US7-3, US2-2.
 **Implemented by REV-1.** On `/bookings/:id` of their own `COMPLETED` booking, the
 Student picks 1 to 5 stars and may add a comment (up to 2,000 characters), then
 **Publish review**. The review is published at once for that booking's tutor and
-subject, and shows on the subject page. One review per booking; a Student whose lesson
-is not completed, or who is not the booking's Student, is refused with the reason shown,
+subject, and shows on the subject page. If an approved refund (PAY-3) later cancels the
+booking, its review stops counting in public ratings, review lists and ranking. One review
+per booking; a Student whose lesson is not completed, or who is not the booking's Student, is refused with the reason shown,
 and so is a rating that is not a whole number from 1 to 5. After publishing, the booking
 page shows **Your review** instead of the form. A headline, editing or deleting a review,
 tutor replies, flags and `/reviews/:tutorId` are not part of REV-1.

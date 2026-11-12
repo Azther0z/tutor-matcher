@@ -228,7 +228,11 @@ npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/booking
 ```
 
 The decisions are recorded in [PAY-3 user evidence](sources/pay-3-policy-confirmation.md)
-and the [PR #224 review decisions](sources/pay-3-review-decisions.md).
+and the [PR #224 review decisions](sources/pay-3-review-decisions.md); the
+[refunded-lesson review decision](sources/pay-3-refunded-review-decision.md) is covered by
+discovery unit tests (every review query and the ranking SQL skip `CANCELLED` bookings) and
+an integration test where a 1-star review drops out of the subject rating once the refund
+is approved, while its row remains.
 
 ### REV-1 review acceptance
 
