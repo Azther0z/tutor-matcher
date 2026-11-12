@@ -36,6 +36,7 @@ const authorize = (test: request.Test, userId: string) =>
 
 async function cleanFixtures() {
   await prisma.refundRequest.deleteMany({ where: { userId: { in: userIds } } });
+  await prisma.review.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.walletTransaction.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.availability.updateMany({ where: { tutorId: TUTOR }, data: { bookingId: null } });
   await prisma.booking.deleteMany({ where: { subjectId: SUBJECT } });
@@ -254,6 +255,28 @@ run("PAY-3 refund requests", () => {
     await approve((await requestFor(id)).id).expect(200);
     expect(await balanceOf(STUDENT)).toBe("500.00");
     expect((await prisma.booking.findUniqueOrThrow({ where: { id } })).status).toBe("CANCELLED");
+  });
+
+  it("drops a refunded lesson's review from the public rating but keeps the row", async () => {
+    const id = await endedLesson();
+    await authorize(request(app).post(`/api/bookings/${id}/confirm-completion`), TEACHER).expect(
+      200
+    );
+    await authorize(
+      request(app).post("/api/reviews").send({ bookingId: id, rating: 1, comment: "Poor" }),
+      STUDENT
+    ).expect(201);
+    const subjectPage = () =>
+      request(app).get(`/api/discovery/tutors/${TUTOR}/subjects/${SUBJECT}`).expect(200);
+    expect((await subjectPage()).body.subject).toMatchObject({ rating: 1, reviewCount: 1 });
+
+    await fileRefund(id, unsatisfactory).expect(201);
+    await approve((await requestFor(id)).id).expect(200);
+
+    const after = (await subjectPage()).body;
+    expect(after.subject).toMatchObject({ rating: null, reviewCount: 0 });
+    expect(after.reviews).toEqual([]);
+    expect(await prisma.review.count({ where: { bookingId: id } })).toBe(1);
   });
 
   it("opens only after the lesson's scheduled end, with no deadline", async () => {
