@@ -295,9 +295,10 @@ The booking API's legacy `payment.status` is derived presentation compatibility,
 a stored ledger status.
 
 PAY-1 writes TOP_UP when an admin approves a top-up request (the row id is the request id),
-plus the existing LESSON_PAYMENT/REFUND paths.
-LESSON_EARNING is an enum value for separate future work. The wallet
-dashboard and calculated pending earnings are not implemented by this change.
+plus the existing LESSON_PAYMENT/REFUND paths. PAY-6 appends LESSON_EARNING after Tutor
+completion and the 24-hour hold from scheduled end, unless a refund request is pending.
+Settlement uses the shared serializable wallet writer before the owner's wallet is read
+or used; no pending ledger row or additional schema field is stored.
 
 PAY-7 writes PAYOUT rows for simulated payouts and adds a nullable column saying where
 each payout was sent. The debit and the row commit in one serializable transaction.
@@ -496,20 +497,20 @@ These come from [`user-journeys.md`](user-journeys.md#invariants). Each one has 
 enforced somewhere — a constraint, a transaction, or a service-layer check — and the
 "Enforced today" column says where it stands.
 
-| #   | Rule                                                                                    | Enforced today                                                                                                              |
-| --- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| 1   | A rating is between 1 and 5                                                             | ✅ REV-1 API validation; no database CHECK under `db push`                                                                  |
-| 2   | An availability slot is locked to at most one booking                                   | ✅ one nullable booking FK per slot; atomic serializable claims                                                             |
-| 3   | A booking has at most one lesson payment                                                | ✅ `wallet_transactions(booking_id, type)` UNIQUE                                                                           |
-| 4   | A user's subjects, bookings, and payments survive referential deletes                   | ✅ `ON DELETE RESTRICT` across the domain                                                                                   |
-| 5   | A booking occupies a **continuous run** of slots for one subject                        | ✅ booking service validates assigned, consecutive slots on one Bangkok day                                                 |
-| 6   | A booking carries a lifecycle status (payment due → confirmed → completed/cancelled)    | ✅ `BookingStatus`; assigned Tutor confirmation sets `COMPLETED`, while earnings and reviews remain separate work           |
-| 7   | Booking price is fixed at creation from the subject rate and the slot count             | ✅ stored total and PROF-6 subject snapshots                                                                                |
-| 8   | A slot cannot be double-sold — the check happens before payment capture                 | ✅ serializable booking claims and payment confirmation                                                                     |
-| 9   | Exactly one review per booking                                                          | ✅ REV-1: `reviews.booking_id` UNIQUE                                                                                       |
-| 10  | Each successful movement records one owner, type, positive amount and resulting balance | ✅ shared atomic writer; no status/direction columns                                                                        |
-| 11  | Available balance excludes pending tutor earnings                                       | ✅ no Tutor credit at payment or completion; pending calculation includes unsettled completed bookings; PAY-6 owns clearing |
-| 12  | A tutor cannot open two overlapping slots                                               | ✅ PROF-3: unique Tutor/start plus half-hour grid validation                                                                |
+| #   | Rule                                                                                    | Enforced today                                                                                    |
+| --- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 1   | A rating is between 1 and 5                                                             | ✅ REV-1 API validation; no database CHECK under `db push`                                        |
+| 2   | An availability slot is locked to at most one booking                                   | ✅ one nullable booking FK per slot; atomic serializable claims                                   |
+| 3   | A booking has at most one lesson payment                                                | ✅ `wallet_transactions(booking_id, type)` UNIQUE                                                 |
+| 4   | A user's subjects, bookings, and payments survive referential deletes                   | ✅ `ON DELETE RESTRICT` across the domain                                                         |
+| 5   | A booking occupies a **continuous run** of slots for one subject                        | ✅ booking service validates assigned, consecutive slots on one Bangkok day                       |
+| 6   | A booking carries a lifecycle status (payment due → confirmed → completed/cancelled)    | ✅ `BookingStatus`; Tutor confirms completion, PAY-6 settles earnings and reviews remain separate |
+| 7   | Booking price is fixed at creation from the subject rate and the slot count             | ✅ stored total and PROF-6 subject snapshots                                                      |
+| 8   | A slot cannot be double-sold — the check happens before payment capture                 | ✅ serializable booking claims and payment confirmation                                           |
+| 9   | Exactly one review per booking                                                          | ✅ REV-1: `reviews.booking_id` UNIQUE                                                             |
+| 10  | Each successful movement records one owner, type, positive amount and resulting balance | ✅ shared atomic writer; no status/direction columns                                              |
+| 11  | Available balance excludes pending tutor earnings                                       | ✅ Tutor earnings clear only after completion and the hold period through a LESSON_EARNING row    |
+| 12  | A tutor cannot open two overlapping slots                                               | ✅ PROF-3: unique Tutor/start plus half-hour grid validation                                      |
 
 ---
 
@@ -523,15 +524,15 @@ that the current schema is wrong to have shipped.
 
 ### Gaps that block a documented journey
 
-| ID  | Gap                                                                                                                                                              | Journey it blocks                               |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| G1  | Resolved in existing booking code: a Booking has multiple Availability rows and validates a continuous block.                                                    | §3 Booking — multi-slot blocks, duration, price |
-| G2  | Status storage is implemented by `BookingStatus`; CLASS-2 adds assigned-Tutor completion confirmation. No time-based or automatic completion is stored.          | §3 Booking, `/bookings` tabs, §5 completion     |
-| G3  | Resolved in existing booking/PROF-6 code: stored start, end, total and subject snapshots preserve the agreement.                                                 | §3 Payment due, §4 ledger amounts               |
-| G4  | Storage resolved: WalletTransaction has all five types, one owner and balance_after. Full wallet history UI remains future work.                                 | §4 Money                                        |
-| G5  | Pending earnings are derived from CONFIRMED and COMPLETED bookings without LESSON_EARNING rows. PAY-5/CLASS-3 show the calculation; PAY-6 clearing remains open. | §4 pending earnings                             |
-| G6  | Resolved in existing booking code: `zoom_meeting_url` is nullable while awaiting lesson delivery.                                                                | §3 Step 2                                       |
-| G7  | Resolved by PROF-3: every availability has a required Tutor owner, an open state and unique Tutor/start.                                                         | §7 Availability editor                          |
+| ID  | Gap                                                                                                                                                                        | Journey it blocks                               |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| G1  | Resolved in existing booking code: a Booking has multiple Availability rows and validates a continuous block.                                                              | §3 Booking — multi-slot blocks, duration, price |
+| G2  | Status storage is implemented by `BookingStatus`; CLASS-2 adds assigned-Tutor completion confirmation. No time-based or automatic completion is stored.                    | §3 Booking, `/bookings` tabs, §5 completion     |
+| G3  | Resolved in existing booking/PROF-6 code: stored start, end, total and subject snapshots preserve the agreement.                                                           | §3 Payment due, §4 ledger amounts               |
+| G4  | Storage resolved: WalletTransaction has all five types, one owner and balance_after. Full wallet history UI remains future work.                                           | §4 Money                                        |
+| G5  | Resolved by PAY-6: pending earnings are derived from paid CONFIRMED and COMPLETED bookings without LESSON_EARNING rows; eligible earnings clear through the wallet ledger. | §4 pending earnings                             |
+| G6  | Resolved in existing booking code: `zoom_meeting_url` is nullable while awaiting lesson delivery.                                                                          | §3 Step 2                                       |
+| G7  | Resolved by PROF-3: every availability has a required Tutor owner, an open state and unique Tutor/start.                                                                   | §7 Availability editor                          |
 
 ### Entities the product needs that do not exist yet
 

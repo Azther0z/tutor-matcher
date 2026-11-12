@@ -8,6 +8,12 @@ const findUser = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const findTutorLink = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const updateUser = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const createEntry = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const settleTutorEarnings = jest.fn<(...args: unknown[]) => Promise<number>>();
+jest.unstable_mockModule("../wallet/earning-settlement.service.ts", () => ({
+  lessonEarningClearsAt: (endedAt: Date) => new Date(endedAt.getTime() + 24 * 60 * 60_000),
+  lessonEarningHoldReason: () => "AWAITING_COMPLETION",
+  settleTutorEarnings,
+}));
 const tx = {
   walletTransaction: { findUnique: findEntry, create: createEntry },
   payoutAccount: { findFirst: findAccount },
@@ -55,6 +61,7 @@ function post(body: object = {}, user = userId) {
     .send({ amount: 300, payoutAccountId, reference, ...body });
 }
 beforeEach(() => {
+  settleTutorEarnings.mockReset().mockResolvedValue(0);
   payoutRateLimiter.resetKey(userId);
   payoutRateLimiter.resetKey(otherUserId);
   jest.clearAllMocks();
@@ -116,6 +123,10 @@ describe("simulated payout request", () => {
         payoutAccountId,
       },
     });
+    expect(settleTutorEarnings).toHaveBeenCalledWith(userId);
+    expect(settleTutorEarnings.mock.invocationCallOrder[0]).toBeLessThan(
+      transaction.mock.invocationCallOrder[0]!
+    );
   });
 
   it("blocks a user who is not a Tutor without writing a row", async () => {

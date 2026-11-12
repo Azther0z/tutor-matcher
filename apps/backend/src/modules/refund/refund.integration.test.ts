@@ -27,6 +27,7 @@ const OTHER = "53000000-0000-4000-8000-000000000003";
 const ADMIN = "53000000-0000-4000-8000-000000000004";
 const TUTOR = "53000000-0000-4000-8000-000000000005";
 const SUBJECT = "53000000-0000-4000-8000-000000000006";
+const PAYOUT_ACCOUNT = "53000000-0000-4000-8000-000000000007";
 const userIds = [STUDENT, TEACHER, OTHER, ADMIN];
 const authorize = (test: request.Test, userId: string) =>
   test.set(
@@ -38,6 +39,7 @@ async function cleanFixtures() {
   await prisma.refundRequest.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.review.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.walletTransaction.deleteMany({ where: { userId: { in: userIds } } });
+  await prisma.payoutAccount.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.availability.updateMany({ where: { tutorId: TUTOR }, data: { bookingId: null } });
   await prisma.booking.deleteMany({ where: { subjectId: SUBJECT } });
   await prisma.availabilitySubject.deleteMany({ where: { subjectId: SUBJECT } });
@@ -120,6 +122,16 @@ run("PAY-3 refund requests", () => {
     await prisma.user.update({ where: { id: TEACHER }, data: { tutorId: TUTOR } });
     await prisma.subject.create({
       data: { id: SUBJECT, tutorId: TUTOR, name: "PAY-3 Test", hourlyRate: "200.00" },
+    });
+    await prisma.payoutAccount.create({
+      data: {
+        id: PAYOUT_ACCOUNT,
+        userId: TEACHER,
+        bankCode: "KBANK",
+        accountHolderName: "Tutor PAY3",
+        accountNumber: "1234567890",
+        isDefault: true,
+      },
     });
   });
   afterAll(cleanFixtures);
@@ -255,6 +267,157 @@ run("PAY-3 refund requests", () => {
     await approve((await requestFor(id)).id).expect(200);
     expect(await balanceOf(STUDENT)).toBe("500.00");
     expect((await prisma.booking.findUniqueOrThrow({ where: { id } })).status).toBe("CANCELLED");
+  });
+
+  it("keeps an already-cleared earning when a later refund is approved, even after payout", async () => {
+    const id = await endedLesson(25);
+    await authorize(request(app).post(`/api/bookings/${id}/confirm-completion`), TEACHER).expect(
+      200
+    );
+
+    const wallet = await authorize(request(app).get("/api/wallet/overview"), TEACHER).expect(200);
+    expect(wallet.body).toMatchObject({ balance: "85.00", pendingEarnings: "0.00" });
+    expect(
+      await prisma.walletTransaction.count({ where: { bookingId: id, type: "LESSON_EARNING" } })
+    ).toBe(1);
+
+    const accountId = randomUUID();
+    await prisma.payoutAccount.create({
+      data: {
+        id: accountId,
+        userId: TEACHER,
+        bankCode: "KBANK",
+        accountHolderName: "Tutor PAY3",
+        accountNumber: "1234567890",
+        isDefault: true,
+      },
+    });
+    await authorize(
+      request(app).post("/api/payouts").send({
+        amount: 85,
+        payoutAccountId: accountId,
+        reference: randomUUID(),
+      }),
+      TEACHER
+    ).expect(201);
+    expect(await balanceOf(TEACHER)).toBe("0.00");
+
+    await fileRefund(id, unsatisfactory).expect(201);
+    await approve((await requestFor(id)).id).expect(200);
+
+    expect(await balanceOf(STUDENT)).toBe("500.00");
+    expect(await balanceOf(TEACHER)).toBe("0.00");
+    expect(
+      await prisma.walletTransaction.count({ where: { bookingId: id, type: "LESSON_EARNING" } })
+    ).toBe(1);
+    expect(await prisma.walletTransaction.count({ where: { bookingId: id, type: "REFUND" } })).toBe(
+      1
+    );
+    expect(
+      await prisma.walletTransaction.count({ where: { userId: TEACHER, type: "PAYOUT" } })
+    ).toBe(1);
+  });
+
+  it("serializes refund filing with an eligible earning settlement", async () => {
+    const id = await endedLesson(25);
+    await authorize(request(app).post(`/api/bookings/${id}/confirm-completion`), TEACHER).expect(
+      200
+    );
+
+    const [walletResponse, refundResponse] = await Promise.all([
+      authorize(request(app).get("/api/wallet/overview"), TEACHER),
+      fileRefund(id, unsatisfactory),
+    ]);
+    expect(walletResponse.status).toBe(200);
+    expect(refundResponse.status).toBe(201);
+    const earningCount = await prisma.walletTransaction.count({
+      where: { bookingId: id, type: "LESSON_EARNING" },
+    });
+    expect([0, 1]).toContain(earningCount);
+
+    await approve((await requestFor(id)).id).expect(200);
+    expect(await balanceOf(STUDENT)).toBe("500.00");
+    expect(await prisma.walletTransaction.count({ where: { bookingId: id, type: "REFUND" } })).toBe(
+      1
+    );
+    expect(
+      await prisma.walletTransaction.count({ where: { bookingId: id, type: "LESSON_EARNING" } })
+    ).toBe(earningCount);
+    expect(await balanceOf(TEACHER)).toBe(earningCount ? "85.00" : "0.00");
+  });
+
+  it("clears one earning when the Tutor opens wallet history and overview concurrently", async () => {
+    const id = await endedLesson(25);
+    await authorize(request(app).post(`/api/bookings/${id}/confirm-completion`), TEACHER).expect(
+      200
+    );
+
+    const [overview, history] = await Promise.all([
+      authorize(request(app).get("/api/wallet/overview"), TEACHER),
+      authorize(request(app).get("/api/wallet/transactions"), TEACHER),
+    ]);
+    expect(overview.status).toBe(200);
+    expect(history.status).toBe(200);
+    expect(await balanceOf(TEACHER)).toBe("85.00");
+    expect(
+      await prisma.walletTransaction.count({ where: { bookingId: id, type: "LESSON_EARNING" } })
+    ).toBe(1);
+
+    await authorize(request(app).get("/api/wallet/overview"), TEACHER).expect(200);
+    expect(await balanceOf(TEACHER)).toBe("85.00");
+    expect(
+      await prisma.walletTransaction.count({ where: { bookingId: id, type: "LESSON_EARNING" } })
+    ).toBe(1);
+  });
+
+  it("makes an earning available to a payout racing the wallet settlement trigger", async () => {
+    const id = await endedLesson(25);
+    await authorize(request(app).post(`/api/bookings/${id}/confirm-completion`), TEACHER).expect(
+      200
+    );
+
+    const [overview, payout] = await Promise.all([
+      authorize(request(app).get("/api/wallet/overview"), TEACHER),
+      authorize(
+        request(app)
+          .post("/api/payouts")
+          .send({ amount: 85, payoutAccountId: PAYOUT_ACCOUNT, reference: randomUUID() }),
+        TEACHER
+      ),
+    ]);
+    expect(overview.status).toBe(200);
+    expect(payout.status).toBe(201);
+    expect(await balanceOf(TEACHER)).toBe("0.00");
+    expect(
+      await prisma.walletTransaction.count({ where: { bookingId: id, type: "LESSON_EARNING" } })
+    ).toBe(1);
+    expect(
+      await prisma.walletTransaction.count({ where: { userId: TEACHER, type: "PAYOUT" } })
+    ).toBe(1);
+  });
+
+  it("does not credit earnings when Admin approval races settlement", async () => {
+    const id = await endedLesson(25);
+    await authorize(request(app).post(`/api/bookings/${id}/confirm-completion`), TEACHER).expect(
+      200
+    );
+    await fileRefund(id, unsatisfactory).expect(201);
+    const requestId = (await requestFor(id)).id;
+
+    const [walletResponse, refundResponse] = await Promise.all([
+      authorize(request(app).get("/api/wallet/overview"), TEACHER),
+      approve(requestId),
+    ]);
+    expect(walletResponse.status).toBe(200);
+    expect(refundResponse.status).toBe(200);
+    expect(await balanceOf(STUDENT)).toBe("500.00");
+    expect(await balanceOf(TEACHER)).toBe("0.00");
+    expect(
+      await prisma.walletTransaction.count({ where: { bookingId: id, type: "LESSON_EARNING" } })
+    ).toBe(0);
+    expect(await prisma.walletTransaction.count({ where: { bookingId: id, type: "REFUND" } })).toBe(
+      1
+    );
   });
 
   it("drops a refunded lesson's review from the public rating but keeps the row", async () => {

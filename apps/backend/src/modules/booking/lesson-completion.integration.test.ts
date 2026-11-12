@@ -244,7 +244,11 @@ run("CLASS-2 Tutor lesson completion confirmation", () => {
       earningsThisMonth: "85.00",
     });
     const released = await authorize(request(app).get(`/api/bookings/${id}`)).expect(200);
-    expect(released.body.booking.earnings).toEqual({ amount: "85.00", status: "RELEASED" });
+    expect(released.body.booking.earnings).toMatchObject({
+      amount: "85.00",
+      status: "CLEARED",
+      holdReason: null,
+    });
   });
 
   it("does not duplicate pending earnings or write credit when confirmations race", async () => {

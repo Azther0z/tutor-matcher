@@ -5,6 +5,7 @@ import {
 } from "../../generated/prisma/client.ts";
 import { runSerializable } from "../../lib/serializable.ts";
 import { appendWalletMovement, InsufficientWalletBalance } from "../wallet/wallet-ledger.ts";
+import { settleTutorEarnings } from "../wallet/earning-settlement.service.ts";
 import { payoutAccountResponse } from "./payout-account.service.ts";
 import type { RequestPayoutInput } from "./payout.schema.ts";
 
@@ -46,6 +47,7 @@ function assertSimulatedPayoutEnabled() {
 
 export async function requestPayout(userId: string, input: RequestPayoutInput) {
   assertSimulatedPayoutEnabled();
+  await settleTutorEarnings(userId);
   try {
     return await runSerializable(
       async (tx) => {

@@ -113,7 +113,12 @@ it("lets the assigned Tutor confirm an ended lesson with an irreversible confirm
   const endedBooking = {
     ...booking,
     viewerRole: "TUTOR",
-    earnings: { amount: "85.00", status: "PENDING" },
+    earnings: {
+      amount: "85.00",
+      status: "PENDING",
+      clearsAt: "2020-01-11T09:30:00.000Z",
+      holdReason: "AWAITING_COMPLETION",
+    },
     startedAt: "2020-01-10T09:00:00.000Z",
     endedAt: "2020-01-10T09:30:00.000Z",
     actions: {
@@ -154,6 +159,8 @@ it("lets the assigned Tutor confirm an ended lesson with an irreversible confirm
   expect(earnings).toHaveTextContent("Pending earnings");
   expect(earnings).toHaveTextContent("85.00");
   expect(earnings).toHaveTextContent("not in your available balance");
+  expect(earnings).toHaveTextContent("The Tutor must confirm the lesson first.");
+  expect(earnings).toHaveTextContent("Available after");
   expect(
     screen.queryByRole("button", { name: "Confirm session completed" })
   ).not.toBeInTheDocument();
@@ -1031,7 +1038,12 @@ describe("PAY-3 refund requests", () => {
         booking: {
           ...endedBooking,
           viewerRole: "TUTOR",
-          earnings: { amount: "85.00", status: "PENDING" },
+          earnings: {
+            amount: "85.00",
+            status: "PENDING",
+            clearsAt: "2020-01-11T09:30:00.000Z",
+            holdReason: "REFUND_REVIEW",
+          },
           refundRequest: {
             ...refundRequest,
             reason: "OTHER",
@@ -1055,6 +1067,32 @@ describe("PAY-3 refund requests", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Request a refund" })).not.toBeInTheDocument();
   });
+});
+
+it("keeps a cleared Tutor earning visible after an approved refund cancels the lesson", async () => {
+  localStorage.setItem("authToken", "tutor-token");
+  global.fetch = jest.fn().mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      booking: {
+        ...booking,
+        status: "CANCELLED",
+        viewerRole: "TUTOR",
+        earnings: {
+          amount: "85.00",
+          status: "CLEARED",
+          clearsAt: "2020-01-11T09:30:00.000Z",
+          holdReason: null,
+        },
+        refundRequest: { reason: "OTHER", status: "APPROVED", reviewedAt: null },
+      },
+    }),
+  });
+
+  render(<BookingDetailPage />);
+  const earnings = await screen.findByRole("region", { name: "Lesson earnings" });
+  expect(earnings).toHaveTextContent("Cleared earnings");
+  expect(earnings).toHaveTextContent("This earning has been cleared into your wallet.");
 });
 
 describe("REV-1 review a completed lesson", () => {
@@ -1163,7 +1201,12 @@ describe("REV-1 review a completed lesson", () => {
         booking: {
           ...completed,
           viewerRole: "TUTOR",
-          earnings: { amount: "85.00", status: "PENDING" },
+          earnings: {
+            amount: "85.00",
+            status: "PENDING",
+            clearsAt: "2020-01-11T09:30:00.000Z",
+            holdReason: "CLEARING_PERIOD",
+          },
           actions: { ...completed.actions, canReview: false },
         },
       }),

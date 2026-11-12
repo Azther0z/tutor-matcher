@@ -8,6 +8,24 @@ const findBookings = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const findEntries = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const countEntries = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const findEntry = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const settleTutorEarnings = jest.fn<(...args: unknown[]) => Promise<number>>();
+jest.unstable_mockModule("./earning-settlement.service.ts", () => ({
+  lessonEarningClearsAt: (endedAt: Date) => new Date(endedAt.getTime() + 24 * 60 * 60_000),
+  lessonEarningHoldReason: (
+    status: string,
+    endedAt: Date,
+    refundStatus: string | null,
+    now: Date
+  ) =>
+    status !== "COMPLETED"
+      ? "AWAITING_COMPLETION"
+      : refundStatus === "PENDING"
+        ? "REFUND_REVIEW"
+        : endedAt.getTime() + 24 * 60 * 60_000 > now.getTime()
+          ? "CLEARING_PERIOD"
+          : "READY_TO_CLEAR",
+  settleTutorEarnings,
+}));
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
     accountAction: { findFirst: async () => null },
@@ -66,6 +84,7 @@ const booking = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  settleTutorEarnings.mockReset().mockResolvedValue(0);
   findUser.mockReset().mockResolvedValue({ balance: new Prisma.Decimal(750), tutorId: null });
   aggregate.mockReset().mockResolvedValue({ _sum: { amount: null } });
   findBookings.mockReset().mockResolvedValue([]);
@@ -136,6 +155,10 @@ describe("wallet overview", () => {
         },
       ],
     });
+    expect(settleTutorEarnings).toHaveBeenCalledWith(userId, expect.any(Date));
+    expect(settleTutorEarnings.mock.invocationCallOrder[0]).toBeLessThan(
+      findUser.mock.invocationCallOrder[0]!
+    );
     expect(findBookings.mock.calls[0]![0]).toMatchObject({
       where: {
         status: { in: ["CONFIRMED", "COMPLETED"] },
@@ -213,6 +236,10 @@ describe("wallet transaction list", () => {
     ]);
     countEntries.mockResolvedValue(5);
     const response = await get("/transactions").expect(200);
+    expect(settleTutorEarnings).toHaveBeenCalledWith(userId);
+    expect(settleTutorEarnings.mock.invocationCallOrder[0]).toBeLessThan(
+      findEntries.mock.invocationCallOrder[0]!
+    );
     expect(response.body).toMatchObject({ page: 1, pageSize: 20, total: 5 });
     expect(
       response.body.transactions.map((item: { type: string; direction: string }) => [

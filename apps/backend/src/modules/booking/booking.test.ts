@@ -1,5 +1,11 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { Prisma } from "../../generated/prisma/client.ts";
+jest.unstable_mockModule("../wallet/earning-settlement.service.ts", () => ({
+  lessonEarningClearsAt: (endedAt: Date) => new Date(endedAt.getTime() + 24 * 60 * 60_000),
+  lessonEarningHoldReason: (status: string) =>
+    status === "COMPLETED" ? "CLEARING_PERIOD" : "AWAITING_COMPLETION",
+  settleTutorEarnings: async () => 0,
+}));
 import {
   createBookingSchema,
   tutorCancelBookingSchema,
@@ -375,7 +381,7 @@ describe("trial booking rules", () => {
       canConfirmCompletion: false,
       canReview: false,
     });
-    expect(completed.earnings).toEqual({ amount: "63.75", status: "PENDING" });
+    expect(completed.earnings).toBeNull();
     const completedForStudent = mapBookingResponse(
       { ...record, status: "COMPLETED" },
       SUBJECT_ID,

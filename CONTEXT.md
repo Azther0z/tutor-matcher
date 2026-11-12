@@ -133,8 +133,9 @@ _Avoid_: Checkout, transfer proof, invoice
 **Lesson Earning**:
 The Tutor's share after the platform fee. Pending earnings are calculated from
 CONFIRMED and COMPLETED bookings without a LESSON_EARNING row. Tutor confirmation
-keeps the amount pending; it does not credit available balance. PAY-6 will clear
-earnings into available balance and append LESSON_EARNING. See docs/user-journeys.md §4.
+keeps the amount pending until 24 hours after the scheduled lesson end. A pending
+refund request holds the earning until an Admin decides; settlement appends
+LESSON_EARNING when the Tutor next reads or uses their wallet. See docs/user-journeys.md §4.
 _Avoid_: Income, revenue, salary
 
 **Payout**:
