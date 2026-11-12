@@ -146,7 +146,7 @@ describe("Navbar", () => {
   });
 });
 
-it("shows the review queue in the admin account menu", async () => {
+it("shows the review queue and user management in the admin account menu", async () => {
   setAuthToken("admin-token");
   mockAuthedUser({ firstName: "Carol", lastName: "Davis", isAdmin: true });
   renderNavbar();
@@ -159,15 +159,17 @@ it("shows the review queue in the admin account menu", async () => {
     "href",
     "/admin/topups"
   );
+  expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("href", "/admin/users");
 });
 
-it("does not show the review queue to a nonadmin", async () => {
+it("does not show the admin pages to a nonadmin", async () => {
   setAuthToken("student-token");
   mockAuthedUser({ firstName: "Ada", lastName: "Lovelace", isAdmin: false });
   renderNavbar();
   fireEvent.click(await screen.findByRole("button", { name: "Open account menu" }));
   expect(screen.queryByRole("link", { name: "Tutor requests" })).not.toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "Top-up requests" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Users" })).not.toBeInTheDocument();
 });
 
 it("retains tutor navigation while the latest profile edit is pending", async () => {

@@ -74,6 +74,12 @@ enum StudentEducationLevel {
   WORKING_ADULT
 }
 
+// SAFE-1: an Admin's restriction of an account. A ban is permanent; a suspension ends at endsAt.
+enum AccountActionType {
+  SUSPEND
+  BAN
+}
+
 enum PreferredLearningPeriod {
   MORNING
   AFTERNOON
@@ -120,6 +126,9 @@ model User {
   reportsFiledAsAdmin Report[] @relation("ReportsHandledByAdmin")
   reportsMade         Report[] @relation("ReportsMadeByReporter")
   reportsReceived     Report[] @relation("ReportsAgainstUser")
+
+  accountActionsReceived AccountAction[] @relation("AccountActionsReceived")
+  accountActionsTaken    AccountAction[] @relation("AccountActionsTaken")
 
   @@map("users")
 }
@@ -476,4 +485,24 @@ model Report {
   @@index([reporterUserId])
   @@index([reportedUserId])
   @@map("reports")
+}
+
+// SAFE-1: every Admin suspension or ban. Each row is the audit record of who acted, when and why;
+// while it applies (any ban, or a suspension before endsAt) it also restricts the account.
+model AccountAction {
+  id        String            @id @default(uuid()) @map("account_action_id") @db.Uuid
+  type      AccountActionType
+  reason    String
+  createdAt DateTime          @default(now()) @map("created_at")
+  // When a suspension ends; null for a ban.
+  endsAt    DateTime?         @map("ends_at")
+
+  userId  String @map("user_id") @db.Uuid
+  user    User   @relation("AccountActionsReceived", fields: [userId], references: [id], onDelete: Restrict)
+  adminId String @map("admin_id") @db.Uuid
+  admin   User   @relation("AccountActionsTaken", fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([adminId])
+  @@map("account_actions")
 }

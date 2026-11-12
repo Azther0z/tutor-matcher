@@ -220,13 +220,22 @@ export function Navbar() {
                     Settings
                   </Link>
                   {user.isAdmin && (
-                    <Link
-                      href="/admin/tutor-requests"
-                      onClick={() => setMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
-                    >
-                      Tutor requests
-                    </Link>
+                    <>
+                      <Link
+                        href="/admin/tutor-requests"
+                        onClick={() => setMenuOpen(false)}
+                        className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
+                      >
+                        Tutor requests
+                      </Link>
+                      <Link
+                        href="/admin/users"
+                        onClick={() => setMenuOpen(false)}
+                        className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
+                      >
+                        Users
+                      </Link>
+                    </>
                   )}
                   {user.isAdmin && (
                     <Link

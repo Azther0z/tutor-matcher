@@ -177,6 +177,12 @@ message, routed to an admin who keeps, hides, or removes the content and records
 outcome.
 _Avoid_: Ticket, complaint, issue
 
+**Account Action**:
+An Admin's recorded suspension or ban of a user, including who acted, the reason, the
+time and, for a suspension, when it ends. An active action blocks login and protected
+requests. It is separate from a Report or a tutor-profile review decision.
+_Avoid_: User deletion, report status
+
 **Notification Preference**:
 A user's per-event choice of which channels may notify them. Event groups are booking
 updates, lesson reminders, new messages, wallet and payments, and product news.

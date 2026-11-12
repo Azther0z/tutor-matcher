@@ -5,7 +5,15 @@ const mock = () => jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const user = { findUnique: mock() };
 const booking = { groupBy: mock(), count: mock() };
 const review = { aggregate: mock(), findMany: mock() };
-jest.unstable_mockModule("../../lib/db.ts", () => ({ prisma: { user, booking, review } }));
+jest.unstable_mockModule("../../lib/db.ts", () => ({
+  prisma: {
+    // SAFE-1: requireAuth checks for a suspension or ban on every request.
+    accountAction: { findFirst: async () => null },
+    user,
+    booking,
+    review,
+  },
+}));
 const { app } = await import("../../app.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");
 const { bangkokWeekWindow, getTutorDashboard } = await import("./dashboard.service.ts");

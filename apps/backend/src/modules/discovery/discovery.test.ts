@@ -22,6 +22,8 @@ const studentFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
+    // SAFE-1: requireAuth checks for a suspension or ban on every request.
+    accountAction: { findFirst: async () => null },
     user: { findUnique: tutorFindUnique },
     subject: { findMany: subjectFindMany, findFirst: subjectFindFirst },
     $queryRaw: queryRaw,

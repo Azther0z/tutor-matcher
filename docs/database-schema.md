@@ -437,6 +437,28 @@ Indexes: `from_user_id`, `to_user_id`. A conversation is derived from the user p
 
 Indexes: `admin_user_id`, `reporter_user_id`, `reported_user_id`.
 
+### account_actions
+
+SAFE-1 stores each Admin suspension or ban as its own audit record. Current access is
+derived from these records, rather than a separate mutable flag on `users`.
+
+| Column            | Type              | Constraints                              | Notes                                 |
+| ----------------- | ----------------- | ---------------------------------------- | ------------------------------------- |
+| account_action_id | UUID              | PK, DEFAULT uuid()                       |                                       |
+| type              | AccountActionType | NOT NULL                                 | `SUSPEND` or `BAN`                    |
+| reason            | TEXT              | NOT NULL                                 | API requires 1–500 trimmed characters |
+| created_at        | TIMESTAMP         | NOT NULL, DEFAULT now()                  |                                       |
+| ends_at           | TIMESTAMP         | NULL                                     | Required for suspension; null for ban |
+| user_id           | UUID              | NOT NULL, FK → users, ON DELETE RESTRICT | Affected account                      |
+| admin_id          | UUID              | NOT NULL, FK → users, ON DELETE RESTRICT | Admin who acted                       |
+
+Indexes: `(user_id, created_at)` and `admin_id`. The service locks the affected User row
+before checking and writing an action, so concurrent bans produce one record and a conflict
+for the duplicate. A ban always restricts access; a suspension restricts access only while
+`ends_at` is later than the current time. The service enforces action durations and forbids
+restrictions of Admin accounts. There is no action-edit or delete API. See
+[Admin user management](user-journeys.md#10--admin-trust-and-safety).
+
 ### Enums
 
 | Enum                        | Values                                                           |
@@ -447,6 +469,7 @@ Indexes: `admin_user_id`, `reporter_user_id`, `reported_user_id`.
 | `BookingCancelledBy`        | `STUDENT`, `TUTOR`                                               |
 | `RefundRequestReason`       | `TUTOR_NO_SHOW`, `UNSATISFACTORY_LESSON`, `OTHER`                |
 | `RefundRequestStatus`       | `PENDING`, `APPROVED`, `REJECTED`                                |
+| `AccountActionType`         | `SUSPEND`, `BAN`                                                 |
 
 ---
 
@@ -500,7 +523,7 @@ that the current schema is wrong to have shipped.
 | G10 | Resolved by PROF-7: `payout_accounts` stores each user's bank accounts with one default.                                             | §4 Payouts, `/settings/wallet` |
 | G11 | **Notification preference** per user and event type, with email and push flags                                                       | §8 Notifications               |
 | G12 | Moderation status on reviews and messages remains missing; Tutor replies and their edit timestamp are implemented by REV-2           | §9 Reviews, §10 Admin          |
-| G13 | **Account suspension / ban** state on `users`                                                                                        | §10 Admin                      |
+| G13 | Resolved by SAFE-1: `account_actions` stores suspension/ban history and determines current account restrictions.                     | §10 Admin                      |
 | G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                        | §2 Search filters, §7 Subjects |
 | G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up | §10 Admin queues               |
 | G18 | **Audit log** for admin decisions on content and money                                                                               | §10 Admin                      |
@@ -509,7 +532,8 @@ that the current schema is wrong to have shipped.
 
 ## Indexes
 
-Present today: `subjects(tutor_id)`, `bookings(user_id)`, `bookings(subject_id)`,
+Present today: `account_actions(user_id, created_at)`, `account_actions(admin_id)`,
+`subjects(tutor_id)`, `bookings(user_id)`, `bookings(subject_id)`,
 `wallet_transactions(user_id, created_at)`, `reviews(user_id)`,
 `reviews(subject_id)`, `reviews(booking_id)`,
 `tutor_profile_version_certifications(profile_version_id)`,

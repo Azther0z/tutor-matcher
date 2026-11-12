@@ -18,6 +18,7 @@ const transaction =
   jest.fn<(callback: (client: typeof tx) => Promise<unknown>) => Promise<unknown>>();
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
+    accountAction: { findFirst: async () => null },
     payoutAccount: { findMany: listAccounts },
     user: { findUnique: findUser },
     $transaction: transaction,

@@ -18,6 +18,8 @@ learningAreaCount.mockResolvedValue(2);
 
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
+    // SAFE-1: requireAuth checks for a suspension or ban on every request.
+    accountAction: { findFirst: async () => null },
     learningArea: { count: learningAreaCount, findMany: learningAreaFindMany },
     student: { findUnique: studentFindUnique },
     user: { findUnique: userFindUnique },
