@@ -490,6 +490,21 @@ opening at the first open time, Book this subject below the calendar with the su
 (and the login hand-off), the disabled button on an empty day, calendar selection through the
 URL, the back link, the unavailable state and retry.
 
+## REV-3 acceptance coverage
+
+Review tests cover `POST /api/reviews/:id/flags`: the trimmed reason is stored for the signed-in
+member; a missing, comment-less or refunded review is a 404; an author flagging their own review
+is a 403; the same member flagging twice is a 409 `ALREADY_FLAGGED`; a missing, blank or over-500
+reason and a non-UUID id are 400s; and an unrelated database error is not turned into a flag
+error. Discovery and dashboard tests cover the viewer fields: `flaggedByMe` and `isMine` appear
+only for a signed-in viewer, a visitor or invalid token adds no fields and runs no flag query. The
+PostgreSQL suite (opt-in, on its own `tutor_matcher_rev3_test` database) checks the unique
+constraint, that other members can flag the same review, that the author, a comment-less review
+and a refunded review are refused, the per-viewer markers on the public profile, and that a
+flagged review stays public. Frontend tests cover the Flag button (signed-out, own review, already
+flagged, rating-only), the required reason, the request and the Flagged marker, a server-side
+duplicate, a retryable error, and the viewer's token reaching the profile and Subject pages.
+
 ## MSG-1 conversation list coverage
 
 Messaging tests cover `GET /api/messages/conversations`: it needs a login, lists each person the

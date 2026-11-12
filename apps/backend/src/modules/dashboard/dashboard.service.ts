@@ -76,6 +76,16 @@ export async function getTutorDashboard(userId: string, now = new Date()) {
       }),
     ]);
 
+  // REV-3: the Tutor can flag a review from here, so it carries which ones they already flagged.
+  const flagged = new Set(
+    (recentReviews.length
+      ? await prisma.reviewFlag.findMany({
+          where: { reporterId: userId, reviewId: { in: recentReviews.map(({ id }) => id) } },
+          select: { reviewId: true },
+        })
+      : []
+    ).map(({ reviewId }) => reviewId)
+  );
   const count = (status: string) => statuses.find((group) => group.status === status)?._count ?? 0;
   const returningStudents = completedStudents.filter((group) => group._count >= 2).length;
   return {
@@ -105,6 +115,7 @@ export async function getTutorDashboard(userId: string, now = new Date()) {
         const lastInitial = Array.from(review.user.lastName.trim())[0];
         return {
           id: review.id,
+          flaggedByMe: flagged.has(review.id),
           ratingStars: review.ratingStars,
           text: review.text,
           createdAt: review.createdAt.toISOString(),

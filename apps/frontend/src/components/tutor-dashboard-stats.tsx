@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getTutorDashboard, type TutorDashboard } from "@/src/lib/dashboard-api";
+import { ReviewFlag } from "./review-flag";
 import { ReviewReply } from "./review-reply";
 
 const dateFormat = new Intl.DateTimeFormat("en", {
@@ -189,6 +190,13 @@ export function TutorDashboardStats() {
                     <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">
                       {review.text || "Rating only · no written comment"}
                     </p>
+                    {review.text && (
+                      <ReviewFlag
+                        reviewId={review.id}
+                        reviewer={review.studentName}
+                        flagged={review.flaggedByMe}
+                      />
+                    )}
                     <ReviewReply reviewId={review.id} reply={review.reply} canReply />
                   </li>
                 ))}

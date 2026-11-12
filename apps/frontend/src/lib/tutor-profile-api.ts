@@ -1,3 +1,4 @@
+import { getAuthToken } from "@/src/lib/auth";
 import type { PublicReviewReply } from "@/src/lib/review-replies-api";
 import type { SubjectOffering } from "@/src/lib/subjects";
 
@@ -18,7 +19,16 @@ export type ProfileReview = {
   createdAt: string;
   subjectName: string;
   reviewer: string;
+  // REV-3: present only for a signed-in viewer.
+  flaggedByMe?: boolean;
+  isMine?: boolean;
 };
+
+// A signed-in viewer's token lets the public pages mark the comments they flagged.
+function viewerHeaders(): HeadersInit | undefined {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
+}
 
 export type TutorProfile = {
   id: string;
@@ -42,6 +52,7 @@ export type ProfileResult = { kind: "profile"; profile: TutorProfile } | { kind:
 // A 404 means the tutor is unpublished or missing: the page shows no details for it.
 export async function getTutorProfile(tutorId: string, signal?: AbortSignal) {
   const response = await fetch(`/api/discovery/tutors/${encodeURIComponent(tutorId)}/profile`, {
+    headers: viewerHeaders(),
     signal,
   });
   if (response.status === 404) return { kind: "unavailable" } satisfies ProfileResult;
@@ -71,6 +82,7 @@ export async function getTutorSubjectPage(
 ) {
   const path = `/api/discovery/tutors/${encodeURIComponent(tutorId)}/subjects/${encodeURIComponent(subjectId)}`;
   const response = await fetch(date ? `${path}?date=${encodeURIComponent(date)}` : path, {
+    headers: viewerHeaders(),
     signal,
   });
   if (response.status === 404) return { kind: "unavailable" } satisfies SubjectPageResult;
