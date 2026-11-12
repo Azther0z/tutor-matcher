@@ -697,6 +697,11 @@ marker on the Messages navigation link on every other page. A user with both
 capabilities flips the **Student ⇄ Tutor** switch to change which side of their
 conversations they are reading, without leaving the page and without a second account.
 
+The conversation list (`GET /api/messages/conversations`) has one entry for everyone the
+user has written to or heard from, newest first, so a conversation the user started appears
+straight away, before the other person replies. Each entry previews the latest message,
+prefixed **You:** when the user sent it.
+
 Notification preferences (`/settings/notifications`) are a grid of **Email** and **Push**
 per event group: booking updates, lesson reminders (1 hour and 10 minutes before start),
 new messages, wallet and payments, and product news. A disabled event type is skipped at

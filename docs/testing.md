@@ -504,3 +504,11 @@ and a refunded review are refused, the per-viewer markers on the public profile,
 flagged review stays public. Frontend tests cover the Flag button (signed-out, own review, already
 flagged, rating-only), the required reason, the request and the Flagged marker, a server-side
 duplicate, a retryable error, and the viewer's token reaching the profile and Subject pages.
+
+## MSG-1 conversation list coverage
+
+Messaging tests cover `GET /api/messages/conversations`: it needs a login, lists each person the
+user wrote to or heard from once, newest first, with the latest message and whether the user
+sent it, and returns an empty list for a user with no messages. Frontend tests cover a
+conversation the user started appearing in the list before any reply (previewed as **You:**),
+and a new conversation from a `?with=` link joining the list after the first message is sent.
