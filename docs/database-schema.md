@@ -382,15 +382,18 @@ be edited; the user removes one and adds it again.
 
 ### reviews
 
-| Column       | Type      | Constraints                                                    | Notes                                    |
-| ------------ | --------- | -------------------------------------------------------------- | ---------------------------------------- |
-| review_id    | UUID      | PK                                                             |                                          |
-| rating_stars | INT       | NOT NULL                                                       | 1 to 5, enforced by the REV-1 API only   |
-| text         | TEXT      | NULL                                                           |                                          |
-| created_at   | TIMESTAMP | NOT NULL, DEFAULT now()                                        |                                          |
-| user_id      | UUID      | NOT NULL, FK → users.user_id, ON DELETE RESTRICT               | The reviewing student                    |
-| subject_id   | UUID      | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT         | Makes reviews subject-scoped             |
-| booking_id   | UUID      | NOT NULL, UNIQUE, FK → bookings.booking_id, ON DELETE RESTRICT | One review per completed booking (REV-1) |
+| Column          | Type      | Constraints                                                    | Notes                                                     |
+| --------------- | --------- | -------------------------------------------------------------- | --------------------------------------------------------- |
+| review_id       | UUID      | PK                                                             | Prisma `id`                                               |
+| rating_stars    | INT       | NOT NULL                                                       | 1 to 5, enforced by the REV-1 API only                    |
+| text            | TEXT      | NULL                                                           |                                                           |
+| reply_text      | TEXT      | NULL                                                           | One public reply by the reviewed Tutor                    |
+| replied_at      | TIMESTAMP | NULL                                                           | Written together with reply_text                          |
+| reply_edited_at | TIMESTAMP | NULL                                                           | Latest actual text edit; original replied_at is preserved |
+| created_at      | TIMESTAMP | NOT NULL, DEFAULT now()                                        |                                                           |
+| user_id         | UUID      | NOT NULL, FK → users.user_id, ON DELETE RESTRICT               | The reviewing student                                     |
+| subject_id      | UUID      | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT         | Makes reviews subject-scoped                              |
+| booking_id      | UUID      | NOT NULL, UNIQUE, FK → bookings.booking_id, ON DELETE RESTRICT | One review per completed booking (REV-1)                  |
 
 Indexes: `user_id`, `subject_id`; unique `reviews_booking_id_key` on `booking_id`.
 
@@ -401,6 +404,12 @@ review row but no longer affects the Tutor's rating. The rating range was once a
 a migration file, but the project now synchronizes with `prisma db push` and keeps no
 migrations, so a pushed database has no CHECK; the REV-1 API rejects ratings outside whole
 numbers 1 to 5.
+
+REV-2 adds nullable reply fields; the endpoint enforces Tutor
+ownership. Creation updates only an unreplied row; editing conditionally updates the
+current text and revision timestamp, preventing stale overwrites. Public readers receive
+the latest reply and its Edited timestamp. Database
+synchronization remains a separate authorized action; no database was changed for the preview.
 
 ### messages
 
@@ -490,7 +499,7 @@ that the current schema is wrong to have shipped.
 | --- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
 | G10 | Resolved by PROF-7: `payout_accounts` stores each user's bank accounts with one default.                                             | §4 Payouts, `/settings/wallet` |
 | G11 | **Notification preference** per user and event type, with email and push flags                                                       | §8 Notifications               |
-| G12 | **Review reply** from the tutor, and a moderation status on reviews and messages                                                     | §9 Reviews, §10 Admin          |
+| G12 | Moderation status on reviews and messages remains missing; Tutor replies and their edit timestamp are implemented by REV-2           | §9 Reviews, §10 Admin          |
 | G13 | **Account suspension / ban** state on `users`                                                                                        | §10 Admin                      |
 | G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                        | §2 Search filters, §7 Subjects |
 | G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up | §10 Admin queues               |

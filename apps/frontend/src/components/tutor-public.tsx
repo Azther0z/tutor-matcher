@@ -1,3 +1,8 @@
+"use client";
+
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { getAuthToken, subscribeToAuth } from "@/src/lib/auth";
+import { ReviewReply } from "@/src/components/review-reply";
 import type { ProfileReview } from "@/src/lib/tutor-profile-api";
 
 // Shared by the public tutor profile (DISC-3) and subject page (DISC-4).
@@ -27,7 +32,38 @@ export function Rating({ rating, count }: { rating: number | null; count: number
   );
 }
 
-export function ReviewList({ reviews }: { reviews: ProfileReview[] }) {
+export function ReviewList({
+  reviews,
+  canReply = false,
+  tutorId,
+}: {
+  reviews: ProfileReview[];
+  canReply?: boolean;
+  tutorId?: string;
+}) {
+  const token = useSyncExternalStore(subscribeToAuth, getAuthToken, () => null);
+  const [owner, setOwner] = useState<{ token: string; tutorId: string } | null>(null);
+  useEffect(() => {
+    if (!token || !tutorId) return;
+    const controller = new AbortController();
+    async function checkOwner() {
+      try {
+        const response = await fetch("/api/profiles/me/tutor", {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!controller.signal.aborted && data.tutor?.id)
+          setOwner({ token: token!, tutorId: data.tutor.id });
+      } catch {
+        // Public reviews remain readable when account capability lookup fails.
+      }
+    }
+    void checkOwner();
+    return () => controller.abort();
+  }, [token, tutorId]);
+  const mayReply = canReply || (!!token && owner?.token === token && owner.tutorId === tutorId);
   if (reviews.length === 0) return <p className="text-zinc-500">No reviews yet.</p>;
   return (
     <ul className="flex flex-col gap-4">
@@ -50,6 +86,7 @@ export function ReviewList({ reviews }: { reviews: ProfileReview[] }) {
             </span>
           </p>
           {review.text && <p className="text-zinc-600 dark:text-zinc-400">{review.text}</p>}
+          <ReviewReply reviewId={review.id} reply={review.reply} canReply={mayReply} />
         </li>
       ))}
     </ul>

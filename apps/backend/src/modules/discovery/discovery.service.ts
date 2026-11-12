@@ -81,6 +81,9 @@ const countedReview = {
 } as const satisfies Prisma.ReviewWhereInput;
 
 const publicReviewSelect = {
+  replyEditedAt: true,
+  replyText: true,
+  repliedAt: true,
   id: true,
   ratingStars: true,
   text: true,
@@ -93,6 +96,14 @@ function publicReview(review: Prisma.ReviewGetPayload<{ select: typeof publicRev
   const lastInitial = Array.from(review.user.lastName.trim())[0];
   return {
     id: review.id,
+    reply:
+      review.replyText && review.repliedAt
+        ? {
+            text: review.replyText,
+            repliedAt: review.repliedAt.toISOString(),
+            ...(review.replyEditedAt ? { editedAt: review.replyEditedAt.toISOString() } : {}),
+          }
+        : null,
     rating: review.ratingStars,
     text: review.text,
     createdAt: review.createdAt.toISOString(),

@@ -151,6 +151,7 @@ function ProfileView({ profile }: { profile: TutorProfile }) {
       <SubjectsSection tutorId={profile.id} subjects={profile.subjects} />
       <AvailabilitySection profile={profile} />
       <ReviewsSection
+        tutorId={profile.id}
         reviews={profile.reviews}
         rating={profile.rating}
         count={profile.reviewCount}
@@ -292,10 +293,12 @@ function AvailabilitySection({ profile }: { profile: TutorProfile }) {
 }
 
 function ReviewsSection({
+  tutorId,
   reviews,
   rating,
   count,
 }: {
+  tutorId: string;
   reviews: ProfileReview[];
   rating: number | null;
   count: number;
@@ -308,7 +311,7 @@ function ReviewsSection({
         </h2>
         <Rating rating={rating} count={count} />
       </div>
-      <ReviewList reviews={reviews} />
+      <ReviewList tutorId={tutorId} reviews={reviews} />
     </section>
   );
 }

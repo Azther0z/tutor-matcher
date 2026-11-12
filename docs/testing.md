@@ -34,6 +34,16 @@ apps/backend/
 
 ## Commands
 
+### REV-2 public Tutor replies
+
+`review-reply.test.ts` covers owner-only reply creation and editing, validation, original
+publication-date preservation, no-op edits, conditional-write conflicts and deletion
+before or during submission. Discovery tests assert public reply and Edited projection.
+Shared reply and public-list frontend tests cover role visibility, draft preservation,
+save/cancel, stale edits, deleted reviews and persisted public markers. These suites mock
+Prisma or fetch; they do not prove PostgreSQL concurrency. See the
+[REV-2 verification report](change/rev-2-public-review-reply/verification.md).
+
 ### BOOK-3 cancellation acceptance
 
 Booking detail page tests cover reviewed server quotes, failed quote loading and retry,

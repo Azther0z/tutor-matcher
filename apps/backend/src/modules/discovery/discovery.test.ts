@@ -566,6 +566,9 @@ describe("DISC-3 tutor profile", () => {
     reviewFindMany.mockResolvedValue([
       {
         id: "review-1",
+        replyText: "Thank you for your review",
+        repliedAt: new Date("2026-11-12T01:00:00Z"),
+        replyEditedAt: new Date("2026-11-12T02:00:00Z"),
         ratingStars: 5,
         text: "Clear explanations.",
         createdAt: new Date("2026-09-01T10:00:00.000Z"),
@@ -619,6 +622,11 @@ describe("DISC-3 tutor profile", () => {
         createdAt: "2026-09-01T10:00:00.000Z",
         subjectName: "Calculus",
         reviewer: "Bob S.",
+        reply: {
+          text: "Thank you for your review",
+          repliedAt: "2026-11-12T01:00:00.000Z",
+          editedAt: "2026-11-12T02:00:00.000Z",
+        },
       },
     ]);
   });
@@ -842,6 +850,7 @@ describe("DISC-4 subject page", () => {
           createdAt: "2026-09-01T10:00:00.000Z",
           subjectName: "Calculus",
           reviewer: "Bob S.",
+          reply: null,
         },
       ],
     });

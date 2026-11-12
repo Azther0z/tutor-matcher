@@ -697,7 +697,13 @@ Related stories: US7-1 … US7-3, US2-2.
   reviews across subjects with a link to write one from a completed booking.
 - `/reviews/:tutorId` is a read-only list with a rating distribution summary. It never
   accepts a new review.
-- A tutor may reply publicly to a review; the reply appears under it.
+- A tutor may publish one public reply per review; the reply appears under it on the Tutor
+  profile and Subject page. Only the reviewed Tutor sees reply controls, including on the
+  Tutor dashboard. Replies contain 1–2000 characters after trimming. The reviewed Tutor
+  can edit the existing reply; its original publication date is preserved and an Edited
+  marker shows the most recent edit time to all viewers. A stale edit from another tab
+  is rejected rather than silently overwriting a newer reply. If a review is deleted before submission, the draft is preserved and an
+  error explains that the review no longer exists.
 - Any user can flag a review with a reason, which sends it to admin moderation. A
   duplicate flag from the same user is rejected.
 

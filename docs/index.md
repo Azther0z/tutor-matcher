@@ -1,5 +1,7 @@
 # Documentation Index
 
+REV-2 reply editing is confirmed in [editable reply evidence](sources/rev-2-editable-reply-confirmation.md).
+
 Start here. This page tells you which document to open and which one to trust when two
 disagree.
 
@@ -24,6 +26,8 @@ disagree.
 | DISC-2 recommendation implementation and checks | [Tutor recommendations change](change/implement-disc-2-recommendations/proposal.md)                               |
 | PROF-6 implementation decisions and checks      | [Subject management change](change/implement-prof-6-subjects/proposal.md)                                         |
 | PROF-3 implementation decisions and checks      | [Availability change](change/implement-prof-3-availability/proposal.md)                                           |
+| REV-2 public Tutor replies and verification     | [Review reply change](change/rev-2-public-review-reply/proposal.md)                                               |
+| REV-2 approved reply storage                    | [Schema approval evidence](sources/rev-2-schema-confirmation.md)                                                  |
 | PAY-1 slip top-up decisions                     | [PAY-1 slip evidence](sources/pay-1-slip-topup-confirmation.md)                                                   |
 | PROF-7 payout account decisions                 | [PROF-7 evidence](sources/prof-7-policy-confirmation.md), [tutor-only](sources/prof-7-tutor-only-confirmation.md) |
 | PAY-3 refund request decisions                  | [PAY-3 evidence](sources/pay-3-policy-confirmation.md), [review](sources/pay-3-review-decisions.md)               |
