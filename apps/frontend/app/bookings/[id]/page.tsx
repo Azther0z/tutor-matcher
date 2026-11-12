@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BookingReviewSection } from "@/src/components/booking-review";
 import { ContinuousSlotPicker } from "@/src/components/continuous-slot-picker";
 import { RequireAuth } from "@/src/components/require-auth";
 import { TutorDialog } from "@/src/components/tutor-dialog";
@@ -679,21 +680,6 @@ function BookingDetailContent() {
               </Link>
             </section>
           )}
-          {!isTutorView && (booking.status === "CONFIRMED" || booking.actions.canReview) && (
-            <section
-              aria-label="Review eligibility"
-              className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-800"
-            >
-              <h3 className="font-semibold">
-                {booking.actions.canReview ? "Eligible to review" : "Review not yet eligible"}
-              </h3>
-              <p className="mt-2 text-sm text-zinc-500">
-                {booking.actions.canReview
-                  ? `Your Tutor confirmed completion of your ${booking.subject.name} lesson. This booking is eligible for a review of ${booking.subject.tutor.name} for this subject.`
-                  : "Your Tutor must confirm completion before this booking is eligible for a review."}
-              </p>
-            </section>
-          )}
           {!isTutorView && (
             <StudentRefundStatus booking={booking} busy={busy} onRequest={openRefund} />
           )}
@@ -714,6 +700,13 @@ function BookingDetailContent() {
               </p>
             </section>
           )}
+          <BookingReviewSection
+            booking={booking}
+            onPublished={(review) => {
+              setBooking({ ...booking, review, actions: { ...booking.actions, canReview: false } });
+              setMessage("Thanks! Your review is published.");
+            }}
+          />
           {booking.status === "PENDING_PAYMENT" && booking.payment.expiresAt && (
             <p className="mt-2 text-xs text-zinc-500">
               Payment hold expires {dateTime.format(new Date(booking.payment.expiresAt))}

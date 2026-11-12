@@ -145,8 +145,8 @@ const detailInclude = {
   },
   availabilities: { orderBy: { startedAt: "asc" as const } },
   walletTransactions: { orderBy: { createdAt: "asc" as const } },
-  reviews: { select: { id: true }, take: 1 },
   refundRequest: true,
+  review: { select: { id: true, ratingStars: true, text: true, createdAt: true } },
 } satisfies Prisma.BookingInclude;
 
 type BookingDetailRecord = Prisma.BookingGetPayload<{ include: typeof detailInclude }>;
@@ -281,7 +281,7 @@ export function mapBookingResponse(
     !refundUnderReview;
   const canEditMeetingLink = isTutor && booking.status === "CONFIRMED" && beforeLessonEnd;
   const canJoin = booking.status === "CONFIRMED" && Boolean(effectiveMeetingUrl) && beforeLessonEnd;
-  const canReview = isStudent && booking.status === "COMPLETED" && booking.reviews.length === 0;
+  const canReview = isStudent && booking.status === "COMPLETED" && booking.review === null;
   const earning = booking.walletTransactions.find((entry) => entry.type === "LESSON_EARNING");
   const refundBlockCode = refundBlock(
     {
@@ -322,6 +322,15 @@ export function mapBookingResponse(
     cancelledBy: booking.cancelledBy,
     refundRequest: booking.refundRequest
       ? refundRequestResponse(booking.refundRequest, isStudent)
+      : null,
+    // REV-1: the published review is public, so both participants may see it here.
+    review: booking.review
+      ? {
+          id: booking.review.id,
+          rating: booking.review.ratingStars,
+          comment: booking.review.text,
+          createdAt: booking.review.createdAt.toISOString(),
+        }
       : null,
     student: {
       id: booking.user.id,

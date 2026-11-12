@@ -63,6 +63,8 @@
 
 - For PAY-3, the user confirmed (2026-11-09) a new `refund_requests` table, one request per booking. After PR #224 review (2026-11-10): a Student can file once the paid lesson's scheduled end has passed, with no deadline, including after the Tutor confirms; reasons are Tutor didn't show up, Unsatisfactory or Other (explanation required except for a no-show); every request waits for an admin, with no instant refund. Approval appends a full REFUND linked to the request and sets the booking CANCELLED; the Tutor is notified when a request is filed and cannot confirm completion while it is pending.
 
+- For REV-1, the user confirmed (2026-11-10) adding a UNIQUE key on `reviews.booking_id` so a completed booking has at most one review.
+
 - For CLASS-3 issue #212, Tutor confirmation keeps the net earning pending at the existing 15% fee; it does not credit available balance or write a pending ledger row. Pending earnings include CONFIRMED and COMPLETED bookings without a LESSON_EARNING row. PAY-6 owns clearing and its hold period; CLASS-3 exposes Student review eligibility only, while REV-1 owns submission. No historical reconciliation is required.
 
 ### Open Threads

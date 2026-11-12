@@ -64,6 +64,13 @@ export type BookingRefundRequest = {
   rejectionReason: string | null;
 };
 
+export type BookingReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+};
+
 export type CancellationQuote = {
   token: string;
   generatedAt: string;
@@ -108,6 +115,8 @@ export type Booking = {
   cancellationReason?: string | null;
   cancelledBy?: "STUDENT" | "TUTOR" | null;
   refundRequest?: BookingRefundRequest | null;
+  // REV-1: the published review of this lesson, if the Student wrote one.
+  review?: BookingReview | null;
   student: {
     id: string;
     name: string;

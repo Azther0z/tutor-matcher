@@ -318,7 +318,7 @@ it("shows the completed status to the Student without a Tutor confirmation actio
 
 it.each([
   ["CONFIRMED", false, "Review not yet eligible"],
-  ["COMPLETED", true, "Eligible to review"],
+  ["COMPLETED", true, "Review this lesson"],
 ])("shows review eligibility for the Student's %s booking", async (status, canReview, heading) => {
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
@@ -1054,5 +1054,122 @@ describe("PAY-3 refund requests", () => {
       screen.queryByRole("button", { name: "Confirm session completed" })
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Request a refund" })).not.toBeInTheDocument();
+  });
+});
+
+describe("REV-1 review a completed lesson", () => {
+  const completed = {
+    ...booking,
+    status: "COMPLETED",
+    viewerRole: "STUDENT",
+    earnings: null,
+    review: null,
+    startedAt: "2020-01-10T09:00:00.000Z",
+    endedAt: "2020-01-10T09:30:00.000Z",
+    actions: { ...booking.actions, canCancel: false, canReschedule: false, canReview: true },
+  };
+  const published = {
+    id: "9a1f0e7e-2d6f-4b11-8f67-5b6f3b443e9d",
+    rating: 4,
+    comment: "Clear explanations",
+    createdAt: "2020-01-11T00:00:00.000Z",
+  };
+
+  it("publishes a rating and comment for this tutor and subject", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: completed }) })
+      .mockResolvedValueOnce({ ok: true, status: 201, json: async () => ({ review: published }) });
+    render(<BookingDetailPage />);
+
+    const form = await screen.findByRole("region", { name: "Write a review" });
+    expect(form).toHaveTextContent("published for Alice's English lessons");
+    fireEvent.click(within(form).getByRole("radio", { name: "4 stars" }));
+    fireEvent.change(within(form).getByLabelText(/Comment/), {
+      target: { value: "  Clear explanations  " },
+    });
+    fireEvent.click(within(form).getByRole("button", { name: "Publish review" }));
+
+    const review = await screen.findByRole("region", { name: "Your review" });
+    expect(within(review).getByLabelText("4 out of 5 stars")).toBeInTheDocument();
+    expect(within(review).getByText("Clear explanations")).toBeInTheDocument();
+    expect(within(review).getByRole("link", { name: "English" })).toHaveAttribute(
+      "href",
+      `/tutors/${booking.subject.tutor.id}/${booking.subject.id}`
+    );
+    expect(screen.getByText("Thanks! Your review is published.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Publish review" })).not.toBeInTheDocument();
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      "/api/reviews",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ bookingId, rating: 4, comment: "Clear explanations" }),
+      })
+    );
+  });
+
+  it("asks for a rating before sending anything", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: completed }) });
+    render(<BookingDetailPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Publish review" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Choose a rating from 1 to 5 stars.");
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the server's error when the review is rejected", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: completed }) })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: async () => ({
+          code: "REVIEW_NOT_YOUR_BOOKING",
+          message: "You can only review your own lessons.",
+        }),
+      });
+    render(<BookingDetailPage />);
+    fireEvent.click(await screen.findByRole("radio", { name: "5 stars" }));
+    fireEvent.click(screen.getByRole("button", { name: "Publish review" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "You can only review your own lessons."
+    );
+    expect(screen.getByRole("button", { name: "Publish review" })).toBeEnabled();
+  });
+
+  it("shows an existing review instead of the form", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        booking: {
+          ...completed,
+          review: { ...published, comment: null },
+          actions: { ...completed.actions, canReview: false },
+        },
+      }),
+    });
+    render(<BookingDetailPage />);
+    const review = await screen.findByRole("region", { name: "Your review" });
+    expect(within(review).getByLabelText("4 out of 5 stars")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Write a review" })).not.toBeInTheDocument();
+  });
+
+  it("does not offer the Tutor a review form", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        booking: {
+          ...completed,
+          viewerRole: "TUTOR",
+          earnings: { amount: "85.00", status: "PENDING" },
+          actions: { ...completed.actions, canReview: false },
+        },
+      }),
+    });
+    render(<BookingDetailPage />);
+    expect(await screen.findByText("COMPLETED")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Write a review" })).not.toBeInTheDocument();
   });
 });

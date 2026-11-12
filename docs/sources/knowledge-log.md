@@ -141,3 +141,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/pay-3-review-decisions.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
 - Scope: Requests open after the lesson ends with no deadline, including completed lessons; reasons no-show, unsatisfactory or Other; every request goes to an admin; approval links its REFUND row; the Tutor is notified; shared serializable retry helper
+
+## [2026-11-10] ingest | REV-1 review a completed lesson
+
+- Disposition: Update
+- Raw: docs/sources/rev-1-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Students publish a 1-5 star review with an optional comment from their own completed booking, scoped to its tutor and subject; one review per booking via a UNIQUE `reviews.booking_id`; the stale rating CHECK note corrected
