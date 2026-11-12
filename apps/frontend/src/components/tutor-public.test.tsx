@@ -50,3 +50,36 @@ it.each([null, { id: "another-tutor" }])(
     expect(screen.queryByRole("button", { name: "Reply publicly" })).not.toBeInTheDocument();
   }
 );
+
+describe("REV-3 flagging a review's comment", () => {
+  it("offers Flag on a comment to a signed-in member, and not to a visitor", () => {
+    localStorage.setItem("authToken", "member-token");
+    const view = render(<ReviewList reviews={reviews} />);
+    expect(screen.getByRole("button", { name: "Flag review by Student A." })).toBeInTheDocument();
+
+    localStorage.clear();
+    view.unmount();
+    render(<ReviewList reviews={reviews} />);
+    expect(screen.queryByRole("button", { name: /Flag review/ })).not.toBeInTheDocument();
+  });
+
+  it("shows Flagged on a comment the viewer flagged, and nothing on their own review", () => {
+    localStorage.setItem("authToken", "member-token");
+    render(
+      <ReviewList
+        reviews={[
+          { ...reviews[0], id: "flagged", flaggedByMe: true, isMine: false },
+          { ...reviews[0], id: "mine", reviewer: "Me M.", flaggedByMe: false, isMine: true },
+        ]}
+      />
+    );
+    expect(screen.getByText("Flagged")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Flag review/ })).not.toBeInTheDocument();
+  });
+
+  it("does not offer Flag on a rating-only review", () => {
+    localStorage.setItem("authToken", "member-token");
+    render(<ReviewList reviews={[{ ...reviews[0], text: null }]} />);
+    expect(screen.queryByRole("button", { name: /Flag review/ })).not.toBeInTheDocument();
+  });
+});

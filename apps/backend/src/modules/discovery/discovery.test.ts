@@ -11,6 +11,7 @@ const profileTutorFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 const reviewAggregate = jest.fn<(args: unknown) => Promise<unknown>>();
 const reviewFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const reviewGroupBy = jest.fn<(args: unknown) => Promise<unknown[]>>();
+const reviewFlagFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const availabilityFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 // Assert that public profile reads never invoke booking cleanup or its write transaction.
 const bookingFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
@@ -31,6 +32,7 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
     learningArea: { findMany: learningAreaFindMany },
     tutor: { findUnique: profileTutorFindUnique },
     review: { aggregate: reviewAggregate, findMany: reviewFindMany, groupBy: reviewGroupBy },
+    reviewFlag: { findMany: reviewFlagFindMany },
     availability: { findMany: availabilityFindMany },
     student: { findUnique: studentFindUnique },
     booking: { groupBy: bookingGroupBy },
@@ -594,6 +596,61 @@ describe("DISC-3 tutor profile", () => {
     ]);
   });
 
+  it("tells a signed-in viewer which review comments they flagged and which review is theirs", async () => {
+    const review = (id: string, userId: string) => ({
+      id,
+      userId,
+      ratingStars: 2,
+      text: "Rude comment.",
+      createdAt: new Date("2026-09-01T10:00:00.000Z"),
+      replyText: null,
+      repliedAt: null,
+      replyEditedAt: null,
+      subject: { name: "Calculus" },
+      user: { firstName: "Bob", lastName: "Student" },
+    });
+    reviewFindMany.mockResolvedValue([
+      review("review-1", "someone-else"),
+      review("review-2", "someone-else"),
+      review("review-3", USER_ID),
+    ]);
+    reviewFlagFindMany.mockResolvedValue([{ reviewId: "review-2" }]);
+
+    const response = await request(app)
+      .get(url)
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .expect(200);
+
+    expect(
+      response.body.reviews.map((item: { id: string; flaggedByMe: boolean; isMine: boolean }) => [
+        item.id,
+        item.flaggedByMe,
+        item.isMine,
+      ])
+    ).toEqual([
+      ["review-1", false, false],
+      ["review-2", true, false],
+      ["review-3", false, true],
+    ]);
+    expect(reviewFlagFindMany).toHaveBeenCalledWith({
+      where: { reporterId: USER_ID, reviewId: { in: ["review-1", "review-2", "review-3"] } },
+      select: { reviewId: true },
+    });
+    expect(JSON.stringify(response.body)).not.toContain("someone-else");
+  });
+
+  it("adds no viewer fields and looks up no flags for a visitor or an invalid token", async () => {
+    await request(app).get(url).expect(200);
+    const response = await request(app)
+      .get(url)
+      .set("Authorization", "Bearer not-a-token")
+      .expect(200);
+
+    expect(response.body.reviews[0]).not.toHaveProperty("flaggedByMe");
+    expect(response.body.reviews[0]).not.toHaveProperty("isMine");
+    expect(reviewFlagFindMany).not.toHaveBeenCalled();
+  });
+
   it("is public and shows bio, rating, rates, availability, video and reviews", async () => {
     const response = await request(app).get(url).expect(200);
 
@@ -866,6 +923,21 @@ describe("DISC-4 subject page", () => {
       },
     ]);
     availabilityFindMany.mockResolvedValue([{ startedAt: opening }, { startedAt: following }]);
+  });
+
+  it("tells a signed-in viewer which review comments they flagged", async () => {
+    reviewFlagFindMany.mockResolvedValue([{ reviewId: "review-1" }]);
+
+    const response = await request(app)
+      .get(url)
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .expect(200);
+
+    expect(response.body.reviews[0]).toMatchObject({
+      id: "review-1",
+      flaggedByMe: true,
+      isMine: false,
+    });
   });
 
   it("is public and shows only this subject's details, openings and reviews", async () => {

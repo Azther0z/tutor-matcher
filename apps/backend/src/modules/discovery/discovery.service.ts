@@ -2,6 +2,7 @@ import { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
 import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
 import { mapSubject, subjectSelect } from "../subject/subject.public.ts";
+import { countedReview } from "../review/review-visibility.ts";
 import type { TutorSearchQuery } from "./discovery.schema.ts";
 
 export class TutorNotFoundError extends Error {
@@ -74,13 +75,8 @@ const bangkokDate = (instant: Date) =>
 const bangkokDayStart = (date: string) =>
   new Date(Date.parse(`${date}T00:00:00.000Z`) - BANGKOK_OFFSET_MS);
 
-// PAY-3: an approved refund cancels the lesson, so its review no longer counts publicly.
-// The review row is kept; every public rating, average, list and ranking uses this filter.
-const countedReview = {
-  booking: { status: { not: "CANCELLED" } },
-} as const satisfies Prisma.ReviewWhereInput;
-
 const publicReviewSelect = {
+  userId: true,
   replyEditedAt: true,
   replyText: true,
   repliedAt: true,
@@ -92,10 +88,30 @@ const publicReviewSelect = {
   user: { select: { firstName: true, lastName: true } },
 } as const satisfies Prisma.ReviewSelect;
 
-function publicReview(review: Prisma.ReviewGetPayload<{ select: typeof publicReviewSelect }>) {
+// REV-3: a signed-in viewer also learns which comments they flagged and which review is theirs.
+type ReviewViewer = { id: string; flagged: Set<string> };
+
+async function reviewViewer(viewerId: string | undefined, reviews: Array<{ id: string }>) {
+  if (!viewerId) return undefined;
+  const flags = reviews.length
+    ? await prisma.reviewFlag.findMany({
+        where: { reporterId: viewerId, reviewId: { in: reviews.map(({ id }) => id) } },
+        select: { reviewId: true },
+      })
+    : [];
+  return { id: viewerId, flagged: new Set(flags.map(({ reviewId }) => reviewId)) };
+}
+
+function publicReview(
+  review: Prisma.ReviewGetPayload<{ select: typeof publicReviewSelect }>,
+  viewer?: ReviewViewer
+) {
   const lastInitial = Array.from(review.user.lastName.trim())[0];
   return {
     id: review.id,
+    ...(viewer
+      ? { flaggedByMe: viewer.flagged.has(review.id), isMine: review.userId === viewer.id }
+      : {}),
     reply:
       review.replyText && review.repliedAt
         ? {
@@ -118,7 +134,7 @@ const roundedRating = (average: number | null) =>
 
 // DISC-3: the public profile page. Only a published tutor with an approved current profile
 // is shown; anything else is "unavailable" and leaks none of its details.
-export async function getTutorProfile(tutorId: string, now = new Date()) {
+export async function getTutorProfile(tutorId: string, now = new Date(), viewerId?: string) {
   const tutor = await prisma.tutor.findUnique({
     where: { id: tutorId },
     select: {
@@ -190,6 +206,7 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
 
   const ratingBySubject = new Map(subjectRatings.map((row) => [row.subjectId, row]));
   const nextOpening = new Map(nextOpenings.map((slot) => [slot.subjectId, slot.startedAt]));
+  const viewer = await reviewViewer(viewerId, reviews);
 
   return {
     id: tutor.id,
@@ -219,7 +236,7 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
       startedAt: slot.startedAt.toISOString(),
       subjectIds: slot.availabilitySubjects.map(({ subjectId }) => subjectId).sort(),
     })),
-    reviews: reviews.map(publicReview),
+    reviews: reviews.map((review) => publicReview(review, viewer)),
   };
 }
 
@@ -229,7 +246,8 @@ export async function getTutorSubjectPage(
   tutorId: string,
   subjectId: string,
   date?: string,
-  now = new Date()
+  now = new Date(),
+  viewerId?: string
 ) {
   const subject = await prisma.subject.findFirst({
     where: { id: subjectId, tutorId },
@@ -282,6 +300,7 @@ export async function getTutorSubjectPage(
     }),
   ]);
 
+  const viewer = await reviewViewer(viewerId, reviews);
   const nextOpening = openDays[0]?.firstAt ?? null;
   const day = date ?? bangkokDate(nextOpening ?? now);
   const dayStart = bangkokDayStart(day);
@@ -314,7 +333,7 @@ export async function getTutorSubjectPage(
     date: day,
     openDates: openDays.map((row) => row.date),
     openSlots: daySlots.map((slot) => slot.startedAt.toISOString()),
-    reviews: reviews.map(publicReview),
+    reviews: reviews.map((review) => publicReview(review, viewer)),
   };
 }
 

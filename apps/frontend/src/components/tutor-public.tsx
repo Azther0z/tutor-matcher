@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { getAuthToken, subscribeToAuth } from "@/src/lib/auth";
+import { ReviewFlag } from "@/src/components/review-flag";
 import { ReviewReply } from "@/src/components/review-reply";
 import type { ProfileReview } from "@/src/lib/tutor-profile-api";
 
@@ -86,6 +87,14 @@ export function ReviewList({
             </span>
           </p>
           {review.text && <p className="text-zinc-600 dark:text-zinc-400">{review.text}</p>}
+          {review.text && (
+            <ReviewFlag
+              reviewId={review.id}
+              reviewer={review.reviewer}
+              flagged={review.flaggedByMe}
+              own={review.isMine}
+            />
+          )}
           <ReviewReply reviewId={review.id} reply={review.reply} canReply={mayReply} />
         </li>
       ))}

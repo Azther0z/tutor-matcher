@@ -31,11 +31,18 @@ publicDiscoveryRouter.get(
   getTutorSearch
 );
 // DISC-3: the tutor profile page is public too, like the search that links to it.
-publicDiscoveryRouter.get("/tutors/:id/profile", discoverySearchRateLimiter, getTutorProfileById);
+// REV-3: a signed-in viewer's token adds which review comments they flagged.
+publicDiscoveryRouter.get(
+  "/tutors/:id/profile",
+  discoverySearchRateLimiter,
+  optionalAuth,
+  getTutorProfileById
+);
 // DISC-4: each subject's page is public as well and loads one Bangkok day at a time.
 publicDiscoveryRouter.get(
   "/tutors/:id/subjects/:subjectId",
   discoverySearchRateLimiter,
+  optionalAuth,
   validate(subjectPageQuerySchema, "query"),
   getTutorSubjectPageById
 );
