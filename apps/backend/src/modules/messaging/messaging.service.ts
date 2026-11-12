@@ -42,6 +42,36 @@ export async function getInbox(userId: string) {
   });
 }
 
+const participantSelect = { id: true, firstName: true, lastName: true } as const;
+
+// MSG-1: one entry per person the user has written to or heard from, newest first, so a
+// conversation the user started shows up even before the other person replies.
+export async function getConversations(userId: string) {
+  const messages = await prisma.message.findMany({
+    where: { OR: [{ fromUserId: userId }, { toUserId: userId }] },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    include: { fromUser: { select: participantSelect }, toUser: { select: participantSelect } },
+  });
+
+  const conversations = new Map<
+    string,
+    { userId: string; name: string; lastMessage: string; lastMessageAt: Date; sentByMe: boolean }
+  >();
+  for (const message of messages) {
+    const sentByMe = message.fromUserId === userId;
+    const other = sentByMe ? message.toUser : message.fromUser;
+    if (conversations.has(other.id)) continue;
+    conversations.set(other.id, {
+      userId: other.id,
+      name: `${other.firstName} ${other.lastName}`.trim(),
+      lastMessage: message.message,
+      lastMessageAt: message.createdAt,
+      sentByMe,
+    });
+  }
+  return [...conversations.values()];
+}
+
 export async function getThread(userId: string, otherUserId: string) {
   return prisma.message.findMany({
     where: {
