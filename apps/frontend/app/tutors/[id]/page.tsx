@@ -147,10 +147,33 @@ function ProfileView({ profile }: { profile: TutorProfile }) {
         </div>
       </header>
 
+      <section aria-labelledby="teaching-experience-heading" className={card}>
+        <h2 id="teaching-experience-heading" className="text-xl font-semibold">
+          Teaching experience
+        </h2>
+        <dl className="grid grid-cols-2 gap-4">
+          <div>
+            <dt className="text-sm text-zinc-500">Completed lessons</dt>
+            <dd className="mt-1 text-3xl font-semibold">
+              {profile.teachingStats.completedLessons}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm text-zinc-500">Students taught</dt>
+            <dd className="mt-1 text-3xl font-semibold">{profile.teachingStats.studentsTaught}</dd>
+          </div>
+        </dl>
+        <p className="text-sm leading-6 text-zinc-500">
+          Lessons confirmed complete by the Tutor, across all their subjects. Students are counted
+          once. These activity counts do not measure teaching quality; read the reviews to learn
+          about students’ experiences.
+        </p>
+      </section>
       <AboutSection profile={profile} />
       <SubjectsSection tutorId={profile.id} subjects={profile.subjects} />
       <AvailabilitySection profile={profile} />
       <ReviewsSection
+        tutorId={profile.id}
         reviews={profile.reviews}
         rating={profile.rating}
         count={profile.reviewCount}
@@ -292,10 +315,12 @@ function AvailabilitySection({ profile }: { profile: TutorProfile }) {
 }
 
 function ReviewsSection({
+  tutorId,
   reviews,
   rating,
   count,
 }: {
+  tutorId: string;
   reviews: ProfileReview[];
   rating: number | null;
   count: number;
@@ -308,7 +333,7 @@ function ReviewsSection({
         </h2>
         <Rating rating={rating} count={count} />
       </div>
-      <ReviewList reviews={reviews} />
+      <ReviewList tutorId={tutorId} reviews={reviews} />
     </section>
   );
 }

@@ -6,6 +6,12 @@ import {
   topupListQuerySchema,
   topupReviewSchema,
 } from "../wallet/wallet.schema.ts";
+import { refundsForReview, reviewRefundRequest } from "../refund/refund.controller.ts";
+import {
+  refundIdParamsSchema,
+  refundListQuerySchema,
+  refundReviewSchema,
+} from "../refund/refund.schema.ts";
 import { actOnUser, getUser, listRequests, listUsers, reviewRequest } from "./admin.controller.ts";
 import {
   accountActionSchema,
@@ -29,6 +35,14 @@ adminRouter.post(
   validate(topupIdParamsSchema, "params"),
   validate(topupReviewSchema),
   reviewTopupRequest
+);
+// PAY-3: admins decide refund requests for unsatisfactory lessons.
+adminRouter.get("/refunds", validate(refundListQuerySchema, "query"), refundsForReview);
+adminRouter.post(
+  "/refunds/:id/review",
+  validate(refundIdParamsSchema, "params"),
+  validate(refundReviewSchema),
+  reviewRefundRequest
 );
 // SAFE-1: search accounts and suspend or ban them.
 adminRouter.get("/users", validate(userSearchQuerySchema, "query"), listUsers);

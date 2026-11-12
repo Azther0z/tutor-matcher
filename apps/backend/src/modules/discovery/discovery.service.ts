@@ -74,7 +74,16 @@ const bangkokDate = (instant: Date) =>
 const bangkokDayStart = (date: string) =>
   new Date(Date.parse(`${date}T00:00:00.000Z`) - BANGKOK_OFFSET_MS);
 
+// PAY-3: an approved refund cancels the lesson, so its review no longer counts publicly.
+// The review row is kept; every public rating, average, list and ranking uses this filter.
+const countedReview = {
+  booking: { status: { not: "CANCELLED" } },
+} as const satisfies Prisma.ReviewWhereInput;
+
 const publicReviewSelect = {
+  replyEditedAt: true,
+  replyText: true,
+  repliedAt: true,
   id: true,
   ratingStars: true,
   text: true,
@@ -87,6 +96,14 @@ function publicReview(review: Prisma.ReviewGetPayload<{ select: typeof publicRev
   const lastInitial = Array.from(review.user.lastName.trim())[0];
   return {
     id: review.id,
+    reply:
+      review.replyText && review.repliedAt
+        ? {
+            text: review.replyText,
+            repliedAt: review.repliedAt.toISOString(),
+            ...(review.replyEditedAt ? { editedAt: review.replyEditedAt.toISOString() } : {}),
+          }
+        : null,
     rating: review.ratingStars,
     text: review.text,
     createdAt: review.createdAt.toISOString(),
@@ -126,8 +143,8 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
   // This public read does not mutate bookings. Existing booking flows release expired holds.
   const listedUntil = new Date(now.getTime() + OPENINGS_LISTED_DAYS * DAY_MS);
   const openingsUntil = new Date(now.getTime() + OPENINGS_WINDOW_DAYS * DAY_MS);
-  const reviewWhere = { subject: { tutorId } };
-  const [aggregate, reviews, slots, subjectRatings, nextOpenings] = await Promise.all([
+  const reviewWhere = { subject: { tutorId }, ...countedReview };
+  const [aggregate, reviews, slots, subjectRatings, nextOpenings, [teaching]] = await Promise.all([
     prisma.review.aggregate({ where: reviewWhere, _avg: { ratingStars: true }, _count: true }),
     prisma.review.findMany({
       where: reviewWhere,
@@ -162,6 +179,13 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
         AND slots.started_at > ${now} AND slots.started_at < ${openingsUntil}
       GROUP BY links.subject_id
     `,
+    // Return only the totals, without transferring one row per Student to Node.
+    prisma.$queryRaw<Array<{ lessons: bigint; students: bigint }>>`
+      SELECT COUNT(*) AS lessons, COUNT(DISTINCT bookings.user_id) AS students
+      FROM bookings
+      JOIN subjects ON subjects.subject_id = bookings.subject_id
+      WHERE subjects.tutor_id = ${tutorId}::uuid AND bookings.status = 'COMPLETED'
+    `,
   ]);
 
   const ratingBySubject = new Map(subjectRatings.map((row) => [row.subjectId, row]));
@@ -178,6 +202,10 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
     introVideoUrl: tutor.currentProfileVersion.introVideoUrl,
     rating: roundedRating(aggregate._avg.ratingStars),
     reviewCount: aggregate._count,
+    teachingStats: {
+      completedLessons: Number(teaching?.lessons ?? 0),
+      studentsTaught: Number(teaching?.students ?? 0),
+    },
     subjects: tutor.subjects.map((subject) => {
       const stats = ratingBySubject.get(subject.id);
       return {
@@ -241,9 +269,13 @@ export async function getTutorSubjectPage(
       GROUP BY 1
       ORDER BY 1
     `,
-    prisma.review.aggregate({ where: { subjectId }, _avg: { ratingStars: true }, _count: true }),
+    prisma.review.aggregate({
+      where: { subjectId, ...countedReview },
+      _avg: { ratingStars: true },
+      _count: true,
+    }),
     prisma.review.findMany({
-      where: { subjectId },
+      where: { subjectId, ...countedReview },
       select: publicReviewSelect,
       orderBy: [{ createdAt: "desc" }, { id: "asc" }],
       take: RECENT_REVIEW_LIMIT,
@@ -353,8 +385,10 @@ function matchingSubjects(
   const needsRating = options.includeStats || options.includeRecommendation || !!query.minRating;
   const reviewsJoin = needsRating
     ? Prisma.sql`LEFT JOIN (
-        SELECT subject_id, COUNT(*) AS review_count, AVG(rating_stars)::float8 AS rating
-        FROM reviews GROUP BY subject_id
+        SELECT rv.subject_id, COUNT(*) AS review_count, AVG(rv.rating_stars)::float8 AS rating
+        FROM reviews rv
+        JOIN bookings rb ON rb.booking_id = rv.booking_id AND rb.status <> 'CANCELLED'
+        GROUP BY rv.subject_id
       ) r ON r.subject_id = s.subject_id`
     : Prisma.empty;
   const statsJoin = options.includeStats

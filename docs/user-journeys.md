@@ -213,6 +213,12 @@ and Vimeo play inline, video files use a player, other links open separately). A
 is unpublished, has no approved current profile, or does not exist shows an unavailable
 message and none of their details. Messaging stays available to logged-in visitors.
 
+PROF-5 also shows public Teaching experience: the number of Tutor-confirmed COMPLETED
+Bookings and distinct Students with those completed lessons. Students and visitors can
+use this together with published ratings and reviews to evaluate a Tutor. These activity
+counts do not claim to measure teaching quality. Student identities, individual bookings,
+pending/cancelled status counts and earnings remain private to the Tutor dashboard.
+
 **Subject page (`/tutors/:id/:subjectId`).** The bookable unit. It shows that
 subject's description, hourly rate, format, and next opening; a month calendar; a day
 calendar for the selected day; and **only that subject's reviews**.
@@ -297,7 +303,8 @@ At the scheduled end time, a confirmed lesson appears in the Tutor dashboard's s
 **Needs confirmation** list. The assigned Tutor opens the booking and confirms completion
 in a one-way dialog. The booking then changes to `COMPLETED`. Until the Tutor confirms,
 the booking stays `CONFIRMED` and remains in the list; the system does not complete or
-expire it automatically. CLASS-3 keeps the net earning pending after completion and
+expire it automatically. While the Student's refund request waits for an admin (PAY-3,
+§4), the Tutor cannot confirm it. CLASS-3 keeps the net earning pending after completion and
 exposes review eligibility only to the booking's Student, provided no review exists.
 It does not credit available balance or write a pending ledger entry. PAY-6 owns
 earnings clearing; REV-1 owns the review form and submission. See the
@@ -421,6 +428,40 @@ whose approved defaults are 24 hours and 70%. No late-cancellation tutor share i
 The earlier prototype's 12-hour window is superseded for BOOK-3 by the
 [user confirmation](sources/book-3-policy-confirmation.md); late-cancellation allocation
 remains separate work.
+
+**Refund requests (PAY-3).** Once a paid lesson's scheduled end has passed, the Student can
+ask for a refund from `/bookings/:id`, with no deadline, whether or not the Tutor has
+confirmed the lesson. There is no refund request before the lesson ends; the Student
+cancels instead (BOOK-3). One request is allowed per booking. The Student picks **My tutor
+didn't show up**, **The lesson was unsatisfactory** or **Other**; the last two need an
+explanation (up to 1,000 characters), a no-show may add one. Changed on 2026-11-10 after
+review of PR #224: every request now waits for an admin, because a no-show claim cannot be
+verified, and requests open at the lesson end instead of at payment.
+
+- Every request waits for an admin at `/admin/refunds` (pending first, filter by status).
+  Approval refunds the full paid amount as one REFUND row, links that row to the request
+  and changes the booking from `CONFIRMED` or `COMPLETED` to `CANCELLED`, in one
+  serializable transaction. Rejection needs a reason the Student sees on the booking; a
+  lesson that was completed successfully is rejected this way. Neither decision can be
+  undone, and the Student cannot file again. An admin cannot decide a refund for a lesson
+  they booked or taught.
+- The Tutor is notified with a booking update email when a request is filed, after it is
+  saved; a failed email does not fail the request.
+- While a request waits, the Tutor cannot confirm completion and sees **Refund requested**
+  on the booking, with the reason but not the Student's text. After a rejection the Tutor
+  can confirm it as usual.
+- Approving cancels the booking, so its pending earning disappears and no money is taken
+  from the Tutor (PAY-6 has not released any).
+- A completed lesson may already have a review, and the Student may still publish one while
+  the request waits. Once approval cancels the booking, its review no longer counts: it is
+  left out of tutor and subject ratings, review lists and search ranking, but it is kept,
+  not deleted. A rejected request leaves the review counted. Decided on 2026-11-12 after
+  review of PR #224.
+
+See the [PAY-3 confirmation](sources/pay-3-policy-confirmation.md), the
+[timing change](sources/pay-3-refund-timing-change.md), the
+[PR #224 review decisions](sources/pay-3-review-decisions.md) and the
+[refunded-lesson review decision](sources/pay-3-refunded-review-decision.md).
 
 **Payouts (PAY-7).** A Tutor with available balance can request a payout on
 `/wallet/payout`. Payouts are tutor-only: the server rejects anyone else and the page tells
@@ -551,6 +592,18 @@ inside their own card rather than pushing the page. Subject **Update** links to
 `/settings/tutor`, which owns subject editing. The former `/dashboard/tutor` URL redirects
 to `/dashboard?tab=tutor` for existing links and bookmarks.
 
+PROF-5 adds a teaching overview on the Tutor tab only. Classes this week counts confirmed
+and completed Bookings starting Monday–Sunday in Bangkok time; every Booking is one
+lesson regardless of its number of half-hour slots. Completed lessons require the Tutor's
+completion confirmation. Status counts distinguish confirmed, completed, awaiting payment
+and cancelled bookings. Students counts distinct learners with confirmed or completed
+bookings; Students taught counts those with completed lessons. Returning students have
+completed at least two lessons with the Tutor, and their rate uses Students taught as its
+denominator. No completed learners produces an unavailable rate rather than a misleading
+percentage. Rating and review count cover all published reviews across the Tutor's
+Subjects, while Recent reviews shows the latest five. A Tutor with no reviews is Unrated.
+Failures show an error with Refresh overview, rather than zero statistics.
+
 **Tutor profile (`/settings/tutor`).** Available from the shared Settings navigation as
 **Tutor profile**. Published toggle, photo, display name, headline, bio,
 and intro video URL, then **Verification** (document state and Replace documents), then
@@ -657,15 +710,31 @@ Related stories: US7-1 … US7-3, US2-2.
 
 - A review can only be written **from the reviewer's own completed booking** on
   `/bookings/:id`. Attempting to review a lesson that is not completed is blocked.
-- A review carries a star rating (1–5), an optional headline, and text, and is attached
+- A review carries a star rating (1–5), an optional headline (not built yet), and text, and is attached
   to the tutor **and the subject**.
 - `/tutors/:id/:subjectId` shows only that subject's reviews; `/tutors/:id` shows recent
   reviews across subjects with a link to write one from a completed booking.
 - `/reviews/:tutorId` is a read-only list with a rating distribution summary. It never
   accepts a new review.
-- A tutor may reply publicly to a review; the reply appears under it.
+- A tutor may publish one public reply per review; the reply appears under it on the Tutor
+  profile and Subject page. Only the reviewed Tutor sees reply controls, including on the
+  Tutor dashboard. Replies contain 1–2000 characters after trimming. The reviewed Tutor
+  can edit the existing reply; its original publication date is preserved and an Edited
+  marker shows the most recent edit time to all viewers. A stale edit from another tab
+  is rejected rather than silently overwriting a newer reply. If a review is deleted before submission, the draft is preserved and an
+  error explains that the review no longer exists.
 - Any user can flag a review with a reason, which sends it to admin moderation. A
   duplicate flag from the same user is rejected.
+
+**Implemented by REV-1.** On `/bookings/:id` of their own `COMPLETED` booking, the
+Student picks 1 to 5 stars and may add a comment (up to 2,000 characters), then
+**Publish review**. The review is published at once for that booking's tutor and
+subject, and shows on the subject page. If an approved refund (PAY-3) later cancels the
+booking, its review stops counting in public ratings, review lists and ranking. One review
+per booking; a Student whose lesson is not completed, or who is not the booking's Student, is refused with the reason shown,
+and so is a rating that is not a whole number from 1 to 5. After publishing, the booking
+page shows **Your review** instead of the form. A headline, editing or deleting a review,
+tutor replies, flags and `/reviews/:tutorId` are not part of REV-1.
 
 Related stories: US8-1 … US8-4.
 
@@ -678,7 +747,7 @@ Related stories: US8-1 … US8-4.
 | Tutor applications           | Approve → tutor capability granted · Reject → applicant told why  |
 | Listing and document changes | Approve → public listing updates · Reject → tutor revises         |
 | Flagged reviews and messages | Keep, hide, or remove, with an audit trail                        |
-| Payment disputes and refunds | Resolve, and the wallet ledger reflects the decision              |
+| Payment disputes and refunds | `/admin/refunds`: approve a full refund or reject with a reason   |
 | Policy violations            | Suspend or ban; protected actions are blocked with a reason shown |
 
 Related stories: US9-1 … US9-5.

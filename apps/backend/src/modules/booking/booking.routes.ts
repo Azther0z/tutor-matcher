@@ -25,6 +25,8 @@ import {
   tutorCancelBookingSchema,
   updateMeetingLinkSchema,
 } from "./booking.schema.ts";
+import { requestRefund } from "../refund/refund.controller.ts";
+import { createRefundRequestSchema } from "../refund/refund.schema.ts";
 
 export const bookingRouter = Router();
 // BOOK-1 endpoints: browse availability, create a booking, view it, and pay.
@@ -84,4 +86,11 @@ bookingRouter.post(
   validate(bookingIdParamsSchema, "params"),
   validate(tutorCancelBookingSchema),
   tutorCancel
+);
+// PAY-3: the Student asks for a refund after the lesson's scheduled end.
+bookingRouter.post(
+  "/:id/refund-request",
+  validate(bookingIdParamsSchema, "params"),
+  validate(createRefundRequestSchema),
+  requestRefund
 );

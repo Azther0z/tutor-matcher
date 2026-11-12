@@ -246,6 +246,15 @@ export function Navbar() {
                       Top-up requests
                     </Link>
                   )}
+                  {user.isAdmin && (
+                    <Link
+                      href="/admin/refunds"
+                      onClick={() => setMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
+                    >
+                      Refund requests
+                    </Link>
+                  )}
                   <div className="my-2 border-t border-zinc-700" />
                   <button
                     type="button"

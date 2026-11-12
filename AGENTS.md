@@ -40,6 +40,7 @@
 - Keep `docs/database-schema.md` and `CONTEXT.md` aligned with canonical `docs/user-journeys.md` whenever product behaviour changes.
 
 ### Preferences
+- For REV-2, Tutors can edit their own single public reply; edited replies show an Edited marker. Do not interpret one reply per review as a prohibition on editing its text.
 - For AI-assisted Sprint delivery, assign the entire story, including design integration and automated testing, to one fixed two-person pair.
 - Treat `docs/user-journeys.md` as behavioural authority and `apps/backend/prisma/schema.prisma` as the authority for what the database currently contains.
 - Ask before changing the Prisma schema or modifying database data directly.
@@ -60,6 +61,10 @@
 - Student accounts must continue to see **Become a tutor** in the navbar.
 - CLASS-1 issue #146 depends on closed BOOK-8 #144. Use a platform-owned Google Meet organizer via OAuth, with separate generated and Tutor-provided URLs. Implement Tutor-provided URLs first; Google Meet room creation can follow later. The custom URL wins and survives rescheduling; rescheduling replaces the generated room. Co-host automation and Google-account linking are deferred. Follow the confirmed contract in `docs/adr/0004-google-meet-lesson-links.md`.
 - For CLASS-2 issue #147, a paid and scheduled Booking stays `CONFIRMED` until its scheduled end and remains so indefinitely until the assigned Tutor confirms completion. The Tutor sees ended lessons in a separate **Needs confirmation** list; confirmation is one-way and sets `COMPLETED`. Elapsed time alone never completes a lesson, and CLASS-2 adds no earnings, reviews, or notifications; CLASS-3 handles earnings and reviews.
+
+- For PAY-3, the user confirmed (2026-11-09) a new `refund_requests` table, one request per booking. After PR #224 review (2026-11-10): a Student can file once the paid lesson's scheduled end has passed, with no deadline, including after the Tutor confirms; reasons are Tutor didn't show up, Unsatisfactory or Other (explanation required except for a no-show); every request waits for an admin, with no instant refund. Approval appends a full REFUND linked to the request and sets the booking CANCELLED; the Tutor is notified when a request is filed and cannot confirm completion while it is pending. On 2026-11-12 the user confirmed that a review of a booking cancelled by an approved refund is kept but excluded from public ratings, review lists and search ranking, and that a Student may still review while a request is pending.
+
+- For REV-1, the user confirmed (2026-11-10) adding a UNIQUE key on `reviews.booking_id` so a completed booking has at most one review.
 
 - For CLASS-3 issue #212, Tutor confirmation keeps the net earning pending at the existing 15% fee; it does not credit available balance or write a pending ledger row. Pending earnings include CONFIRMED and COMPLETED bookings without a LESSON_EARNING row. PAY-6 owns clearing and its hold period; CLASS-3 exposes Student review eligibility only, while REV-1 owns submission. No historical reconciliation is required.
 

@@ -22,6 +22,19 @@ enum TopupRequestStatus {
   REJECTED
 }
 
+// PAY-3: why a Student asks for a refund after the lesson's scheduled end.
+enum RefundRequestReason {
+  TUTOR_NO_SHOW
+  UNSATISFACTORY_LESSON
+  OTHER
+}
+
+enum RefundRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum TutorStatus {
   UNPUBLISHED
   PUBLISHED
@@ -103,10 +116,12 @@ model User {
   sentMessages     Message[] @relation("MessagesSent")
   receivedMessages Message[] @relation("MessagesReceived")
 
-  walletTransactions    WalletTransaction[]
-  payoutAccounts        PayoutAccount[]
-  topupRequests         TopupRequest[]      @relation("TopupRequestOwner")
-  reviewedTopupRequests TopupRequest[]      @relation("TopupRequestReviewer")
+  walletTransactions     WalletTransaction[]
+  payoutAccounts         PayoutAccount[]
+  topupRequests          TopupRequest[]      @relation("TopupRequestOwner")
+  reviewedTopupRequests  TopupRequest[]      @relation("TopupRequestReviewer")
+  refundRequests         RefundRequest[]     @relation("RefundRequestOwner")
+  reviewedRefundRequests RefundRequest[]     @relation("RefundRequestReviewer")
 
   reportsFiledAsAdmin Report[] @relation("ReportsHandledByAdmin")
   reportsMade         Report[] @relation("ReportsMadeByReporter")
@@ -298,7 +313,8 @@ model Booking {
 
   availabilities     Availability[]
   walletTransactions WalletTransaction[]
-  reviews            Review[]
+  refundRequest      RefundRequest?
+  review             Review?
 
   @@index([userId])
   @@index([subjectId])
@@ -321,6 +337,9 @@ model WalletTransaction {
   // PAY-7: the account a PAYOUT was sent to; null for every other type.
   payoutAccountId String?        @map("payout_account_id") @db.Uuid
   payoutAccount   PayoutAccount? @relation(fields: [payoutAccountId], references: [id], onDelete: Restrict)
+
+  // PAY-3: the approved refund request that appended this REFUND row.
+  refundRequest RefundRequest?
 
   @@unique([bookingId, type])
   @@index([userId, createdAt])
@@ -349,6 +368,34 @@ model TopupRequest {
   @@map("topup_requests")
 }
 
+// PAY-3: one refund request per booking, filed after the lesson's scheduled end. Every request
+// waits for an admin; approval appends one REFUND row and links it here.
+model RefundRequest {
+  id              String              @id @default(uuid()) @map("refund_request_id") @db.Uuid
+  reason          RefundRequestReason
+  details         String?
+  amount          Decimal             @db.Decimal(12, 2)
+  status          RefundRequestStatus @default(PENDING)
+  createdAt       DateTime            @default(now()) @map("created_at")
+  reviewedAt      DateTime?           @map("reviewed_at")
+  rejectionReason String?             @map("rejection_reason")
+
+  bookingId    String  @unique @map("booking_id") @db.Uuid
+  booking      Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  userId       String  @map("user_id") @db.Uuid
+  user         User    @relation("RefundRequestOwner", fields: [userId], references: [id], onDelete: Restrict)
+  reviewedById String? @map("reviewed_by_id") @db.Uuid
+  reviewedBy   User?   @relation("RefundRequestReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  // The REFUND row an approval appended; NULL while pending or after a rejection.
+  walletTransactionId String?            @unique @map("wallet_transaction_id") @db.Uuid
+  walletTransaction   WalletTransaction? @relation(fields: [walletTransactionId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("refund_requests")
+}
+
 // PROF-7: a Tutor's saved bank accounts for payouts. Removed accounts stay for payout history.
 model PayoutAccount {
   id                String    @id @default(uuid()) @map("payout_account_id") @db.Uuid
@@ -370,10 +417,13 @@ model PayoutAccount {
 }
 
 model Review {
-  id          String   @id @default(uuid()) @map("review_id") @db.Uuid
-  ratingStars Int      @map("rating_stars")
-  text        String?
-  createdAt   DateTime @default(now()) @map("created_at")
+  id            String    @id @default(uuid()) @map("review_id") @db.Uuid
+  ratingStars   Int       @map("rating_stars")
+  text          String?
+  replyText     String?   @map("reply_text")
+  repliedAt     DateTime? @map("replied_at")
+  replyEditedAt DateTime? @map("reply_edited_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
 
   userId String @map("user_id") @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -381,12 +431,12 @@ model Review {
   subjectId String  @map("subject_id") @db.Uuid
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
-  bookingId String  @map("booking_id") @db.Uuid
+  // REV-1: one review per completed booking.
+  bookingId String  @unique @map("booking_id") @db.Uuid
   booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([subjectId])
-  @@index([bookingId])
   @@map("reviews")
 }
 
