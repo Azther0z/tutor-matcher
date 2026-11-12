@@ -120,3 +120,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/pay-1-demo-feedback.md
 - Updated: docs/user-journeys.md, docs/testing.md, deploy/README.md, AGENTS.md Wiki Memory
 - Scope: Scannable PromptPay QR with the amount locked, using `PROMPTPAY_ID` or the placeholder `0000000000`; no cancel or back button on a pending top-up; CANCELLED status and the cancel route removed; the admin page lists every request by default
+
+## [2026-11-10] ingest | REV-1 review a completed lesson
+
+- Disposition: Update
+- Raw: docs/sources/rev-1-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Students publish a 1-5 star review with an optional comment from their own completed booking, scoped to its tutor and subject; one review per booking via a UNIQUE `reviews.booking_id`; the stale rating CHECK note corrected

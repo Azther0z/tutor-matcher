@@ -26,6 +26,7 @@ disagree.
 | PROF-3 implementation decisions and checks      | [Availability change](change/implement-prof-3-availability/proposal.md)                                           |
 | PAY-1 slip top-up decisions                     | [PAY-1 slip evidence](sources/pay-1-slip-topup-confirmation.md)                                                   |
 | PROF-7 payout account decisions                 | [PROF-7 evidence](sources/prof-7-policy-confirmation.md), [tutor-only](sources/prof-7-tutor-only-confirmation.md) |
+| REV-1 review decisions                          | [REV-1 evidence](sources/rev-1-policy-confirmation.md)                                                            |
 | PAY-5 wallet page decisions and checks          | [Wallet page change](change/pay-5-wallet-page/proposal.md)                                                        |
 | CLASS-1 custom URL first slice                  | [Custom meeting URL change](change/class-1-custom-meeting-url/proposal.md)                                        |
 | The database schema and its known gaps          | [`database-schema.md`](database-schema.md)                                                                        |

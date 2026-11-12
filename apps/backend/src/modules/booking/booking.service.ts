@@ -144,7 +144,7 @@ const detailInclude = {
   },
   availabilities: { orderBy: { startedAt: "asc" as const } },
   walletTransactions: { orderBy: { createdAt: "asc" as const } },
-  reviews: { select: { id: true }, take: 1 },
+  review: { select: { id: true, ratingStars: true, text: true, createdAt: true } },
 } satisfies Prisma.BookingInclude;
 
 type BookingDetailRecord = Prisma.BookingGetPayload<{ include: typeof detailInclude }>;
@@ -274,7 +274,7 @@ export function mapBookingResponse(
     isTutor && booking.status === "CONFIRMED" && booking.endedAt.getTime() <= now.getTime();
   const canEditMeetingLink = isTutor && booking.status === "CONFIRMED" && beforeLessonEnd;
   const canJoin = booking.status === "CONFIRMED" && Boolean(effectiveMeetingUrl) && beforeLessonEnd;
-  const canReview = isStudent && booking.status === "COMPLETED" && booking.reviews.length === 0;
+  const canReview = isStudent && booking.status === "COMPLETED" && booking.review === null;
   const earning = booking.walletTransactions.find((entry) => entry.type === "LESSON_EARNING");
 
   return {
@@ -302,6 +302,15 @@ export function mapBookingResponse(
     cancelledAt: booking.cancelledAt?.toISOString() ?? null,
     cancellationReason: booking.cancellationReason,
     cancelledBy: booking.cancelledBy,
+    // REV-1: the published review is public, so both participants may see it here.
+    review: booking.review
+      ? {
+          id: booking.review.id,
+          rating: booking.review.ratingStars,
+          comment: booking.review.text,
+          createdAt: booking.review.createdAt.toISOString(),
+        }
+      : null,
     student: {
       id: booking.user.id,
       name: `${booking.user.firstName} ${booking.user.lastName}`,
