@@ -10,6 +10,7 @@ const countEntries = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const findEntry = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
+    accountAction: { findFirst: async () => null },
     user: { findUnique: findUser },
     booking: { findMany: findBookings },
     walletTransaction: {

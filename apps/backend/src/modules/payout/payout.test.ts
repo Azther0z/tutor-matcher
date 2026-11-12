@@ -16,7 +16,7 @@ const tx = {
 const transaction =
   jest.fn<(callback: (client: typeof tx) => Promise<unknown>) => Promise<unknown>>();
 jest.unstable_mockModule("../../lib/db.ts", () => ({
-  prisma: { $transaction: transaction },
+  prisma: { accountAction: { findFirst: async () => null }, $transaction: transaction },
 }));
 const { app } = await import("../../app.ts");
 const { payoutRateLimiter } = await import("./payout.routes.ts");

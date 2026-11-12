@@ -10,6 +10,7 @@ const tokenUpsert = jest.fn<(args: unknown) => Promise<unknown>>();
 const tokenDeleteMany = jest.fn<(args: unknown) => Promise<unknown>>();
 const tokenFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 const tokenUpdateMany = jest.fn<(args: unknown) => Promise<unknown>>();
+const accountActionFindFirst = jest.fn<(args: unknown) => Promise<unknown>>();
 
 const userId = "11111111-1111-4111-8111-111111111111";
 const otherUserId = "77777777-7777-4777-8777-777777777777";
@@ -41,6 +42,8 @@ const signupBody = {
 
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
+    // SAFE-1: requireAuth checks for a suspension or ban on every request.
+    accountAction: { findFirst: accountActionFindFirst },
     user: { create: userCreate, findUnique: userFindUnique, update: userUpdate },
     passwordResetToken: { deleteMany: tokenDeleteMany, findUnique: tokenFindUnique },
     $transaction: transactionMock,
@@ -56,6 +59,7 @@ jest.unstable_mockModule("../../lib/email.ts", () => ({
   sendMessageNotificationEmail: jest.fn(),
   sendPaymentNotificationEmail: jest.fn(),
   sendTutorRequestRejectedEmail: jest.fn(),
+  sendAccountActionEmail: jest.fn(),
 }));
 
 const { app } = await import("../../app.ts");
@@ -64,6 +68,7 @@ const { GENERIC_PASSWORD_RESET_MESSAGE } = await import("../../lib/password-rese
 const { signAuthToken, verifyAuthToken } = await import("../../lib/jwt.ts");
 
 beforeEach(() => {
+  accountActionFindFirst.mockReset().mockResolvedValue(null);
   userCreate.mockReset();
   userFindUnique.mockReset();
   userUpdate.mockReset();
@@ -207,6 +212,49 @@ describe("POST /api/auth/login", () => {
     });
     expect(res.body.user).not.toHaveProperty("password");
     expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("refuses a suspended or banned account after the password matches, saying why", async () => {
+    userFindUnique.mockResolvedValue({
+      id: userId,
+      email: "ada@example.com",
+      password: await bcrypt.hash("supersecret", 4),
+      firstName: "Ada",
+      lastName: "Lovelace",
+      isAdmin: false,
+    });
+    accountActionFindFirst.mockResolvedValue({ type: "BAN", reason: "Fraud", endsAt: null });
+
+    const res = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "ada@example.com", password: "supersecret" })
+      .expect(403);
+
+    expect(res.body).toEqual({
+      code: "ACCOUNT_RESTRICTED",
+      message: "This account has been banned. Reason: Fraud",
+      restriction: { type: "BAN", reason: "Fraud", endsAt: null },
+    });
+    expect(res.body).not.toHaveProperty("token");
+  });
+
+  it("does not reveal a restriction to a wrong password", async () => {
+    userFindUnique.mockResolvedValue({
+      id: userId,
+      email: "ada@example.com",
+      password: await bcrypt.hash("supersecret", 4),
+      firstName: "Ada",
+      lastName: "Lovelace",
+      isAdmin: false,
+    });
+    accountActionFindFirst.mockResolvedValue({ type: "BAN", reason: "Fraud", endsAt: null });
+
+    const res = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "ada@example.com", password: "wrong-password" })
+      .expect(401);
+
+    expect(res.body).toEqual({ message: "Invalid email or password" });
   });
 
   it("upgrades a valid legacy plaintext password to bcrypt", async () => {

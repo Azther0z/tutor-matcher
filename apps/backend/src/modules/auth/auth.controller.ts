@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { AccountRestrictedError, restrictionResponse } from "../admin/account-actions.ts";
 import {
   signup as signupService,
   login as loginService,
@@ -45,6 +46,10 @@ export async function login(req: Request, res: Response) {
   } catch (error) {
     if (error instanceof InvalidCredentialsError) {
       res.status(401).json({ message: error.message });
+      return;
+    }
+    if (error instanceof AccountRestrictedError) {
+      res.status(403).json(restrictionResponse(error.restriction));
       return;
     }
 

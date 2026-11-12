@@ -6,7 +6,12 @@ const mock = (): Fn => jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const findBooking = mock();
 const createReview = mock();
 jest.unstable_mockModule("../../lib/db.ts", () => ({
-  prisma: { booking: { findUnique: findBooking }, review: { create: createReview } },
+  prisma: {
+    // SAFE-1: requireAuth checks for a suspension or ban on every request.
+    accountAction: { findFirst: async () => null },
+    booking: { findUnique: findBooking },
+    review: { create: createReview },
+  },
 }));
 const { app } = await import("../../app.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");

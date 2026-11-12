@@ -4,7 +4,12 @@ import request from "supertest";
 const findReview = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const createFlag = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 jest.unstable_mockModule("../../lib/db.ts", () => ({
-  prisma: { review: { findFirst: findReview }, reviewFlag: { create: createFlag } },
+  prisma: {
+    // SAFE-1: requireAuth checks for a suspension or ban on every request.
+    accountAction: { findFirst: async () => null },
+    review: { findFirst: findReview },
+    reviewFlag: { create: createFlag },
+  },
 }));
 const { app } = await import("../../app.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");

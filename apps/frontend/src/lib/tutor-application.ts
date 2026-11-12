@@ -97,8 +97,9 @@ export async function tutorApi<T>(path: string, options: RequestInit = {}): Prom
     if (response.status === 401) clearAuthToken();
     const serverMessage = data?.message;
     const message = Array.isArray(serverMessage) ? serverMessage.join(" ") : serverMessage;
+    // SAFE-1: a suspended or banned account is told why, not just that it is refused.
     throw new TutorApiError(
-      response.status === 403
+      response.status === 403 && data?.code !== "ACCOUNT_RESTRICTED"
         ? "You do not have permission to perform this action."
         : typeof message === "string"
           ? message

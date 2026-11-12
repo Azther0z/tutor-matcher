@@ -7,7 +7,14 @@ const booking = { groupBy: mock(), count: mock() };
 const review = { aggregate: mock(), findMany: mock() };
 const reviewFlag = { findMany: mock() };
 jest.unstable_mockModule("../../lib/db.ts", () => ({
-  prisma: { user, booking, review, reviewFlag },
+  prisma: {
+    // SAFE-1: requireAuth checks for a suspension or ban on every request.
+    accountAction: { findFirst: async () => null },
+    user,
+    booking,
+    review,
+    reviewFlag,
+  },
 }));
 const { app } = await import("../../app.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");

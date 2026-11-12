@@ -118,6 +118,7 @@ Guards run before render, not after.
 | `/reviews/:tutorId`        | Read-only review list for a tutor                                       | Requires login |
 | `/admin/tutor-requests`    | Tutor application queue — approve or reject                             | Role: admin    |
 | `/admin/topups`            | Top-up slip queue — approve or reject                                   | Role: admin    |
+| `/admin/users`             | Search accounts, message users, suspend or ban with a reason            | Role: admin    |
 
 ### Access rules
 
@@ -758,6 +759,31 @@ Related stories: US8-1 … US8-4.
 | Policy violations            | Suspend or ban; protected actions are blocked with a reason shown |
 
 Related stories: US9-1 … US9-5.
+
+**User management (`/admin/users`, [SAFE-1 #172](https://github.com/Azther0z/tutor-matcher/issues/172)).**
+The Admin account menu links to **Users**. Search matches every typed word against first
+or last name, case-insensitively, with literal `%` and `_` characters. Results are paged
+20 at a time. **All** includes every account; **Tutor** selects accounts with the approved
+Tutor capability; **Student** selects accounts without that capability. This filter does
+not create separate accounts or remove a Tutor's Student capability.
+
+Selecting an account shows its status and administration history, with **Message** opening
+the existing conversation page. **Suspend** and **Ban** require confirmation and a trimmed
+reason of at most 500 characters. Suspensions last 1, 7 or 30 days; bans have no end date.
+The Admin cannot restrict their own account or another Admin. A duplicate ban is rejected;
+an active suspension cannot be repeated, but can be escalated to a ban.
+
+Each successful action records the Admin, reason, creation time and suspension end, and
+emails the reason to the affected user regardless of notification preferences. Email failure
+is logged without undoing the action. A restricted Tutor's listing becomes unpublished;
+existing bookings remain. Login and protected API requests reject an active restriction with
+its reason, including tokens issued before the action. The frontend checks open sessions
+again on navigation and shows the reason on the login page. A suspension ends at its stored
+end time without a scheduled job; the Tutor must publish their listing again after access
+returns. Public pages remain accessible as public pages.
+
+Search and account-detail failures offer a retry. A pending restriction disables repeat
+submission and dialog dismissal; a failed request preserves the reason for retry.
 
 ---
 
