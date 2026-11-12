@@ -121,6 +121,13 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Updated: docs/user-journeys.md, docs/testing.md, deploy/README.md, AGENTS.md Wiki Memory
 - Scope: Scannable PromptPay QR with the amount locked, using `PROMPTPAY_ID` or the placeholder `0000000000`; no cancel or back button on a pending top-up; CANCELLED status and the cancel route removed; the admin page lists every request by default
 
+## [2026-11-12] ingest | Public Tutor replies and owner editing
+
+- Disposition: Update; one reply per review does not prohibit editing its text
+- Raw: docs/sources/rev-2-schema-confirmation.md, docs/sources/rev-2-editable-reply-confirmation.md
+- Updated: CONTEXT.md, docs/user-journeys.md, docs/database-schema.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: One public reply per review, editable by the reviewed Tutor with a persisted Edited marker. Original publication time is preserved; stale edits and deleted reviews are rejected. No database synchronization was performed.
+
 ## [2026-11-10] ingest | REV-1 review a completed lesson
 
 - Disposition: Update

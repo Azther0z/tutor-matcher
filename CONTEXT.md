@@ -155,7 +155,8 @@ _Avoid_: Chargeback, reversal, credit note
 **Review**:
 A rating and comment a student writes from their own completed booking. A review is
 attached to that tutor and that subject, so subject pages show only their own reviews.
-A tutor may publicly reply to a review once.
+A review has one public Tutor reply. The reviewed Tutor can edit that reply; edited
+replies show an Edited marker. Public Tutor and Subject pages show its current text.
 _Avoid_: Feedback, rating, testimonial
 
 **Conversation**:

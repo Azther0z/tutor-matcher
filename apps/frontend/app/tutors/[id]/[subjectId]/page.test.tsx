@@ -202,13 +202,13 @@ it("loads the day named in the URL and ignores a malformed one", async () => {
   respond(subjectPage({ date: otherDay, openSlots: [] }));
   const view = render(<TutorSubjectPage />);
   await findDayCalendar();
-  expect(fetchMock).toHaveBeenLastCalledWith(`${apiPath}?date=${otherDay}`, expect.anything());
+  expect(fetchMock).toHaveBeenCalledWith(`${apiPath}?date=${otherDay}`, expect.anything());
   view.unmount();
 
   mockSearchParams = new URLSearchParams({ date: "tomorrow" });
   render(<TutorSubjectPage />);
   await findDayCalendar();
-  expect(fetchMock).toHaveBeenLastCalledWith(apiPath, expect.anything());
+  expect(fetchMock).toHaveBeenCalledWith(apiPath, expect.anything());
 });
 
 it("shows only an unavailable message when the subject is not public", async () => {

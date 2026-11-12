@@ -1,3 +1,4 @@
+import type { PublicReviewReply } from "@/src/lib/review-replies-api";
 import type { SubjectOffering } from "@/src/lib/subjects";
 
 // DISC-3: what the public tutor profile page shows.
@@ -10,6 +11,7 @@ export type ProfileSubject = SubjectOffering & {
 export type ProfileOpening = { startedAt: string; subjectIds: string[] };
 
 export type ProfileReview = {
+  reply?: PublicReviewReply | null;
   id: string;
   rating: number;
   text: string | null;
