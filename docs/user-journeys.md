@@ -656,7 +656,7 @@ Related stories: US7-1 … US7-3, US2-2.
 
 - A review can only be written **from the reviewer's own completed booking** on
   `/bookings/:id`. Attempting to review a lesson that is not completed is blocked.
-- A review carries a star rating (1–5), an optional headline, and text, and is attached
+- A review carries a star rating (1–5), an optional headline (not built yet), and text, and is attached
   to the tutor **and the subject**.
 - `/tutors/:id/:subjectId` shows only that subject's reviews; `/tutors/:id` shows recent
   reviews across subjects with a link to write one from a completed booking.
@@ -671,6 +671,15 @@ Related stories: US7-1 … US7-3, US2-2.
   error explains that the review no longer exists.
 - Any user can flag a review with a reason, which sends it to admin moderation. A
   duplicate flag from the same user is rejected.
+
+**Implemented by REV-1.** On `/bookings/:id` of their own `COMPLETED` booking, the
+Student picks 1 to 5 stars and may add a comment (up to 2,000 characters), then
+**Publish review**. The review is published at once for that booking's tutor and
+subject, and shows on the subject page. One review per booking; a Student whose lesson
+is not completed, or who is not the booking's Student, is refused with the reason shown,
+and so is a rating that is not a whole number from 1 to 5. After publishing, the booking
+page shows **Your review** instead of the form. A headline, editing or deleting a review,
+tutor replies, flags and `/reviews/:tutorId` are not part of REV-1.
 
 Related stories: US8-1 … US8-4.
 

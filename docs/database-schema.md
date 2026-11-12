@@ -356,24 +356,27 @@ be edited; the user removes one and adds it again.
 
 ### reviews
 
-| Column          | Type      | Constraints                                            | Notes                                                     |
-| --------------- | --------- | ------------------------------------------------------ | --------------------------------------------------------- |
-| review_id       | UUID      | PK                                                     | Prisma `id`                                               |
-| rating_stars    | INT       | NOT NULL                                               | Review contract: 1–5                                      |
-| text            | TEXT      | NULL                                                   |                                                           |
-| reply_text      | TEXT      | NULL                                                   | One public reply by the reviewed Tutor                    |
-| replied_at      | TIMESTAMP | NULL                                                   | Written together with reply_text                          |
-| reply_edited_at | TIMESTAMP | NULL                                                   | Latest actual text edit; original replied_at is preserved |
-| created_at      | TIMESTAMP | NOT NULL, DEFAULT now()                                |                                                           |
-| user_id         | UUID      | NOT NULL, FK → users.user_id, ON DELETE RESTRICT       | The reviewing student                                     |
-| subject_id      | UUID      | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Makes reviews subject-scoped                              |
-| booking_id      | UUID      | NOT NULL, FK → bookings.booking_id, ON DELETE RESTRICT | Reviews originate from a booking                          |
+| Column          | Type      | Constraints                                                    | Notes                                                     |
+| --------------- | --------- | -------------------------------------------------------------- | --------------------------------------------------------- |
+| review_id       | UUID      | PK                                                             | Prisma `id`                                               |
+| rating_stars    | INT       | NOT NULL                                                       | 1 to 5, enforced by the REV-1 API only                    |
+| text            | TEXT      | NULL                                                           |                                                           |
+| reply_text      | TEXT      | NULL                                                           | One public reply by the reviewed Tutor                    |
+| replied_at      | TIMESTAMP | NULL                                                           | Written together with reply_text                          |
+| reply_edited_at | TIMESTAMP | NULL                                                           | Latest actual text edit; original replied_at is preserved |
+| created_at      | TIMESTAMP | NOT NULL, DEFAULT now()                                        |                                                           |
+| user_id         | UUID      | NOT NULL, FK → users.user_id, ON DELETE RESTRICT               | The reviewing student                                     |
+| subject_id      | UUID      | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT         | Makes reviews subject-scoped                              |
+| booking_id      | UUID      | NOT NULL, UNIQUE, FK → bookings.booking_id, ON DELETE RESTRICT | One review per completed booking (REV-1)                  |
 
-Indexes: `user_id`, `subject_id`, `booking_id`.
+Indexes: `user_id`, `subject_id`; unique `reviews_booking_id_key` on `booking_id`.
 
-The current Prisma schema has no rating CHECK or booking uniqueness constraint. REV-1
-PR #225 owns submission and its proposed unique booking relation; it is not yet merged
-into this work's base. REV-2 adds nullable reply fields; the endpoint enforces Tutor
+REV-1 writes a review only for the Student's own `COMPLETED` booking, copying `subject_id`
+from that booking. The rating range was once a CHECK in a migration file, but the
+project now synchronizes with `prisma db push` and keeps no migrations, so a pushed
+database has no CHECK; the REV-1 API rejects ratings outside whole numbers 1 to 5.
+
+REV-2 adds nullable reply fields; the endpoint enforces Tutor
 ownership. Creation updates only an unreplied row; editing conditionally updates the
 current text and revision timestamp, preventing stale overwrites. Public readers receive
 the latest reply and its Edited timestamp. Database
@@ -424,7 +427,7 @@ enforced somewhere — a constraint, a transaction, or a service-layer check —
 
 | #   | Rule                                                                                    | Enforced today                                                                                                              |
 | --- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| 1   | A rating is between 1 and 5                                                             | ✅ CHECK `reviews_rating_stars_range`                                                                                       |
+| 1   | A rating is between 1 and 5                                                             | ✅ REV-1 API validation; no database CHECK under `db push`                                                                  |
 | 2   | An availability slot is locked to at most one booking                                   | ✅ one nullable booking FK per slot; atomic serializable claims                                                             |
 | 3   | A booking has at most one lesson payment                                                | ✅ `wallet_transactions(booking_id, type)` UNIQUE                                                                           |
 | 4   | A user's subjects, bookings, and payments survive referential deletes                   | ✅ `ON DELETE RESTRICT` across the domain                                                                                   |
@@ -432,7 +435,7 @@ enforced somewhere — a constraint, a transaction, or a service-layer check —
 | 6   | A booking carries a lifecycle status (payment due → confirmed → completed/cancelled)    | ✅ `BookingStatus`; assigned Tutor confirmation sets `COMPLETED`, while earnings and reviews remain separate work           |
 | 7   | Booking price is fixed at creation from the subject rate and the slot count             | ✅ stored total and PROF-6 subject snapshots                                                                                |
 | 8   | A slot cannot be double-sold — the check happens before payment capture                 | ✅ serializable booking claims and payment confirmation                                                                     |
-| 9   | Exactly one review per booking                                                          | ❌ `reviews.booking_id` is not UNIQUE                                                                                       |
+| 9   | Exactly one review per booking                                                          | ✅ REV-1: `reviews.booking_id` UNIQUE                                                                                       |
 | 10  | Each successful movement records one owner, type, positive amount and resulting balance | ✅ shared atomic writer; no status/direction columns                                                                        |
 | 11  | Available balance excludes pending tutor earnings                                       | ✅ no Tutor credit at payment or completion; pending calculation includes unsettled completed bookings; PAY-6 owns clearing |
 | 12  | A tutor cannot open two overlapping slots                                               | ✅ PROF-3: unique Tutor/start plus half-hour grid validation                                                                |
