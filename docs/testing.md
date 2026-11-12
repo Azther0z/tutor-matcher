@@ -34,6 +34,16 @@ apps/backend/
 
 ## Commands
 
+### PROF-5 teaching overview and public experience
+
+`dashboard.test.ts` covers authenticated owner scoping, Student/applicant rejection,
+Booking status counts, distinct and returning Students, the Bangkok Monday boundary,
+all-review averages and zero/unrated states. Dashboard component tests cover lazy Tutor-tab
+loading, loading/error/retry and role-appropriate content. Discovery/profile tests cover
+public completed-lesson and distinct-learner totals without private identities or earnings.
+These tests mock Prisma or fetch; see [PROF-5 verification](change/prof-5-tutor-dashboard-stats/verification.md)
+for the limits and browser preview evidence.
+
 ### REV-2 public Tutor replies
 
 `review-reply.test.ts` covers owner-only reply creation and editing, validation, original

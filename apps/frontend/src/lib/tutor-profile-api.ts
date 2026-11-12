@@ -31,6 +31,7 @@ export type TutorProfile = {
   introVideoUrl: string | null;
   rating: number | null;
   reviewCount: number;
+  teachingStats: { completedLessons: number; studentsTaught: number };
   subjects: ProfileSubject[];
   availability: ProfileOpening[];
   reviews: ProfileReview[];

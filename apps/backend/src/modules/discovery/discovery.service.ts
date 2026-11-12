@@ -138,7 +138,7 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
   const listedUntil = new Date(now.getTime() + OPENINGS_LISTED_DAYS * DAY_MS);
   const openingsUntil = new Date(now.getTime() + OPENINGS_WINDOW_DAYS * DAY_MS);
   const reviewWhere = { subject: { tutorId } };
-  const [aggregate, reviews, slots, subjectRatings, nextOpenings] = await Promise.all([
+  const [aggregate, reviews, slots, subjectRatings, nextOpenings, [teaching]] = await Promise.all([
     prisma.review.aggregate({ where: reviewWhere, _avg: { ratingStars: true }, _count: true }),
     prisma.review.findMany({
       where: reviewWhere,
@@ -173,6 +173,13 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
         AND slots.started_at > ${now} AND slots.started_at < ${openingsUntil}
       GROUP BY links.subject_id
     `,
+    // Return only the totals, without transferring one row per Student to Node.
+    prisma.$queryRaw<Array<{ lessons: bigint; students: bigint }>>`
+      SELECT COUNT(*) AS lessons, COUNT(DISTINCT bookings.user_id) AS students
+      FROM bookings
+      JOIN subjects ON subjects.subject_id = bookings.subject_id
+      WHERE subjects.tutor_id = ${tutorId}::uuid AND bookings.status = 'COMPLETED'
+    `,
   ]);
 
   const ratingBySubject = new Map(subjectRatings.map((row) => [row.subjectId, row]));
@@ -189,6 +196,10 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
     introVideoUrl: tutor.currentProfileVersion.introVideoUrl,
     rating: roundedRating(aggregate._avg.ratingStars),
     reviewCount: aggregate._count,
+    teachingStats: {
+      completedLessons: Number(teaching?.lessons ?? 0),
+      studentsTaught: Number(teaching?.students ?? 0),
+    },
     subjects: tutor.subjects.map((subject) => {
       const stats = ratingBySubject.get(subject.id);
       return {
