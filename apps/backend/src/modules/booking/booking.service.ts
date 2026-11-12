@@ -8,6 +8,7 @@ import { notifyUser } from "../notification/notification.service.ts";
 import { setTimeout, clearTimeout } from "node:timers";
 import { appendWalletMovement, InsufficientWalletBalance } from "../wallet/wallet-ledger.ts";
 import { tutorShare } from "../wallet/wallet.service.ts";
+import { refundBlock, refundRequestResponse } from "../refund/refund.policy.ts";
 import type {
   CancelBookingInput,
   CreateBookingInput,
@@ -144,6 +145,7 @@ const detailInclude = {
   },
   availabilities: { orderBy: { startedAt: "asc" as const } },
   walletTransactions: { orderBy: { createdAt: "asc" as const } },
+  refundRequest: true,
   review: { select: { id: true, ratingStars: true, text: true, createdAt: true } },
 } satisfies Prisma.BookingInclude;
 
@@ -270,12 +272,28 @@ export function mapBookingResponse(
   const canTutorCancel =
     isTutor && ["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) && beforeLesson;
   const beforeLessonEnd = booking.endedAt.getTime() > now.getTime();
+  // PAY-3: while an admin reviews the Student's refund request, the Tutor cannot complete it.
+  const refundUnderReview = booking.refundRequest?.status === "PENDING";
   const canConfirmCompletion =
-    isTutor && booking.status === "CONFIRMED" && booking.endedAt.getTime() <= now.getTime();
+    isTutor &&
+    booking.status === "CONFIRMED" &&
+    booking.endedAt.getTime() <= now.getTime() &&
+    !refundUnderReview;
   const canEditMeetingLink = isTutor && booking.status === "CONFIRMED" && beforeLessonEnd;
   const canJoin = booking.status === "CONFIRMED" && Boolean(effectiveMeetingUrl) && beforeLessonEnd;
   const canReview = isStudent && booking.status === "COMPLETED" && booking.review === null;
   const earning = booking.walletTransactions.find((entry) => entry.type === "LESSON_EARNING");
+  const refundBlockCode = refundBlock(
+    {
+      status: booking.status,
+      endedAt: booking.endedAt,
+      paid: Boolean(transfer),
+      hasRequest: booking.refundRequest !== null,
+    },
+    now
+  );
+  // PAY-3: the Student may ask an admin for a refund once the lesson's scheduled end passes.
+  const canRequestRefund = isStudent && refundBlockCode === null;
 
   return {
     id: booking.id,
@@ -302,6 +320,9 @@ export function mapBookingResponse(
     cancelledAt: booking.cancelledAt?.toISOString() ?? null,
     cancellationReason: booking.cancellationReason,
     cancelledBy: booking.cancelledBy,
+    refundRequest: booking.refundRequest
+      ? refundRequestResponse(booking.refundRequest, isStudent)
+      : null,
     // REV-1: the published review is public, so both participants may see it here.
     review: booking.review
       ? {
@@ -353,6 +374,7 @@ export function mapBookingResponse(
       canJoin,
       canConfirmCompletion,
       canReview,
+      canRequestRefund,
     },
   };
 }
@@ -952,6 +974,11 @@ export async function confirmBookingCompletionAsTutor(userId: string, id: string
           throw new BookingConflictError(
             "BOOKING_NOT_COMPLETABLE",
             "This lesson is not ready for completion confirmation"
+          );
+        if (booking.refundRequest?.status === "PENDING")
+          throw new BookingConflictError(
+            "BOOKING_NOT_COMPLETABLE",
+            "The Student asked for a refund for this lesson. You can confirm it if an admin rejects the request."
           );
 
         const updated = await tx.booking.updateMany({

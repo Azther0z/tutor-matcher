@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
-import { TopupStatusBadge } from "@/src/components/topup-status";
+import { StatusBadge } from "@/src/components/status-badge";
 import { TutorRefreshButton } from "@/src/components/tutor-refresh-button";
 import {
   getTopupsForReview,
@@ -195,7 +195,7 @@ function TopupRow({
           <span className="break-all text-zinc-500">{request.user.email}</span>
         </p>
         <div className="flex items-center gap-2">
-          <TopupStatusBadge status={request.status} />
+          <StatusBadge status={request.status} />
           <span className="font-semibold">฿{amountFormat.format(Number(request.amount))}</span>
         </div>
       </div>

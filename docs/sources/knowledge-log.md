@@ -121,12 +121,26 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Updated: docs/user-journeys.md, docs/testing.md, deploy/README.md, AGENTS.md Wiki Memory
 - Scope: Scannable PromptPay QR with the amount locked, using `PROMPTPAY_ID` or the placeholder `0000000000`; no cancel or back button on a pending top-up; CANCELLED status and the cancel route removed; the admin page lists every request by default
 
-## [2026-11-12] ingest | Public Tutor replies and owner editing
+## [2026-11-09] ingest | PAY-3 refund requests
 
-- Disposition: Update; one reply per review does not prohibit editing its text
-- Raw: docs/sources/rev-2-schema-confirmation.md, docs/sources/rev-2-editable-reply-confirmation.md
-- Updated: CONTEXT.md, docs/user-journeys.md, docs/database-schema.md, docs/index.md, AGENTS.md Wiki Memory
-- Scope: One public reply per review, editable by the reviewed Tutor with a persisted Edited marker. Original publication time is preserved; stale edits and deleted reviews are rejected. No database synchronization was performed.
+- Disposition: Update
+- Raw: docs/sources/pay-3-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: New `refund_requests` table; a Tutor no-show is refunded in full at once, an unsatisfactory lesson goes to `/admin/refunds`; requests open from the lesson end for 3 days, one per booking; completed lessons are rejected with the reason shown; approval cancels the booking and blocks Tutor completion while pending
+
+## [2026-11-10] ingest | PAY-3 refund timing change
+
+- Disposition: Update; supersedes the 3-day window in docs/sources/pay-3-policy-confirmation.md
+- Raw: docs/sources/pay-3-refund-timing-change.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Refund requests open when payment succeeds with no deadline; a Tutor no-show only once the lesson starts, otherwise admin review; completed lessons still rejected; a cancellation closes a pending request
+
+## [2026-11-10] ingest | PAY-3 review decisions (PR #224)
+
+- Disposition: Update; supersedes the instant no-show refund and the any-time-after-payment timing
+- Raw: docs/sources/pay-3-review-decisions.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Requests open after the lesson ends with no deadline, including completed lessons; reasons no-show, unsatisfactory or Other; every request goes to an admin; approval links its REFUND row; the Tutor is notified; shared serializable retry helper
 
 ## [2026-11-10] ingest | REV-1 review a completed lesson
 
@@ -134,6 +148,13 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/rev-1-policy-confirmation.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
 - Scope: Students publish a 1-5 star review with an optional comment from their own completed booking, scoped to its tutor and subject; one review per booking via a UNIQUE `reviews.booking_id`; the stale rating CHECK note corrected
+
+## [2026-11-12] ingest | PAY-3 refunded-lesson reviews (PR #224)
+
+- Disposition: Update
+- Raw: docs/sources/pay-3-refunded-review-decision.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Reviews of bookings cancelled by an approved refund are kept but left out of public ratings, review lists and search ranking; a Student may still review while a request is pending
 
 ## [2026-11-12] compile | Tutor overview and public evaluation
 

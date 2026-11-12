@@ -302,7 +302,8 @@ At the scheduled end time, a confirmed lesson appears in the Tutor dashboard's s
 **Needs confirmation** list. The assigned Tutor opens the booking and confirms completion
 in a one-way dialog. The booking then changes to `COMPLETED`. Until the Tutor confirms,
 the booking stays `CONFIRMED` and remains in the list; the system does not complete or
-expire it automatically. CLASS-3 keeps the net earning pending after completion and
+expire it automatically. While the Student's refund request waits for an admin (PAY-3,
+§4), the Tutor cannot confirm it. CLASS-3 keeps the net earning pending after completion and
 exposes review eligibility only to the booking's Student, provided no review exists.
 It does not credit available balance or write a pending ledger entry. PAY-6 owns
 earnings clearing; REV-1 owns the review form and submission. See the
@@ -426,6 +427,40 @@ whose approved defaults are 24 hours and 70%. No late-cancellation tutor share i
 The earlier prototype's 12-hour window is superseded for BOOK-3 by the
 [user confirmation](sources/book-3-policy-confirmation.md); late-cancellation allocation
 remains separate work.
+
+**Refund requests (PAY-3).** Once a paid lesson's scheduled end has passed, the Student can
+ask for a refund from `/bookings/:id`, with no deadline, whether or not the Tutor has
+confirmed the lesson. There is no refund request before the lesson ends; the Student
+cancels instead (BOOK-3). One request is allowed per booking. The Student picks **My tutor
+didn't show up**, **The lesson was unsatisfactory** or **Other**; the last two need an
+explanation (up to 1,000 characters), a no-show may add one. Changed on 2026-11-10 after
+review of PR #224: every request now waits for an admin, because a no-show claim cannot be
+verified, and requests open at the lesson end instead of at payment.
+
+- Every request waits for an admin at `/admin/refunds` (pending first, filter by status).
+  Approval refunds the full paid amount as one REFUND row, links that row to the request
+  and changes the booking from `CONFIRMED` or `COMPLETED` to `CANCELLED`, in one
+  serializable transaction. Rejection needs a reason the Student sees on the booking; a
+  lesson that was completed successfully is rejected this way. Neither decision can be
+  undone, and the Student cannot file again. An admin cannot decide a refund for a lesson
+  they booked or taught.
+- The Tutor is notified with a booking update email when a request is filed, after it is
+  saved; a failed email does not fail the request.
+- While a request waits, the Tutor cannot confirm completion and sees **Refund requested**
+  on the booking, with the reason but not the Student's text. After a rejection the Tutor
+  can confirm it as usual.
+- Approving cancels the booking, so its pending earning disappears and no money is taken
+  from the Tutor (PAY-6 has not released any).
+- A completed lesson may already have a review, and the Student may still publish one while
+  the request waits. Once approval cancels the booking, its review no longer counts: it is
+  left out of tutor and subject ratings, review lists and search ranking, but it is kept,
+  not deleted. A rejected request leaves the review counted. Decided on 2026-11-12 after
+  review of PR #224.
+
+See the [PAY-3 confirmation](sources/pay-3-policy-confirmation.md), the
+[timing change](sources/pay-3-refund-timing-change.md), the
+[PR #224 review decisions](sources/pay-3-review-decisions.md) and the
+[refunded-lesson review decision](sources/pay-3-refunded-review-decision.md).
 
 **Payouts (PAY-7).** A Tutor with available balance can request a payout on
 `/wallet/payout`. Payouts are tutor-only: the server rejects anyone else and the page tells
@@ -693,8 +728,9 @@ Related stories: US7-1 … US7-3, US2-2.
 **Implemented by REV-1.** On `/bookings/:id` of their own `COMPLETED` booking, the
 Student picks 1 to 5 stars and may add a comment (up to 2,000 characters), then
 **Publish review**. The review is published at once for that booking's tutor and
-subject, and shows on the subject page. One review per booking; a Student whose lesson
-is not completed, or who is not the booking's Student, is refused with the reason shown,
+subject, and shows on the subject page. If an approved refund (PAY-3) later cancels the
+booking, its review stops counting in public ratings, review lists and ranking. One review
+per booking; a Student whose lesson is not completed, or who is not the booking's Student, is refused with the reason shown,
 and so is a rating that is not a whole number from 1 to 5. After publishing, the booking
 page shows **Your review** instead of the form. A headline, editing or deleting a review,
 tutor replies, flags and `/reviews/:tutorId` are not part of REV-1.
@@ -710,7 +746,7 @@ Related stories: US8-1 … US8-4.
 | Tutor applications           | Approve → tutor capability granted · Reject → applicant told why  |
 | Listing and document changes | Approve → public listing updates · Reject → tutor revises         |
 | Flagged reviews and messages | Keep, hide, or remove, with an audit trail                        |
-| Payment disputes and refunds | Resolve, and the wallet ledger reflects the decision              |
+| Payment disputes and refunds | `/admin/refunds`: approve a full refund or reject with a reason   |
 | Policy violations            | Suspend or ban; protected actions are blocked with a reason shown |
 
 Related stories: US9-1 … US9-5.

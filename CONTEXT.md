@@ -152,6 +152,13 @@ A credit returned to a student's wallet when an eligible booking is cancelled or
 dispute is resolved in the student's favour.
 _Avoid_: Chargeback, reversal, credit note
 
+**Refund Request**:
+A Student's request, after a paid lesson's scheduled end, for the full paid amount back.
+The reason is a Tutor no-show, an unsatisfactory lesson or another problem. An admin
+approves every request or rejects it with a reason; approval refunds and cancels the
+booking. One per booking.
+_Avoid_: Dispute ticket, claim, chargeback request
+
 **Review**:
 A rating and comment a student writes from their own completed booking. A review is
 attached to that tutor and that subject, so subject pages show only their own reviews.

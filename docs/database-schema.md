@@ -260,9 +260,9 @@ first subject edit. Values overwritten before this feature are not reconstructib
 
 BOOK-4 also adds a nullable column to `bookings` saying who cancelled:
 
-| Column       | Type               | Purpose                                                      |
-| ------------ | ------------------ | ------------------------------------------------------------ |
-| cancelled_by | BookingCancelledBy | `STUDENT` or `TUTOR`; NULL for payment-hold expiry and older |
+| Column       | Type               | Purpose                                                                                 |
+| ------------ | ------------------ | --------------------------------------------------------------------------------------- |
+| cancelled_by | BookingCancelledBy | `STUDENT` or `TUTOR`; NULL for payment-hold expiry, an approved PAY-3 refund, and older |
 
 ### wallet_transactions
 
@@ -331,6 +331,32 @@ Partial unique index `topup_requests_one_pending_per_user` on `(user_id) WHERE s
 in one serializable transaction, so a request is credited at most once. Rows are never
 deleted.
 
+### refund_requests
+
+PAY-3 keeps a Student's request for a refund after a lesson's scheduled end.
+
+| Column                | Type                | Constraints                                                | Meaning                                               |
+| --------------------- | ------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| refund_request_id     | UUID                | PK                                                         | Prisma `id`                                           |
+| reason                | RefundRequestReason | NOT NULL                                                   | `TUTOR_NO_SHOW`, `UNSATISFACTORY_LESSON` or `OTHER`   |
+| details               | TEXT                | NULL                                                       | Student's explanation; required unless a no-show      |
+| amount                | DECIMAL(12,2)       | NOT NULL                                                   | The booking's LESSON_PAYMENT amount, refunded in full |
+| status                | RefundRequestStatus | NOT NULL, DEFAULT PENDING                                  | PENDING, APPROVED or REJECTED                         |
+| created_at            | TIMESTAMP           | NOT NULL, DEFAULT now()                                    | When the Student filed it                             |
+| reviewed_at           | TIMESTAMP           | NULL                                                       | When it was approved or rejected                      |
+| rejection_reason      | TEXT                | NULL                                                       | Required on rejection, shown to the Student           |
+| booking_id            | UUID                | NOT NULL, UNIQUE, FK → bookings, ON DELETE RESTRICT        | One request per booking                               |
+| user_id               | UUID                | NOT NULL, FK → users, ON DELETE RESTRICT                   | The Student                                           |
+| reviewed_by_id        | UUID                | NULL, FK → users, ON DELETE RESTRICT                       | Deciding admin; NULL while pending                    |
+| wallet_transaction_id | UUID                | NULL, UNIQUE, FK → wallet_transactions, ON DELETE RESTRICT | The REFUND row an approval appended                   |
+
+Indexes: `(user_id, created_at)` and `(status, created_at)`. Every request is filed
+PENDING after the lesson's scheduled end. Approval appends one REFUND row for `amount`,
+stores its id in `wallet_transaction_id` and changes the booking from `CONFIRMED` or
+`COMPLETED` to `CANCELLED` in the same serializable transaction; the `(booking_id, type)`
+unique key on `wallet_transactions` also limits a booking to one REFUND. Rows are never
+deleted.
+
 ### payout_accounts
 
 PROF-7 adds each Tutor's saved Thai bank accounts for payouts. Only Tutors can manage them
@@ -372,9 +398,12 @@ be edited; the user removes one and adds it again.
 Indexes: `user_id`, `subject_id`; unique `reviews_booking_id_key` on `booking_id`.
 
 REV-1 writes a review only for the Student's own `COMPLETED` booking, copying `subject_id`
-from that booking. The rating range was once a CHECK in a migration file, but the
-project now synchronizes with `prisma db push` and keeps no migrations, so a pushed
-database has no CHECK; the REV-1 API rejects ratings outside whole numbers 1 to 5.
+from that booking. Public ratings, review lists and search ranking count only reviews whose
+booking is not `CANCELLED`, so a lesson cancelled by an approved PAY-3 refund keeps its
+review row but no longer affects the Tutor's rating. The rating range was once a CHECK in
+a migration file, but the project now synchronizes with `prisma db push` and keeps no
+migrations, so a pushed database has no CHECK; the REV-1 API rejects ratings outside whole
+numbers 1 to 5.
 
 REV-2 adds nullable reply fields; the endpoint enforces Tutor
 ownership. Creation updates only an unreplied row; editing conditionally updates the
@@ -416,6 +445,8 @@ Indexes: `admin_user_id`, `reporter_user_id`, `reported_user_id`.
 | `TutorProfileVersionStatus` | `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED`          |
 | `WalletTransactionType`     | `TOP_UP`, `LESSON_PAYMENT`, `LESSON_EARNING`, `REFUND`, `PAYOUT` |
 | `BookingCancelledBy`        | `STUDENT`, `TUTOR`                                               |
+| `RefundRequestReason`       | `TUTOR_NO_SHOW`, `UNSATISFACTORY_LESSON`, `OTHER`                |
+| `RefundRequestStatus`       | `PENDING`, `APPROVED`, `REJECTED`                                |
 
 ---
 
