@@ -490,6 +490,19 @@ opening at the first open time, Book this subject below the calendar with the su
 (and the login hand-off), the disabled button on an empty day, calendar selection through the
 URL, the back link, the unavailable state and retry.
 
+## SAFE-4 acceptance coverage
+
+SAFE-4's criterion ("a dispute submitted for a payment, resolved by an admin, is reflected in
+the wallet ledger") is met by the PAY-3 refund requests. `dispute-ledger.integration.test.ts`
+(opt-in, on its own `tutor_matcher_safe4_test` database) checks it on the ledger through the real
+API: approval appends one `REFUND` row for the paid amount, with the matching `balanceAfter`,
+linked to the dispute and the cancelled booking and shown in the Student's
+`/api/wallet/transactions`, while earlier rows stay byte-for-byte the same; rejection leaves every
+row and the balance unchanged and records the deciding Admin, time and reason; and a resolved
+dispute cannot be resolved again, so there is still one `REFUND`. PAY-3's own suites cover the
+rest: `refund.integration.test.ts` (filing, the admin queue, simultaneous approvals refunding
+once, an admin refused for their own lesson), `refund.test.ts` and the `/admin/refunds` page test.
+
 ## REV-3 acceptance coverage
 
 Review tests cover `POST /api/reviews/:id/flags`: the trimmed reason is stored for the signed-in
