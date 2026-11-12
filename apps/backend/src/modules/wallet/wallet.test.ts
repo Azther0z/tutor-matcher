@@ -14,7 +14,13 @@ const tx = {
 const transaction =
   jest.fn<(callback: (client: typeof tx) => Promise<unknown>) => Promise<unknown>>();
 jest.unstable_mockModule("../../lib/db.ts", () => ({
-  prisma: { user: { findUnique: findUser }, topupRequest, $transaction: transaction },
+  prisma: {
+    // SAFE-1: requireAuth checks for a suspension or ban on every request.
+    accountAction: { findFirst: async () => null },
+    user: { findUnique: findUser },
+    topupRequest,
+    $transaction: transaction,
+  },
 }));
 const { app } = await import("../../app.ts");
 const { topupRateLimiter } = await import("./wallet.routes.ts");

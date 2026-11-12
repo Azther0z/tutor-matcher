@@ -7,6 +7,8 @@ const messageFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
+    // SAFE-1: requireAuth checks for a suspension or ban on every request.
+    accountAction: { findFirst: async () => null },
     user: { findUnique: userFindUnique },
     message: { create: messageCreate, findMany: messageFindMany },
   },

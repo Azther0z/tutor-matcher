@@ -359,6 +359,38 @@ the two-thumb price slider and its rounding, half-star rating, paging, the no-re
 its broadening suggestions, Clear filters, retry after an error, and the learning-area picker in
 the subject form.
 
+## SAFE-1 acceptance coverage
+
+`user-management.test.ts` covers name search, role filters, paging, literal wildcard
+characters, input validation, live Admin permissions, history, confirmation reasons,
+suspension lengths, duplicate bans, protected Admin accounts, Tutor unpublishing and
+best-effort email delivery. Auth tests verify that an existing valid token and a new login
+are refused with the restriction reason. Email tests check the reason, HTML escaping and
+the suspension end in the outgoing notice without contacting an email provider.
+
+Frontend account-management tests cover search, selection, the Message link, confirmation,
+history and row updates, duplicate-ban errors, retry after failed reads or writes, and
+repeat-submit prevention. Session tests cover navigation checks, restriction reasons and
+ignoring stale checks after another navigation or a different sign-in. Existing navbar,
+wallet and login suites provide regressions.
+
+The PostgreSQL suite refuses any target other than `tutor_matcher_safe1_test`, role `safe1`,
+on `127.0.0.1:55435`. Use a separately authorized disposable database synchronized with
+`schema.prisma`; it creates its own fixtures and deletes only their recorded IDs. It covers
+login/session blocking, expiry including the exact boundary, concurrent bans, suspension
+escalation, audit persistence despite email failure, Admin authorization, messaging and
+literal name searches. Account emails are mocked, so no real notice is sent.
+
+```bash
+npm --prefix apps/backend test -- --runInBand user-management.test.ts auth.test.ts email.test.ts
+npm --prefix apps/frontend test -- --runInBand --runTestsByPath app/admin/users/page.test.tsx src/components/auth-provider.test.tsx src/components/navbar.test.tsx
+
+# Only after authorizing and preparing the dedicated disposable database:
+DATABASE_URL=postgresql://safe1:safe1-test-only@127.0.0.1:55435/tutor_matcher_safe1_test \
+RUN_DATABASE_INTEGRATION=true EMAIL_DELIVERY_MODE=log \
+npm --prefix apps/backend test -- --runInBand user-management.integration.test.ts
+```
+
 ## SAFE-3 acceptance coverage
 
 A database integration test submits a listing and document change (bio and identification

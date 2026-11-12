@@ -13,28 +13,29 @@ disagree.
 
 ## Where to find things
 
-| You need...                                     | Go to                                                                                                             |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Product behaviour (routes, rules, flows)        | [`user-journeys.md`](user-journeys.md) — the source of truth                                                      |
-| Product goals, roles, and scope                 | [`user-journeys.md`](user-journeys.md#overview-and-scope)                                                         |
-| What work is planned or in progress             | The GitHub issues and Project board                                                                               |
-| CLASS-1 accepted lesson-link decision           | [Google Meet lesson links ADR](adr/0004-google-meet-lesson-links.md) — confirmed contract and validation gates    |
-| PAY-1 ledger implementation and safe rollout    | [Wallet ledger change](change/pay-1-wallet-ledger/proposal.md)                                                    |
-| DISC-3 review fixes and verification            | [Tutor profile review fixes](change/disc-3-review-fixes/proposal.md)                                              |
-| DISC-2 recommendation implementation and checks | [Tutor recommendations change](change/implement-disc-2-recommendations/proposal.md)                               |
-| PROF-6 implementation decisions and checks      | [Subject management change](change/implement-prof-6-subjects/proposal.md)                                         |
-| PROF-3 implementation decisions and checks      | [Availability change](change/implement-prof-3-availability/proposal.md)                                           |
-| PAY-1 slip top-up decisions                     | [PAY-1 slip evidence](sources/pay-1-slip-topup-confirmation.md)                                                   |
-| PROF-7 payout account decisions                 | [PROF-7 evidence](sources/prof-7-policy-confirmation.md), [tutor-only](sources/prof-7-tutor-only-confirmation.md) |
-| PAY-5 wallet page decisions and checks          | [Wallet page change](change/pay-5-wallet-page/proposal.md)                                                        |
-| CLASS-1 custom URL first slice                  | [Custom meeting URL change](change/class-1-custom-meeting-url/proposal.md)                                        |
-| The database schema and its known gaps          | [`database-schema.md`](database-schema.md)                                                                        |
-| Tech stack, repo layout, deployment             | [`../README.md`](../README.md#architecture)                                                                       |
-| How to run and write tests                      | [`testing.md`](testing.md)                                                                                        |
-| Why a technical decision was made               | [`adr/`](adr/)                                                                                                    |
-| Setup and common commands                       | [`../README.md`](../README.md)                                                                                    |
-| Domain vocabulary                               | [`CONTEXT.md`](../CONTEXT.md)                                                                                     |
-| Raw evidence a doc above was built from         | [`sources/`](sources/) — read-only, see below                                                                     |
+| You need...                                     | Go to                                                                                                                                                                           |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Product behaviour (routes, rules, flows)        | [`user-journeys.md`](user-journeys.md) — the source of truth                                                                                                                    |
+| Product goals, roles, and scope                 | [`user-journeys.md`](user-journeys.md#overview-and-scope)                                                                                                                       |
+| What work is planned or in progress             | The GitHub issues and Project board                                                                                                                                             |
+| SAFE-1 account management and restrictions      | [Admin journeys](user-journeys.md#10--admin-trust-and-safety), [account actions](database-schema.md#account_actions), [acceptance tests](testing.md#safe-1-acceptance-coverage) |
+| CLASS-1 accepted lesson-link decision           | [Google Meet lesson links ADR](adr/0004-google-meet-lesson-links.md) — confirmed contract and validation gates                                                                  |
+| PAY-1 ledger implementation and safe rollout    | [Wallet ledger change](change/pay-1-wallet-ledger/proposal.md)                                                                                                                  |
+| DISC-3 review fixes and verification            | [Tutor profile review fixes](change/disc-3-review-fixes/proposal.md)                                                                                                            |
+| DISC-2 recommendation implementation and checks | [Tutor recommendations change](change/implement-disc-2-recommendations/proposal.md)                                                                                             |
+| PROF-6 implementation decisions and checks      | [Subject management change](change/implement-prof-6-subjects/proposal.md)                                                                                                       |
+| PROF-3 implementation decisions and checks      | [Availability change](change/implement-prof-3-availability/proposal.md)                                                                                                         |
+| PAY-1 slip top-up decisions                     | [PAY-1 slip evidence](sources/pay-1-slip-topup-confirmation.md)                                                                                                                 |
+| PROF-7 payout account decisions                 | [PROF-7 evidence](sources/prof-7-policy-confirmation.md), [tutor-only](sources/prof-7-tutor-only-confirmation.md)                                                               |
+| PAY-5 wallet page decisions and checks          | [Wallet page change](change/pay-5-wallet-page/proposal.md)                                                                                                                      |
+| CLASS-1 custom URL first slice                  | [Custom meeting URL change](change/class-1-custom-meeting-url/proposal.md)                                                                                                      |
+| The database schema and its known gaps          | [`database-schema.md`](database-schema.md)                                                                                                                                      |
+| Tech stack, repo layout, deployment             | [`../README.md`](../README.md#architecture)                                                                                                                                     |
+| How to run and write tests                      | [`testing.md`](testing.md)                                                                                                                                                      |
+| Why a technical decision was made               | [`adr/`](adr/)                                                                                                                                                                  |
+| Setup and common commands                       | [`../README.md`](../README.md)                                                                                                                                                  |
+| Domain vocabulary                               | [`CONTEXT.md`](../CONTEXT.md)                                                                                                                                                   |
+| Raw evidence a doc above was built from         | [`sources/`](sources/) — read-only, see below                                                                                                                                   |
 
 ## What is authoritative
 

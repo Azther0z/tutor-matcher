@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { useAuth } from "@/src/components/auth-provider";
 import { setAuthToken } from "@/src/lib/auth";
 
 function explicitNextPath(next: string | null) {
@@ -48,6 +49,9 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // SAFE-1: a session ended by a suspension or ban lands here with the reason.
+  const { notice } = useAuth();
+  const shownError = error ?? notice;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -127,9 +131,9 @@ function LoginForm() {
           </Link>
         </div>
 
-        {error && (
+        {shownError && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-            {error}
+            {shownError}
           </p>
         )}
 

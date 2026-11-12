@@ -18,6 +18,7 @@ const {
   sendPasswordResetEmail,
   sendTutorRequestRejectedEmail,
   sendBookingNotificationEmail,
+  sendAccountActionEmail,
 } = await import("./email.ts");
 const { PASSWORD_RESET_TTL_MINUTES } = await import("./password-reset.ts");
 
@@ -82,6 +83,54 @@ describe("email delivery mode configuration", () => {
   it("prefers an explicitly configured mode", () => {
     expect(resolveEmailDeliveryMode("development", "resend")).toBe("resend");
     expect(resolveEmailDeliveryMode("production", "log")).toBe("log");
+  });
+});
+
+describe("sendAccountActionEmail", () => {
+  it.each(["BAN", "SUSPEND"] as const)(
+    "sends an escaped %s reason to the account owner",
+    async (type) => {
+      Object.assign(env, {
+        emailDeliveryMode: "resend",
+        resendApiKey: "re_test_key",
+        resendFromEmail: "Tutor Matcher <onboarding@resend.dev>",
+        frontendUrlConfigured: true,
+      });
+      resendSend.mockResolvedValue({ id: "account-notice" });
+      await sendAccountActionEmail({
+        to: "student@example.com",
+        firstName: "<Bob>",
+        type,
+        reason: '<script>spam</script> & "abuse"',
+        until: type === "SUSPEND" ? "20 Nov 2026, 14:00 (Bangkok time)" : null,
+      });
+      expect(resendSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: ["student@example.com"],
+          subject: `Your Tutor Matcher account has been ${type === "BAN" ? "banned" : "suspended"}`,
+          html: expect.stringContaining(
+            "&lt;script&gt;spam&lt;/script&gt; &amp; &quot;abuse&quot;"
+          ),
+          text: expect.stringContaining('<script>spam</script> & "abuse"'),
+        })
+      );
+      const payload = resendSend.mock.calls[0][0] as { html: string; text: string };
+      expect(payload.html).toContain("&lt;Bob&gt;");
+      if (type === "SUSPEND") expect(payload.text).toContain("20 Nov 2026, 14:00 (Bangkok time)");
+    }
+  );
+
+  it("logs the account notice without sending email in log mode", async () => {
+    const log = jest.spyOn(console, "info").mockImplementation(() => {});
+    await sendAccountActionEmail({
+      to: "student@example.com",
+      firstName: "Bob",
+      type: "BAN",
+      reason: "Fraud",
+      until: null,
+    });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("Reason: Fraud"));
+    expect(resendSend).not.toHaveBeenCalled();
   });
 });
 

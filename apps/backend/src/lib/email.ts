@@ -118,6 +118,15 @@ type TutorRequestRejectedEmail = {
   hasTutor: boolean;
 };
 
+type AccountActionEmail = {
+  to: string;
+  firstName: string;
+  type: "SUSPEND" | "BAN";
+  reason: string;
+  // The suspension end, already formatted for the reader; null for a ban.
+  until: string | null;
+};
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -246,5 +255,40 @@ export async function sendTutorRequestRejectedEmail({
       text: `Hi ${firstName},\n\nAn admin reviewed your tutor request and did not approve it.\n\nReason: ${reason}\n\nRevise and submit again: ${reviseUrl}`,
     },
     "Could not send tutor request notification email"
+  );
+}
+
+// SAFE-1: account notices go out whatever the Student's notification preferences are.
+export async function sendAccountActionEmail({
+  to,
+  firstName,
+  type,
+  reason,
+  until,
+}: AccountActionEmail) {
+  const summary =
+    type === "BAN"
+      ? "An admin has banned your Tutor Matcher account."
+      : `An admin has suspended your Tutor Matcher account until ${until}.`;
+
+  if (getEmailDeliveryMode() === "log") {
+    console.info(`[notification:account] ${to}: ${summary} Reason: ${reason}`);
+    return;
+  }
+
+  await deliverEmail(
+    {
+      from: env.resendFromEmail,
+      to: [to],
+      subject:
+        type === "BAN"
+          ? "Your Tutor Matcher account has been banned"
+          : "Your Tutor Matcher account has been suspended",
+      html: `<p>Hi ${escapeHtml(firstName)},</p>
+      <p>${escapeHtml(summary)}</p>
+      <p><strong>Reason:</strong> ${escapeHtml(reason)}</p>`,
+      text: `Hi ${firstName},\n\n${summary}\n\nReason: ${reason}`,
+    },
+    "Could not send account notice email"
   );
 }
