@@ -212,6 +212,12 @@ and Vimeo play inline, video files use a player, other links open separately). A
 is unpublished, has no approved current profile, or does not exist shows an unavailable
 message and none of their details. Messaging stays available to logged-in visitors.
 
+PROF-5 also shows public Teaching experience: the number of Tutor-confirmed COMPLETED
+Bookings and distinct Students with those completed lessons. Students and visitors can
+use this together with published ratings and reviews to evaluate a Tutor. These activity
+counts do not claim to measure teaching quality. Student identities, individual bookings,
+pending/cancelled status counts and earnings remain private to the Tutor dashboard.
+
 **Subject page (`/tutors/:id/:subjectId`).** The bookable unit. It shows that
 subject's description, hourly rate, format, and next opening; a month calendar; a day
 calendar for the selected day; and **only that subject's reviews**.
@@ -584,6 +590,18 @@ availability"), then subjects, then the availability editor. Long sections scrol
 inside their own card rather than pushing the page. Subject **Update** links to
 `/settings/tutor`, which owns subject editing. The former `/dashboard/tutor` URL redirects
 to `/dashboard?tab=tutor` for existing links and bookmarks.
+
+PROF-5 adds a teaching overview on the Tutor tab only. Classes this week counts confirmed
+and completed Bookings starting Monday–Sunday in Bangkok time; every Booking is one
+lesson regardless of its number of half-hour slots. Completed lessons require the Tutor's
+completion confirmation. Status counts distinguish confirmed, completed, awaiting payment
+and cancelled bookings. Students counts distinct learners with confirmed or completed
+bookings; Students taught counts those with completed lessons. Returning students have
+completed at least two lessons with the Tutor, and their rate uses Students taught as its
+denominator. No completed learners produces an unavailable rate rather than a misleading
+percentage. Rating and review count cover all published reviews across the Tutor's
+Subjects, while Recent reviews shows the latest five. A Tutor with no reviews is Unrated.
+Failures show an error with Refresh overview, rather than zero statistics.
 
 **Tutor profile (`/settings/tutor`).** Available from the shared Settings navigation as
 **Tutor profile**. Published toggle, photo, display name, headline, bio,

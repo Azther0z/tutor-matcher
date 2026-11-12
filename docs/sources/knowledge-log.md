@@ -155,3 +155,9 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/pay-3-refunded-review-decision.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
 - Scope: Reviews of bookings cancelled by an approved refund are kept but left out of public ratings, review lists and search ranking; a Student may still review while a request is pending
+
+## [2026-11-12] compile | Tutor overview and public evaluation
+
+- Evidence: GitHub issue #165 and docs/sources/rev-2-editable-reply-confirmation.md
+- Updated: docs/user-journeys.md, docs/testing.md, docs/index.md
+- Scope: Owner-only teaching overview with status/engagement and published reviews. Public Tutor profiles expose only aggregate completed lessons and distinct Students taught, alongside existing ratings/reviews; these metric definitions are the implementation choices previewed for the user. Private bookings, identities and earnings remain owner-only.
