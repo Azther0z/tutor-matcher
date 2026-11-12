@@ -161,3 +161,9 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Evidence: GitHub issue #165 and docs/sources/rev-2-editable-reply-confirmation.md
 - Updated: docs/user-journeys.md, docs/testing.md, docs/index.md
 - Scope: Owner-only teaching overview with status/engagement and published reviews. Public Tutor profiles expose only aggregate completed lessons and distinct Students taught, alongside existing ratings/reviews; these metric definitions are the implementation choices previewed for the user. Private bookings, identities and earnings remain owner-only.
+
+## [2026-11-12] compile | Application and deployment diagrams
+
+- Evidence: apps/backend/src/routes.ts, apps/backend/src/lib/db.ts, apps/frontend/next.config.ts, .github/workflows/, .doco-cd.yaml, deploy/compose.yaml, deploy/README.md
+- Updated: docs/architecture.md, docs/cicd.md, docs/index.md
+- Scope: Mermaid component diagram and CI/CD deployment flow from the current source files. Live deployment state is not tested.
