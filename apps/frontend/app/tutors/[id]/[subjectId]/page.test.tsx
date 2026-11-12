@@ -134,6 +134,18 @@ it("opens the calendar at the first open time", async () => {
   expect((await findDayCalendar()).scrollTop).toBe(17 * 32);
 });
 
+it("sends a signed-in viewer's token and offers Flag on the subject's comments", async () => {
+  localStorage.setItem("authToken", "member-token");
+  respond(subjectPage());
+  render(<TutorSubjectPage />);
+
+  expect(await screen.findByRole("button", { name: "Flag review by Bob S." })).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledWith(apiPath, {
+    headers: { Authorization: "Bearer member-token" },
+    signal: expect.anything(),
+  });
+});
+
 it("puts Book this subject below the calendar, carrying the subject and the selected date", async () => {
   respond(subjectPage());
   render(<TutorSubjectPage />);

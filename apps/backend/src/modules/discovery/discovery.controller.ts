@@ -49,7 +49,7 @@ export async function getTutorProfileById(req: Request, res: Response) {
   }
 
   try {
-    res.status(200).json(await getTutorProfile(parsedTutorId.data));
+    res.status(200).json(await getTutorProfile(parsedTutorId.data, new Date(), req.user?.sub));
   } catch (error) {
     if (error instanceof TutorUnavailableError) {
       res.status(404).json({ message: error.message });
@@ -72,7 +72,11 @@ export async function getTutorSubjectPageById(req: Request, res: Response) {
 
   const { date } = subjectPageQuerySchema.parse(req.query);
   try {
-    res.status(200).json(await getTutorSubjectPage(ids.data.id, ids.data.subjectId, date));
+    res
+      .status(200)
+      .json(
+        await getTutorSubjectPage(ids.data.id, ids.data.subjectId, date, new Date(), req.user?.sub)
+      );
   } catch (error) {
     if (error instanceof SubjectUnavailableError) {
       res.status(404).json({ message: error.message });

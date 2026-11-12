@@ -166,6 +166,12 @@ A review has one public Tutor reply. The reviewed Tutor can edit that reply; edi
 replies show an Edited marker. Public Tutor and Subject pages show its current text.
 _Avoid_: Feedback, rating, testimonial
 
+**Review Flag**:
+A signed-in member's report that a review's comment is inappropriate, with a reason. A
+member flags a review once; it stays public while an admin decides, and only the flagger sees
+it marked Flagged.
+_Avoid_: Report, complaint, abuse report
+
 **Conversation**:
 The message thread between one student and one tutor. A user with both capabilities
 switches which side of their conversations they are reading without a second account.

@@ -16,6 +16,7 @@ export type TutorDashboard = {
     averageRating: number | null;
     recent: {
       id: string;
+      flaggedByMe?: boolean;
       ratingStars: number;
       text: string | null;
       createdAt: string;

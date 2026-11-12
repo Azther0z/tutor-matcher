@@ -725,6 +725,14 @@ Related stories: US7-1 … US7-3, US2-2.
 - Any user can flag a review with a reason, which sends it to admin moderation. A
   duplicate flag from the same user is rejected.
 
+**Implemented by REV-3.** A signed-in member sees **Flag** under a review's comment on the
+Tutor profile, the Subject page and the Tutor dashboard's recent reviews. It asks for a reason
+(up to 500 characters) and sends it for admin moderation. The comment stays visible to
+everyone while it waits; the member who flagged it sees a **Flagged** marker instead of the
+button. A member can flag a review once, however many others have flagged it, and a second
+attempt is rejected. Reviews without a comment, refunded reviews and a member's own review
+cannot be flagged. The admin decision is REV-4.
+
 **Implemented by REV-1.** On `/bookings/:id` of their own `COMPLETED` booking, the
 Student picks 1 to 5 stars and may add a comment (up to 2,000 characters), then
 **Publish review**. The review is published at once for that booking's tutor and

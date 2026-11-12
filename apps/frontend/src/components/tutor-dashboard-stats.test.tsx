@@ -14,6 +14,7 @@ const empty: TutorDashboard = {
 };
 
 beforeEach(() => {
+  localStorage.clear();
   load.mockReset().mockResolvedValue(empty);
 });
 
@@ -79,4 +80,34 @@ it("shows a recoverable load error instead of misleading zeros and can retry", a
   fireEvent.click(screen.getByRole("button", { name: "Refresh overview" }));
   expect(await screen.findByText("Unrated")).toBeInTheDocument();
   await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+});
+
+it("lets the Tutor flag a comment, marks one already flagged, and skips rating-only reviews", async () => {
+  localStorage.setItem("authToken", "tutor-token");
+  const review = { createdAt: "2026-11-11T03:00:00Z", subject: { id: "s1", name: "Math" } };
+  load.mockResolvedValue({
+    ...empty,
+    reviews: {
+      count: 3,
+      averageRating: 2,
+      recent: [
+        { ...review, id: "r1", ratingStars: 1, text: "Rude comment", studentName: "Mali S." },
+        {
+          ...review,
+          id: "r2",
+          ratingStars: 1,
+          text: "Fake review",
+          studentName: "Nok T.",
+          flaggedByMe: true,
+        },
+        { ...review, id: "r3", ratingStars: 2, text: null, studentName: "Ann P." },
+      ],
+    },
+  });
+  render(<TutorDashboardStats />);
+
+  expect(await screen.findByRole("button", { name: "Flag review by Mali S." })).toBeInTheDocument();
+  expect(screen.getByText("Flagged")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Flag review by Nok T." })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Flag review by Ann P." })).not.toBeInTheDocument();
 });

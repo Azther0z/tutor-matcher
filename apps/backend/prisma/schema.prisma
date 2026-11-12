@@ -105,6 +105,7 @@ model User {
 
   bookings            Booking[]
   reviews             Review[]
+  reviewFlagsMade     ReviewFlag[]         @relation("ReviewFlagsMade")
   passwordResetTokens PasswordResetToken[]
 
   sentMessages     Message[] @relation("MessagesSent")
@@ -426,9 +427,28 @@ model Review {
   bookingId String  @unique @map("booking_id") @db.Uuid
   booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
 
+  flags ReviewFlag[]
+
   @@index([userId])
   @@index([subjectId])
   @@map("reviews")
+}
+
+// REV-3: one member's flag on a review's comment, with the reason, queued for Admin moderation.
+model ReviewFlag {
+  id        String   @id @default(uuid()) @map("review_flag_id") @db.Uuid
+  reason    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  reviewId   String @map("review_id") @db.Uuid
+  review     Review @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+  reporterId String @map("reporter_id") @db.Uuid
+  reporter   User   @relation("ReviewFlagsMade", fields: [reporterId], references: [id], onDelete: Restrict)
+
+  // A member can flag a given review only once.
+  @@unique([reviewId, reporterId])
+  @@index([reporterId])
+  @@map("review_flags")
 }
 
 model TutorProfileVersionCertification {

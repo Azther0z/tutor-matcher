@@ -5,7 +5,10 @@ const mock = () => jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const user = { findUnique: mock() };
 const booking = { groupBy: mock(), count: mock() };
 const review = { aggregate: mock(), findMany: mock() };
-jest.unstable_mockModule("../../lib/db.ts", () => ({ prisma: { user, booking, review } }));
+const reviewFlag = { findMany: mock() };
+jest.unstable_mockModule("../../lib/db.ts", () => ({
+  prisma: { user, booking, review, reviewFlag },
+}));
 const { app } = await import("../../app.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");
 const { bangkokWeekWindow, getTutorDashboard } = await import("./dashboard.service.ts");
@@ -20,6 +23,7 @@ beforeEach(() => {
   booking.groupBy.mockReset().mockResolvedValue([]);
   booking.count.mockResolvedValue(0);
   review.aggregate.mockResolvedValue({ _avg: { ratingStars: null }, _count: 0 });
+  reviewFlag.findMany.mockReset().mockResolvedValue([]);
   review.findMany.mockResolvedValue([]);
 });
 
@@ -143,6 +147,7 @@ describe("Tutor dashboard statistics", () => {
       recent: [
         {
           id: "review-1",
+          flaggedByMe: false,
           ratingStars: 3,
           text: "Very clear explanation",
           createdAt: now.toISOString(),
@@ -160,6 +165,39 @@ describe("Tutor dashboard statistics", () => {
       expect.objectContaining({ take: 5, orderBy: [{ createdAt: "desc" }, { id: "desc" }] })
     );
     expect(JSON.stringify(result)).not.toContain("Sukjai");
+  });
+
+  it("marks the recent reviews the Tutor already flagged", async () => {
+    const recent = (id: string) => ({
+      id,
+      ratingStars: 1,
+      text: "Rude comment",
+      createdAt: now,
+      user: { firstName: "Mali", lastName: "Sukjai" },
+      subject: { id: "subject-1", name: "Math" },
+      replyText: null,
+      repliedAt: null,
+      replyEditedAt: null,
+    });
+    review.findMany.mockResolvedValue([recent("review-1"), recent("review-2")]);
+    reviewFlag.findMany.mockResolvedValue([{ reviewId: "review-2" }]);
+
+    const result = await getTutorDashboard(userId, now);
+
+    expect(result.reviews.recent.map(({ id, flaggedByMe }) => [id, flaggedByMe])).toEqual([
+      ["review-1", false],
+      ["review-2", true],
+    ]);
+    expect(reviewFlag.findMany).toHaveBeenCalledWith({
+      where: { reporterId: userId, reviewId: { in: ["review-1", "review-2"] } },
+      select: { reviewId: true },
+    });
+  });
+
+  it("does not look up flags when there are no reviews", async () => {
+    review.findMany.mockResolvedValue([]);
+    await getTutorDashboard(userId, now);
+    expect(reviewFlag.findMany).not.toHaveBeenCalled();
   });
 });
 

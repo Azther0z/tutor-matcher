@@ -109,6 +109,32 @@ describe("DISC-3 tutor profile page", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  it("sends a signed-in viewer's token so flagged comments are marked, and none to a visitor", async () => {
+    respondWith({
+      ...profile,
+      reviews: profile.reviews.map((review) => ({ ...review, flaggedByMe: true, isMine: false })),
+    });
+    localStorage.setItem("authToken", "member-token");
+    const view = render(<TutorDetailPage />);
+
+    expect(await screen.findByText("Flagged")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(`/api/discovery/tutors/${TUTOR_ID}/profile`, {
+      headers: { Authorization: "Bearer member-token" },
+      signal: expect.anything(),
+    });
+
+    localStorage.clear();
+    view.unmount();
+    fetchMock.mockClear();
+    respondWith(profile);
+    render(<TutorDetailPage />);
+    await screen.findByRole("heading", { name: "Anong Pattanakul" });
+    expect(fetchMock).toHaveBeenCalledWith(`/api/discovery/tutors/${TUTOR_ID}/profile`, {
+      headers: undefined,
+      signal: expect.anything(),
+    });
+  });
+
   it("shows bio, rating, rates, availability, reviews and the video intro", async () => {
     respondWith(profile);
 

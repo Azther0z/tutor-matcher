@@ -411,6 +411,23 @@ current text and revision timestamp, preventing stale overwrites. Public readers
 the latest reply and its Edited timestamp. Database
 synchronization remains a separate authorized action; no database was changed for the preview.
 
+### review_flags
+
+| Column         | Type      | Constraints                                          | Notes                              |
+| -------------- | --------- | ---------------------------------------------------- | ---------------------------------- |
+| review_flag_id | UUID      | PK                                                   | Prisma `id`                        |
+| reason         | TEXT      | NOT NULL                                             | 1 to 500 characters, trimmed (API) |
+| created_at     | TIMESTAMP | NOT NULL, DEFAULT now()                              |                                    |
+| review_id      | UUID      | NOT NULL, FK → reviews.review_id, ON DELETE RESTRICT | The flagged review's comment       |
+| reporter_id    | UUID      | NOT NULL, FK → users.user_id, ON DELETE RESTRICT     | The member who flagged it          |
+
+Indexes: unique `(review_id, reporter_id)`, so a member can flag a review only once; `reporter_id`.
+
+REV-3 inserts one row per member and review. A review can have many flags from different
+members. Only a public review with a comment can be flagged (booking not `CANCELLED`), and
+never by its author. Flagging changes nothing public: the comment stays visible, and only the
+flagger sees a Flagged marker. REV-4 will add the Admin decision to this table.
+
 ### messages
 
 | Column       | Type      | Constraints                                      |
@@ -495,15 +512,15 @@ that the current schema is wrong to have shipped.
 
 ### Entities the product needs that do not exist yet
 
-| ID  | Missing                                                                                                                              | Journey                        |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
-| G10 | Resolved by PROF-7: `payout_accounts` stores each user's bank accounts with one default.                                             | §4 Payouts, `/settings/wallet` |
-| G11 | **Notification preference** per user and event type, with email and push flags                                                       | §8 Notifications               |
-| G12 | Moderation status on reviews and messages remains missing; Tutor replies and their edit timestamp are implemented by REV-2           | §9 Reviews, §10 Admin          |
-| G13 | **Account suspension / ban** state on `users`                                                                                        | §10 Admin                      |
-| G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                        | §2 Search filters, §7 Subjects |
-| G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up | §10 Admin queues               |
-| G18 | **Audit log** for admin decisions on content and money                                                                               | §10 Admin                      |
+| ID  | Missing                                                                                                                                                                                               | Journey                        |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| G10 | Resolved by PROF-7: `payout_accounts` stores each user's bank accounts with one default.                                                                                                              | §4 Payouts, `/settings/wallet` |
+| G11 | **Notification preference** per user and event type, with email and push flags                                                                                                                        | §8 Notifications               |
+| G12 | Moderation status on messages remains missing; review flags are stored by REV-3 (Admin decisions: REV-4); Tutor replies by REV-2                                                                      | §9 Reviews, §10 Admin          |
+| G13 | **Account suspension / ban** state on `users`                                                                                                                                                         | §10 Admin                      |
+| G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                                                                                         | §2 Search filters, §7 Subjects |
+| G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up. Review flags use `review_flags` instead; `reports` stays unused | §10 Admin queues               |
+| G18 | **Audit log** for admin decisions on content and money                                                                                                                                                | §10 Admin                      |
 
 ---
 
@@ -511,7 +528,7 @@ that the current schema is wrong to have shipped.
 
 Present today: `subjects(tutor_id)`, `bookings(user_id)`, `bookings(subject_id)`,
 `wallet_transactions(user_id, created_at)`, `reviews(user_id)`,
-`reviews(subject_id)`, `reviews(booking_id)`,
+`reviews(subject_id)`, `reviews(booking_id)`, `review_flags(reporter_id)`,
 `tutor_profile_version_certifications(profile_version_id)`,
 `tutor_profile_versions(user_id, created_at)`,
 `tutor_profile_versions(status, submitted_at)`,
