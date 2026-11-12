@@ -6,13 +6,12 @@ import { RequireAuth } from "@/src/components/require-auth";
 import { getBookings } from "@/src/lib/bookings-api";
 import type { Booking, BookingStatus } from "@/src/types/booking";
 
-type Filter = "ALL" | "UPCOMING" | "PAYMENT_DUE" | "PAST";
+type Filter = "ALL" | "UPCOMING" | "PAST";
 const TIME_ZONE = "Asia/Bangkok";
 
 const filters: Array<{ value: Filter; label: string }> = [
   { value: "ALL", label: "All" },
   { value: "UPCOMING", label: "Upcoming" },
-  { value: "PAYMENT_DUE", label: "Payment due" },
   { value: "PAST", label: "Past" },
 ];
 
@@ -42,7 +41,6 @@ const dateFormat = new Intl.DateTimeFormat("en", {
 
 function belongsToFilter(booking: Booking, filter: Filter) {
   const startsAt = new Date(booking.startedAt).getTime();
-  if (filter === "PAYMENT_DUE") return booking.status === "PENDING_PAYMENT";
   if (filter === "UPCOMING") return startsAt > Date.now() && booking.status === "CONFIRMED";
   if (filter === "PAST")
     return startsAt <= Date.now() || ["COMPLETED", "CANCELLED"].includes(booking.status);
@@ -134,14 +132,11 @@ function BookingsContent() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="truncate text-lg font-bold">{booking.subject.name}</h2>
-                  {booking.isTrial && (
-                    <span className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-violet-700 dark:bg-violet-950 dark:text-violet-300">
-                      Trial
-                    </span>
-                  )}
                 </div>
                 <p className="mt-1 text-sm text-zinc-500">with {booking.subject.tutor.name}</p>
-                <p className="mt-3 font-medium">{dateFormat.format(new Date(booking.startedAt))}</p>
+                <p className="mt-3 font-medium">
+                  {dateFormat.formatRange(new Date(booking.startedAt), new Date(booking.endedAt))}
+                </p>
               </div>
             </div>
             <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end">

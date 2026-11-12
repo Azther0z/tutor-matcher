@@ -15,9 +15,8 @@ export const createBookingSchema = z.object({
   subjectId: z.uuid(),
   availabilityIds,
   description: z.string().trim().max(2000).optional(),
-  isTrial: z.boolean().default(true),
+  isTrial: z.boolean().default(false),
 });
-export const rescheduleBookingSchema = z.object({ availabilityIds });
 export const updateMeetingLinkSchema = z.object({
   customMeetingUrl: z
     .url()
@@ -49,7 +48,6 @@ export const tutorCancelBookingSchema = z.object({
 });
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
-export type RescheduleBookingInput = z.infer<typeof rescheduleBookingSchema>;
 export type UpdateMeetingLinkInput = z.infer<typeof updateMeetingLinkSchema>;
 export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;
 export type TutorCancelBookingInput = z.infer<typeof tutorCancelBookingSchema>;

@@ -266,7 +266,7 @@ student never picks the subject twice. **No booking record exists in this step.*
   back-to-back"_ and the selection restarts from that slot.
 - The summary shows the selected window, the duration, and the price. **Price = number
   of 30-minute slots × hourly rate ÷ 2.**
-- A free-text note — _"What do you want to learn?"_ — is captured for the tutor.
+- The booking form does not collect a free-text learning note. Lessons have no Trial tier.
 - There is no weekly or recurring option, and no way to add another student.
 
 ### Step 2 — Payment due (`/bookings/:id`)
@@ -331,9 +331,11 @@ See the [BOOK-4 confirmation](sources/book-4-policy-confirmation.md).
 
 ### `/bookings`
 
-Tabs: **All**, **Upcoming** (confirmed and paid), **Payment due** (slots held, booking
-number issued, not yet paid), and **Past** (completed and cancelled). Each row opens
-the booking in its correct state.
+Tabs: **All**, **Upcoming** (confirmed and paid), and **Past** (completed and cancelled).
+Unpaid bookings remain visible under All; the existing payment step and Wallet Payment due box remain.
+Each row and booking detail show the lesson start and end time in Asia/Bangkok.
+Bookings can be cancelled under the cancellation policy; rescheduling is not supported.
+There are no Trial labels or separate trial lessons. Each row opens the booking in its correct state.
 
 Related stories: US4-1 … US4-8, US11-1, US11-2.
 

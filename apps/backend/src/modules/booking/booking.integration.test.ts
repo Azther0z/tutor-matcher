@@ -212,7 +212,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     expect(slot.bookingId).toBeNull();
   });
 
-  it("keeps the Tutor override through rescheduling and retires the old generated URL", async () => {
+  it("keeps meeting links unchanged when the removed reschedule endpoint is called", async () => {
     const created = await authorizeLinkStudent(
       request(app)
         .post("/api/bookings")
@@ -265,20 +265,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         .patch(`/api/bookings/${bookingId}/meeting-link`)
         .send({ customMeetingUrl: "https://meet.example.com/custom-room" })
     ).expect(200);
-    const rescheduled = await authorizeLinkStudent(
+    await authorizeLinkStudent(
       request(app)
         .patch(`/api/bookings/${bookingId}/reschedule`)
         .send({ availabilityIds: [RESCHEDULE_SLOT_ID] })
-    ).expect(200);
-    expect(rescheduled.body.booking).toMatchObject({
-      status: "CONFIRMED",
-      zoomMeetingUrl: null,
-      customMeetingUrl: "https://meet.example.com/custom-room",
-      effectiveMeetingUrl: "https://meet.example.com/custom-room",
-      actions: { canJoin: true },
-    });
+    ).expect(404);
     const persisted = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
-    expect(persisted.zoomMeetingUrl).toBeNull();
+    expect(persisted.zoomMeetingUrl).toBe("https://meet.example.com/old-room");
     expect(persisted.customMeetingUrl).toBe("https://meet.example.com/custom-room");
     expect(persisted.meetingLinkUpdatedAt).toBeInstanceOf(Date);
   });
@@ -473,7 +466,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         .post("/api/bookings")
         .send({
           subjectId: SUBJECT_ID,
-          availabilityIds: [PENDING_SLOT_ID],
+          availabilityIds: [RESCHEDULE_SLOT_ID],
           isTrial: true,
         })
     ).expect(201);

@@ -18,7 +18,6 @@ function SubjectBookingContent() {
   const initialDate = useSearchParams().get("date");
   const [data, setData] = useState<AvailabilityResponse | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -62,7 +61,7 @@ function SubjectBookingContent() {
   });
 
   async function submit() {
-    // BOOK-1 requires at least one slot before creating the trial booking.
+    // BOOK-1 requires at least one slot before creating the booking.
     if (!data || data.acceptingBookings === false || selectedIds.length === 0) {
       setMessage("Choose at least one available time.");
       return;
@@ -74,8 +73,7 @@ function SubjectBookingContent() {
       const booking = await createBooking({
         subjectId: data.subject.id,
         availabilityIds: selectedIds,
-        description: description.trim() || undefined,
-        isTrial: true,
+        isTrial: false,
       });
       router.push(`/bookings/${booking.id}`);
     } catch (error) {
@@ -103,9 +101,7 @@ function SubjectBookingContent() {
       </Link>
       <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_340px]">
         <section>
-          <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">
-            Trial lesson
-          </p>
+          <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">Lesson</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight">Choose a time</h1>
           {data && (
             <p className="mt-2 text-zinc-600">
@@ -165,7 +161,7 @@ function SubjectBookingContent() {
             )}
             <div className="flex justify-between gap-4">
               <dt className="text-zinc-500">Lesson</dt>
-              <dd className="text-right font-medium">Trial · {selectedIds.length * 30} min</dd>
+              <dd className="text-right font-medium">{selectedIds.length * 30} min</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-zinc-500">Rate</dt>
@@ -176,17 +172,6 @@ function SubjectBookingContent() {
               <dd>{money.format(total)}</dd>
             </div>
           </dl>
-          <label className="mt-6 block text-sm font-medium">
-            What would you like to focus on?{" "}
-            <span className="font-normal text-zinc-500">(optional)</span>
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={4}
-              maxLength={1000}
-              className="mt-2 w-full rounded-xl border border-zinc-200 bg-transparent p-3 outline-none focus:border-violet-500"
-            />
-          </label>
           {message && (
             <p role="alert" className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
               {message}
