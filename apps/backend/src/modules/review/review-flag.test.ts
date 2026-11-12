@@ -43,7 +43,12 @@ describe("REV-3 flagging a review's comment", () => {
     await flag();
 
     expect(findReview).toHaveBeenCalledWith({
-      where: { id: reviewId, text: { not: null }, booking: { status: { not: "CANCELLED" } } },
+      where: {
+        id: reviewId,
+        text: { not: null },
+        booking: { status: { not: "CANCELLED" } },
+        removedAt: null,
+      },
       select: { userId: true },
     });
   });

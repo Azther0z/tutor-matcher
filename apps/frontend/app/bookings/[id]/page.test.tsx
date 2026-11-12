@@ -1156,6 +1156,28 @@ describe("REV-1 review a completed lesson", () => {
     expect(screen.queryByRole("region", { name: "Write a review" })).not.toBeInTheDocument();
   });
 
+  it("tells the author their review was removed, with the reason, and offers no new review", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        booking: {
+          ...completed,
+          review: {
+            ...published,
+            comment: null,
+            removed: { reason: "Harassment", removedAt: "2026-11-12T08:00:00.000Z" },
+          },
+          actions: { ...completed.actions, canReview: false },
+        },
+      }),
+    });
+    render(<BookingDetailPage />);
+    const review = await screen.findByRole("region", { name: "Your review" });
+    expect(review).toHaveTextContent("Your review was removed by an admin. Reason: Harassment");
+    expect(within(review).queryByLabelText("4 out of 5 stars")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Write a review" })).not.toBeInTheDocument();
+  });
+
   it("does not offer the Tutor a review form", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,

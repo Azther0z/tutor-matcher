@@ -59,6 +59,7 @@ describe("REV-2 editing the existing public reply", () => {
     expect(updateReview).toHaveBeenCalledWith({
       where: {
         id,
+        removedAt: null,
         subject: { tutorId },
         replyText: existing.replyText,
         repliedAt,
@@ -124,6 +125,18 @@ describe("REV-2 editing the existing public reply", () => {
   });
 });
 
+describe("REV-4 replies on a removed review", () => {
+  it("treats a review an Admin removed as gone for a new reply or an edit", async () => {
+    findReview.mockResolvedValue(null);
+
+    expect((await submit().expect(404)).body.code).toBe("REVIEW_NOT_FOUND");
+    expect(findReview).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id, removedAt: null } })
+    );
+    expect(updateReview).not.toHaveBeenCalled();
+  });
+});
+
 describe("REV-2 public review replies", () => {
   it("requires authentication", async () => {
     await request(app).post(`/api/reviews/${id}/reply`).send({ text: "Hello" }).expect(401);
@@ -133,7 +146,7 @@ describe("REV-2 public review replies", () => {
     const response = await submit().expect(201);
     expect(response.body.reply).toEqual({ text: "Thank you!", repliedAt: expect.any(String) });
     expect(updateReview).toHaveBeenCalledWith({
-      where: { id, replyText: null, subject: { tutorId } },
+      where: { id, removedAt: null, replyText: null, subject: { tutorId } },
       data: { replyText: "Thank you!", repliedAt: expect.any(Date) },
     });
   });

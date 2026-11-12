@@ -112,6 +112,8 @@ model User {
   bookings            Booking[]
   reviews             Review[]
   reviewFlagsMade     ReviewFlag[]         @relation("ReviewFlagsMade")
+  reviewFlagsDecided  ReviewFlag[]         @relation("ReviewFlagsDecided")
+  reviewsRemoved      Review[]             @relation("ReviewsRemoved")
   passwordResetTokens PasswordResetToken[]
 
   sentMessages     Message[] @relation("MessagesSent")
@@ -438,6 +440,12 @@ model Review {
 
   flags ReviewFlag[]
 
+  // REV-4: an Admin removed the whole review; it no longer shows or counts anywhere.
+  removedAt     DateTime? @map("removed_at")
+  removalReason String?   @map("removal_reason")
+  removedById   String?   @map("removed_by_id") @db.Uuid
+  removedBy     User?     @relation("ReviewsRemoved", fields: [removedById], references: [id], onDelete: Restrict)
+
   @@index([userId])
   @@index([subjectId])
   @@map("reviews")
@@ -454,10 +462,23 @@ model ReviewFlag {
   reporterId String @map("reporter_id") @db.Uuid
   reporter   User   @relation("ReviewFlagsMade", fields: [reporterId], references: [id], onDelete: Restrict)
 
+  // REV-4: the Admin's decision; a null outcome means the flag still waits in the queue.
+  outcome     ReviewFlagOutcome?
+  decidedAt   DateTime?          @map("decided_at")
+  decidedById String?            @map("decided_by_id") @db.Uuid
+  decidedBy   User?              @relation("ReviewFlagsDecided", fields: [decidedById], references: [id], onDelete: Restrict)
+
   // A member can flag a given review only once.
   @@unique([reviewId, reporterId])
   @@index([reporterId])
+  @@index([outcome, createdAt])
   @@map("review_flags")
+}
+
+// REV-4: an Admin keeps a flagged review or removes the whole review.
+enum ReviewFlagOutcome {
+  KEPT
+  REMOVED
 }
 
 model TutorProfileVersionCertification {

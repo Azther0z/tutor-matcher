@@ -366,13 +366,15 @@ describe("DISC-1 tutor search", () => {
     expect(rawQuery(0).sql).toContain(`ORDER BY ${order}, name, first_name, last_name, subject_id`);
   });
 
-  it("ranks and filters by ratings that leave out reviews of cancelled lessons", async () => {
+  it("ranks and filters by ratings that leave out reviews of cancelled lessons and removed reviews", async () => {
     await request(app).get("/api/discovery/tutors").query({ minRating: "4" }).expect(200);
     for (const index of [0, 1]) {
       expect(rawQuery(index).sql).toContain("FROM reviews rv");
       expect(rawQuery(index).sql).toContain(
         "JOIN bookings rb ON rb.booking_id = rv.booking_id AND rb.status <> 'CANCELLED'"
       );
+      // REV-4: a review an Admin removed no longer counts toward ranking.
+      expect(rawQuery(index).sql).toContain("WHERE rv.removed_at IS NULL");
     }
   });
 
@@ -804,7 +806,11 @@ describe("DISC-3 tutor profile", () => {
 
   it("leaves reviews of cancelled lessons out of the rating, subject ratings and review list", async () => {
     await request(app).get(url).expect(200);
-    const counted = { subject: { tutorId: TUTOR_ID }, booking: { status: { not: "CANCELLED" } } };
+    const counted = {
+      subject: { tutorId: TUTOR_ID },
+      booking: { status: { not: "CANCELLED" } },
+      removedAt: null,
+    };
     expect(reviewAggregate).toHaveBeenCalledWith(expect.objectContaining({ where: counted }));
     expect(reviewGroupBy).toHaveBeenCalledWith(expect.objectContaining({ where: counted }));
     expect(reviewFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: counted }));
@@ -975,7 +981,11 @@ describe("DISC-4 subject page", () => {
       expect.objectContaining({ where: { id: SUBJECT_ID, tutorId: TUTOR_ID } })
     );
     // PAY-3: reviews of lessons cancelled by an approved refund do not count.
-    const counted = { subjectId: SUBJECT_ID, booking: { status: { not: "CANCELLED" } } };
+    const counted = {
+      subjectId: SUBJECT_ID,
+      booking: { status: { not: "CANCELLED" } },
+      removedAt: null,
+    };
     expect(reviewAggregate).toHaveBeenCalledWith(expect.objectContaining({ where: counted }));
     expect(reviewFindMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: counted, take: 10 })

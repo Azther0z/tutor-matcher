@@ -25,7 +25,7 @@ export async function editReviewReply(
       "Only the reviewed Tutor can edit this reply."
     );
   const review = await prisma.review.findUnique({
-    where: { id: reviewId },
+    where: { id: reviewId, removedAt: null },
     select: {
       replyText: true,
       repliedAt: true,
@@ -66,6 +66,7 @@ export async function editReviewReply(
   const result = await prisma.review.updateMany({
     where: {
       id: reviewId,
+      removedAt: null,
       subject: { tutorId: user.tutorId },
       replyText: review.replyText,
       repliedAt: review.repliedAt,
@@ -75,7 +76,7 @@ export async function editReviewReply(
   });
   if (result.count === 0) {
     const current = await prisma.review.findUnique({
-      where: { id: reviewId },
+      where: { id: reviewId, removedAt: null },
       select: { id: true },
     });
     if (!current) throw missingReview();
@@ -101,7 +102,7 @@ export async function replyToReview(userId: string, reviewId: string, input: Rev
     throw new ReviewReplyError(403, "TUTOR_REQUIRED", "Only the reviewed Tutor can reply.");
 
   const review = await prisma.review.findUnique({
-    where: { id: reviewId },
+    where: { id: reviewId, removedAt: null },
     select: { replyText: true, subject: { select: { tutorId: true } } },
   });
   if (!review) throw missingReview();
@@ -112,12 +113,12 @@ export async function replyToReview(userId: string, reviewId: string, input: Rev
   const repliedAt = new Date();
   // A conditional write settles simultaneous replies and a deletion after the initial read.
   const result = await prisma.review.updateMany({
-    where: { id: reviewId, replyText: null, subject: { tutorId: user.tutorId } },
+    where: { id: reviewId, removedAt: null, replyText: null, subject: { tutorId: user.tutorId } },
     data: { replyText: input.text, repliedAt },
   });
   if (result.count === 0) {
     const current = await prisma.review.findUnique({
-      where: { id: reviewId },
+      where: { id: reviewId, removedAt: null },
       select: { id: true },
     });
     if (!current) throw missingReview();

@@ -504,3 +504,21 @@ and a refunded review are refused, the per-viewer markers on the public profile,
 flagged review stays public. Frontend tests cover the Flag button (signed-out, own review, already
 flagged, rating-only), the required reason, the request and the Flagged marker, a server-side
 duplicate, a retryable error, and the viewer's token reaching the profile and Subject pages.
+
+## REV-4 acceptance coverage
+
+Review moderation tests cover the Admin queue (`GET /api/admin/review-flags`): pending reviews
+that are still public, longest waiting first, with every flag; decided reviews, most recent
+decision first; a 403 for a non-admin and a 400 for an unknown filter. `POST
+/api/admin/reviews/:id/moderation` tests cover Keep (every pending flag `KEPT`, the review left
+published, each reporter emailed), Remove (the removal fields set, the reporters and the author
+emailed, only the author with the reason), a required trimmed reason of up to 500 characters, a
+409 when nothing is pending or the review was removed, a 404, a non-admin refused before the
+lock, and a failed email logged without undoing the decision. Discovery, dashboard, reply,
+flag and booking tests cover removed reviews leaving lists, averages and the ranking SQL, a 404
+for a reply or flag on a removed review, and the author's removed notice. The PostgreSQL suite
+(opt-in, on its own `tutor_matcher_rev4_test` database) checks Keep then a new member's flag
+re-queuing the review, Remove changing the profile average, Subject page and search ranking, the
+author's booking, and two simultaneous decisions settling as one decision and one 409. Frontend
+tests cover the queue (admin access, flags, Keep, Remove needing a reason, a 409 refreshing the
+queue, the Decided filter), the navbar link and the author's removed notice.

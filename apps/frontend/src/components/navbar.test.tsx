@@ -160,6 +160,10 @@ it("shows the review queue and user management in the admin account menu", async
     "/admin/topups"
   );
   expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("href", "/admin/users");
+  expect(screen.getByRole("link", { name: "Flagged reviews" })).toHaveAttribute(
+    "href",
+    "/admin/reviews"
+  );
 });
 
 it("does not show the admin pages to a nonadmin", async () => {
@@ -170,6 +174,7 @@ it("does not show the admin pages to a nonadmin", async () => {
   expect(screen.queryByRole("link", { name: "Tutor requests" })).not.toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "Top-up requests" })).not.toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "Users" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Flagged reviews" })).not.toBeInTheDocument();
 });
 
 it("retains tutor navigation while the latest profile edit is pending", async () => {
