@@ -119,6 +119,7 @@ Guards run before render, not after.
 | `/admin/tutor-requests`    | Tutor application queue — approve or reject                             | Role: admin    |
 | `/admin/topups`            | Top-up slip queue — approve or reject                                   | Role: admin    |
 | `/admin/users`             | Search accounts, message users, suspend or ban with a reason            | Role: admin    |
+| `/admin/reviews`           | Flagged reviews — keep, or remove with a reason                         | Role: admin    |
 
 ### Access rules
 
@@ -741,6 +742,16 @@ button. A member can flag a review once, however many others have flagged it, an
 attempt is rejected. Reviews without a comment, refunded reviews and a member's own review
 cannot be flagged. The admin decision is REV-4.
 
+**Implemented by REV-4.** Admins see flagged reviews at `/admin/reviews`, with the comment,
+rating, author, Tutor and subject, and every reporter's reason. A Pending / Decided filter keeps
+past decisions visible. **Keep review** leaves it published and tells each reporter; other
+members can still flag it, which puts it back in the queue. **Remove review** needs a reason and
+removes the whole review from the Tutor profile, Subject page, ratings, search ranking and Tutor
+dashboard. Each reporter is told it was removed, and the author is emailed the reason. The
+author's booking page then says the review was removed and why; each lesson is reviewed once,
+so they cannot write another. One decision covers every pending flag, and a second Admin's
+decision on the same flags is refused.
+
 **Implemented by REV-1.** On `/bookings/:id` of their own `COMPLETED` booking, the
 Student picks 1 to 5 stars and may add a comment (up to 2,000 characters), then
 **Publish review**. The review is published at once for that booking's tutor and
@@ -757,15 +768,23 @@ Related stories: US8-1 … US8-4.
 
 ## 10 · Admin, trust, and safety
 
-| Queue                        | Admin decision                                                    |
-| ---------------------------- | ----------------------------------------------------------------- |
-| Tutor applications           | Approve → tutor capability granted · Reject → applicant told why  |
-| Listing and document changes | Approve → public listing updates · Reject → tutor revises         |
-| Flagged reviews and messages | Keep, hide, or remove, with an audit trail                        |
-| Payment disputes and refunds | `/admin/refunds`: approve a full refund or reject with a reason   |
-| Policy violations            | Suspend or ban; protected actions are blocked with a reason shown |
+| Queue                        | Admin decision                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------ |
+| Tutor applications           | Approve → tutor capability granted · Reject → applicant told why                                 |
+| Listing and document changes | Approve → public listing updates · Reject → tutor revises                                        |
+| Flagged reviews and messages | Reviews: keep, or remove the whole review, with an audit trail (REV-4) · Messages: not built yet |
+| Payment disputes and refunds | `/admin/refunds`: approve a full refund or reject with a reason                                  |
+| Policy violations            | Suspend or ban; protected actions are blocked with a reason shown                                |
 
 Related stories: US9-1 … US9-5.
+
+**Payment disputes (SAFE-4, [#175](https://github.com/Azther0z/tutor-matcher/issues/175)).** A
+payment dispute is the PAY-3 refund request; SAFE-4 adds no new behaviour. The Student disputes a
+paid lesson after its scheduled end, and an Admin resolves it at `/admin/refunds`. Approval
+appends exactly one `REFUND` row for the full paid amount, linked to the request and the
+cancelled booking; rejection, with a reason the Student sees, leaves the ledger unchanged. Earlier
+rows are never edited, a resolved dispute cannot be resolved again, and the request keeps the
+deciding Admin and time, so every money movement traces back to the decision.
 
 **User management (`/admin/users`, [SAFE-1 #172](https://github.com/Azther0z/tutor-matcher/issues/172)).**
 The Admin account menu links to **Users**. Search matches every typed word against first

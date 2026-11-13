@@ -145,7 +145,16 @@ const detailInclude = {
   availabilities: { orderBy: { startedAt: "asc" as const } },
   walletTransactions: { orderBy: { createdAt: "asc" as const } },
   refundRequest: true,
-  review: { select: { id: true, ratingStars: true, text: true, createdAt: true } },
+  review: {
+    select: {
+      id: true,
+      ratingStars: true,
+      text: true,
+      createdAt: true,
+      removedAt: true,
+      removalReason: true,
+    },
+  },
 } satisfies Prisma.BookingInclude;
 
 type BookingDetailRecord = Prisma.BookingGetPayload<{ include: typeof detailInclude }>;
@@ -324,8 +333,16 @@ export function mapBookingResponse(
       ? {
           id: booking.review.id,
           rating: booking.review.ratingStars,
-          comment: booking.review.text,
+          // REV-4: a removed review keeps its row, so it still blocks a second review; the
+          // participants see why it was removed instead of its comment.
+          comment: booking.review.removedAt ? null : booking.review.text,
           createdAt: booking.review.createdAt.toISOString(),
+          removed: booking.review.removedAt
+            ? {
+                reason: booking.review.removalReason ?? "",
+                removedAt: booking.review.removedAt.toISOString(),
+              }
+            : null,
         }
       : null,
     student: {

@@ -69,6 +69,8 @@ export type BookingReview = {
   rating: number;
   comment: string | null;
   createdAt: string;
+  // REV-4: set when an Admin removed the review; it then no longer shows anywhere.
+  removed?: { reason: string; removedAt: string } | null;
 };
 
 export type CancellationQuote = {

@@ -394,6 +394,9 @@ be edited; the user removes one and adds it again.
 | user_id         | UUID      | NOT NULL, FK → users.user_id, ON DELETE RESTRICT               | The reviewing student                                     |
 | subject_id      | UUID      | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT         | Makes reviews subject-scoped                              |
 | booking_id      | UUID      | NOT NULL, UNIQUE, FK → bookings.booking_id, ON DELETE RESTRICT | One review per completed booking (REV-1)                  |
+| removed_at      | TIMESTAMP | NULL                                                           | Set when an Admin removed the review (REV-4)              |
+| removal_reason  | TEXT      | NULL                                                           | Sent to the author; 1 to 500 characters (API)             |
+| removed_by_id   | UUID      | NULL, FK → users.user_id, ON DELETE RESTRICT                   | The deciding Admin                                        |
 
 Indexes: `user_id`, `subject_id`; unique `reviews_booking_id_key` on `booking_id`.
 
@@ -411,22 +414,35 @@ current text and revision timestamp, preventing stale overwrites. Public readers
 the latest reply and its Edited timestamp. Database
 synchronization remains a separate authorized action; no database was changed for the preview.
 
+REV-4 removes a review by setting `removed_at`, `removal_reason` and `removed_by_id`; the row
+stays, so the booking still has its one review. Public lists, ratings, ranking and the Tutor
+dashboard leave out removed reviews, as they leave out refunded ones, and a removed review can
+no longer be flagged or replied to.
+
 ### review_flags
 
-| Column         | Type      | Constraints                                          | Notes                              |
-| -------------- | --------- | ---------------------------------------------------- | ---------------------------------- |
-| review_flag_id | UUID      | PK                                                   | Prisma `id`                        |
-| reason         | TEXT      | NOT NULL                                             | 1 to 500 characters, trimmed (API) |
-| created_at     | TIMESTAMP | NOT NULL, DEFAULT now()                              |                                    |
-| review_id      | UUID      | NOT NULL, FK → reviews.review_id, ON DELETE RESTRICT | The flagged review's comment       |
-| reporter_id    | UUID      | NOT NULL, FK → users.user_id, ON DELETE RESTRICT     | The member who flagged it          |
+| Column         | Type      | Constraints                                          | Notes                               |
+| -------------- | --------- | ---------------------------------------------------- | ----------------------------------- |
+| review_flag_id | UUID      | PK                                                   | Prisma `id`                         |
+| reason         | TEXT      | NOT NULL                                             | 1 to 500 characters, trimmed (API)  |
+| created_at     | TIMESTAMP | NOT NULL, DEFAULT now()                              |                                     |
+| review_id      | UUID      | NOT NULL, FK → reviews.review_id, ON DELETE RESTRICT | The flagged review's comment        |
+| reporter_id    | UUID      | NOT NULL, FK → users.user_id, ON DELETE RESTRICT     | The member who flagged it           |
+| outcome        | ENUM      | NULL                                                 | `ReviewFlagOutcome`; NULL = pending |
+| decided_at     | TIMESTAMP | NULL                                                 | When an Admin decided (REV-4)       |
+| decided_by_id  | UUID      | NULL, FK → users.user_id, ON DELETE RESTRICT         | The deciding Admin                  |
 
-Indexes: unique `(review_id, reporter_id)`, so a member can flag a review only once; `reporter_id`.
+Indexes: unique `(review_id, reporter_id)`, so a member can flag a review only once; `reporter_id`;
+`(outcome, created_at)` for the Admin queue.
 
 REV-3 inserts one row per member and review. A review can have many flags from different
 members. Only a public review with a comment can be flagged (booking not `CANCELLED`), and
 never by its author. Flagging changes nothing public: the comment stays visible, and only the
-flagger sees a Flagged marker. REV-4 will add the Admin decision to this table.
+flagger sees a Flagged marker.
+
+REV-4 decides every pending flag on a review at once, recording the outcome, time and Admin,
+which keeps an audit trail. `KEPT` leaves the review published; other members can still flag
+it, which puts it back in the queue. `REMOVED` comes with the removal fields on `reviews`.
 
 ### messages
 
@@ -487,6 +503,7 @@ restrictions of Admin accounts. There is no action-edit or delete API. See
 | `RefundRequestReason`       | `TUTOR_NO_SHOW`, `UNSATISFACTORY_LESSON`, `OTHER`                |
 | `RefundRequestStatus`       | `PENDING`, `APPROVED`, `REJECTED`                                |
 | `AccountActionType`         | `SUSPEND`, `BAN`                                                 |
+| `ReviewFlagOutcome`         | `KEPT`, `REMOVED`                                                |
 
 ---
 
@@ -539,11 +556,11 @@ that the current schema is wrong to have shipped.
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
 | G10 | Resolved by PROF-7: `payout_accounts` stores each user's bank accounts with one default.                                                                                                              | §4 Payouts, `/settings/wallet` |
 | G11 | **Notification preference** per user and event type, with email and push flags                                                                                                                        | §8 Notifications               |
-| G12 | Moderation status on messages remains missing; review flags are stored by REV-3 (Admin decisions: REV-4); Tutor replies by REV-2                                                                      | §9 Reviews, §10 Admin          |
+| G12 | Moderation status on messages remains missing; reviews are flagged (REV-3) and kept or removed by Admins (REV-4); Tutor replies by REV-2                                                              | §9 Reviews, §10 Admin          |
 | G13 | Resolved by SAFE-1: `account_actions` stores suspension/ban history and determines current account restrictions.                                                                                      | §10 Admin                      |
 | G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                                                                                         | §2 Search filters, §7 Subjects |
 | G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up. Review flags use `review_flags` instead; `reports` stays unused | §10 Admin queues               |
-| G18 | **Audit log** for admin decisions on content and money                                                                                                                                                | §10 Admin                      |
+| G18 | **Audit log** for admin decisions on money; review moderation decisions are recorded on `review_flags` (REV-4) and account actions on `account_actions` (SAFE-1)                                      | §10 Admin                      |
 
 ---
 

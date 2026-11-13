@@ -59,7 +59,7 @@
 - Docker Swarm production Compose uses string-form `env_file` entries. Keep `admin-signup-key.enc.env` present and use a blank `ADMIN_SIGNUP_KEY` to disable Admin signup.
 - `/dashboard` always shows the Student dashboard; only approved Tutors get a Tutor tab on that same page. Keep legacy `/dashboard/tutor` links forwarding to the Tutor tab.
 - Student accounts must continue to see **Become a tutor** in the navbar.
-- For REV-3 and REV-4, the user confirmed that a flagged comment stays public while it waits (only the flagger sees a Flagged marker), a member can flag a review once, Keep lets other members flag it again, and Remove hides the whole review everywhere (lists, ratings, ranking). Flags are stored in a new `review_flags` table; `reports` is not used.
+- For REV-3 and REV-4, the user confirmed that a flagged comment stays public while it waits (only the flagger sees a Flagged marker), a member can flag a review once, Keep lets other members flag it again, and Remove hides the whole review everywhere (lists, ratings, ranking). Flags are stored in a new `review_flags` table; `reports` is not used. For REV-4, Remove requires a reason that only the author receives (reporters get the outcome, Keep needs no reason); the author's booking page shows the removal and reason, and they cannot write another review; the Admin queue has Pending and Decided filters.
 - CLASS-1 issue #146 depends on closed BOOK-8 #144. Use a platform-owned Google Meet organizer via OAuth, with separate generated and Tutor-provided URLs. Implement Tutor-provided URLs first; Google Meet room creation can follow later. The custom URL wins and survives rescheduling; rescheduling replaces the generated room. Co-host automation and Google-account linking are deferred. Follow the confirmed contract in `docs/adr/0004-google-meet-lesson-links.md`.
 - For CLASS-2 issue #147, a paid and scheduled Booking stays `CONFIRMED` until its scheduled end and remains so indefinitely until the assigned Tutor confirms completion. The Tutor sees ended lessons in a separate **Needs confirmation** list; confirmation is one-way and sets `COMPLETED`. Elapsed time alone never completes a lesson, and CLASS-2 adds no earnings, reviews, or notifications; CLASS-3 handles earnings and reviews.
 
@@ -68,6 +68,7 @@
 - For REV-1, the user confirmed (2026-11-10) adding a UNIQUE key on `reviews.booking_id` so a completed booking has at most one review.
 
 - For CLASS-3 issue #212, Tutor confirmation keeps the net earning pending at the existing 15% fee; it does not credit available balance or write a pending ledger row. Pending earnings include CONFIRMED and COMPLETED bookings without a LESSON_EARNING row. PAY-6 owns clearing and its hold period; CLASS-3 exposes Student review eligibility only, while REV-1 owns submission. No historical reconciliation is required.
+- For SAFE-4 issue #175, the user confirmed that a payment dispute is the PAY-3 refund request: SAFE-4 adds no new behaviour and is closed with ledger evidence (`dispute-ledger.integration.test.ts`), not a separate dispute feature.
 
 ### Open Threads
 - Question: Is rescheduling a booking in scope?

@@ -63,6 +63,21 @@ export function BookingReviewSection({
 
   const sectionClass = "mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-800";
 
+  if (booking.review?.removed) {
+    return (
+      <section aria-label="Your review" className={sectionClass}>
+        <h3 className="font-semibold">Your review</h3>
+        <p className="mt-2 text-sm">
+          Your review was removed by an admin. Reason: {booking.review.removed.reason}
+        </p>
+        <p className="mt-2 text-sm text-zinc-500">
+          It no longer shows on {booking.subject.tutor.name}&apos;s profile or counts in ratings.
+          Each lesson can be reviewed once, so a new review can&apos;t be written.
+        </p>
+      </section>
+    );
+  }
+
   if (booking.review) {
     return (
       <section aria-label="Your review" className={sectionClass}>
