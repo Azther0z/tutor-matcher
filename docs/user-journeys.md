@@ -776,6 +776,14 @@ Related stories: US8-1 … US8-4.
 
 Related stories: US9-1 … US9-5.
 
+**Payment disputes (SAFE-4, [#175](https://github.com/Azther0z/tutor-matcher/issues/175)).** A
+payment dispute is the PAY-3 refund request; SAFE-4 adds no new behaviour. The Student disputes a
+paid lesson after its scheduled end, and an Admin resolves it at `/admin/refunds`. Approval
+appends exactly one `REFUND` row for the full paid amount, linked to the request and the
+cancelled booking; rejection, with a reason the Student sees, leaves the ledger unchanged. Earlier
+rows are never edited, a resolved dispute cannot be resolved again, and the request keeps the
+deciding Admin and time, so every money movement traces back to the decision.
+
 **User management (`/admin/users`, [SAFE-1 #172](https://github.com/Azther0z/tutor-matcher/issues/172)).**
 The Admin account menu links to **Users**. Search matches every typed word against first
 or last name, case-insensitively, with literal `%` and `_` characters. Results are paged

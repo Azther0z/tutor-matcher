@@ -68,6 +68,7 @@
 - For REV-1, the user confirmed (2026-11-10) adding a UNIQUE key on `reviews.booking_id` so a completed booking has at most one review.
 
 - For CLASS-3 issue #212, Tutor confirmation keeps the net earning pending at the existing 15% fee; it does not credit available balance or write a pending ledger row. Pending earnings include CONFIRMED and COMPLETED bookings without a LESSON_EARNING row. PAY-6 owns clearing and its hold period; CLASS-3 exposes Student review eligibility only, while REV-1 owns submission. No historical reconciliation is required.
+- For SAFE-4 issue #175, the user confirmed that a payment dispute is the PAY-3 refund request: SAFE-4 adds no new behaviour and is closed with ledger evidence (`dispute-ledger.integration.test.ts`), not a separate dispute feature.
 
 ### Open Threads
 - Question: Is rescheduling a booking in scope?
