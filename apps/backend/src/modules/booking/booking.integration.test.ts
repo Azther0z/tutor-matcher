@@ -54,7 +54,7 @@ async function cleanFixtures() {
   });
   await prisma.availability.updateMany({
     where: {
-      id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID, RESCHEDULE_SLOT_ID] },
+      tutorId: TUTOR_ID,
     },
     data: { bookingId: null },
   });
@@ -62,7 +62,7 @@ async function cleanFixtures() {
   await prisma.availabilitySubject.deleteMany({ where: { subjectId: SUBJECT_ID } });
   await prisma.availability.deleteMany({
     where: {
-      id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID, RESCHEDULE_SLOT_ID] },
+      tutorId: TUTOR_ID,
     },
   });
   await prisma.subject.deleteMany({ where: { id: SUBJECT_ID } });
@@ -357,6 +357,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         endedAt: new Date(Date.now() + 88_200_000),
       },
     });
+    await prisma.availability.create({
+      data: {
+        tutorId: TUTOR_ID,
+        startedAt: booking.startedAt,
+        availabilitySubjects: { create: { subjectId: SUBJECT_ID } },
+      },
+    });
     const before = await prisma.user.findUniqueOrThrow({ where: { id: STUDENT_ID } });
     await authorize(request(app).post(`/api/bookings/${booking.id}/confirm-payment`)).expect(402);
     expect(bookingEmail).not.toHaveBeenCalled();
@@ -414,6 +421,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
           endedAt: new Date(Date.now() + 88_200_000),
         },
       });
+      await prisma.availability.create({
+        data: {
+          tutorId: TUTOR_ID,
+          startedAt: booking.startedAt,
+          availabilitySubjects: { create: { subjectId: SUBJECT_ID } },
+        },
+      });
       bookingEmail.mockRejectedValueOnce(new Error("Email delivery unavailable"));
       const paid = await authorize(
         request(app).post(`/api/bookings/${booking.id}/confirm-payment`)
@@ -442,6 +456,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         paymentExpiresAt: new Date(Date.now() + 600_000),
         startedAt: new Date(Date.now() + 86_400_000),
         endedAt: new Date(Date.now() + 88_200_000),
+      },
+    });
+    await prisma.availability.create({
+      data: {
+        tutorId: TUTOR_ID,
+        startedAt: booking.startedAt,
+        availabilitySubjects: { create: { subjectId: SUBJECT_ID } },
       },
     });
     const lookup = jest

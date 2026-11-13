@@ -1195,3 +1195,31 @@ describe("REV-1 review a completed lesson", () => {
     expect(screen.queryByRole("region", { name: "Write a review" })).not.toBeInTheDocument();
   });
 });
+
+it("offers fresh availability without changing wallet balance when another student paid first", async () => {
+  const pending = {
+    ...booking,
+    status: "PENDING_PAYMENT",
+    payment: { ...booking.payment, canPay: true },
+    actions: { ...booking.actions, canPay: true },
+  };
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: pending }) })
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      json: async () => ({ code: "SLOT_TAKEN", message: "Slot taken" }),
+    });
+  const onBalance = jest.fn();
+  const unsubscribe = subscribeToWalletBalance(onBalance);
+  render(<BookingDetailPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Confirm payment" }));
+  expect(await screen.findByText(/Your wallet was not charged/)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Choose another time" })).toHaveAttribute(
+    "href",
+    "/bookings/s/" + booking.subject.id
+  );
+  expect(onBalance).not.toHaveBeenCalled();
+  unsubscribe();
+});

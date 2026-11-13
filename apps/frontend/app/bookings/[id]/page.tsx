@@ -81,6 +81,7 @@ function BookingDetailContent() {
   const [loading, setLoading] = useState(true);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [slotUnavailable, setSlotUnavailable] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [meetingUrlDraft, setMeetingUrlDraft] = useState("");
   const [meetingLinkBusy, setMeetingLinkBusy] = useState(false);
@@ -223,8 +224,13 @@ function BookingDetailContent() {
       setMessage("Payment confirmed. Your lesson is booked.");
     } catch (error) {
       if (error instanceof BookingApiError && error.code === "BOOKING_EXPIRED") {
-        setMessage("This payment hold expired, so the selected times were released.");
+        setMessage("This payment request expired. Choose an available time to try again.");
         await loadBooking();
+      } else if (error instanceof BookingApiError && error.code === "SLOT_TAKEN") {
+        setSlotUnavailable(true);
+        setMessage(
+          "These times are no longer available. Your wallet was not charged. Choose another time."
+        );
       } else if (error instanceof BookingApiError && error.code === "BOOKING_ALREADY_PAID") {
         setMessage("This booking has already been paid.");
         await loadBooking();
@@ -464,7 +470,7 @@ function BookingDetailContent() {
       </div>
       {isExpired && (
         <p role="status" className="mt-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
-          The payment hold expired and the selected times were released.
+          This payment request expired. Choose an available time to try again.
         </p>
       )}
       {booking.status === "CANCELLED" && booking.cancelledBy === "TUTOR" && (
@@ -474,6 +480,14 @@ function BookingDetailContent() {
           </p>
           {booking.cancellationReason && <p className="mt-1">{booking.cancellationReason}</p>}
         </div>
+      )}
+      {slotUnavailable && (
+        <Link
+          className="mt-4 inline-block text-violet-600 underline"
+          href={`/bookings/s/${booking.subject.id}`}
+        >
+          Choose another time
+        </Link>
       )}
       {message && (
         <p role="status" className="mt-6 rounded-xl bg-violet-50 p-4 text-sm text-violet-900">
@@ -653,7 +667,7 @@ function BookingDetailContent() {
           />
           {booking.status === "PENDING_PAYMENT" && booking.payment.expiresAt && (
             <p className="mt-2 text-xs text-zinc-500">
-              Payment hold expires {dateTime.format(new Date(booking.payment.expiresAt))}
+              Payment request expires {dateTime.format(new Date(booking.payment.expiresAt))}
             </p>
           )}
           {booking.status === "PENDING_PAYMENT" && booking.payment.walletBalance !== null && (

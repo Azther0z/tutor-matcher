@@ -274,7 +274,7 @@ student never picks the subject twice. **No booking record exists in this step.*
 
 Continuing creates the booking record and its booking number, and opens the booking
 page with the subject, date, time, duration, and price locked. The tutor's slots are
-locked to this booking while payment is outstanding.
+not reserved while payment is outstanding: other Students may select and pay for them.
 
 - Payment is a debit from **wallet balance**, taken on this page. Wallet history never
   accepts payment.
@@ -282,9 +282,12 @@ locked to this booking while payment is outstanding.
   **Top up ฿<shortfall>**, returning the student to this booking afterwards.
 - Creating the pending booking writes no wallet row; the amount due is Booking.totalAmount.
 - Paying atomically deducts the amount, appends one LESSON_PAYMENT row and changes
-  PENDING_PAYMENT to CONFIRMED. Failure leaves the booking and wallet unchanged.
+  PENDING_PAYMENT to CONFIRMED, claiming every open slot in the stored subject/time interval
+  in the same serializable transaction. If any slot is taken, closed or reassigned, payment
+  fails without a debit. Concurrent payers cannot both claim the same slot.
 - Cancelling or expiring an unpaid booking writes no wallet row.
-- If payment never completes, no confirmed booking exists and the slots are released.
+- The existing 15-minute payment deadline expires the request only; it never reserves slots.
+  If payment never completes, no confirmed booking exists.
 
 ### Step 3 — Confirmed
 
@@ -370,7 +373,7 @@ and a Tutor-only filter in a Student's URL falls back to All.
 Earnings this month sum LESSON_EARNING rows in the current Asia/Bangkok calendar month;
 all-time paid out sums every PAYOUT row. The list is newest first, 20 per page, and keeps
 its filter and page in the URL; each row shows the signed amount and resulting balance and
-opens its detail. A **Payment due** box lists the user's unpaid bookings whose hold has not
+opens its detail. A **Payment due** box lists the user's unpaid bookings whose payment request has not
 expired, each with a link to `/bookings/:id`, where payment is made. The account menu
 links to `/wallet`. See the [PAY-5 confirmation](sources/pay-5-policy-confirmation.md)
 and the [PAY-5 review comments](sources/pay-5-review-comments.md).
@@ -408,7 +411,7 @@ approval with its slip link and the recent requests with their status and reason
 no cancel or back button, so a wrong slip waits for an admin to reject it. After a rejection
 the user can send a new request. An admin
 cannot review their own top-up. The same flow runs in development and production; there
-is no simulation. A booking's payment hold can expire while a slip waits for review. See
+is no simulation. A booking's payment request can expire while a slip waits for review. See
 the [PAY-1 slip confirmation](sources/pay-1-slip-topup-confirmation.md) and the
 [PAY-1 demo feedback](sources/pay-1-demo-feedback.md).
 
@@ -663,7 +666,7 @@ values already overwritten before this feature cannot be recovered.
 30-minute slot they can teach, and
 assigns which subject(s) each open slot covers — so one slot can advertise several
 subjects and a student browsing a subject sees only slots that carry it. Slots already
-attached to a paid booking or an active payment hold are **locked** and cannot be closed
+attached to a paid booking are **locked** and cannot be closed
 or reassigned. Subject assignment uses
 compact toggle boxes that scroll inside their own area. Availability is per date, not a
 recurring weekly pattern. Approved Tutors can manage it while unpublished; publication
@@ -675,7 +678,7 @@ summarizes availability; clicking a date opens its week for slot editing. Tutors
 open any future date, close free future
 slots, and change their subject assignments. An open slot requires at least one owned
 subject. The same Tutor cannot have overlapping slots, including across different subjects.
-Past slots are read-only. Expired payment holds release through the booking lifecycle.
+Past slots are read-only. Pending payment requests do not lock slots; Tutors may still edit them.
 
 Each slot has its own **Save slot** and **Close slot** actions. There is no day or week
 save step. If another edit or booking changes that slot, its save is rejected and its draft

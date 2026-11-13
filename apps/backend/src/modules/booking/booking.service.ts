@@ -410,6 +410,11 @@ export async function releaseExpiredBookings(
     try {
       return await prisma.$transaction(
         async (tx) => {
+          // Release legacy pending-slot links; serializable isolation protects concurrent payments.
+          await tx.availability.updateMany({
+            where: { booking: { status: "PENDING_PAYMENT" } },
+            data: { bookingId: null },
+          });
           const expired = await tx.booking.findMany({
             where: {
               ...bookingFilter,
@@ -560,18 +565,20 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
             paymentExpiresAt: expiresAt,
           },
         });
-        const claimed = await tx.availability.updateMany({
-          where: {
-            id: { in: input.availabilityIds },
-            bookingId: null,
-            startedAt: { gt: now },
-          },
-          data: { bookingId: booking.id },
-        });
-        if (claimed.count !== input.availabilityIds.length)
-          throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable", {
-            subjectId: input.subjectId,
+        if (!requiresPayment) {
+          const claimed = await tx.availability.updateMany({
+            where: {
+              id: { in: input.availabilityIds },
+              bookingId: null,
+              startedAt: { gt: now },
+            },
+            data: { bookingId: booking.id },
           });
+          if (claimed.count !== input.availabilityIds.length)
+            throw new BookingConflictError("SLOT_TAKEN", "One or more slots are unavailable", {
+              subjectId: input.subjectId,
+            });
+        }
         const detailed = await tx.booking.findUniqueOrThrow({
           where: { id: booking.id },
           include: detailInclude,
@@ -671,7 +678,7 @@ export async function confirmBookingPayment(userId: string, id: string) {
           if (booking.status === "CONFIRMED")
             throw new BookingConflictError("BOOKING_ALREADY_PAID", "Booking is already paid");
           if (booking.status === "CANCELLED" && booking.cancellationReason === "PAYMENT_EXPIRED")
-            throw new BookingConflictError("BOOKING_EXPIRED", "The payment hold has expired");
+            throw new BookingConflictError("BOOKING_EXPIRED", "The payment request has expired");
           if (booking.status !== "PENDING_PAYMENT")
             throw new BookingConflictError(
               "BOOKING_ALREADY_PAID",
@@ -682,7 +689,45 @@ export async function confirmBookingPayment(userId: string, id: string) {
             booking.paymentExpiresAt.getTime() <= transactionNow.getTime() ||
             booking.startedAt.getTime() <= transactionNow.getTime()
           )
-            throw new BookingConflictError("BOOKING_EXPIRED", "The payment hold has expired");
+            throw new BookingConflictError("BOOKING_EXPIRED", "The payment request has expired");
+
+          // Pending bookings remember the interval, not ownership of its slots.
+          const slots = await tx.availability.findMany({
+            where: {
+              startedAt: { gte: booking.startedAt, lt: booking.endedAt },
+              isOpen: true,
+              bookingId: null,
+              availabilitySubjects: { some: { subjectId: booking.subjectId } },
+              tutor: { subjects: { some: { id: booking.subjectId } } },
+            },
+            orderBy: { startedAt: "asc" },
+          });
+          const expectedCount = (booking.endedAt.getTime() - booking.startedAt.getTime()) / SLOT_MS;
+          if (
+            expectedCount <= 0 ||
+            !Number.isInteger(expectedCount) ||
+            slots.length !== expectedCount ||
+            slots.some(
+              (slot, index) =>
+                slot.startedAt.getTime() !== booking.startedAt.getTime() + index * SLOT_MS
+            )
+          ) {
+            throw new BookingConflictError(
+              "SLOT_TAKEN",
+              "These times are no longer available. Choose another time.",
+              { subjectId: booking.subjectId }
+            );
+          }
+          const slotClaim = await tx.availability.updateMany({
+            where: { id: { in: slots.map((slot) => slot.id) }, bookingId: null, isOpen: true },
+            data: { bookingId: booking.id },
+          });
+          if (slotClaim.count !== expectedCount)
+            throw new BookingConflictError(
+              "SLOT_TAKEN",
+              "These times are no longer available. Choose another time.",
+              { subjectId: booking.subjectId }
+            );
 
           const claimed = await tx.booking.updateMany({
             where: {
@@ -694,7 +739,7 @@ export async function confirmBookingPayment(userId: string, id: string) {
             data: { status: "CONFIRMED", paymentExpiresAt: null },
           });
           if (claimed.count !== 1)
-            throw new BookingConflictError("BOOKING_EXPIRED", "The payment hold has expired");
+            throw new BookingConflictError("BOOKING_EXPIRED", "The payment request has expired");
 
           try {
             await appendWalletMovement(tx, {
@@ -749,7 +794,7 @@ export async function confirmBookingPayment(userId: string, id: string) {
         throw new BookingConflictError("BOOKING_ALREADY_PAID", "Booking is already paid");
       if (attempt === 1) {
         await releaseExpiredBookings(new Date(), { id });
-        throw new BookingConflictError("BOOKING_EXPIRED", "The payment hold has expired");
+        throw new BookingConflictError("BOOKING_EXPIRED", "The payment request has expired");
       }
     }
   }

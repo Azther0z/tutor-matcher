@@ -188,7 +188,7 @@ function SubjectBookingContent() {
             {submitting ? "Booking…" : total > 0 ? "Continue to payment" : "Confirm booking"}
           </button>
           <p className="mt-3 text-center text-xs text-zinc-500">
-            Continue to reserve these times temporarily. Payment confirms your booking.
+            These times remain available to others until your payment succeeds.
           </p>
         </aside>
       </div>
