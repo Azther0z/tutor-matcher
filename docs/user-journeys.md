@@ -335,12 +335,18 @@ See the [BOOK-4 confirmation](sources/book-4-policy-confirmation.md).
 
 ### `/bookings`
 
-Tabs: **All**, **Upcoming** (confirmed and paid), and **Past** (completed and cancelled).
+Approved Tutors can switch between **Student** and **Tutor** views; everyone else sees the
+Student view only. Each view has **All**, **Upcoming** (all confirmed and paid lessons,
+including lessons in progress and ended lessons awaiting Tutor confirmation), and **Past**
+(completed and cancelled) tabs. Confirmed lessons show an in-progress or awaiting-completion
+label when appropriate. Tutor rows identify the Student; Student rows identify the Tutor.
 Unpaid booking attempts, including attempts cancelled because payment expired, do not appear in
 this list or in the Tutor's Upcoming classes. The Student continues to the payment detail
 immediately after choosing a time; only successful payment makes the lesson visible in booking
 lists.
-Each row and booking detail show the lesson start and end time in Asia/Bangkok.
+Each row and booking detail show the lesson start and end time in Asia/Bangkok. The booking
+detail heading shows the subject name rather than the booking identifier; Tutor details identify
+the Student and lesson format.
 Bookings can be cancelled under the cancellation policy; rescheduling is not supported.
 There are no Trial labels or separate trial lessons. Each row opens the booking in its correct state.
 

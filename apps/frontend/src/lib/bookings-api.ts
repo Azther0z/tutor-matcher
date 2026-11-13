@@ -102,8 +102,8 @@ export async function getBooking(id: string): Promise<Booking> {
   return data.booking ?? data;
 }
 
-export async function getBookings(): Promise<Booking[]> {
-  const data = await request<{ bookings: Booking[] }>("/api/bookings", {
+export async function getBookings(role: "STUDENT" | "TUTOR" = "STUDENT"): Promise<Booking[]> {
+  const data = await request<{ bookings: Booking[] }>(`/api/bookings?role=${role}`, {
     headers: authHeaders(),
   });
   return data.bookings;

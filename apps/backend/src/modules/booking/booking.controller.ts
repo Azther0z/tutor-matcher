@@ -16,6 +16,7 @@ import {
   updateBookingMeetingLink,
 } from "./booking.service.ts";
 import type {
+  BookingListQuery,
   CancelBookingInput,
   CreateBookingInput,
   TutorCancelBookingInput,
@@ -71,7 +72,9 @@ export async function detail(req: Request, res: Response) {
 
 export async function list(req: Request, res: Response) {
   try {
-    res.json({ bookings: await listBookings(req.user!.sub) });
+    res.json({
+      bookings: await listBookings(req.user!.sub, req.query as unknown as BookingListQuery),
+    });
   } catch (error) {
     await sendError(error, res);
   }
