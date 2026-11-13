@@ -40,6 +40,7 @@ jest.unstable_mockModule("../../lib/email.ts", () => ({
   sendPaymentNotificationEmail: jest.fn(),
   sendTutorRequestRejectedEmail: jest.fn(),
   sendAccountActionEmail,
+  sendReviewModerationEmail: jest.fn(),
 }));
 
 const { app } = await import("../../app.ts");

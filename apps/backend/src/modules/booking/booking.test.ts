@@ -396,12 +396,41 @@ describe("trial booking rules", () => {
             ratingStars: 5,
             text: null,
             createdAt: now,
+            removedAt: null,
+            removalReason: null,
           },
         },
         SUBJECT_ID,
         now
       ).actions.canReview
     ).toBe(false);
+
+    // REV-4: a removed review hides its comment, says why, and still blocks a second review.
+    const removedAt = new Date("2026-11-12T08:00:00.000Z");
+    const removed = mapBookingResponse(
+      {
+        ...record,
+        status: "COMPLETED",
+        review: {
+          id: SLOT_A,
+          ratingStars: 1,
+          text: "Abusive comment",
+          createdAt: now,
+          removedAt,
+          removalReason: "Harassment",
+        },
+      },
+      SUBJECT_ID,
+      now
+    );
+    expect(removed.review).toEqual({
+      id: SLOT_A,
+      rating: 1,
+      comment: null,
+      createdAt: now.toISOString(),
+      removed: { reason: "Harassment", removedAt: removedAt.toISOString() },
+    });
+    expect(removed.actions.canReview).toBe(false);
 
     // PAY-3: a paid lesson can be refunded once its scheduled end passes, with no deadline.
     const payment = {

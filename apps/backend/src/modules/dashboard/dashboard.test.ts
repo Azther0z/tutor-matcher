@@ -171,6 +171,13 @@ describe("Tutor dashboard statistics", () => {
     expect(review.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ take: 5, orderBy: [{ createdAt: "desc" }, { id: "desc" }] })
     );
+    // REV-4: removed reviews neither count nor show on the dashboard.
+    expect(review.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { subject: { tutorId }, removedAt: null } })
+    );
+    expect(review.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { subject: { tutorId }, removedAt: null } })
+    );
     expect(JSON.stringify(result)).not.toContain("Sukjai");
   });
 
