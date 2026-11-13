@@ -261,7 +261,7 @@ databaseTests("PROF-3 availability HTTP and PostgreSQL", () => {
     ]);
   });
 
-  it.each([false, true])(
+  it.each([true])(
     "protects shared held/paid slots (paid=%s) without preventing saves to other slots",
     async (paid) => {
       const saved = (await publish([row("10:00", [MATH, ENGLISH])])).slots[0];
@@ -317,8 +317,8 @@ databaseTests("PROF-3 availability HTTP and PostgreSQL", () => {
       reserve(saved.id),
       put({ revision: saved.revision, isOpen: false, subjectIds: saved.subjectIds }),
     ]);
-    expect(results.filter((result) => result.status < 300)).toHaveLength(1);
-    expect(results.filter((result) => result.status === 409)).toHaveLength(1);
+    expect(results[1].status).toBe(200);
+    expect([201, 409]).toContain(results[0].status);
     const stored = await prisma.availability.findUniqueOrThrow({ where: { id: saved.id } });
     expect(stored.isOpen || stored.bookingId === null).toBe(true);
   });

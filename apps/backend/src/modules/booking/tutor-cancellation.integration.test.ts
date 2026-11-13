@@ -186,7 +186,7 @@ async function snapshot(id: string, slotId: string) {
     });
   });
 
-  it("cancels an unpaid hold without a refund entry and closes its slot", async () => {
+  it("cancels an unpaid request without a refund or changing the unreserved slot", async () => {
     const { id, slotId } = await createLesson(48, false);
     const quote = await quoteFor(id);
     expect(quote.refundAmount).toBe("0.00");
@@ -196,7 +196,7 @@ async function snapshot(id: string, slotId: string) {
     const after = await snapshot(id, slotId);
     expect(after.movements).toEqual([]);
     expect(after.student.balance.toFixed(2)).toBe("500.00");
-    expect(after.slot).toMatchObject({ bookingId: null, isOpen: false });
+    expect(after.slot).toMatchObject({ bookingId: null, isOpen: true });
   });
 
   it("rejects the student, another user and unauthenticated requests without changes", async () => {

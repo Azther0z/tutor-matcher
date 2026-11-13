@@ -189,13 +189,13 @@ Index: `learning_area_id`. The one-to-three limit is enforced by the subject API
 
 ### availabilities
 
-| Column          | Type      | Constraints                                        | Notes                                     |
-| --------------- | --------- | -------------------------------------------------- | ----------------------------------------- |
-| availability_id | UUID      | PK                                                 |                                           |
-| started_at      | TIMESTAMP | NOT NULL                                           | Start of a 30-minute slot                 |
-| tutor_id        | UUID      | NOT NULL, FK → tutors.tutor_id, ON DELETE RESTRICT | Explicit slot owner                       |
-| is_open         | BOOLEAN   | NOT NULL, DEFAULT true                             | Tutor permits new bookings when true      |
-| booking_id      | UUID      | NULL, FK → bookings.booking_id, ON DELETE SET NULL | Set = locked to a booking or payment hold |
+| Column          | Type      | Constraints                                        | Notes                                                                  |
+| --------------- | --------- | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| availability_id | UUID      | PK                                                 |                                                                        |
+| started_at      | TIMESTAMP | NOT NULL                                           | Start of a 30-minute slot                                              |
+| tutor_id        | UUID      | NOT NULL, FK → tutors.tutor_id, ON DELETE RESTRICT | Explicit slot owner                                                    |
+| is_open         | BOOLEAN   | NOT NULL, DEFAULT true                             | Tutor permits new bookings when true                                   |
+| booking_id      | UUID      | NULL, FK → bookings.booking_id, ON DELETE SET NULL | Set = claimed by a paid booking; pending requests do not reserve slots |
 
 PROF-3 adds a unique `(tutor_id, started_at)` constraint and retains the `booking_id` index.
 The application enforces Bangkok-local :00/:30 starts, so unique Tutor/start also prevents
@@ -216,24 +216,24 @@ subject page show subject-filtered availability.
 
 ### bookings
 
-| Column                  | Type          | Constraints                                            | Notes                                                        |
-| ----------------------- | ------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
-| booking_id              | UUID          | PK                                                     |                                                              |
-| description             | TEXT          | NULL                                                   | The student's "what do you want to learn" note               |
-| zoom_meeting_url        | TEXT          | NULL                                                   | Existing generated-link fallback field                       |
-| custom_meeting_url      | TEXT          | NULL                                                   | Tutor-provided override; takes precedence when present       |
-| meeting_link_updated_at | TIMESTAMP     | NULL                                                   | Time the Tutor last set or removed a custom link             |
-| created_at              | TIMESTAMP     | NOT NULL, DEFAULT now()                                |                                                              |
-| user_id                 | UUID          | NOT NULL, FK → users.user_id, ON DELETE RESTRICT       | The student                                                  |
-| subject_id              | UUID          | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Identifies the tutor through the subject                     |
-| status                  | BookingStatus | NOT NULL, DEFAULT `PENDING_PAYMENT`                    | `PENDING_PAYMENT`, `CONFIRMED`, `COMPLETED`, `CANCELLED`     |
-| started_at              | TIMESTAMP     | NOT NULL                                               | Agreed first-slot start                                      |
-| ended_at                | TIMESTAMP     | NOT NULL                                               | Agreed last-slot end                                         |
-| total_amount            | NUMERIC(12,2) | NOT NULL                                               | Agreed price                                                 |
-| payment_expires_at      | TIMESTAMP     | NULL                                                   | Active payment-hold deadline                                 |
-| cancelled_at            | TIMESTAMP     | NULL                                                   | Cancellation time                                            |
-| cancellation_reason     | TEXT          | NULL                                                   | Cancellation reason                                          |
-| is_trial                | BOOLEAN       | NOT NULL, DEFAULT true                                 | Existing booking API field; no trial flow is added by PROF-3 |
+| Column                  | Type          | Constraints                                            | Notes                                                                               |
+| ----------------------- | ------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| booking_id              | UUID          | PK                                                     |                                                                                     |
+| description             | TEXT          | NULL                                                   | The student's "what do you want to learn" note                                      |
+| zoom_meeting_url        | TEXT          | NULL                                                   | Existing generated-link fallback field                                              |
+| custom_meeting_url      | TEXT          | NULL                                                   | Tutor-provided override; takes precedence when present                              |
+| meeting_link_updated_at | TIMESTAMP     | NULL                                                   | Time the Tutor last set or removed a custom link                                    |
+| created_at              | TIMESTAMP     | NOT NULL, DEFAULT now()                                |                                                                                     |
+| user_id                 | UUID          | NOT NULL, FK → users.user_id, ON DELETE RESTRICT       | The student                                                                         |
+| subject_id              | UUID          | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Identifies the tutor through the subject                                            |
+| status                  | BookingStatus | NOT NULL, DEFAULT `PENDING_PAYMENT`                    | `PENDING_PAYMENT`, `CONFIRMED`, `COMPLETED`, `CANCELLED`                            |
+| started_at              | TIMESTAMP     | NOT NULL                                               | Agreed first-slot start                                                             |
+| ended_at                | TIMESTAMP     | NOT NULL                                               | Agreed last-slot end                                                                |
+| total_amount            | NUMERIC(12,2) | NOT NULL                                               | Agreed price                                                                        |
+| payment_expires_at      | TIMESTAMP     | NULL                                                   | Payment-request expiry (does not reserve slots)                                     |
+| cancelled_at            | TIMESTAMP     | NULL                                                   | Cancellation time                                                                   |
+| cancellation_reason     | TEXT          | NULL                                                   | Cancellation reason                                                                 |
+| is_trial                | BOOLEAN       | NOT NULL, DEFAULT true                                 | Legacy compatibility field; new bookings explicitly store false, with no Trial tier |
 
 Indexes: `user_id`, `subject_id`.
 

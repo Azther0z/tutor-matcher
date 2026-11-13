@@ -83,7 +83,7 @@ export async function createBooking(input: {
   subjectId: string;
   availabilityIds: string[];
   description?: string;
-  isTrial: true;
+  isTrial: false;
 }): Promise<Booking> {
   // Reserve selected slots and create the booking's pending payment.
   const data = await request<Booking & { booking?: Booking }>("/api/bookings", {
@@ -183,19 +183,6 @@ export async function cancelBookingAsTutor(
     headers: authHeaders(true),
     body: JSON.stringify(input),
   });
-}
-
-export async function rescheduleBooking(id: string, availabilityIds: string[]): Promise<Booking> {
-  // Replace the current lesson slots with the selected alternative slots.
-  const data = await request<Booking & { booking?: Booking }>(
-    `/api/bookings/${encodeURIComponent(id)}/reschedule`,
-    {
-      method: "PATCH",
-      headers: authHeaders(true),
-      body: JSON.stringify({ availabilityIds }),
-    }
-  );
-  return data.booking ?? data;
 }
 
 export async function updateMeetingLink(

@@ -25,10 +25,11 @@ it("lists each upcoming class with its student and links to the booking", async 
   });
   render(<TutorUpcomingClasses />);
   const links = await screen.findAllByRole("link");
+  expect(links).toHaveLength(1);
   expect(links[0]).toHaveAttribute("href", `/bookings/${upcomingClass.id}`);
-  expect(screen.getAllByText("with Student One")).toHaveLength(2);
+  expect(screen.getAllByText("with Student One")).toHaveLength(1);
   expect(screen.getByText("Confirmed")).toBeInTheDocument();
-  expect(screen.getByText("Payment due")).toBeInTheDocument();
+  expect(screen.queryByText("Payment due")).not.toBeInTheDocument();
   expect(global.fetch).toHaveBeenCalledWith(
     "/api/bookings/tutor/upcoming",
     expect.objectContaining({ headers: { Authorization: "Bearer tutor-token" } })

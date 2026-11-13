@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BookingReviewSection } from "@/src/components/booking-review";
-import { ContinuousSlotPicker } from "@/src/components/continuous-slot-picker";
 import { RequireAuth } from "@/src/components/require-auth";
 import { TutorDialog } from "@/src/components/tutor-dialog";
 import {
@@ -13,20 +12,13 @@ import {
   cancelBookingAsTutor,
   confirmBookingCompletion,
   confirmPayment,
-  getAvailability,
   getBooking,
   getCancellationQuote,
   getTutorCancellationQuote,
   requestRefund,
-  rescheduleBooking,
   updateMeetingLink,
 } from "@/src/lib/bookings-api";
-import type {
-  AvailabilitySlot,
-  Booking,
-  CancellationQuote,
-  RefundRequestReason,
-} from "@/src/types/booking";
+import type { Booking, CancellationQuote, RefundRequestReason } from "@/src/types/booking";
 import { refundReasonLabels } from "@/src/lib/refunds-api";
 import { publishWalletBalance } from "@/src/lib/wallet-api";
 
@@ -80,9 +72,7 @@ function meetingUrlValidationMessage(value: string) {
 function BookingDetailContent() {
   const { id } = useParams<{ id: string }>();
   const [booking, setBooking] = useState<Booking | null>(null);
-  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [mode, setMode] = useState<"cancel" | "reschedule" | "refund" | null>(null);
+  const [mode, setMode] = useState<"cancel" | "refund" | null>(null);
   const [refundReason, setRefundReason] = useState<RefundRequestReason | null>(null);
   const [refundDetails, setRefundDetails] = useState("");
   const [refundError, setRefundError] = useState<string | null>(null);
@@ -91,6 +81,7 @@ function BookingDetailContent() {
   const [loading, setLoading] = useState(true);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [slotUnavailable, setSlotUnavailable] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [meetingUrlDraft, setMeetingUrlDraft] = useState("");
   const [meetingLinkBusy, setMeetingLinkBusy] = useState(false);
@@ -176,7 +167,6 @@ function BookingDetailContent() {
     };
   }, [booking?.endedAt, booking?.status, booking?.viewerRole, loadBooking]);
 
-  const requiredSlotCount = booking?.availabilities.length ?? 0;
   const startsAt = booking?.startedAt ?? booking?.availabilities[0]?.startedAt;
   const isExpired =
     booking?.status === "CANCELLED" && booking.cancellationReason === "PAYMENT_EXPIRED";
@@ -221,19 +211,6 @@ function BookingDetailContent() {
     setMessage(null);
   }
 
-  async function openReschedule() {
-    if (!booking) return;
-    setMode("reschedule");
-    setMessage(null);
-    setSelectedIds([]);
-    try {
-      const result = await getAvailability(booking.subject.id);
-      setSlots(result.slots.filter((slot) => slot.available !== false));
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not load available times.");
-    }
-  }
-
   async function pay() {
     if (!booking || !booking.actions.canPay || !booking.payment.canPay) return;
     setBusy(true);
@@ -244,11 +221,16 @@ function BookingDetailContent() {
       if (confirmed.payment.walletBalance !== null) {
         publishWalletBalance(confirmed.payment.walletBalance);
       }
-      setMessage("Payment confirmed. Your trial lesson is booked.");
+      setMessage("Payment confirmed. Your lesson is booked.");
     } catch (error) {
       if (error instanceof BookingApiError && error.code === "BOOKING_EXPIRED") {
-        setMessage("This payment hold expired, so the selected times were released.");
+        setMessage("This payment request expired. Choose an available time to try again.");
         await loadBooking();
+      } else if (error instanceof BookingApiError && error.code === "SLOT_TAKEN") {
+        setSlotUnavailable(true);
+        setMessage(
+          "These times are no longer available. Your wallet was not charged. Choose another time."
+        );
       } else if (error instanceof BookingApiError && error.code === "BOOKING_ALREADY_PAID") {
         setMessage("This booking has already been paid.");
         await loadBooking();
@@ -402,30 +384,6 @@ function BookingDetailContent() {
     }
   }
 
-  async function reschedule() {
-    if (!booking || selectedIds.length !== requiredSlotCount) return;
-    setBusy(true);
-    setMessage(null);
-    try {
-      setBooking(await rescheduleBooking(booking.id, selectedIds));
-      setMode(null);
-      setMessage("Your lesson was rescheduled successfully.");
-    } catch (error) {
-      if (error instanceof BookingApiError && error.code === "SLOT_TAKEN") {
-        setMessage("That time is no longer available. The open times have been refreshed.");
-        const result = await getAvailability(booking.subject.id);
-        setSlots(result.slots.filter((slot) => slot.available !== false));
-        setSelectedIds([]);
-      } else if (error instanceof BookingApiError && error.code === "INVALID_SLOT_BLOCK") {
-        setMessage("Choose the required number of consecutive times on the same day.");
-      } else {
-        setMessage(error instanceof Error ? error.message : "Could not reschedule this booking.");
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function saveMeetingLink(customMeetingUrl: string | null) {
     if (!booking || !booking.actions.canEditMeetingLink || meetingLinkBusy) return;
     if (customMeetingUrl !== null) {
@@ -463,14 +421,6 @@ function BookingDetailContent() {
       setMeetingLinkBusy(false);
     }
   }
-
-  const sortedSlots = useMemo(
-    () =>
-      [...slots].sort(
-        (left, right) => new Date(left.startedAt).getTime() - new Date(right.startedAt).getTime()
-      ),
-    [slots]
-  );
 
   if (loading)
     return (
@@ -511,9 +461,7 @@ function BookingDetailContent() {
       </Link>
       <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">
-            {booking.isTrial ? "Trial lesson" : "Lesson"}
-          </p>
+          <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">Lesson</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight">Booking #{booking.id}</h1>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusStyle[booking.status]}`}>
@@ -522,7 +470,7 @@ function BookingDetailContent() {
       </div>
       {isExpired && (
         <p role="status" className="mt-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
-          The payment hold expired and the selected times were released.
+          This payment request expired. Choose an available time to try again.
         </p>
       )}
       {booking.status === "CANCELLED" && booking.cancelledBy === "TUTOR" && (
@@ -532,6 +480,14 @@ function BookingDetailContent() {
           </p>
           {booking.cancellationReason && <p className="mt-1">{booking.cancellationReason}</p>}
         </div>
+      )}
+      {slotUnavailable && (
+        <Link
+          className="mt-4 inline-block text-violet-600 underline"
+          href={`/bookings/s/${booking.subject.id}`}
+        >
+          Choose another time
+        </Link>
       )}
       {message && (
         <p role="status" className="mt-6 rounded-xl bg-violet-50 p-4 text-sm text-violet-900">
@@ -553,7 +509,9 @@ function BookingDetailContent() {
             <div className="sm:col-span-2">
               <dt className="text-sm text-zinc-500">Time</dt>
               <dd className="mt-1 font-semibold">
-                {startsAt ? dateTime.format(new Date(startsAt)) : "To be confirmed"}
+                {startsAt
+                  ? dateTime.formatRange(new Date(startsAt), new Date(booking.endedAt))
+                  : "To be confirmed"}
               </dd>
             </div>
             {booking.description && (
@@ -709,7 +667,7 @@ function BookingDetailContent() {
           />
           {booking.status === "PENDING_PAYMENT" && booking.payment.expiresAt && (
             <p className="mt-2 text-xs text-zinc-500">
-              Payment hold expires {dateTime.format(new Date(booking.payment.expiresAt))}
+              Payment request expires {dateTime.format(new Date(booking.payment.expiresAt))}
             </p>
           )}
           {booking.status === "PENDING_PAYMENT" && booking.payment.walletBalance !== null && (
@@ -729,19 +687,8 @@ function BookingDetailContent() {
               </Link>
             </div>
           )}
-          {(booking.actions.canCancel ||
-            booking.actions.canReschedule ||
-            booking.actions.canTutorCancel) && (
+          {(booking.actions.canCancel || booking.actions.canTutorCancel) && (
             <div className="mt-4 grid gap-2">
-              {booking.actions.canReschedule && (
-                <button
-                  disabled={busy}
-                  onClick={() => void openReschedule()}
-                  className="h-10 rounded-full border border-zinc-300 font-medium"
-                >
-                  Reschedule
-                </button>
-              )}
               {(booking.actions.canCancel || booking.actions.canTutorCancel) && (
                 <button
                   disabled={busy || quoteLoading}
@@ -968,44 +915,6 @@ function BookingDetailContent() {
               className="h-10 rounded-full bg-violet-600 px-5 font-semibold text-white disabled:opacity-50"
             >
               {busy ? "Sending…" : "Send refund request"}
-            </button>
-          </div>
-        </section>
-      )}
-
-      {mode === "reschedule" && (
-        <section className="mt-6 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
-          <h2 className="text-lg font-semibold">Choose a new time</h2>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Choose exactly {requiredSlotCount} consecutive 30-minute
-            {requiredSlotCount === 1 ? " slot" : " slots"} on the same day.
-          </p>
-          <div className="mt-5">
-            <ContinuousSlotPicker
-              slots={sortedSlots}
-              selectedIds={selectedIds}
-              onChange={setSelectedIds}
-              onSelectionMessage={setMessage}
-              requiredCount={requiredSlotCount}
-              timeZone={TIME_ZONE}
-            />
-          </div>
-          {sortedSlots.length === 0 && (
-            <p className="mt-5 text-sm text-zinc-500">No alternative times are available.</p>
-          )}
-          <div className="mt-5 flex gap-3">
-            <button
-              onClick={() => setMode(null)}
-              className="h-10 rounded-full border border-zinc-300 px-5"
-            >
-              Close
-            </button>
-            <button
-              disabled={busy || selectedIds.length !== requiredSlotCount}
-              onClick={() => void reschedule()}
-              className="h-10 rounded-full bg-violet-600 px-5 font-semibold text-white disabled:opacity-50"
-            >
-              {busy ? "Saving…" : "Confirm new time"}
             </button>
           </div>
         </section>

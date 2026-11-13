@@ -83,7 +83,7 @@ _Avoid_: Class, course, category, topic
 A 30-minute window on a specific date that a tutor has opened for teaching. The slot
 belongs to the tutor, and the tutor assigns one or more of their subjects to it, so a
 student browsing a subject sees only the slots that advertise that subject. A slot is
-locked to one booking during an active payment hold or after payment.
+locked to one booking only after successful payment. Pending payment requests never reserve slots.
 _Avoid_: Time slot, open slot, schedule entry, recurring availability schedule
 
 **Booking**:
@@ -93,6 +93,9 @@ the student is still in the subject booking flow with no booking record. Statuse
 `payment due`, `confirmed`, `completed`, and `cancelled`. `Confirmed` means paid and
 scheduled; after the lesson's scheduled end, it remains confirmed until the assigned
 Tutor manually confirms completion, which changes it to `completed`.
+Payment-due records support only the immediate payment step and stay out of Student booking lists,
+Tutor upcoming-class lists, and the Wallet page, including after payment expiry. They never reserve
+availability.
 _Avoid_: Reservation, appointment, order, class booking
 
 **Lesson**:
