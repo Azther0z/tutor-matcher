@@ -16,7 +16,7 @@ const filters: Array<{ value: Filter; label: string }> = [
 ];
 
 const statusLabel: Record<BookingStatus, string> = {
-  PENDING_PAYMENT: "Payment due",
+  PENDING_PAYMENT: "Awaiting payment",
   CONFIRMED: "Confirmed",
   COMPLETED: "Completed",
   CANCELLED: "Cancelled",
@@ -63,7 +63,13 @@ function BookingsContent() {
   }, []);
 
   const visibleBookings = useMemo(
-    () => bookings.filter((booking) => belongsToFilter(booking, filter)),
+    () =>
+      bookings.filter(
+        (booking) =>
+          booking.status !== "PENDING_PAYMENT" &&
+          booking.cancellationReason !== "PAYMENT_EXPIRED" &&
+          belongsToFilter(booking, filter)
+      ),
     [bookings, filter]
   );
 

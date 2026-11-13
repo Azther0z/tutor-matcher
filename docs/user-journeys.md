@@ -336,7 +336,10 @@ See the [BOOK-4 confirmation](sources/book-4-policy-confirmation.md).
 ### `/bookings`
 
 Tabs: **All**, **Upcoming** (confirmed and paid), and **Past** (completed and cancelled).
-Unpaid bookings remain visible under All; the existing payment step and Wallet Payment due box remain.
+Unpaid booking attempts, including attempts cancelled because payment expired, do not appear in
+this list or in the Tutor's Upcoming classes. The Student continues to the payment detail
+immediately after choosing a time; only successful payment makes the lesson visible in booking
+lists.
 Each row and booking detail show the lesson start and end time in Asia/Bangkok.
 Bookings can be cancelled under the cancellation policy; rescheduling is not supported.
 There are no Trial labels or separate trial lessons. Each row opens the booking in its correct state.
@@ -373,8 +376,8 @@ and a Tutor-only filter in a Student's URL falls back to All.
 Earnings this month sum LESSON_EARNING rows in the current Asia/Bangkok calendar month;
 all-time paid out sums every PAYOUT row. The list is newest first, 20 per page, and keeps
 its filter and page in the URL; each row shows the signed amount and resulting balance and
-opens its detail. A **Payment due** box lists the user's unpaid bookings whose payment request has not
-expired, each with a link to `/bookings/:id`, where payment is made. The account menu
+opens its detail. Unpaid booking attempts do not appear on the Wallet page; payment remains on the
+booking detail reached immediately after choosing a time. The account menu
 links to `/wallet`. See the [PAY-5 confirmation](sources/pay-5-policy-confirmation.md)
 and the [PAY-5 review comments](sources/pay-5-review-comments.md).
 

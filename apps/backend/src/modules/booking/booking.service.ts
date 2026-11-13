@@ -653,7 +653,13 @@ export async function listBookings(userId: string) {
   const now = new Date();
   await releaseExpiredBookings(now, { userId });
   const bookings = await prisma.booking.findMany({
-    where: { userId },
+    where: {
+      userId,
+      OR: [
+        { status: { in: ["CONFIRMED", "COMPLETED"] } },
+        { status: "CANCELLED", cancellationReason: { not: "PAYMENT_EXPIRED" } },
+      ],
+    },
     include: detailInclude,
     orderBy: [{ startedAt: "desc" }, { id: "desc" }],
   });
@@ -915,7 +921,7 @@ export async function listTutorUpcomingBookings(userId: string) {
   const bookings = await prisma.booking.findMany({
     where: {
       subject: { tutorId: user.tutorId },
-      status: { in: ["PENDING_PAYMENT", "CONFIRMED"] },
+      status: "CONFIRMED",
       startedAt: { gt: now },
     },
     include: detailInclude,

@@ -93,6 +93,9 @@ the student is still in the subject booking flow with no booking record. Statuse
 `payment due`, `confirmed`, `completed`, and `cancelled`. `Confirmed` means paid and
 scheduled; after the lesson's scheduled end, it remains confirmed until the assigned
 Tutor manually confirms completion, which changes it to `completed`.
+Payment-due records support only the immediate payment step and stay out of Student booking lists,
+Tutor upcoming-class lists, and the Wallet page, including after payment expiry. They never reserve
+availability.
 _Avoid_: Reservation, appointment, order, class booking
 
 **Lesson**:

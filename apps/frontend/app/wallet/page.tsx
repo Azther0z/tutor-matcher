@@ -183,42 +183,6 @@ function WalletContent() {
         </section>
       )}
 
-      {overview && overview.paymentDue.length > 0 && (
-        <section
-          aria-labelledby="payment-due-heading"
-          className="mt-8 rounded-3xl border border-amber-300 bg-amber-50 p-6 text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100"
-        >
-          <h2 id="payment-due-heading" className="text-lg font-semibold">
-            Payment due
-          </h2>
-          <p className="mt-1 text-sm">
-            These bookings are not paid yet. Pay each one from its booking page; wallet history
-            never takes payment.
-          </p>
-          <ul className="mt-4 divide-y divide-amber-200 dark:divide-amber-500/30">
-            {overview.paymentDue.map((booking) => (
-              <li
-                key={booking.bookingId}
-                className="flex flex-wrap items-center justify-between gap-3 py-3"
-              >
-                <div>
-                  <p className="font-semibold">{booking.subjectName}</p>
-                  <p className="text-sm">
-                    {walletDateTime.format(new Date(booking.startedAt))} · {money(booking.amount)}
-                  </p>
-                </div>
-                <Link
-                  href={`/bookings/${booking.bookingId}`}
-                  className="rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-500"
-                >
-                  Pay on booking page
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       <section className="mt-10" aria-labelledby="transactions-heading">
         <h2 id="transactions-heading" className="text-2xl font-semibold">
           Transactions
