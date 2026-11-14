@@ -81,6 +81,52 @@ C4Component
   Rel(email, resend, "Sends password reset emails when delivery mode is resend", "Resend API")
 ```
 
+## Sequence: Student pays for a booking
+
+This one successful use case shows the main application layers working together:
+the Next.js web app, Express request handling, backend domain modules, and PostgreSQL
+through Prisma. The Student is signed in, has an existing `PENDING_PAYMENT` Booking,
+has enough wallet balance, and pays before the deadline while the slots are still free.
+
+![Sequence diagram: Student pays for a booking](diagrams/sequence-booking-payment.svg)
+
+[Mermaid source](diagrams/sequence-booking-payment.mmd) ·
+[SVG](diagrams/sequence-booking-payment.svg)
+
+- The browser sends `POST /api/bookings/{id}/confirm-payment` through the Next.js API
+  rewrite. The HTTP layer groups authentication, validation, routing, and the controller.
+- The Booking service claims the slots, confirms the Booking, and calls the Wallet ledger
+  helper in one serializable transaction. If a check or debit fails, all those changes
+  roll back together. This diagram shows the successful path only.
+- Notifications start after commit. The diagram groups the notification service and email
+  adapter; delivery uses logging or Resend according to configuration and respects the
+  recipients' preferences. The successful path shown settles delivery before returning;
+  the code bounds its wait and may return while delivery continues. Delivery failure does
+  not turn a committed payment into a failed payment.
+
+Backend participants are modules in the same Express application. Calls between them are
+function calls. The database participant groups Prisma access and PostgreSQL; it does not
+show each query separately. Preparation summarizes earning settlement and expired-attempt
+cleanup. Solid arrows show calls, dashed arrows show returns, and activation bars show
+when participants are handling the request. Obvious database returns are omitted.
+
+Notation follows the supplied behavioral-modeling PDF's sequence-diagram guidance
+(pages 5–11). The PDF is a notation reference; the flow comes from the
+[booking journey](user-journeys.md#step-2--payment-due-bookingsid) and the current code:
+
+- [Frontend payment request](../apps/frontend/src/lib/bookings-api.ts) and
+  [confirmation display](../apps/frontend/app/bookings/[id]/page.tsx)
+- [Booking route](../apps/backend/src/modules/booking/booking.routes.ts),
+  [controller](../apps/backend/src/modules/booking/booking.controller.ts), and
+  [payment transaction](../apps/backend/src/modules/booking/booking.service.ts)
+- [Wallet ledger helper](../apps/backend/src/modules/wallet/wallet-ledger.ts)
+- [Notification preferences and delivery](../apps/backend/src/modules/notification/notification.service.ts)
+  and [email adapter](../apps/backend/src/lib/email.ts)
+
+Edit the `.mmd` source and regenerate its `.svg` with the shared
+[render settings](diagrams/mermaid-config.json). Commit both files together, as for the
+[API diagrams](api-diagram.md#source-map-and-maintenance).
+
 ## Boundaries and behavior
 
 - The frontend is a Next.js App Router application. It makes browser

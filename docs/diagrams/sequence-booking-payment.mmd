@@ -1,0 +1,39 @@
+sequenceDiagram
+  title Student pays for a booking
+  actor Student
+  participant Web as Next.js<br/>web app
+  box rgb(245, 247, 250) Express backend
+    participant API as HTTP layer<br/>(router and controller)
+    participant Booking as Booking<br/>service
+    participant Wallet as Wallet<br/>ledger
+    participant Notify as Notifications<br/>and email adapter
+  end
+  participant DB as PostgreSQL<br/>(via Prisma)
+
+  Student->>Web: Pay(bookingId)
+  Web->>+API: POST confirm-payment<br/>(bookingId, bearer token)
+  API->>API: Authenticate and validate(bookingId)
+  API->>+Booking: confirmBookingPayment(<br/>userId, bookingId)
+  Note over Booking,DB: Preparation: settle eligible earnings and expire stale payment attempts
+
+  rect rgb(239, 246, 255)
+    Note over Booking,DB: One serializable database transaction
+    Booking->>+DB: Begin transaction and load Booking/slots
+    DB-->>Booking: Unpaid Booking and available slots
+    Booking->>Booking: Check owner, payment deadline, and slots
+    Booking->>DB: Claim slots and confirm Booking
+    Booking->>+Wallet: appendWalletMovement(tx,<br/>LESSON_PAYMENT)
+    Wallet->>DB: Debit wallet and append LESSON_PAYMENT
+    Wallet-->>-Booking: Payment recorded
+    Booking->>DB: Load confirmed Booking and commit
+    DB-->>-Booking: Committed
+  end
+
+  Note over Booking,Notify: Notify only after commit, delivery failure does not undo payment
+  Booking->>+Notify: notifyUser(Student and Tutor, booking)
+  Notify->>DB: Read recipients and<br/>notification preferences
+  Notify->>Notify: [enabled] Send booking emails
+  Notify-->>-Booking: Delivery attempt settled
+  Booking-->>-API: Confirmed Booking
+  API-->>-Web: Confirmed Booking JSON
+  Web-->>Student: Show Confirmed and<br/>updated wallet balance
