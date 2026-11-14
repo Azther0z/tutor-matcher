@@ -667,12 +667,29 @@ export async function updateBookingMeetingLink(
   return getBooking(userId, id);
 }
 
-export async function listBookings(userId: string) {
+export async function listBookings(
+  userId: string,
+  { role = "STUDENT" }: { role?: "STUDENT" | "TUTOR" } = {}
+) {
   const now = new Date();
-  await releaseExpiredBookings(now, { userId });
+  let where: Prisma.BookingWhereInput;
+  if (role === "TUTOR") {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { tutor: { select: { id: true } } },
+    });
+    if (!user?.tutor) {
+      throw new BookingForbiddenError("Only approved Tutors can view teaching bookings");
+    }
+    where = { subject: { tutorId: user.tutor.id } };
+    await releaseExpiredBookings(now, { tutorId: user.tutor.id });
+  } else {
+    where = { userId };
+    await releaseExpiredBookings(now, { userId });
+  }
   const bookings = await prisma.booking.findMany({
     where: {
-      userId,
+      ...where,
       OR: [
         { status: { in: ["CONFIRMED", "COMPLETED"] } },
         { status: "CANCELLED", cancellationReason: { not: "PAYMENT_EXPIRED" } },

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import BookingsPage from "./page";
 
 const replace = jest.fn();
@@ -83,5 +83,29 @@ describe("bookings list", () => {
     render(<BookingsPage />);
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?next=%2Fbookings"));
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("lets approved tutors switch views and shows their student", async () => {
+    global.fetch = jest.fn().mockImplementation(async (url: string) => ({
+      ok: true,
+      json: async () =>
+        url.includes("/profiles/me/tutor")
+          ? { status: "APPROVED" }
+          : {
+              bookings: [
+                {
+                  ...bookings[2],
+                  viewerRole: url.includes("role=TUTOR") ? "TUTOR" : "STUDENT",
+                },
+              ],
+            },
+    })) as jest.Mock;
+    render(<BookingsPage />);
+    expect(await screen.findByRole("button", { name: "Tutor" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Tutor" }));
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith("/api/bookings?role=TUTOR", expect.anything())
+    );
+    expect(await screen.findByText(/Student One/)).toBeInTheDocument();
   });
 });

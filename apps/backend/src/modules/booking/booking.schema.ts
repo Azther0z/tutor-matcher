@@ -10,6 +10,9 @@ const availabilityIds = z
 
 export const subjectIdParamsSchema = z.object({ subjectId: z.uuid() });
 export const bookingIdParamsSchema = z.object({ id: z.uuid() });
+export const bookingListQuerySchema = z.object({
+  role: z.enum(["STUDENT", "TUTOR"]).default("STUDENT"),
+});
 // BOOK-1 accepts the chosen subject, slots, and an optional learning goal.
 export const createBookingSchema = z.object({
   subjectId: z.uuid(),
@@ -48,6 +51,7 @@ export const tutorCancelBookingSchema = z.object({
 });
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
+export type BookingListQuery = z.infer<typeof bookingListQuerySchema>;
 export type UpdateMeetingLinkInput = z.infer<typeof updateMeetingLinkSchema>;
 export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;
 export type TutorCancelBookingInput = z.infer<typeof tutorCancelBookingSchema>;

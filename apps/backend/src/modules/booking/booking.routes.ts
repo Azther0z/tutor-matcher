@@ -17,6 +17,7 @@ import {
 } from "./booking.controller.ts";
 import {
   bookingIdParamsSchema,
+  bookingListQuerySchema,
   cancelBookingSchema,
   createBookingSchema,
   subjectIdParamsSchema,
@@ -33,7 +34,7 @@ bookingRouter.get(
   validate(subjectIdParamsSchema, "params"),
   subjectAvailability
 );
-bookingRouter.get("/", list);
+bookingRouter.get("/", validate(bookingListQuerySchema, "query"), list);
 // BOOK-4: the tutor's upcoming classes; registered before /:id so "tutor" is never read as an id.
 bookingRouter.get("/tutor/upcoming", tutorUpcoming);
 bookingRouter.get("/tutor/needs-confirmation", tutorNeedsConfirmation);

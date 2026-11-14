@@ -453,16 +453,13 @@ function BookingDetailContent() {
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-5 py-10 sm:px-8">
-      <Link
-        href={`/tutors/${booking.subject.tutor.id}/${booking.subject.id}`}
-        className="text-sm text-zinc-600 hover:underline"
-      >
-        ← Tutor profile
+      <Link href="/bookings" className="text-sm text-zinc-600 hover:underline">
+        ← Bookings
       </Link>
       <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">Lesson</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">Booking #{booking.id}</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight">{booking.subject.name}</h1>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusStyle[booking.status]}`}>
           {displayStatus}
@@ -499,12 +496,20 @@ function BookingDetailContent() {
           <h2 className="text-xl font-semibold">Lesson details</h2>
           <dl className="mt-5 grid gap-5 sm:grid-cols-2">
             <div>
-              <dt className="text-sm text-zinc-500">Tutor</dt>
-              <dd className="mt-1 font-semibold">{booking.subject.tutor.name}</dd>
+              <dt className="text-sm text-zinc-500">{isTutorView ? "Student" : "Tutor"}</dt>
+              <dd className="mt-1 font-semibold">
+                {isTutorView ? booking.student.name : booking.subject.tutor.name}
+              </dd>
             </div>
             <div>
               <dt className="text-sm text-zinc-500">Subject</dt>
               <dd className="mt-1 font-semibold">{booking.subject.name}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-zinc-500">Format</dt>
+              <dd className="mt-1 font-semibold">
+                {booking.subject.format === "ONLINE" ? "Online" : booking.subject.format}
+              </dd>
             </div>
             <div className="sm:col-span-2">
               <dt className="text-sm text-zinc-500">Time</dt>

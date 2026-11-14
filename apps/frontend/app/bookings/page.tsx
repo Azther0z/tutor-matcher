@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
 import { getBookings } from "@/src/lib/bookings-api";
 import type { Booking, BookingStatus } from "@/src/types/booking";
 
 type Filter = "ALL" | "UPCOMING" | "PAST";
+type ViewRole = "STUDENT" | "TUTOR";
 const TIME_ZONE = "Asia/Bangkok";
 
 const filters: Array<{ value: Filter; label: string }> = [
@@ -40,27 +41,57 @@ const dateFormat = new Intl.DateTimeFormat("en", {
 });
 
 function belongsToFilter(booking: Booking, filter: Filter) {
-  const startsAt = new Date(booking.startedAt).getTime();
-  if (filter === "UPCOMING") return startsAt > Date.now() && booking.status === "CONFIRMED";
-  if (filter === "PAST")
-    return startsAt <= Date.now() || ["COMPLETED", "CANCELLED"].includes(booking.status);
+  if (filter === "UPCOMING") return booking.status === "CONFIRMED";
+  if (filter === "PAST") return ["COMPLETED", "CANCELLED"].includes(booking.status);
   return true;
 }
 
 function BookingsContent() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filter, setFilter] = useState<Filter>("ALL");
+  const [role, setRole] = useState<ViewRole>("STUDENT");
+  const [isApprovedTutor, setIsApprovedTutor] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestId = useRef(0);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    getBookings()
-      .then(setBookings)
-      .catch((reason: unknown) =>
-        setError(reason instanceof Error ? reason.message : "Could not load your bookings.")
-      )
-      .finally(() => setLoading(false));
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    let cancelled = false;
+    fetch("/api/profiles/me/tutor", { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { status?: string } | null) => {
+        if (!cancelled) setIsApprovedTutor(data?.status === "APPROVED");
+      })
+      .catch(() => {
+        if (!cancelled) setIsApprovedTutor(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const id = ++requestId.current;
+    getBookings(role)
+      .then((result) => {
+        if (requestId.current === id) setBookings(result);
+      })
+      .catch((reason: unknown) => {
+        if (requestId.current === id)
+          setError(reason instanceof Error ? reason.message : "Could not load your bookings.");
+      })
+      .finally(() => {
+        if (requestId.current === id) setLoading(false);
+      });
+  }, [role]);
 
   const visibleBookings = useMemo(
     () =>
@@ -91,22 +122,57 @@ function BookingsContent() {
         </Link>
       </header>
 
-      <div className="mt-8 flex gap-2 overflow-x-auto pb-2" aria-label="Booking filters">
-        {filters.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            aria-pressed={filter === item.value}
-            onClick={() => setFilter(item.value)}
-            className={`shrink-0 rounded-full border px-5 py-2 text-sm font-semibold transition ${
-              filter === item.value
-                ? "border-violet-600 bg-violet-600 text-white"
-                : "border-black/15 hover:border-violet-500 dark:border-white/20"
-            }`}
+      <div className="mt-8 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 gap-2 overflow-x-auto pb-2" aria-label="Booking filters">
+          {filters.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              aria-pressed={filter === item.value}
+              onClick={() => setFilter(item.value)}
+              className={`shrink-0 rounded-full border px-5 py-2 text-sm font-semibold transition ${
+                filter === item.value
+                  ? "border-violet-600 bg-violet-600 text-white"
+                  : "border-black/15 hover:border-violet-500 dark:border-white/20"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        {isApprovedTutor && (
+          <div
+            className="relative grid h-11 w-52 shrink-0 grid-cols-2 items-center rounded-full bg-zinc-100 p-1 dark:bg-zinc-800"
+            role="group"
+            aria-label="Booking role"
           >
-            {item.label}
-          </button>
-        ))}
+            <span
+              aria-hidden="true"
+              className={`absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-violet-600 shadow-sm transition-transform duration-200 ${
+                role === "TUTOR" ? "translate-x-full" : "translate-x-0"
+              }`}
+            />
+            {(["STUDENT", "TUTOR"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                aria-pressed={role === item}
+                onClick={() => {
+                  if (item === role) return;
+                  setRole(item);
+                  setFilter("ALL");
+                  setLoading(true);
+                  setError(null);
+                }}
+                className={`relative z-10 rounded-full px-3 py-2 text-sm font-semibold transition-colors ${
+                  role === item ? "text-white" : "text-zinc-700 dark:text-zinc-200"
+                }`}
+              >
+                {item === "STUDENT" ? "Student" : "Tutor"}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading && <p className="mt-12 text-zinc-500">Loading bookings…</p>}
@@ -133,13 +199,23 @@ function BookingsContent() {
           >
             <div className="flex min-w-0 items-start gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-lg font-bold text-violet-700 dark:bg-violet-950 dark:text-violet-300">
-                {booking.subject.tutor.name.charAt(0).toUpperCase()}
+                {(booking.viewerRole === "TUTOR"
+                  ? booking.student.name
+                  : booking.subject.tutor.name
+                )
+                  .charAt(0)
+                  .toUpperCase()}
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="truncate text-lg font-bold">{booking.subject.name}</h2>
                 </div>
-                <p className="mt-1 text-sm text-zinc-500">with {booking.subject.tutor.name}</p>
+                <p className="mt-1 text-sm text-zinc-500">
+                  with{" "}
+                  {booking.viewerRole === "TUTOR"
+                    ? booking.student.name
+                    : booking.subject.tutor.name}
+                </p>
                 <p className="mt-3 font-medium">
                   {dateFormat.formatRange(new Date(booking.startedAt), new Date(booking.endedAt))}
                 </p>
@@ -149,9 +225,14 @@ function BookingsContent() {
               <span
                 className={`rounded-full px-3 py-1 text-xs font-bold ${statusStyle[booking.status]}`}
               >
-                {booking.status === "CANCELLED" && booking.cancellationReason === "PAYMENT_EXPIRED"
-                  ? "Expired"
-                  : statusLabel[booking.status]}
+                {booking.status === "CONFIRMED" && new Date(booking.endedAt).getTime() <= now
+                  ? "Awaiting completion"
+                  : booking.status === "CONFIRMED" && new Date(booking.startedAt).getTime() <= now
+                    ? "In progress"
+                    : booking.status === "CANCELLED" &&
+                        booking.cancellationReason === "PAYMENT_EXPIRED"
+                      ? "Expired"
+                      : statusLabel[booking.status]}
               </span>
               <span className="font-semibold text-violet-600 group-hover:underline">
                 View details →
