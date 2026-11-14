@@ -81,6 +81,45 @@ C4Component
   Rel(email, resend, "Sends password reset emails when delivery mode is resend", "Resend API")
 ```
 
+## Sequence: Request a password reset email
+
+This short use case shows the frontend, backend, Prisma Client, PostgreSQL, and Resend.
+It follows a valid request for an existing account, within the request rate limit,
+with email delivery configured as `resend` and the provider call succeeding.
+
+![Sequence diagram: Request a password reset email](diagrams/sequence-password-reset-email.svg)
+
+[Mermaid source](diagrams/sequence-password-reset-email.mmd) ·
+[SVG](diagrams/sequence-password-reset-email.svg)
+
+The frontend submits the email. The backend validates and normalizes it, finds the user
+through Prisma, generates a reset token, and saves its hash and expiry in a transaction.
+The email adapter sends the reset link through Resend after that transaction commits.
+The backend returns a generic confirmation, and the frontend displays it. Resend API
+success confirms the send request succeeded; the diagram does not track inbox delivery.
+
+The backend lifeline groups middleware, the auth controller and service, and the email
+adapter. Prisma Client is a library inside that backend process, shown separately to make
+database access visible. Each database message describes a Prisma operation; generated
+SQL is outside the view. The transaction replaces an existing reset token for the user or
+creates one. The raw token is used in the reset link; its hash is stored in the database.
+
+Other outcomes stay outside this short successful path: an unknown email receives the
+same generic confirmation without sending an email, and an email-send failure removes
+the matching saved token before propagating the error. Opening the link and setting a new
+password belong to later requests.
+
+Sources: [Forgot-password page](../apps/frontend/app/forgot-password/page.tsx),
+[auth route and rate limit](../apps/backend/src/modules/auth/auth.routes.ts),
+[auth controller](../apps/backend/src/modules/auth/auth.controller.ts),
+[reset request service](../apps/backend/src/modules/auth/auth.service.ts),
+[Prisma client](../apps/backend/src/lib/db.ts), and
+[email adapter](../apps/backend/src/lib/email.ts).
+
+The expanded booking-payment sequence below provides the more detailed view. Both
+sequences have separate `.mmd` sources and `.svg` exports in `docs/diagrams/` and use the
+shared [render settings](diagrams/mermaid-config.json).
+
 ## Sequence: Student pays for a booking
 
 This single use case follows a Student's booking-payment request through the Next.js
