@@ -1,0 +1,59 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Bookings["Bookings"] {
+    <<Resource>>
+    +GET(role : QueryParam) 200
+    +POST(CreateBooking) 201
+  }
+  class Booking["Booking"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Availability["Subject availability"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Upcoming["Tutor upcoming lessons"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class NeedsConfirmation["Tutor ended lessons"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class CreateBooking {
+    <<Representation>>
+    subjectId
+    availabilityIds
+    description optional
+    isTrial optional
+  }
+  class BookingResult {
+    <<Representation>>
+    booking
+  }
+  class BookingList {
+    <<Representation>>
+    bookings
+  }
+  class SubjectAvailability {
+    <<Representation>>
+    subject
+    slots
+  }
+  API --> Bookings : «Path» /bookings
+  Bookings --> Booking : «Path» /{id}
+  Bookings --> Availability : «Path» /subjects/{subjectId}/availability
+  Bookings --> Upcoming : «Path» /tutor/upcoming
+  Bookings --> NeedsConfirmation : «Path» /tutor/needs-confirmation
+  Bookings ..> CreateBooking : «use» POST request
+  Bookings ..> BookingResult : «use» response
+  Bookings ..> BookingList : «use» GET response
+  Booking ..> BookingResult : «use» response
+  Availability ..> SubjectAvailability : «use» response
+  Upcoming ..> BookingList : «use» response
+  NeedsConfirmation ..> BookingList : «use» response

@@ -1,0 +1,68 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Signup["Sign-up"] {
+    <<Resource>>
+    +POST(SignupBody) 201
+  }
+  class Login["Sign-in"] {
+    <<Resource>>
+    +POST(Credentials) 200
+  }
+  class Me["Current user"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Health["Health"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class SignupBody {
+    <<Representation>>
+    firstName
+    lastName
+    email
+    password
+    adminSignupKey optional
+  }
+  class Credentials {
+    <<Representation>>
+    email
+    password
+  }
+  class SignupResult {
+    <<Representation>>
+    id
+    email
+    createdAt
+  }
+  class User {
+    <<Representation>>
+    id
+    firstName
+    lastName
+    email
+    isAdmin
+  }
+  class LoginResult {
+    <<Representation>>
+    token
+    user
+  }
+  class HealthResult {
+    <<Representation>>
+    status
+  }
+  API --> Signup : «Path» /auth/signup
+  API --> Login : «Path» /auth/login
+  API --> Me : «Path» /auth/me
+  API --> Health : «Path» /health
+  Signup ..> SignupBody : «use» request
+  Signup ..> SignupResult : «use» response
+  Login ..> Credentials : «use» request
+  Login ..> LoginResult : «use» response
+  Me ..> User : «use» response
+  Health ..> HealthResult : «use» response

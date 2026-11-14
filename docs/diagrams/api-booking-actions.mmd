@@ -1,0 +1,96 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Booking["Booking"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Pay["Confirm payment"] {
+    <<Resource>>
+    +POST() 200
+  }
+  class Complete["Confirm completion"] {
+    <<Resource>>
+    +POST() 200
+  }
+  class Link["Meeting link"] {
+    <<Resource>>
+    +PATCH(MeetingLinkBody) 200
+  }
+  class Quote["Student cancellation quote"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Cancel["Student cancellation"] {
+    <<Resource>>
+    +POST(CancelBody) 200
+  }
+  class TutorQuote["Tutor cancellation quote"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class TutorCancel["Tutor cancellation"] {
+    <<Resource>>
+    +POST(TutorCancelBody) 200
+  }
+  class Refund["Refund request"] {
+    <<Resource>>
+    +POST(RefundBody) 201
+  }
+  class BookingResult {
+    <<Representation>>
+    booking
+  }
+  class MeetingLinkBody {
+    <<Representation>>
+    customMeetingUrl nullable
+  }
+  class CancelBody {
+    <<Representation>>
+    reason optional
+    quoteToken optional
+  }
+  class TutorCancelBody {
+    <<Representation>>
+    reason
+    quoteToken optional
+  }
+  class RefundBody {
+    <<Representation>>
+    reason
+    details optional
+  }
+  class QuoteResult {
+    <<Representation>>
+    quote
+  }
+  class CancellationResult {
+    <<Representation>>
+    booking
+    refund
+  }
+  API --> Booking : «Path» /bookings/{id}
+  Booking --> Pay : «Path» /confirm-payment
+  Booking --> Complete : «Path» /confirm-completion
+  Booking --> Link : «Path» /meeting-link
+  Booking --> Quote : «Path» /cancellation-quote
+  Booking --> Cancel : «Path» /cancel
+  Booking --> TutorQuote : «Path» /tutor-cancellation-quote
+  Booking --> TutorCancel : «Path» /tutor-cancel
+  Booking --> Refund : «Path» /refund-request
+  Booking ..> BookingResult : «use» response
+  Pay ..> BookingResult : «use» response
+  Complete ..> BookingResult : «use» response
+  Link ..> MeetingLinkBody : «use» request
+  Link ..> BookingResult : «use» response
+  Quote ..> QuoteResult : «use» response
+  Cancel ..> CancelBody : «use» request
+  Cancel ..> CancellationResult : «use» response
+  TutorQuote ..> QuoteResult : «use» response
+  TutorCancel ..> TutorCancelBody : «use» request
+  TutorCancel ..> CancellationResult : «use» response
+  Refund ..> RefundBody : «use» request
+  Refund ..> BookingResult : «use» response

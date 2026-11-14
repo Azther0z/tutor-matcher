@@ -1,0 +1,76 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Tutor["Tutor application"] {
+    <<Resource>>
+    +GET() 200
+    +PUT(TutorEnrollment) 200
+  }
+  class Draft["Current draft"] {
+    <<Resource>>
+    +PUT(TutorDraftBody) 200
+  }
+  class Submit["Submit current draft"] {
+    <<Resource>>
+    +POST(Consent) 200
+  }
+  class Withdraw["Withdraw request"] {
+    <<Resource>>
+    +POST() 200
+  }
+  class Publication["Publication"] {
+    <<Resource>>
+    +PATCH(PublicationBody) 200
+  }
+  class TutorEnrollment {
+    <<Representation>>
+    bio
+    introVideoUrl
+    identificationCardUrl
+    consentAccepted
+    avatarUrl optional
+    certificationUrls optional
+  }
+  class TutorDraftBody {
+    <<Representation>>
+    bio optional
+    introVideoUrl optional
+    identificationCardUrl optional
+    avatarUrl optional
+    certificationUrls optional
+    consentAccepted optional
+  }
+  class Consent {
+    <<Representation>>
+    consentAccepted
+  }
+  class PublicationBody {
+    <<Representation>>
+    published
+  }
+  class TutorApplication {
+    <<Representation>>
+    status
+    tutor
+    version
+    drafts
+    submissions
+    pendingRequest
+  }
+  API --> Tutor : «Path» /profiles/me/tutor
+  Tutor --> Draft : «Path» /draft
+  Tutor --> Submit : «Path» /submit
+  Tutor --> Withdraw : «Path» /withdraw
+  Tutor --> Publication : «Path» /publication
+  Tutor ..> TutorEnrollment : «use» PUT request
+  Tutor ..> TutorApplication : «use» response
+  Draft ..> TutorDraftBody : «use» request
+  Draft ..> TutorApplication : «use» response
+  Submit ..> Consent : «use» request
+  Submit ..> TutorApplication : «use» response
+  Withdraw ..> TutorApplication : «use» response
+  Publication ..> PublicationBody : «use» request
+  Publication ..> TutorApplication : «use» response
