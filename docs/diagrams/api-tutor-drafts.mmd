@@ -1,0 +1,56 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Drafts["Tutor drafts"] {
+    <<Resource>>
+    +POST(TutorDraftBody) 200
+  }
+  class Draft["Tutor draft"] {
+    <<Resource>>
+    +PUT(TutorDraftBody) 200
+    +DELETE() 200
+  }
+  class Submit["Submit selected draft"] {
+    <<Resource>>
+    +POST(Consent) 200
+  }
+  class Copy["Copy submission"] {
+    <<Resource>>
+    +POST() 200
+  }
+  class TutorDraftBody {
+    <<Representation>>
+    bio optional
+    introVideoUrl optional
+    identificationCardUrl optional
+    avatarUrl optional
+    certificationUrls optional
+    consentAccepted optional
+  }
+  class Consent {
+    <<Representation>>
+    consentAccepted
+  }
+  class TutorApplication {
+    <<Representation>>
+    status
+    tutor
+    version
+    drafts
+    submissions
+    pendingRequest
+  }
+  API --> Drafts : «Path» /profiles/me/tutor/drafts
+  Drafts --> Draft : «Path» /{draftId}
+  Draft --> Submit : «Path» /submit
+  API --> Copy : «Path» /profiles/me/tutor/submissions/{draftId}/copy
+  Drafts ..> TutorDraftBody : «use» request
+  Drafts ..> TutorApplication : «use» response
+  Draft ..> TutorDraftBody : «use» PUT request
+  Draft ..> TutorApplication : «use» response
+  Submit ..> Consent : «use» request
+  Submit ..> TutorApplication : «use» response
+  Copy ..> TutorApplication : «use» response

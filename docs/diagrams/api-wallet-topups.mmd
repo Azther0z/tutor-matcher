@@ -1,0 +1,83 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Wallet["Wallet balance"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Overview["Wallet overview"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Transactions["Wallet transactions"] {
+    <<Resource>>
+    +GET(type : QueryParam, page : QueryParam) 200
+  }
+  class Transaction["Wallet transaction"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Topups["Top-up requests"] {
+    <<Resource>>
+    +GET() 200
+    +POST(TopupBody) 201
+  }
+  class Balance {
+    <<Representation>>
+    balance
+  }
+  class WalletOverview {
+    <<Representation>>
+    balance
+    pendingEarnings
+    earningsThisMonth
+    totalPaidOut
+    paymentDue
+  }
+  class TransactionPage {
+    <<Representation>>
+    transactions
+    page
+    pageSize
+    total
+  }
+  class WalletTransaction {
+    <<Representation>>
+    id
+    type
+    amount
+    balanceAfter
+    createdAt
+  }
+  class TopupBody {
+    <<Representation>>
+    amount
+    slipUrl
+  }
+  class TopupRequest {
+    <<Representation>>
+    id
+    amount
+    status
+    slipUrl
+  }
+  class MyTopups {
+    <<Representation>>
+    requests
+    promptPayId
+  }
+  API --> Wallet : «Path» /wallet
+  Wallet --> Overview : «Path» /overview
+  Wallet --> Transactions : «Path» /transactions
+  Transactions --> Transaction : «Path» /{id}
+  Wallet --> Topups : «Path» /topups
+  Wallet ..> Balance : «use» response
+  Overview ..> WalletOverview : «use» response
+  Transactions ..> TransactionPage : «use» response
+  Transaction ..> WalletTransaction : «use» response
+  Topups ..> TopupBody : «use» POST request
+  Topups ..> TopupRequest : «use» POST response
+  Topups ..> MyTopups : «use» GET response

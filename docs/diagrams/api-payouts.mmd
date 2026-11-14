@@ -1,0 +1,66 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Accounts["Payout accounts"] {
+    <<Resource>>
+    +GET() 200
+    +POST(PayoutAccountBody) 201
+  }
+  class Account["Payout account"] {
+    <<Resource>>
+    +DELETE() 200
+  }
+  class Default["Default payout account"] {
+    <<Resource>>
+    +PATCH() 200
+  }
+  class Banks["Supported banks"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Payouts["Payouts"] {
+    <<Resource>>
+    +POST(PayoutBody) 201
+  }
+  class PayoutAccountBody {
+    <<Representation>>
+    bankCode
+    accountHolderName
+    accountNumber
+    makeDefault optional
+  }
+  class AccountResult {
+    <<Representation>>
+    accounts
+  }
+  class BankList {
+    <<Representation>>
+    banks
+  }
+  class PayoutBody {
+    <<Representation>>
+    amount
+    payoutAccountId
+    reference
+  }
+  class PayoutResult {
+    <<Representation>>
+    transaction
+    balance
+    simulated
+  }
+  API --> Accounts : «Path» /payout-accounts
+  Accounts --> Account : «Path» /{id}
+  Account --> Default : «Path» /default
+  Accounts --> Banks : «Path» /banks
+  API --> Payouts : «Path» /payouts
+  Accounts ..> PayoutAccountBody : «use» POST request
+  Accounts ..> AccountResult : «use» response
+  Account ..> AccountResult : «use» response
+  Default ..> AccountResult : «use» response
+  Banks ..> BankList : «use» response
+  Payouts ..> PayoutBody : «use» request
+  Payouts ..> PayoutResult : «use» response

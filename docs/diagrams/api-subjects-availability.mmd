@@ -1,0 +1,77 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Subjects["Subjects"] {
+    <<Resource>>
+    +GET() 200
+    +POST(SubjectBody) 201
+  }
+  class Subject["Subject"] {
+    <<Resource>>
+    +PUT(SubjectBody) 200
+  }
+  class Calendar["Availability calendar"] {
+    <<Resource>>
+    +GET(from : QueryParam, to : QueryParam) 200
+  }
+  class Day["Availability day"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Slot["Availability slot"] {
+    <<Resource>>
+    +PUT(SlotBody) 200
+  }
+  class SubjectBody {
+    <<Representation>>
+    name
+    description
+    hourlyRate
+    format
+    learningAreaIds
+  }
+  class SubjectsResult {
+    <<Representation>>
+    subjects
+  }
+  class SubjectResult {
+    <<Representation>>
+    subject
+  }
+  class SlotBody {
+    <<Representation>>
+    revision nullable
+    isOpen
+    subjectIds
+  }
+  class CalendarResult {
+    <<Representation>>
+    days
+  }
+  class DayResult {
+    <<Representation>>
+    date
+    slots
+  }
+  class SlotResult {
+    <<Representation>>
+    date
+    slot
+  }
+  API --> Subjects : «Path» /profiles/me/tutor/subjects
+  Subjects --> Subject : «Path» /{subjectId}
+  API --> Calendar : «Path» /profiles/me/tutor/availability/calendar
+  API --> Day : «Path» /profiles/me/tutor/availability/{date}
+  Day --> Slot : «Path» /{time}
+  Subjects ..> SubjectBody : «use» POST request
+  Subjects ..> SubjectsResult : «use» GET response
+  Subjects ..> SubjectResult : «use» POST response
+  Subject ..> SubjectBody : «use» request
+  Subject ..> SubjectResult : «use» response
+  Calendar ..> CalendarResult : «use» response
+  Day ..> DayResult : «use» response
+  Slot ..> SlotBody : «use» request
+  Slot ..> SlotResult : «use» response

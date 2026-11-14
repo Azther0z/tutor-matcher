@@ -1,0 +1,81 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Messages["Messages"] {
+    <<Resource>>
+    +POST(MessageBody) 201
+  }
+  class Inbox["Inbox"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Conversations["Conversations"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Thread["Message thread"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Preferences["Notification preferences"] {
+    <<Resource>>
+    +GET() 200
+    +PUT(PreferencesBody) 200
+  }
+  class Dashboard["Tutor dashboard"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class MessageBody {
+    <<Representation>>
+    toUserId
+    message
+  }
+  class MessageResult {
+    <<Representation>>
+    id
+    message
+  }
+  class InboxResult {
+    <<Representation>>
+    array of messages
+  }
+  class ConversationList {
+    <<Representation>>
+    array of conversations
+  }
+  class ThreadResult {
+    <<Representation>>
+    array of messages
+  }
+  class PreferencesBody {
+    <<Representation>>
+    notifyOnBooking
+    notifyOnMessage
+    notifyOnPayment
+  }
+  class TutorDashboard {
+    <<Representation>>
+    tutorId
+    classesThisWeek
+    week
+    lessons
+    students
+    reviews
+  }
+  API --> Messages : «Path» /messages
+  Messages --> Inbox : «Path» /inbox
+  Messages --> Conversations : «Path» /conversations
+  Messages --> Thread : «Path» /thread/{userId}
+  API --> Preferences : «Path» /notifications/preferences
+  API --> Dashboard : «Path» /dashboard/tutor
+  Messages ..> MessageBody : «use» request
+  Messages ..> MessageResult : «use» response
+  Inbox ..> InboxResult : «use» response
+  Conversations ..> ConversationList : «use» response
+  Thread ..> ThreadResult : «use» response
+  Preferences ..> PreferencesBody : «use» PUT request and response
+  Dashboard ..> TutorDashboard : «use» response
