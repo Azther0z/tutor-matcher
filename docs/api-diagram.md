@@ -109,11 +109,11 @@ classDiagram
   API --> Me : «Path» /auth/me
   API --> Health : «Path» /health
   Signup ..> SignupBody : «use» request
-  Signup ..> SignupResult : «use» 201 response
+  Signup ..> SignupResult : «use» response
   Login ..> Credentials : «use» request
-  Login ..> LoginResult : «use» 200 response
-  Me ..> User : «use» 200 response
-  Health ..> HealthResult : «use» 200 response
+  Login ..> LoginResult : «use» response
+  Me ..> User : «use» response
+  Health ..> HealthResult : «use» response
 ```
 
 Source: [auth/auth.routes.ts](../apps/backend/src/modules/auth/auth.routes.ts), [auth/auth.schema.ts](../apps/backend/src/modules/auth/auth.schema.ts), [auth/auth.controller.ts](../apps/backend/src/modules/auth/auth.controller.ts), [health/health.routes.ts](../apps/backend/src/modules/health/health.routes.ts).
@@ -162,10 +162,10 @@ classDiagram
   API --> Validate : «Path» /auth/password-reset/validate
   API --> Confirm : «Path» /auth/password-reset/confirm
   Request ..> ResetEmail : «use» request
-  Request ..> MessageResult : «use» 200 response
-  Validate ..> TokenValidity : «use» 200 response
+  Request ..> MessageResult : «use» response
+  Validate ..> TokenValidity : «use» response
   Confirm ..> ResetPassword : «use» request
-  Confirm ..> MessageResult : «use» 200 response
+  Confirm ..> MessageResult : «use» response
 ```
 
 Source: [auth/auth.routes.ts](../apps/backend/src/modules/auth/auth.routes.ts), [auth/auth.schema.ts](../apps/backend/src/modules/auth/auth.schema.ts), [auth/auth.controller.ts](../apps/backend/src/modules/auth/auth.controller.ts).
@@ -255,13 +255,13 @@ classDiagram
   API --> Student : «Path» /profiles/me/student
   API --> Areas : «Path» /profiles/learning-areas
   Profile ..> ProfileBody : «use» request
-  Profile ..> ProfileResult : «use» 200 response
+  Profile ..> ProfileResult : «use» response
   Account ..> AccountUpdate : «use» PUT request
-  Account ..> AccountRecord : «use» GET 200 response
-  Account ..> AccountResult : «use» PUT 200 response
+  Account ..> AccountRecord : «use» GET response
+  Account ..> AccountResult : «use» PUT response
   Student ..> StudentProfileBody : «use» PUT request
-  Student ..> StudentProfileResult : «use» 200 response
-  Areas ..> LearningAreaList : «use» 200 response
+  Student ..> StudentProfileResult : «use» response
+  Areas ..> LearningAreaList : «use» response
 ```
 
 Source: [profile/profile.routes.ts](../apps/backend/src/modules/profile/profile.routes.ts), [profile/profile.schema.ts](../apps/backend/src/modules/profile/profile.schema.ts), [profile/profile.controller.ts](../apps/backend/src/modules/profile/profile.controller.ts).
@@ -339,14 +339,14 @@ classDiagram
   Tutor --> Withdraw : «Path» /withdraw
   Tutor --> Publication : «Path» /publication
   Tutor ..> TutorEnrollment : «use» PUT request
-  Tutor ..> TutorApplication : «use» 200 response
+  Tutor ..> TutorApplication : «use» response
   Draft ..> TutorDraftBody : «use» request
-  Draft ..> TutorApplication : «use» 200 response
+  Draft ..> TutorApplication : «use» response
   Submit ..> Consent : «use» request
-  Submit ..> TutorApplication : «use» 200 response
-  Withdraw ..> TutorApplication : «use» 200 response
+  Submit ..> TutorApplication : «use» response
+  Withdraw ..> TutorApplication : «use» response
   Publication ..> PublicationBody : «use» request
-  Publication ..> TutorApplication : «use» 200 response
+  Publication ..> TutorApplication : «use» response
 ```
 
 Source: [profile/profile.routes.ts](../apps/backend/src/modules/profile/profile.routes.ts), [profile/profile.schema.ts](../apps/backend/src/modules/profile/profile.schema.ts), [profile/profile.service.ts](../apps/backend/src/modules/profile/profile.service.ts).
@@ -406,12 +406,12 @@ classDiagram
   Draft --> Submit : «Path» /submit
   API --> Copy : «Path» /profiles/me/tutor/submissions/{draftId}/copy
   Drafts ..> TutorDraftBody : «use» request
-  Drafts ..> TutorApplication : «use» 200 response
+  Drafts ..> TutorApplication : «use» response
   Draft ..> TutorDraftBody : «use» PUT request
-  Draft ..> TutorApplication : «use» 200 response
+  Draft ..> TutorApplication : «use» response
   Submit ..> Consent : «use» request
-  Submit ..> TutorApplication : «use» 200 response
-  Copy ..> TutorApplication : «use» 200 response
+  Submit ..> TutorApplication : «use» response
+  Copy ..> TutorApplication : «use» response
 ```
 
 Source: [profile/profile.routes.ts](../apps/backend/src/modules/profile/profile.routes.ts), [profile/profile.schema.ts](../apps/backend/src/modules/profile/profile.schema.ts), [profile/profile.controller.ts](../apps/backend/src/modules/profile/profile.controller.ts).
@@ -490,14 +490,14 @@ classDiagram
   API --> Day : «Path» /profiles/me/tutor/availability/{date}
   Day --> Slot : «Path» /{time}
   Subjects ..> SubjectBody : «use» POST request
-  Subjects ..> SubjectsResult : «use» GET 200 response
-  Subjects ..> SubjectResult : «use» POST 201 response
+  Subjects ..> SubjectsResult : «use» GET response
+  Subjects ..> SubjectResult : «use» POST response
   Subject ..> SubjectBody : «use» request
-  Subject ..> SubjectResult : «use» 200 response
-  Calendar ..> CalendarResult : «use» 200 response
-  Day ..> DayResult : «use» 200 response
+  Subject ..> SubjectResult : «use» response
+  Calendar ..> CalendarResult : «use» response
+  Day ..> DayResult : «use» response
   Slot ..> SlotBody : «use» request
-  Slot ..> SlotResult : «use» 200 response
+  Slot ..> SlotResult : «use» response
 ```
 
 Source: [subject/subject.routes.ts](../apps/backend/src/modules/subject/subject.routes.ts), [subject/subject.schema.ts](../apps/backend/src/modules/subject/subject.schema.ts), [availability/availability.routes.ts](../apps/backend/src/modules/availability/availability.routes.ts), [availability/availability.schema.ts](../apps/backend/src/modules/availability/availability.schema.ts).
@@ -582,12 +582,12 @@ classDiagram
   Tutor --> Subject : «Path» /subjects/{subjectId}
   API --> Areas : «Path» /discovery/learning-areas
   API --> Prices : «Path» /discovery/price-range
-  Tutors ..> SearchResult : «use» 200 response
-  Tutor ..> TutorSummary : «use» 200 response
-  Profile ..> PublicTutorProfile : «use» 200 response
-  Subject ..> SubjectPage : «use» 200 response
-  Areas ..> LearningAreas : «use» 200 response
-  Prices ..> PriceRange : «use» 200 response
+  Tutors ..> SearchResult : «use» response
+  Tutor ..> TutorSummary : «use» response
+  Profile ..> PublicTutorProfile : «use» response
+  Subject ..> SubjectPage : «use» response
+  Areas ..> LearningAreas : «use» response
+  Prices ..> PriceRange : «use» response
 ```
 
 Source: [discovery/discovery.routes.ts](../apps/backend/src/modules/discovery/discovery.routes.ts), [discovery/discovery.schema.ts](../apps/backend/src/modules/discovery/discovery.schema.ts), [discovery/discovery.controller.ts](../apps/backend/src/modules/discovery/discovery.controller.ts).
@@ -650,12 +650,12 @@ classDiagram
   Bookings --> Upcoming : «Path» /tutor/upcoming
   Bookings --> NeedsConfirmation : «Path» /tutor/needs-confirmation
   Bookings ..> CreateBooking : «use» POST request
-  Bookings ..> BookingResult : «use» 201 response
-  Bookings ..> BookingList : «use» GET 200 response
-  Booking ..> BookingResult : «use» 200 response
-  Availability ..> SubjectAvailability : «use» 200 response
-  Upcoming ..> BookingList : «use» 200 response
-  NeedsConfirmation ..> BookingList : «use» 200 response
+  Bookings ..> BookingResult : «use» response
+  Bookings ..> BookingList : «use» GET response
+  Booking ..> BookingResult : «use» response
+  Availability ..> SubjectAvailability : «use» response
+  Upcoming ..> BookingList : «use» response
+  NeedsConfirmation ..> BookingList : «use» response
 ```
 
 Source: [booking/booking.routes.ts](../apps/backend/src/modules/booking/booking.routes.ts), [booking/booking.schema.ts](../apps/backend/src/modules/booking/booking.schema.ts), [booking/booking.controller.ts](../apps/backend/src/modules/booking/booking.controller.ts).
@@ -748,19 +748,19 @@ classDiagram
   Booking --> TutorQuote : «Path» /tutor-cancellation-quote
   Booking --> TutorCancel : «Path» /tutor-cancel
   Booking --> Refund : «Path» /refund-request
-  Booking ..> BookingResult : «use» 200 response
-  Pay ..> BookingResult : «use» 200 response
-  Complete ..> BookingResult : «use» 200 response
+  Booking ..> BookingResult : «use» response
+  Pay ..> BookingResult : «use» response
+  Complete ..> BookingResult : «use» response
   Link ..> MeetingLinkBody : «use» request
-  Link ..> BookingResult : «use» 200 response
-  Quote ..> QuoteResult : «use» 200 response
+  Link ..> BookingResult : «use» response
+  Quote ..> QuoteResult : «use» response
   Cancel ..> CancelBody : «use» request
-  Cancel ..> CancellationResult : «use» 200 response
-  TutorQuote ..> QuoteResult : «use» 200 response
+  Cancel ..> CancellationResult : «use» response
+  TutorQuote ..> QuoteResult : «use» response
   TutorCancel ..> TutorCancelBody : «use» request
-  TutorCancel ..> CancellationResult : «use» 200 response
+  TutorCancel ..> CancellationResult : «use» response
   Refund ..> RefundBody : «use» request
-  Refund ..> BookingResult : «use» 201 response
+  Refund ..> BookingResult : «use» response
 ```
 
 Source: [booking/booking.routes.ts](../apps/backend/src/modules/booking/booking.routes.ts), [booking/booking.schema.ts](../apps/backend/src/modules/booking/booking.schema.ts), [booking/booking.controller.ts](../apps/backend/src/modules/booking/booking.controller.ts), [refund/refund.schema.ts](../apps/backend/src/modules/refund/refund.schema.ts), [refund/refund.controller.ts](../apps/backend/src/modules/refund/refund.controller.ts).
@@ -846,13 +846,13 @@ classDiagram
   Wallet --> Transactions : «Path» /transactions
   Transactions --> Transaction : «Path» /{id}
   Wallet --> Topups : «Path» /topups
-  Wallet ..> Balance : «use» 200 response
-  Overview ..> WalletOverview : «use» 200 response
-  Transactions ..> TransactionPage : «use» 200 response
-  Transaction ..> WalletTransaction : «use» 200 response
+  Wallet ..> Balance : «use» response
+  Overview ..> WalletOverview : «use» response
+  Transactions ..> TransactionPage : «use» response
+  Transaction ..> WalletTransaction : «use» response
   Topups ..> TopupBody : «use» POST request
-  Topups ..> TopupRequest : «use» POST 201 response
-  Topups ..> MyTopups : «use» GET 200 response
+  Topups ..> TopupRequest : «use» POST response
+  Topups ..> MyTopups : «use» GET response
 ```
 
 Source: [wallet/wallet.routes.ts](../apps/backend/src/modules/wallet/wallet.routes.ts), [wallet/wallet.schema.ts](../apps/backend/src/modules/wallet/wallet.schema.ts), [wallet/wallet.controller.ts](../apps/backend/src/modules/wallet/wallet.controller.ts), [wallet/wallet.service.ts](../apps/backend/src/modules/wallet/wallet.service.ts), [wallet/topup.service.ts](../apps/backend/src/modules/wallet/topup.service.ts).
@@ -922,12 +922,12 @@ classDiagram
   Accounts --> Banks : «Path» /banks
   API --> Payouts : «Path» /payouts
   Accounts ..> PayoutAccountBody : «use» POST request
-  Accounts ..> AccountResult : «use» 200 or 201 response
-  Account ..> AccountResult : «use» 200 response
-  Default ..> AccountResult : «use» 200 response
-  Banks ..> BankList : «use» 200 response
+  Accounts ..> AccountResult : «use» response
+  Account ..> AccountResult : «use» response
+  Default ..> AccountResult : «use» response
+  Banks ..> BankList : «use» response
   Payouts ..> PayoutBody : «use» request
-  Payouts ..> PayoutResult : «use» 201 response
+  Payouts ..> PayoutResult : «use» response
 ```
 
 Source: [payout/payout-account.routes.ts](../apps/backend/src/modules/payout/payout-account.routes.ts), [payout/payout-account.schema.ts](../apps/backend/src/modules/payout/payout-account.schema.ts), [payout/payout-account.service.ts](../apps/backend/src/modules/payout/payout-account.service.ts), [payout/payout.routes.ts](../apps/backend/src/modules/payout/payout.routes.ts), [payout/payout.schema.ts](../apps/backend/src/modules/payout/payout.schema.ts), [payout/payout.service.ts](../apps/backend/src/modules/payout/payout.service.ts).
@@ -992,12 +992,12 @@ classDiagram
   Reviews --> Reply : «Path» /{id}/reply
   Reviews --> Flags : «Path» /{id}/flags
   Reviews ..> ReviewBody : «use» request
-  Reviews ..> ReviewResult : «use» 201 response
+  Reviews ..> ReviewResult : «use» response
   Reply ..> ReplyBody : «use» POST request
   Reply ..> ReplyEditBody : «use» PATCH request
-  Reply ..> ReplyResult : «use» 200 or 201 response
+  Reply ..> ReplyResult : «use» response
   Flags ..> FlagBody : «use» request
-  Flags ..> FlagResult : «use» 201 response
+  Flags ..> FlagResult : «use» response
 ```
 
 Source: [review/review.routes.ts](../apps/backend/src/modules/review/review.routes.ts), [review/review.schema.ts](../apps/backend/src/modules/review/review.schema.ts), [review/review-reply.schema.ts](../apps/backend/src/modules/review/review-reply.schema.ts), [review/review-flag.schema.ts](../apps/backend/src/modules/review/review-flag.schema.ts).
@@ -1082,12 +1082,12 @@ classDiagram
   API --> Preferences : «Path» /notifications/preferences
   API --> Dashboard : «Path» /dashboard/tutor
   Messages ..> MessageBody : «use» request
-  Messages ..> MessageResult : «use» 201 response
-  Inbox ..> InboxResult : «use» 200 response
-  Conversations ..> ConversationList : «use» 200 response
-  Thread ..> ThreadResult : «use» 200 response
-  Preferences ..> PreferencesBody : «use» PUT request and 200 response
-  Dashboard ..> TutorDashboard : «use» 200 response
+  Messages ..> MessageResult : «use» response
+  Inbox ..> InboxResult : «use» response
+  Conversations ..> ConversationList : «use» response
+  Thread ..> ThreadResult : «use» response
+  Preferences ..> PreferencesBody : «use» PUT request and response
+  Dashboard ..> TutorDashboard : «use» response
 ```
 
 Source: [messaging/messaging.routes.ts](../apps/backend/src/modules/messaging/messaging.routes.ts), [messaging/messaging.schema.ts](../apps/backend/src/modules/messaging/messaging.schema.ts), [notification/notification.routes.ts](../apps/backend/src/modules/notification/notification.routes.ts), [notification/notification.schema.ts](../apps/backend/src/modules/notification/notification.schema.ts), [dashboard/dashboard.routes.ts](../apps/backend/src/modules/dashboard/dashboard.routes.ts), [dashboard/dashboard.service.ts](../apps/backend/src/modules/dashboard/dashboard.service.ts).
@@ -1173,15 +1173,15 @@ classDiagram
   Topups --> TopupReview : «Path» /{id}/review
   API --> Refunds : «Path» /admin/refunds
   Refunds --> RefundReview : «Path» /{id}/review
-  TutorRequests ..> TutorQueue : «use» 200 response
+  TutorRequests ..> TutorQueue : «use» response
   TutorReview ..> TutorDecision : «use» request
-  TutorReview ..> ReviewedTutorVersion : «use» 200 response
-  Topups ..> TopupQueue : «use» 200 response
+  TutorReview ..> ReviewedTutorVersion : «use» response
+  Topups ..> TopupQueue : «use» response
   TopupReview ..> MoneyDecision : «use» request
-  TopupReview ..> TopupResult : «use» 200 response
-  Refunds ..> RefundQueue : «use» 200 response
+  TopupReview ..> TopupResult : «use» response
+  Refunds ..> RefundQueue : «use» response
   RefundReview ..> MoneyDecision : «use» request
-  RefundReview ..> RefundResult : «use» 200 response
+  RefundReview ..> RefundResult : «use» response
 ```
 
 Source: [admin/admin.routes.ts](../apps/backend/src/modules/admin/admin.routes.ts), [admin/admin.schema.ts](../apps/backend/src/modules/admin/admin.schema.ts), [admin/admin.service.ts](../apps/backend/src/modules/admin/admin.service.ts), [wallet/wallet.schema.ts](../apps/backend/src/modules/wallet/wallet.schema.ts), [wallet/topup.service.ts](../apps/backend/src/modules/wallet/topup.service.ts), [refund/refund.schema.ts](../apps/backend/src/modules/refund/refund.schema.ts), [refund/refund.service.ts](../apps/backend/src/modules/refund/refund.service.ts).
@@ -1264,13 +1264,13 @@ classDiagram
   User --> Actions : «Path» /actions
   API --> Flags : «Path» /admin/review-flags
   API --> Moderation : «Path» /admin/reviews/{id}/moderation
-  Users ..> UserPage : «use» 200 response
-  User ..> ManagedUser : «use» 200 response
+  Users ..> UserPage : «use» response
+  User ..> ManagedUser : «use» response
   Actions ..> AccountActionBody : «use» request
-  Actions ..> AccountActionResult : «use» 201 response
-  Flags ..> FlagQueue : «use» 200 response
+  Actions ..> AccountActionResult : «use» response
+  Flags ..> FlagQueue : «use» response
   Moderation ..> ModerationBody : «use» request
-  Moderation ..> ModerationResult : «use» 200 response
+  Moderation ..> ModerationResult : «use» response
 ```
 
 Source: [admin/admin.routes.ts](../apps/backend/src/modules/admin/admin.routes.ts), [admin/admin.schema.ts](../apps/backend/src/modules/admin/admin.schema.ts), [admin/user-management.service.ts](../apps/backend/src/modules/admin/user-management.service.ts), [review/review-moderation.schema.ts](../apps/backend/src/modules/review/review-moderation.schema.ts), [review/review-moderation.service.ts](../apps/backend/src/modules/review/review-moderation.service.ts).
