@@ -104,7 +104,13 @@ export type Booking = {
   description?: string | null;
   isTrial: boolean;
   totalAmount: string;
-  earnings: { amount: string; status: "PENDING" | "RELEASED" } | null;
+  earnings: {
+    amount: string;
+    status: "PENDING" | "CLEARED";
+    clearsAt: string;
+    holdReason:
+      "AWAITING_COMPLETION" | "CLEARING_PERIOD" | "REFUND_REVIEW" | "READY_TO_CLEAR" | null;
+  } | null;
   startedAt: string;
   endedAt: string;
   paymentExpiresAt: string | null;

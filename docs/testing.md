@@ -208,7 +208,7 @@ CLASS-3 extends the completion integration suite to verify that pending earnings
 unchanged after confirmation, available balance and ledger history receive no credit,
 only the booking's Student becomes review-eligible, and retries/concurrent confirmations
 do not duplicate money. It also seeds an actual cleared movement to verify that the
-pending calculation excludes released earnings. These tests require the dedicated local
+pending calculation excludes cleared earnings. These tests require the dedicated local
 `tutor_matcher_book4_test` database and `RUN_DATABASE_INTEGRATION=true`.
 
 ```powershell
@@ -217,6 +217,21 @@ npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath app/wallet/p
 ```
 
 The decisions are recorded in [PAY-5 user evidence](sources/pay-5-policy-confirmation.md).
+
+### PAY-6 lesson earning settlement
+
+`earning-settlement.test.ts` covers the exact 24-hour boundary, Tutor completion, pending
+refund holds, rejection preserving eligibility, per-booking fee rounding, owner scoping,
+and skipping unpaid, already-cleared or not-yet-eligible lessons. Wallet, booking and payout
+tests cover settlement before wallet reads and balance use. The PAY-3 PostgreSQL integration
+suite covers clearing an older completed lesson, refund approval after a Tutor has withdrawn
+the earning, refund filing and Admin approval racing settlement, and concurrent wallet reads
+or a payout sharing one settlement trigger without duplicating the earning. It requires the
+dedicated local `tutor_matcher_pay3_test` database and `RUN_DATABASE_INTEGRATION=true`.
+
+```powershell
+npm.cmd --prefix apps/backend test -- --runInBand src/modules/wallet/earning-settlement.test.ts src/modules/refund/refund.integration.test.ts
+```
 
 ### PAY-3 refund request acceptance
 
@@ -235,7 +250,7 @@ default, approve, reject with a reason, a stale review, history and the Other re
 `refund.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true` and refuses any
 database except `tutor_matcher_pay3_test` on loopback; create it and push the schema first.
 It covers each acceptance criterion through the HTTP API: a no-show approved by an admin with
-the REFUND row linked and the pending earning dropped, the admin queue blocking Tutor
+the REFUND row linked and the unresolved earning removed, the admin queue blocking Tutor
 confirmation, Other, rejection with a reason, a request after the Tutor confirmed, opening at
 the lesson end with no deadline, the Tutor notification, ownership, admin self-review, two
 admins approving at once and a doubled request.

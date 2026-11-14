@@ -8,6 +8,11 @@ import { notifyUser } from "../notification/notification.service.ts";
 import { setTimeout, clearTimeout } from "node:timers";
 import { appendWalletMovement, InsufficientWalletBalance } from "../wallet/wallet-ledger.ts";
 import { tutorShare } from "../wallet/wallet.service.ts";
+import {
+  lessonEarningClearsAt,
+  lessonEarningHoldReason,
+} from "../wallet/earning-settlement.service.ts";
+import { settleTutorEarnings } from "../wallet/earning-settlement.service.ts";
 import { refundBlock, refundRequestResponse } from "../refund/refund.policy.ts";
 import type {
   CancelBookingInput,
@@ -288,6 +293,11 @@ export function mapBookingResponse(
   const canJoin = booking.status === "CONFIRMED" && Boolean(effectiveMeetingUrl) && beforeLessonEnd;
   const canReview = isStudent && booking.status === "COMPLETED" && booking.review === null;
   const earning = booking.walletTransactions.find((entry) => entry.type === "LESSON_EARNING");
+  const earningsVisibleToTutor =
+    isTutor &&
+    Boolean(transfer) &&
+    (["CONFIRMED", "COMPLETED"].includes(booking.status) || Boolean(earning));
+  const clearsAt = lessonEarningClearsAt(booking.endedAt);
   const refundBlockCode = refundBlock(
     {
       status: booking.status,
@@ -312,13 +322,21 @@ export function mapBookingResponse(
     createdAt: booking.createdAt.toISOString(),
     isTrial: booking.isTrial,
     totalAmount: decimalString(booking.totalAmount),
-    earnings:
-      isTutor && ["CONFIRMED", "COMPLETED"].includes(booking.status)
-        ? {
-            amount: decimalString(earning?.amount ?? tutorShare(booking.totalAmount)),
-            status: earning ? ("RELEASED" as const) : ("PENDING" as const),
-          }
-        : null,
+    earnings: earningsVisibleToTutor
+      ? {
+          amount: decimalString(earning?.amount ?? tutorShare(booking.totalAmount)),
+          status: earning ? ("CLEARED" as const) : ("PENDING" as const),
+          clearsAt: clearsAt.toISOString(),
+          holdReason: earning
+            ? null
+            : lessonEarningHoldReason(
+                booking.status,
+                booking.endedAt,
+                booking.refundRequest?.status ?? null,
+                now
+              ),
+        }
+      : null,
     startedAt: booking.startedAt.toISOString(),
     endedAt: booking.endedAt.toISOString(),
     paymentExpiresAt: booking.paymentExpiresAt?.toISOString() ?? null,
@@ -667,6 +685,7 @@ export async function listBookings(userId: string) {
 }
 
 export async function confirmBookingPayment(userId: string, id: string) {
+  await settleTutorEarnings(userId);
   await releaseExpiredBookings(new Date(), { id });
 
   for (let attempt = 0; attempt < 2; attempt++) {

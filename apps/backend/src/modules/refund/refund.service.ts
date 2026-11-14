@@ -9,8 +9,8 @@ import type { CreateRefundRequestInput, RefundReviewInput } from "./refund.schem
 
 // PAY-3: a Student asks for a refund once the lesson's scheduled end has passed. Every request
 // waits for an admin. Approval appends one REFUND row for the full paid amount, links it to the
-// request and cancels the booking in the same serializable transaction, so the Tutor's pending
-// earning disappears with it.
+// request and cancels the booking in the same serializable transaction. If the Tutor's earning
+// already cleared, that movement remains and the platform covers the Student's full refund.
 
 export type RefundErrorCode =
   | RefundBlockCode
@@ -42,7 +42,8 @@ function blocked(code: RefundBlockCode) {
 
 const retryError = () => new RefundDomainError("REFUND_RETRY", "Please try again in a moment", 409);
 
-// Approving cancels the paid booking, returns the full amount and links the REFUND row.
+// Approving cancels the paid booking, returns the full amount and links the REFUND row. Any
+// existing LESSON_EARNING stays in the Tutor's wallet, including after a payout.
 async function refundBooking(tx: Prisma.TransactionClient, request: RefundRequest, now: Date) {
   const cancelled = await tx.booking.updateMany({
     where: { id: request.bookingId, status: { in: ["CONFIRMED", "COMPLETED"] } },

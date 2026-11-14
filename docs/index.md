@@ -36,6 +36,7 @@ disagree.
 | PAY-3 refunded-lesson reviews                   | [Review decision](sources/pay-3-refunded-review-decision.md)                                                                                                                    |
 | REV-1 review decisions                          | [REV-1 evidence](sources/rev-1-policy-confirmation.md)                                                                                                                          |
 | PAY-5 wallet page decisions and checks          | [Wallet page change](change/pay-5-wallet-page/proposal.md)                                                                                                                      |
+| PAY-6 lesson earning settlement decisions       | [PAY-6 confirmation](sources/pay-6-policy-confirmation.md)                                                                                                                      |
 | CLASS-1 custom URL first slice                  | [Custom meeting URL change](change/class-1-custom-meeting-url/proposal.md)                                                                                                      |
 | The database schema and its known gaps          | [`database-schema.md`](database-schema.md)                                                                                                                                      |
 | Application components and connections          | [`architecture.md`](architecture.md)                                                                                                                                            |
@@ -83,9 +84,9 @@ Things the product needs but does not yet have an answer for:
 - API routes and request/response contracts are not documented separately from the code.
 - The authentication mechanism (JWT vs. session vs. federated login) is not settled — see
   [`../README.md`](../README.md#architecture).
-- The earnings clearing period and late-cancellation allocation still need
-  product sign-off. CLASS-3 keeps earnings pending using the existing 15% fee;
-  PAY-6 owns clearing. BOOK-3's 24-hour / 70% defaults are confirmed, and BOOK-4 tutor
+- Late-cancellation allocation still needs product sign-off. CLASS-3 keeps earnings
+  pending using the existing 15% fee; PAY-6 clears eligible earnings after 24 hours.
+  BOOK-3's 24-hour / 70% defaults are confirmed, and BOOK-4 tutor
   cancellations always refund the student in full — see
   [`user-journeys.md`](user-journeys.md#4--money).
 - Whether lesson rescheduling is in scope at all is still open.

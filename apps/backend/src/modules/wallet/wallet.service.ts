@@ -1,8 +1,11 @@
 import { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
 import { payoutAccountResponse } from "../payout/payout-account.service.ts";
-import { walletTransactionSigns } from "./wallet-ledger.ts";
+import { settleTutorEarnings } from "./earning-settlement.service.ts";
+import { tutorShare, walletTransactionSigns } from "./wallet-ledger.ts";
 import type { WalletTransactionsQuery } from "./wallet.schema.ts";
+
+export { PLATFORM_FEE_RATE, tutorShare } from "./wallet-ledger.ts";
 
 export class WalletDomainError extends Error {
   constructor(
@@ -15,13 +18,13 @@ export class WalletDomainError extends Error {
 }
 
 export async function getWallet(userId: string) {
+  await settleTutorEarnings(userId);
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { balance: true } });
   if (!user) throw new WalletDomainError("WALLET_NOT_FOUND", "Wallet not found", 404);
   return { balance: user.balance.toFixed(2) };
 }
 
-// PAY-5: provisional platform fee; pending earnings are a calculation, never a ledger row.
-export const PLATFORM_FEE_RATE = new Prisma.Decimal("0.15");
+// PAY-5: pending earnings are a calculation, never a ledger row.
 export const WALLET_TRANSACTIONS_PAGE_SIZE = 20;
 const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
 
@@ -34,10 +37,6 @@ export function bangkokMonthWindow(now: Date) {
     start: new Date(Date.UTC(year, month, 1) - BANGKOK_OFFSET_MS),
     end: new Date(Date.UTC(year, month + 1, 1) - BANGKOK_OFFSET_MS),
   };
-}
-
-export function tutorShare(totalAmount: Prisma.Decimal) {
-  return totalAmount.minus(totalAmount.times(PLATFORM_FEE_RATE).toDecimalPlaces(2));
 }
 
 const transactionInclude = {
@@ -80,6 +79,7 @@ function transactionResponse(entry: WalletTransactionWithLinks) {
 }
 
 export async function getWalletOverview(userId: string, now = new Date()) {
+  await settleTutorEarnings(userId, now);
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { balance: true, tutorId: true },
@@ -155,6 +155,7 @@ export async function getWalletOverview(userId: string, now = new Date()) {
 }
 
 export async function listWalletTransactions(userId: string, query: WalletTransactionsQuery) {
+  await settleTutorEarnings(userId);
   const where = { userId, ...(query.type ? { type: query.type } : {}) };
   const [entries, total] = await Promise.all([
     prisma.walletTransaction.findMany({
@@ -176,6 +177,7 @@ export async function listWalletTransactions(userId: string, query: WalletTransa
 
 // Owner-only: another user's transaction is indistinguishable from a missing one.
 export async function getWalletTransaction(userId: string, id: string) {
+  await settleTutorEarnings(userId);
   const entry = await prisma.walletTransaction.findFirst({
     where: { id, userId },
     include: transactionInclude,

@@ -620,15 +620,30 @@ function BookingDetailContent() {
               className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-800"
             >
               <h3 className="font-semibold">
-                {booking.earnings.status === "PENDING" ? "Pending earnings" : "Released earnings"}
+                {booking.earnings.status === "PENDING" ? "Pending earnings" : "Cleared earnings"}
               </h3>
               <p className="mt-1 text-xl font-bold">
                 {money.format(Number(booking.earnings.amount))}
               </p>
               <p className="mt-2 text-sm text-zinc-500">
-                {booking.earnings.status === "PENDING"
-                  ? "After the 15% platform fee. This amount stays pending after completion and is not in your available balance."
-                  : "This earning has been released into your wallet."}
+                {booking.earnings.status === "PENDING" ? (
+                  <>
+                    After the 15% platform fee. Available after{" "}
+                    {dateTime.format(new Date(booking.earnings.clearsAt))}; it is not in your
+                    available balance yet and moves to your wallet the next time you view or use
+                    your balance.
+                    {booking.earnings.holdReason === "AWAITING_COMPLETION" &&
+                      " The Tutor must confirm the lesson first."}
+                    {booking.earnings.holdReason === "CLEARING_PERIOD" &&
+                      " The 24-hour clearing period is still in progress."}
+                    {booking.earnings.holdReason === "REFUND_REVIEW" &&
+                      " It is held until the Admin decides the refund request."}
+                    {booking.earnings.holdReason === "READY_TO_CLEAR" &&
+                      " The clearing period has ended; it will move when you next view or use your wallet."}
+                  </>
+                ) : (
+                  "This earning has been cleared into your wallet."
+                )}
               </p>
               <Link
                 href="/wallet"

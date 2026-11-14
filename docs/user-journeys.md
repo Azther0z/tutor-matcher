@@ -25,7 +25,7 @@ place.
 2. Let students search and filter tutors, evaluate a specific subject, book one
    continuous 1-1 block from published availability, and pay from wallet balance.
 3. Confirm lessons instantly on payment, deliver them through an attached online meeting
-   link, and complete them automatically so settlement and reviewing can start.
+   link, and let the assigned Tutor confirm completion so settlement and reviewing can start.
 4. Hold all money in one wallet per user — top-ups in, lesson payments out, cleared
    earnings in, refunds in, payouts out — with the transaction ledger as the source of
    truth for every balance.
@@ -418,17 +418,22 @@ is no simulation. A booking's payment request can expire while a slip waits for 
 the [PAY-1 slip confirmation](sources/pay-1-slip-topup-confirmation.md) and the
 [PAY-1 demo feedback](sources/pay-1-demo-feedback.md).
 
-**Lesson earnings.** Tutor confirmation leaves earnings pending. CLASS-3 uses the same
-15% fee calculation as PAY-5 against the booking's agreed total, with the fee rounded
-to cents per booking. Pending earnings include CONFIRMED and COMPLETED bookings
-without a LESSON_EARNING row, so the amount remains visible after completion and is
-excluded once it has cleared. The Tutor's booking page shows the net amount and its
-pending status; the Student does not receive the Tutor's earning details.
+**Lesson earnings.** Tutor confirmation leaves earnings pending. The Tutor's net share
+uses the existing 15% fee calculation against the booking's agreed total, with the fee
+rounded to cents per booking. A paid lesson can clear only after the Tutor confirms it
+as COMPLETED and 24 hours have passed since its scheduled end. A pending refund request
+keeps the earning pending after that deadline; rejection preserves the original deadline,
+and approval before clearing means no Tutor earning is credited. Pending earnings include
+CONFIRMED and COMPLETED bookings without a LESSON_EARNING row and leave the calculation
+once cleared. This also applies to existing eligible completed lessons.
 
-Confirmation changes neither available balance nor wallet history. PAY-6 will define
-the hold period and release earnings into available balance with a LESSON_EARNING row.
-No pending ledger row or historical reconciliation is added. This confirmed policy
-supersedes issue #212's original immediate-release wording; see the
+Settlement runs for the wallet owner before their balance, summary or transaction history
+is read, and before their wallet is used to pay for a lesson or request a payout. It does
+not run when a booking detail is opened. The Tutor's booking page shows the net amount,
+the time it becomes eligible to clear and its current hold reason; actual credit appears
+the next time the Tutor views or uses the wallet. The Student does not see Tutor earnings.
+There is no pending ledger row or schema field for settlement. This implements the
+[PAY-6 confirmation](sources/pay-6-policy-confirmation.md) and preserves the
 [CLASS-3 confirmation](sources/class-3-policy-confirmation.md).
 
 **Refunds.** Paid cancellation appends REFUND and leaves LESSON_PAYMENT unchanged.
@@ -459,8 +464,9 @@ verified, and requests open at the lesson end instead of at payment.
 - While a request waits, the Tutor cannot confirm completion and sees **Refund requested**
   on the booking, with the reason but not the Student's text. After a rejection the Tutor
   can confirm it as usual.
-- Approving cancels the booking, so its pending earning disappears and no money is taken
-  from the Tutor (PAY-6 has not released any).
+- Approving before earnings clear cancels the booking and removes its pending earning.
+  If earnings already cleared, the platform covers the full Student refund and leaves the
+  Tutor's earning untouched, including after payout.
 - A completed lesson may already have a review, and the Student may still publish one while
   the request waits. Once approval cancels the booking, its review no longer counts: it is
   left out of tutor and subject ratings, review lists and search ranking, but it is kept,
@@ -484,7 +490,8 @@ nothing. Repeating the same request reference does not pay out twice. The payout
 simulated, labelled "Simulated payout, no real money is transferred", and turned off in
 production like top-up. With no saved payout account the page asks the user to add one in
 Wallet settings. An asynchronous provider would need a separate request table, not a ledger
-status. Lesson-earning settlement remains separate work. See the [PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
+status. PAY-6 settles eligible lesson earnings before the Tutor requests a payout. See the
+[PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
 
 **Payout accounts (`/settings/wallet`, PROF-7).** Any logged-in user can open Wallet
 settings from the Settings navigation. The page starts with the wallet balance and a **Top up**

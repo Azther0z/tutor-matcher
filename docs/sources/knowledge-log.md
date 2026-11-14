@@ -167,3 +167,10 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Evidence: apps/backend/src/routes.ts, apps/backend/src/lib/db.ts, apps/frontend/next.config.ts, .github/workflows/, .doco-cd.yaml, deploy/compose.yaml, deploy/README.md
 - Updated: docs/architecture.md, docs/cicd.md, docs/index.md
 - Scope: Mermaid component diagram and CI/CD deployment flow from the current source files. Live deployment state is not tested.
+
+## [2026-11-12] ingest | PAY-6 lesson earning settlement
+
+- Disposition: Update
+- Raw: docs/sources/pay-6-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, CONTEXT.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Paid completed lessons clear after Tutor confirmation and 24 hours from scheduled end; pending refund requests pause clearing; prior eligible completions are included; wallet access triggers settlement; the platform covers approved refunds after clearing without clawing back Tutor earnings
