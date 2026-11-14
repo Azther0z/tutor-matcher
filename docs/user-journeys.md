@@ -119,6 +119,7 @@ Guards run before render, not after.
 | `/admin/tutor-requests`    | Tutor application queue — approve or reject                             | Role: admin    |
 | `/admin/topups`            | Top-up slip queue — approve or reject                                   | Role: admin    |
 | `/admin/users`             | Search accounts, message users, suspend or ban with a reason            | Role: admin    |
+| `/admin/reviews`           | Flagged reviews — keep, or remove with a reason                         | Role: admin    |
 
 ### Access rules
 
@@ -266,14 +267,14 @@ student never picks the subject twice. **No booking record exists in this step.*
   back-to-back"_ and the selection restarts from that slot.
 - The summary shows the selected window, the duration, and the price. **Price = number
   of 30-minute slots × hourly rate ÷ 2.**
-- A free-text note — _"What do you want to learn?"_ — is captured for the tutor.
+- The booking form does not collect a free-text learning note. Lessons have no Trial tier.
 - There is no weekly or recurring option, and no way to add another student.
 
 ### Step 2 — Payment due (`/bookings/:id`)
 
 Continuing creates the booking record and its booking number, and opens the booking
 page with the subject, date, time, duration, and price locked. The tutor's slots are
-locked to this booking while payment is outstanding.
+not reserved while payment is outstanding: other Students may select and pay for them.
 
 - Payment is a debit from **wallet balance**, taken on this page. Wallet history never
   accepts payment.
@@ -281,9 +282,12 @@ locked to this booking while payment is outstanding.
   **Top up ฿<shortfall>**, returning the student to this booking afterwards.
 - Creating the pending booking writes no wallet row; the amount due is Booking.totalAmount.
 - Paying atomically deducts the amount, appends one LESSON_PAYMENT row and changes
-  PENDING_PAYMENT to CONFIRMED. Failure leaves the booking and wallet unchanged.
+  PENDING_PAYMENT to CONFIRMED, claiming every open slot in the stored subject/time interval
+  in the same serializable transaction. If any slot is taken, closed or reassigned, payment
+  fails without a debit. Concurrent payers cannot both claim the same slot.
 - Cancelling or expiring an unpaid booking writes no wallet row.
-- If payment never completes, no confirmed booking exists and the slots are released.
+- The existing 15-minute payment deadline expires the request only; it never reserves slots.
+  If payment never completes, no confirmed booking exists.
 
 ### Step 3 — Confirmed
 
@@ -331,9 +335,14 @@ See the [BOOK-4 confirmation](sources/book-4-policy-confirmation.md).
 
 ### `/bookings`
 
-Tabs: **All**, **Upcoming** (confirmed and paid), **Payment due** (slots held, booking
-number issued, not yet paid), and **Past** (completed and cancelled). Each row opens
-the booking in its correct state.
+Tabs: **All**, **Upcoming** (confirmed and paid), and **Past** (completed and cancelled).
+Unpaid booking attempts, including attempts cancelled because payment expired, do not appear in
+this list or in the Tutor's Upcoming classes. The Student continues to the payment detail
+immediately after choosing a time; only successful payment makes the lesson visible in booking
+lists.
+Each row and booking detail show the lesson start and end time in Asia/Bangkok.
+Bookings can be cancelled under the cancellation policy; rescheduling is not supported.
+There are no Trial labels or separate trial lessons. Each row opens the booking in its correct state.
 
 Related stories: US4-1 … US4-8, US11-1, US11-2.
 
@@ -367,8 +376,8 @@ and a Tutor-only filter in a Student's URL falls back to All.
 Earnings this month sum LESSON_EARNING rows in the current Asia/Bangkok calendar month;
 all-time paid out sums every PAYOUT row. The list is newest first, 20 per page, and keeps
 its filter and page in the URL; each row shows the signed amount and resulting balance and
-opens its detail. A **Payment due** box lists the user's unpaid bookings whose hold has not
-expired, each with a link to `/bookings/:id`, where payment is made. The account menu
+opens its detail. Unpaid booking attempts do not appear on the Wallet page; payment remains on the
+booking detail reached immediately after choosing a time. The account menu
 links to `/wallet`. See the [PAY-5 confirmation](sources/pay-5-policy-confirmation.md)
 and the [PAY-5 review comments](sources/pay-5-review-comments.md).
 
@@ -405,7 +414,7 @@ approval with its slip link and the recent requests with their status and reason
 no cancel or back button, so a wrong slip waits for an admin to reject it. After a rejection
 the user can send a new request. An admin
 cannot review their own top-up. The same flow runs in development and production; there
-is no simulation. A booking's payment hold can expire while a slip waits for review. See
+is no simulation. A booking's payment request can expire while a slip waits for review. See
 the [PAY-1 slip confirmation](sources/pay-1-slip-topup-confirmation.md) and the
 [PAY-1 demo feedback](sources/pay-1-demo-feedback.md).
 
@@ -667,7 +676,7 @@ values already overwritten before this feature cannot be recovered.
 30-minute slot they can teach, and
 assigns which subject(s) each open slot covers — so one slot can advertise several
 subjects and a student browsing a subject sees only slots that carry it. Slots already
-attached to a paid booking or an active payment hold are **locked** and cannot be closed
+attached to a paid booking are **locked** and cannot be closed
 or reassigned. Subject assignment uses
 compact toggle boxes that scroll inside their own area. Availability is per date, not a
 recurring weekly pattern. Approved Tutors can manage it while unpublished; publication
@@ -679,7 +688,7 @@ summarizes availability; clicking a date opens its week for slot editing. Tutors
 open any future date, close free future
 slots, and change their subject assignments. An open slot requires at least one owned
 subject. The same Tutor cannot have overlapping slots, including across different subjects.
-Past slots are read-only. Expired payment holds release through the booking lifecycle.
+Past slots are read-only. Pending payment requests do not lock slots; Tutors may still edit them.
 
 Each slot has its own **Save slot** and **Close slot** actions. There is no day or week
 save step. If another edit or booking changes that slot, its save is rejected and its draft
@@ -746,6 +755,16 @@ button. A member can flag a review once, however many others have flagged it, an
 attempt is rejected. Reviews without a comment, refunded reviews and a member's own review
 cannot be flagged. The admin decision is REV-4.
 
+**Implemented by REV-4.** Admins see flagged reviews at `/admin/reviews`, with the comment,
+rating, author, Tutor and subject, and every reporter's reason. A Pending / Decided filter keeps
+past decisions visible. **Keep review** leaves it published and tells each reporter; other
+members can still flag it, which puts it back in the queue. **Remove review** needs a reason and
+removes the whole review from the Tutor profile, Subject page, ratings, search ranking and Tutor
+dashboard. Each reporter is told it was removed, and the author is emailed the reason. The
+author's booking page then says the review was removed and why; each lesson is reviewed once,
+so they cannot write another. One decision covers every pending flag, and a second Admin's
+decision on the same flags is refused.
+
 **Implemented by REV-1.** On `/bookings/:id` of their own `COMPLETED` booking, the
 Student picks 1 to 5 stars and may add a comment (up to 2,000 characters), then
 **Publish review**. The review is published at once for that booking's tutor and
@@ -762,15 +781,23 @@ Related stories: US8-1 … US8-4.
 
 ## 10 · Admin, trust, and safety
 
-| Queue                        | Admin decision                                                    |
-| ---------------------------- | ----------------------------------------------------------------- |
-| Tutor applications           | Approve → tutor capability granted · Reject → applicant told why  |
-| Listing and document changes | Approve → public listing updates · Reject → tutor revises         |
-| Flagged reviews and messages | Keep, hide, or remove, with an audit trail                        |
-| Payment disputes and refunds | `/admin/refunds`: approve a full refund or reject with a reason   |
-| Policy violations            | Suspend or ban; protected actions are blocked with a reason shown |
+| Queue                        | Admin decision                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------ |
+| Tutor applications           | Approve → tutor capability granted · Reject → applicant told why                                 |
+| Listing and document changes | Approve → public listing updates · Reject → tutor revises                                        |
+| Flagged reviews and messages | Reviews: keep, or remove the whole review, with an audit trail (REV-4) · Messages: not built yet |
+| Payment disputes and refunds | `/admin/refunds`: approve a full refund or reject with a reason                                  |
+| Policy violations            | Suspend or ban; protected actions are blocked with a reason shown                                |
 
 Related stories: US9-1 … US9-5.
+
+**Payment disputes (SAFE-4, [#175](https://github.com/Azther0z/tutor-matcher/issues/175)).** A
+payment dispute is the PAY-3 refund request; SAFE-4 adds no new behaviour. The Student disputes a
+paid lesson after its scheduled end, and an Admin resolves it at `/admin/refunds`. Approval
+appends exactly one `REFUND` row for the full paid amount, linked to the request and the
+cancelled booking; rejection, with a reason the Student sees, leaves the ledger unchanged. Earlier
+rows are never edited, a resolved dispute cannot be resolved again, and the request keeps the
+deciding Admin and time, so every money movement traces back to the decision.
 
 **User management (`/admin/users`, [SAFE-1 #172](https://github.com/Azther0z/tutor-matcher/issues/172)).**
 The Admin account menu links to **Users**. Search matches every typed word against first

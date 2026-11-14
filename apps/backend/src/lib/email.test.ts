@@ -19,6 +19,7 @@ const {
   sendTutorRequestRejectedEmail,
   sendBookingNotificationEmail,
   sendAccountActionEmail,
+  sendReviewModerationEmail,
 } = await import("./email.ts");
 const { PASSWORD_RESET_TTL_MINUTES } = await import("./password-reset.ts");
 
@@ -130,6 +131,72 @@ describe("sendAccountActionEmail", () => {
       until: null,
     });
     expect(log).toHaveBeenCalledWith(expect.stringContaining("Reason: Fraud"));
+    expect(resendSend).not.toHaveBeenCalled();
+  });
+});
+
+describe("sendReviewModerationEmail", () => {
+  const notice = {
+    firstName: "<Dana>",
+    subjectName: "Chemistry",
+    tutorName: "Anong Tutor",
+  };
+  const useResend = () => {
+    Object.assign(env, {
+      emailDeliveryMode: "resend",
+      resendApiKey: "re_test_key",
+      resendFromEmail: "Tutor Matcher <onboarding@resend.dev>",
+      frontendUrlConfigured: true,
+    });
+    resendSend.mockResolvedValue({ id: "review-notice" });
+  };
+
+  it("tells a reporter the review was kept, without any reason", async () => {
+    useResend();
+    await sendReviewModerationEmail({
+      ...notice,
+      to: "dana@example.com",
+      audience: "REPORTER",
+      outcome: "KEPT",
+      reason: "not for reporters",
+    });
+    const payload = resendSend.mock.calls[0][0] as { subject: string; html: string; text: string };
+    expect(payload.subject).toBe("Update on the review you flagged");
+    expect(payload.text).toContain("stays published");
+    expect(payload.text).not.toContain("not for reporters");
+    expect(payload.html).toContain("&lt;Dana&gt;");
+  });
+
+  it("tells the author their review was removed, with the escaped reason", async () => {
+    useResend();
+    await sendReviewModerationEmail({
+      ...notice,
+      to: "bob@example.com",
+      audience: "AUTHOR",
+      outcome: "REMOVED",
+      reason: '<b>Harassment</b> & "threats"',
+    });
+    expect(resendSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: ["bob@example.com"],
+        subject: "Your Tutor Matcher review was removed",
+        html: expect.stringContaining("&lt;b&gt;Harassment&lt;/b&gt; &amp; &quot;threats&quot;"),
+        text: expect.stringContaining('Reason: <b>Harassment</b> & "threats"'),
+      })
+    );
+  });
+
+  it("logs the notice without sending email in log mode", async () => {
+    const log = jest.spyOn(console, "info").mockImplementation(() => {});
+    await sendReviewModerationEmail({
+      ...notice,
+      to: "dana@example.com",
+      audience: "REPORTER",
+      outcome: "REMOVED",
+    });
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("[notification:review] dana@example.com:")
+    );
     expect(resendSend).not.toHaveBeenCalled();
   });
 });

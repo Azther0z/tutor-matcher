@@ -136,6 +136,17 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#39;");
 }
 
+type ReviewModerationEmail = {
+  to: string;
+  firstName: string;
+  // A reporter learns the outcome; the review's author learns it was removed and why.
+  audience: "REPORTER" | "AUTHOR";
+  outcome: "KEPT" | "REMOVED";
+  subjectName: string;
+  tutorName: string;
+  reason?: string | null;
+};
+
 async function deliverEmail(payload: EmailPayload, deliveryErrorMessage: string) {
   const client = createResendClient();
   let result: { error?: unknown } | unknown;
@@ -290,5 +301,50 @@ export async function sendAccountActionEmail({
       text: `Hi ${firstName},\n\n${summary}\n\nReason: ${reason}`,
     },
     "Could not send account notice email"
+  );
+}
+
+// REV-4: tells a reporter what an Admin decided about a flagged review, and tells the author
+// when their review was removed and why.
+export async function sendReviewModerationEmail({
+  to,
+  firstName,
+  audience,
+  outcome,
+  subjectName,
+  tutorName,
+  reason,
+}: ReviewModerationEmail) {
+  const lesson = `the ${subjectName} review on ${tutorName}'s profile`;
+  const summary =
+    audience === "AUTHOR"
+      ? `An admin removed your review of ${subjectName} with ${tutorName} after it was flagged.`
+      : outcome === "KEPT"
+        ? `Thanks for your report. An admin checked ${lesson} and found it follows our rules, so it stays published.`
+        : `Thanks for your report. An admin checked ${lesson} and removed it.`;
+  const shownReason = audience === "AUTHOR" && reason ? reason : null;
+
+  if (getEmailDeliveryMode() === "log") {
+    console.info(
+      `[notification:review] ${to}: ${summary}${shownReason ? ` Reason: ${shownReason}` : ""}`
+    );
+    return;
+  }
+
+  await deliverEmail(
+    {
+      from: env.resendFromEmail,
+      to: [to],
+      subject:
+        audience === "AUTHOR"
+          ? "Your Tutor Matcher review was removed"
+          : "Update on the review you flagged",
+      html: `<p>Hi ${escapeHtml(firstName)},</p>
+      <p>${escapeHtml(summary)}</p>${
+        shownReason ? `\n      <p><strong>Reason:</strong> ${escapeHtml(shownReason)}</p>` : ""
+      }`,
+      text: `Hi ${firstName},\n\n${summary}${shownReason ? `\n\nReason: ${shownReason}` : ""}`,
+    },
+    "Could not send review moderation email"
   );
 }

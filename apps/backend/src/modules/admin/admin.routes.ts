@@ -12,6 +12,15 @@ import {
   refundListQuerySchema,
   refundReviewSchema,
 } from "../refund/refund.schema.ts";
+import {
+  flaggedReviewsForAdmin,
+  moderateFlaggedReview,
+} from "../review/review-moderation.controller.ts";
+import {
+  reviewFlagListQuerySchema,
+  reviewModerationParamsSchema,
+  reviewModerationSchema,
+} from "../review/review-moderation.schema.ts";
 import { actOnUser, getUser, listRequests, listUsers, reviewRequest } from "./admin.controller.ts";
 import {
   accountActionSchema,
@@ -52,4 +61,16 @@ adminRouter.post(
   validate(userParamsSchema, "params"),
   validate(accountActionSchema),
   actOnUser
+);
+// REV-4: admins keep or remove reviews that members flagged.
+adminRouter.get(
+  "/review-flags",
+  validate(reviewFlagListQuerySchema, "query"),
+  flaggedReviewsForAdmin
+);
+adminRouter.post(
+  "/reviews/:id/moderation",
+  validate(reviewModerationParamsSchema, "params"),
+  validate(reviewModerationSchema),
+  moderateFlaggedReview
 );

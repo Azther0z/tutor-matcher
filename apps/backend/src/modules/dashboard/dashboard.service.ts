@@ -27,7 +27,8 @@ export async function getTutorDashboard(userId: string, now = new Date()) {
 
   const tutorId = owner.tutorId;
   const ownedBookings = { subject: { tutorId } };
-  const ownedReviews = { subject: { tutorId } };
+  // REV-4: a review an Admin removed no longer counts or shows here either.
+  const ownedReviews = { subject: { tutorId }, removedAt: null };
   const week = bangkokWeekWindow(now);
   const [statuses, students, completedStudents, classesThisWeek, rating, recentReviews] =
     await Promise.all([

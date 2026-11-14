@@ -54,7 +54,7 @@ async function cleanFixtures() {
   });
   await prisma.availability.updateMany({
     where: {
-      id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID, RESCHEDULE_SLOT_ID] },
+      tutorId: TUTOR_ID,
     },
     data: { bookingId: null },
   });
@@ -62,7 +62,7 @@ async function cleanFixtures() {
   await prisma.availabilitySubject.deleteMany({ where: { subjectId: SUBJECT_ID } });
   await prisma.availability.deleteMany({
     where: {
-      id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID, RESCHEDULE_SLOT_ID] },
+      tutorId: TUTOR_ID,
     },
   });
   await prisma.subject.deleteMany({ where: { id: SUBJECT_ID } });
@@ -212,7 +212,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     expect(slot.bookingId).toBeNull();
   });
 
-  it("keeps the Tutor override through rescheduling and retires the old generated URL", async () => {
+  it("keeps meeting links unchanged when the removed reschedule endpoint is called", async () => {
     const created = await authorizeLinkStudent(
       request(app)
         .post("/api/bookings")
@@ -265,20 +265,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         .patch(`/api/bookings/${bookingId}/meeting-link`)
         .send({ customMeetingUrl: "https://meet.example.com/custom-room" })
     ).expect(200);
-    const rescheduled = await authorizeLinkStudent(
+    await authorizeLinkStudent(
       request(app)
         .patch(`/api/bookings/${bookingId}/reschedule`)
         .send({ availabilityIds: [RESCHEDULE_SLOT_ID] })
-    ).expect(200);
-    expect(rescheduled.body.booking).toMatchObject({
-      status: "CONFIRMED",
-      zoomMeetingUrl: null,
-      customMeetingUrl: "https://meet.example.com/custom-room",
-      effectiveMeetingUrl: "https://meet.example.com/custom-room",
-      actions: { canJoin: true },
-    });
+    ).expect(404);
     const persisted = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
-    expect(persisted.zoomMeetingUrl).toBeNull();
+    expect(persisted.zoomMeetingUrl).toBe("https://meet.example.com/old-room");
     expect(persisted.customMeetingUrl).toBe("https://meet.example.com/custom-room");
     expect(persisted.meetingLinkUpdatedAt).toBeInstanceOf(Date);
   });
@@ -364,6 +357,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         endedAt: new Date(Date.now() + 88_200_000),
       },
     });
+    await prisma.availability.create({
+      data: {
+        tutorId: TUTOR_ID,
+        startedAt: booking.startedAt,
+        availabilitySubjects: { create: { subjectId: SUBJECT_ID } },
+      },
+    });
     const before = await prisma.user.findUniqueOrThrow({ where: { id: STUDENT_ID } });
     await authorize(request(app).post(`/api/bookings/${booking.id}/confirm-payment`)).expect(402);
     expect(bookingEmail).not.toHaveBeenCalled();
@@ -421,6 +421,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
           endedAt: new Date(Date.now() + 88_200_000),
         },
       });
+      await prisma.availability.create({
+        data: {
+          tutorId: TUTOR_ID,
+          startedAt: booking.startedAt,
+          availabilitySubjects: { create: { subjectId: SUBJECT_ID } },
+        },
+      });
       bookingEmail.mockRejectedValueOnce(new Error("Email delivery unavailable"));
       const paid = await authorize(
         request(app).post(`/api/bookings/${booking.id}/confirm-payment`)
@@ -451,6 +458,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         endedAt: new Date(Date.now() + 88_200_000),
       },
     });
+    await prisma.availability.create({
+      data: {
+        tutorId: TUTOR_ID,
+        startedAt: booking.startedAt,
+        availabilitySubjects: { create: { subjectId: SUBJECT_ID } },
+      },
+    });
     const lookup = jest
       .spyOn(prisma.user, "findUnique")
       .mockRejectedValue(new Error("notification DB unavailable"));
@@ -473,7 +487,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         .post("/api/bookings")
         .send({
           subjectId: SUBJECT_ID,
-          availabilityIds: [PENDING_SLOT_ID],
+          availabilityIds: [RESCHEDULE_SLOT_ID],
           isTrial: true,
         })
     ).expect(201);

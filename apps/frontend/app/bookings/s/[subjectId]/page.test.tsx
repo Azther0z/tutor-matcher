@@ -58,7 +58,7 @@ it("opens the date passed by DISC-4 without selecting times or creating a bookin
   expect(push).not.toHaveBeenCalled();
 });
 
-it("creates a trial booking with UUID identifiers", async () => {
+it("creates a booking with UUID identifiers", async () => {
   global.fetch = jest
     .fn()
     .mockResolvedValueOnce({ ok: true, json: async () => availability })
@@ -70,7 +70,7 @@ it("creates a trial booking with UUID identifiers", async () => {
   expect(screen.getByRole("button", { name: "00:00 Not available" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "23:30 Not available" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "16:00 Available" }));
-  expect(screen.getByText("Trial · 30 min")).toBeInTheDocument();
+  expect(screen.getByText("30 min")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
   await waitFor(() => expect(push).toHaveBeenCalledWith(`/bookings/${bookingId}`));
   expect(global.fetch).toHaveBeenLastCalledWith(
@@ -80,7 +80,7 @@ it("creates a trial booking with UUID identifiers", async () => {
       body: JSON.stringify({
         subjectId,
         availabilityIds: [slotId],
-        isTrial: true,
+        isTrial: false,
       }),
     })
   );
@@ -120,7 +120,7 @@ it("calculates a continuous hour from the locked subject rate without creating a
   fireEvent.click(screen.getByRole("button", { name: "16:00 Available" }));
   expect(screen.getByText("฿10.00")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "16:30 Available" }));
-  expect(screen.getByText("Trial · 60 min")).toBeInTheDocument();
+  expect(screen.getByText("60 min")).toBeInTheDocument();
   expect(screen.getByText("฿20.00")).toBeInTheDocument();
   expect(global.fetch).toHaveBeenCalledTimes(1);
   expect(push).not.toHaveBeenCalled();

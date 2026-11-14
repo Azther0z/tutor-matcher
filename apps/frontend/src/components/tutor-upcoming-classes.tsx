@@ -23,7 +23,7 @@ export function TutorUpcomingClasses() {
 
   useEffect(() => {
     getTutorUpcomingBookings()
-      .then(setBookings)
+      .then((items) => setBookings(items.filter((booking) => booking.status === "CONFIRMED")))
       .catch((reason: unknown) =>
         setError(reason instanceof Error ? reason.message : "Could not load your classes.")
       )
@@ -55,14 +55,8 @@ export function TutorUpcomingClasses() {
                   <p className="text-sm text-zinc-500">with {booking.student.name}</p>
                   <p className="mt-1 text-sm">{dateFormat.format(new Date(booking.startedAt))}</p>
                 </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-bold ${
-                    booking.status === "CONFIRMED"
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-amber-100 text-amber-800"
-                  }`}
-                >
-                  {booking.status === "CONFIRMED" ? "Confirmed" : "Payment due"}
+                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                  Confirmed
                 </span>
               </Link>
             </li>

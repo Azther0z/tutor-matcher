@@ -505,6 +505,19 @@ opening at the first open time, Book this subject below the calendar with the su
 (and the login hand-off), the disabled button on an empty day, calendar selection through the
 URL, the back link, the unavailable state and retry.
 
+## SAFE-4 acceptance coverage
+
+SAFE-4's criterion ("a dispute submitted for a payment, resolved by an admin, is reflected in
+the wallet ledger") is met by the PAY-3 refund requests. `dispute-ledger.integration.test.ts`
+(opt-in, on its own `tutor_matcher_safe4_test` database) checks it on the ledger through the real
+API: approval appends one `REFUND` row for the paid amount, with the matching `balanceAfter`,
+linked to the dispute and the cancelled booking and shown in the Student's
+`/api/wallet/transactions`, while earlier rows stay byte-for-byte the same; rejection leaves every
+row and the balance unchanged and records the deciding Admin, time and reason; and a resolved
+dispute cannot be resolved again, so there is still one `REFUND`. PAY-3's own suites cover the
+rest: `refund.integration.test.ts` (filing, the admin queue, simultaneous approvals refunding
+once, an admin refused for their own lesson), `refund.test.ts` and the `/admin/refunds` page test.
+
 ## REV-3 acceptance coverage
 
 Review tests cover `POST /api/reviews/:id/flags`: the trimmed reason is stored for the signed-in
@@ -527,3 +540,21 @@ user wrote to or heard from once, newest first, with the latest message and whet
 sent it, and returns an empty list for a user with no messages. Frontend tests cover a
 conversation the user started appearing in the list before any reply (previewed as **You:**),
 and a new conversation from a `?with=` link joining the list after the first message is sent.
+
+## REV-4 acceptance coverage
+
+Review moderation tests cover the Admin queue (`GET /api/admin/review-flags`): pending reviews
+that are still public, longest waiting first, with every flag; decided reviews, most recent
+decision first; a 403 for a non-admin and a 400 for an unknown filter. `POST
+/api/admin/reviews/:id/moderation` tests cover Keep (every pending flag `KEPT`, the review left
+published, each reporter emailed), Remove (the removal fields set, the reporters and the author
+emailed, only the author with the reason), a required trimmed reason of up to 500 characters, a
+409 when nothing is pending or the review was removed, a 404, a non-admin refused before the
+lock, and a failed email logged without undoing the decision. Discovery, dashboard, reply,
+flag and booking tests cover removed reviews leaving lists, averages and the ranking SQL, a 404
+for a reply or flag on a removed review, and the author's removed notice. The PostgreSQL suite
+(opt-in, on its own `tutor_matcher_rev4_test` database) checks Keep then a new member's flag
+re-queuing the review, Remove changing the profile average, Subject page and search ranking, the
+author's booking, and two simultaneous decisions settling as one decision and one 409. Frontend
+tests cover the queue (admin access, flags, Keep, Remove needing a reason, a 409 refreshing the
+queue, the Decided filter), the navbar link and the author's removed notice.

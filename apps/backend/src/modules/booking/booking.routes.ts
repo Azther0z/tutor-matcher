@@ -7,7 +7,6 @@ import {
   create,
   detail,
   list,
-  reschedule,
   subjectAvailability,
   tutorCancel,
   tutorConfirmCompletion,
@@ -20,7 +19,6 @@ import {
   bookingIdParamsSchema,
   cancelBookingSchema,
   createBookingSchema,
-  rescheduleBookingSchema,
   subjectIdParamsSchema,
   tutorCancelBookingSchema,
   updateMeetingLinkSchema,
@@ -56,13 +54,7 @@ bookingRouter.post(
   validate(bookingIdParamsSchema, "params"),
   tutorConfirmCompletion
 );
-// BOOK-3 endpoints: reschedule or cancel an existing student booking.
-bookingRouter.patch(
-  "/:id/reschedule",
-  validate(bookingIdParamsSchema, "params"),
-  validate(rescheduleBookingSchema),
-  reschedule
-);
+// BOOK-3 endpoints: cancel an existing student booking.
 bookingRouter.patch(
   "/:id/meeting-link",
   validate(bookingIdParamsSchema, "params"),

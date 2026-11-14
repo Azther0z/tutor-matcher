@@ -83,7 +83,7 @@ _Avoid_: Class, course, category, topic
 A 30-minute window on a specific date that a tutor has opened for teaching. The slot
 belongs to the tutor, and the tutor assigns one or more of their subjects to it, so a
 student browsing a subject sees only the slots that advertise that subject. A slot is
-locked to one booking during an active payment hold or after payment.
+locked to one booking only after successful payment. Pending payment requests never reserve slots.
 _Avoid_: Time slot, open slot, schedule entry, recurring availability schedule
 
 **Booking**:
@@ -93,6 +93,9 @@ the student is still in the subject booking flow with no booking record. Statuse
 `payment due`, `confirmed`, `completed`, and `cancelled`. `Confirmed` means paid and
 scheduled; after the lesson's scheduled end, it remains confirmed until the assigned
 Tutor manually confirms completion, which changes it to `completed`.
+Payment-due records support only the immediate payment step and stay out of Student booking lists,
+Tutor upcoming-class lists, and the Wallet page, including after payment expiry. They never reserve
+availability.
 _Avoid_: Reservation, appointment, order, class booking
 
 **Lesson**:
@@ -170,8 +173,13 @@ _Avoid_: Feedback, rating, testimonial
 **Review Flag**:
 A signed-in member's report that a review's comment is inappropriate, with a reason. A
 member flags a review once; it stays public while an admin decides, and only the flagger sees
-it marked Flagged.
+it marked Flagged. An admin keeps the review or removes it, and the flaggers are told.
 _Avoid_: Report, complaint, abuse report
+
+**Removed Review**:
+A review an admin removed after it was flagged. It no longer shows or counts in ratings and
+ranking, the author is told why, and the lesson cannot be reviewed again.
+_Avoid_: Deleted review, hidden comment
 
 **Conversation**:
 The message thread between one student and one tutor. A user with both capabilities
