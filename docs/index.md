@@ -50,6 +50,10 @@ disagree.
 | Domain vocabulary                                | [`CONTEXT.md`](../CONTEXT.md)                                                                                                                                                   |
 | Raw evidence a doc above was built from          | [`sources/`](sources/) — read-only, see below                                                                                                                                   |
 
+The [Design Quality discussion](api-diagram.md#design-quality) evaluates the UML API
+views for reusability, maintainability, scalability, and security against the supplied
+course design-document criteria.
+
 ## What is authoritative
 
 - [`user-journeys.md`](user-journeys.md) is the single source of truth for **what the

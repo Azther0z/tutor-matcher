@@ -211,6 +211,120 @@ See [authentication middleware](../apps/backend/src/middleware/auth.ts),
 [request validation](../apps/backend/src/middleware/validate.ts), and
 [unexpected-error handling](../apps/backend/src/middleware/error-handler.ts).
 
+## Design Quality
+
+Page 7 of the supplied **2110423: Team Project** PDF asks for a discussion of the
+UML API diagram in terms of reusability, maintainability, scalability, and security.
+The discussion below evaluates the implemented API shown above. It separates design
+benefits from limitations; the diagrams alone do not prove performance or security.
+
+### Reusability
+
+The `«Application»` entry point groups resources under `/api`, while `«Resource»`
+operations and `«Representation»` classes describe HTTP requests and JSON responses.
+This separates the interface from the Next.js pages. For example, the booking page
+and wallet page can use the same wallet API instead of each implementing balance
+calculations. Another client could use these operations without direct database access,
+subject to its authentication and deployment setup.
+
+The backend also reuses common behavior behind those resources. Booking payments,
+top-up approvals, refunds, payouts, and earning settlement call the shared
+[wallet ledger helper](../apps/backend/src/modules/wallet/wallet-ledger.ts), which
+updates a balance and appends its Wallet Transaction within the caller's transaction.
+This keeps the money rules in one place. Shared authentication and validation middleware
+serve multiple route groups, and the [email adapter](../apps/backend/src/lib/email.ts)
+keeps Resend-specific calls outside the auth service.
+
+Reuse has limits. The representations show selected fields rather than a complete
+machine-readable contract, and backend services share Prisma and the same database.
+These are reusable functions within one application, rather than independently
+deployable services. A new client still needs the linked request schemas and response
+code to understand the full contract.
+
+### Maintainability
+
+The API views group related resources, such as bookings, discovery, and wallets.
+The `«Path»` connections make parent and child URIs visible, while separate request
+and response representations show where an interface change affects callers.
+Each view links to its implementation, helping a developer trace an operation from
+the diagram to its route, schema, controller, and service. The backend's
+[module structure](../apps/backend/src/modules/README.md) keeps these files together
+by responsibility. This reduces the number of unrelated files needed for a focused change.
+
+Shared helpers reduce duplicated rules, while [automated tests](testing.md) cover
+behaviors such as authentication, booking transitions, and wallet movements.
+The editable `.mmd` and rendered `.svg` pairs also make diagram changes reviewable
+in Git. Updating both files with a route change helps keep the design document useful.
+
+The main limits are manual contract maintenance and dependencies between modules.
+For example, booking behavior coordinates wallet, refund, and notification logic, so
+changing a booking rule can require checks across those modules. The API also contains
+action paths such as `/confirm-payment` and some differing HTTP conventions, described
+in [design concerns](#design-concerns-from-the-pdf). A complete OpenAPI contract and
+checks against that contract would improve consistency; they are follow-up work.
+
+### Scalability
+
+The frontend and Express backend are separate applications connected through HTTP.
+This provides a boundary where their capacity could be increased separately without
+changing the resource interface. Signed bearer tokens carry the caller's identity,
+although protected requests still query account restrictions in PostgreSQL.
+Adding backend instances would therefore still depend on database capacity and shared
+operational controls; the API diagram does not establish a tested scaling limit.
+
+Some operations already bound their work. Tutor search accepts filtering, sorting,
+and pagination, with a maximum page size of 50 in its
+[query schema](../apps/backend/src/modules/discovery/discovery.schema.ts).
+Its [service](../apps/backend/src/modules/discovery/discovery.service.ts) applies
+database-side filtering and pagination. The [Prisma schema](../apps/backend/prisma/schema.prisma)
+also defines indexes for common access paths, including Bookings by user and status
+and Wallet Transactions by user and creation time. These mechanisms can reduce the
+data returned or searched, but their benefit depends on the query and data volume.
+
+The shared PostgreSQL database remains a capacity and contention point. Money operations
+use serializable transactions to preserve correctness under concurrent requests; the
+[retry helper](../apps/backend/src/lib/serializable.ts) bounds conflict retries, but
+retries do not add database capacity. Current auth and discovery rate-limit definitions
+do not configure a shared store across backend instances. Before increasing traffic,
+load tests should measure search cost, database connections, transaction conflicts,
+and email-provider delays, and guide any changes to pooling, indexes, or background
+delivery. No load-test result or supported user count is claimed here.
+
+### Security
+
+The API distinguishes public discovery and authentication resources from protected
+account, booking, wallet, and administration resources. The
+[authentication middleware](../apps/backend/src/middleware/auth.ts) verifies signed
+bearer tokens and checks active account restrictions. Authentication identifies the
+caller; service and controller checks then decide what that caller may do. For example,
+the [booking service](../apps/backend/src/modules/booking/booking.service.ts) allows
+only the Student or assigned Tutor to view a Booking. Knowing a resource ID alone does
+not grant access.
+
+Request schemas and [validation middleware](../apps/backend/src/middleware/validate.ts)
+check input before business operations. Signup and password reset hash new passwords
+with bcrypt. Reset tokens are random, stored as hashes, expire, and are consumed once
+in the [auth service](../apps/backend/src/modules/auth/auth.service.ts).
+Signup, reset requests, and discovery have rate limits. Response representations also
+limit exposure: [payout account responses](../apps/backend/src/modules/payout/payout-account.service.ts)
+return a masked account number. Database transactions and conditional balance updates
+protect the integrity of wallet movements during concurrent requests.
+
+The implementation still has security work to address. The
+[frontend stores bearer tokens in localStorage](../apps/frontend/src/lib/auth.ts),
+so injected scripts could read them. Reset validation accepts a token in the URL query,
+and the email adapter's log mode writes reset links; logs and URLs therefore need careful
+handling. The auth service also retains a legacy plaintext-password comparison path
+that upgrades a password after a successful login, and the login route has no rate
+limiter attached. These gaps should be resolved before claiming the design is hardened.
+HTTPS and deployment access controls must also be verified in the deployed environment;
+this source review is not a security audit or proof of privacy compliance.
+
+Assessment reference: supplied
+`2110423ProjectYear69_4Aug2026-1025996-17865855620250 (1).pdf`, page 7.
+The original remains at the supplied local path and is unchanged. Its submission
+instructions do not change the application requirements or the scope of this section.
+
 ## Design concerns from the PDF
 
 The PDF's examples and advice are distinct from the current API contract:
