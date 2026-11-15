@@ -1,0 +1,13 @@
+{
+  "theme": "default",
+  "look": "classic",
+  "layout": "dagre",
+  "htmlLabels": false,
+  "fontFamily": "Arial",
+  "flowchart": {
+    "htmlLabels": false
+  },
+  "class": {
+    "hideEmptyMembersBox": true
+  }
+}

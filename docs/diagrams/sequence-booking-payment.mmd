@@ -1,0 +1,176 @@
+sequenceDiagram
+  title Student pays for a booking - expanded interactions
+  actor Student
+  participant Web as Next.js<br/>web app
+  box rgb(245, 247, 250) Express backend
+    participant API as HTTP layer<br/>(middleware and controller)
+    participant Booking as Booking<br/>service
+    participant Earnings as Earning settlement<br/>service
+    participant Ledger as Wallet<br/>ledger helper
+    participant Notify as Notification<br/>service
+    participant Email as Email<br/>adapter
+  end
+  participant DB as PostgreSQL<br/>(via Prisma)
+  participant Resend as Resend<br/>(external provider)
+
+  Student->>Web: Pay(bookingId)
+  Web->>+API: POST /api/bookings/{id}/confirm-payment<br/>with Authorization header
+  API->>API: verifyAuthToken(token)
+  API->>DB: findAccountRestriction(userId)
+  DB-->>API: No active restriction
+  API->>API: Validate bookingId against request schema
+  API->>+Booking: confirmBookingPayment(<br/>userId, bookingId)
+
+  Booking->>+Earnings: settleTutorEarnings(userId)
+  Earnings->>DB: Find payer's tutorId
+  DB-->>Earnings: Tutor role or none
+  opt Payer is also a Tutor
+    Earnings->>DB: Find paid COMPLETED lessons ended at least<br/>24 hours ago, without LESSON_EARNING
+    DB-->>Earnings: Candidate lesson ids
+    loop Each candidate lesson
+      Earnings->>DB: BEGIN SERIALIZABLE
+      Earnings->>DB: Reload owned lesson, ledger,<br/>and refund request
+      DB-->>Earnings: Current lesson and payment/refund state
+      opt Still completed and paid, not credited,<br/>24-hour wait finished, no pending refund
+        Earnings->>+Ledger: appendWalletMovement(tx,<br/>LESSON_EARNING, net earning)
+        Ledger->>DB: Increment payer's wallet balance
+        Ledger->>DB: Read resulting balance
+        DB-->>Ledger: balanceAfter
+        Ledger->>DB: Insert LESSON_EARNING<br/>(bookingId, amount, balanceAfter)
+        DB-->>Ledger: Earning row
+        Ledger-->>-Earnings: Earning recorded
+      end
+      Earnings->>DB: COMMIT earning transaction
+      DB-->>Earnings: Committed
+    end
+  end
+  Earnings-->>-Booking: settledCount, or zero for a non-Tutor
+
+  Booking->>Booking: releaseExpiredBookings(now, bookingId)
+  Booking->>DB: BEGIN SERIALIZABLE
+  Booking->>DB: Clear legacy slot links to<br/>PENDING_PAYMENT bookings
+  Booking->>DB: Find selected unpaid Booking with<br/>elapsed or missing payment deadline
+  DB-->>Booking: Expired Booking, or none
+  opt Selected Booking has expired
+    Booking->>DB: Conditionally set CANCELLED,<br/>PAYMENT_EXPIRED, and cancelledAt
+    DB-->>Booking: affectedRows
+    opt affectedRows equals one
+      Booking->>DB: Clear remaining slot links for Booking
+    end
+  end
+  Booking->>DB: COMMIT cleanup transaction
+  DB-->>Booking: Committed
+
+  Booking->>+DB: BEGIN SERIALIZABLE payment transaction
+  Booking->>DB: Load Booking(bookingId)
+  DB-->>Booking: Booking, or none
+  Booking->>Booking: Check owner, status,<br/>payment deadline, and lesson start
+  break Booking missing, forbidden, expired, or already paid
+    Booking->>DB: ROLLBACK payment transaction
+    Booking-->>API: BookingDomainError
+    API-->>Web: Error JSON
+    Web-->>Student: Show payment error
+  end
+
+  Booking->>DB: Read open, unclaimed slots for<br/>the subject and stored time interval
+  DB-->>Booking: Ordered slots
+  Booking->>Booking: Check complete, continuous slot block
+  break Slots missing, closed, or reassigned
+    Booking->>DB: ROLLBACK payment transaction
+    Booking-->>API: SLOT_TAKEN
+    API->>Booking: getSubjectAvailability(subjectId)
+    Booking-->>API: Latest subject availability
+    API-->>Web: Error JSON with refreshed availability
+    Web-->>Student: Ask Student to choose another time
+  end
+
+  Booking->>DB: Claim slots where bookingId is null<br/>and isOpen is true
+  DB-->>Booking: Claimed slot count
+  break Claimed count differs from expected count
+    Booking->>DB: ROLLBACK payment transaction
+    Booking-->>API: SLOT_TAKEN
+    API->>Booking: getSubjectAvailability(subjectId)
+    Booking-->>API: Latest subject availability
+    API-->>Web: Error JSON with refreshed availability
+    Web-->>Student: Ask Student to choose another time
+  end
+
+  Booking->>DB: Conditionally set CONFIRMED and clear<br/>paymentExpiresAt on the unpaid Booking
+  DB-->>Booking: Updated Booking count
+  break Booking update count is not one
+    Booking->>DB: ROLLBACK payment transaction
+    Booking-->>API: BOOKING_EXPIRED
+    API-->>Web: Error JSON
+    Web-->>Student: Show expired payment request
+  end
+
+  Booking->>+Ledger: appendWalletMovement(tx,<br/>LESSON_PAYMENT, totalAmount)
+  Ledger->>DB: Decrement wallet balance only<br/>where balance is at least totalAmount
+  DB-->>Ledger: Updated user count
+  Ledger->>DB: Read payer's wallet balance
+  DB-->>Ledger: Current balance
+  break Updated user count is not one
+    Ledger-->>Booking: InsufficientWalletBalance
+    Booking->>DB: ROLLBACK payment transaction
+    Booking-->>API: INSUFFICIENT_BALANCE and shortfall
+    API-->>Web: Error JSON
+    Web-->>Student: Show insufficient wallet balance
+  end
+  Ledger->>DB: Insert LESSON_PAYMENT<br/>(bookingId, amount, balanceAfter)
+  DB-->>Ledger: Payment row
+  Ledger-->>-Booking: Payment recorded
+  Booking->>DB: Read confirmed Booking, wallet balance,<br/>and Student/Tutor recipient ids
+  DB-->>Booking: Booking detail and recipient ids
+  Booking->>DB: COMMIT payment transaction
+  DB-->>-Booking: Committed
+
+  Booking-)Notify: Start notifyUser(Student, booking)
+  Booking-)Notify: Start notifyUser(Tutor, booking)
+  par Notification attempts run independently
+    par Student notification
+      Notify->>DB: Read Student email and preferences
+      DB-->>Notify: Student notification settings
+      opt Student enabled booking notifications
+        Notify->>Email: sendBookingNotificationEmail(Student)
+        alt Email delivery mode is log
+          Email->>Email: Log booking update
+        else Email delivery mode is resend
+          Email->>Resend: emails.send(booking update)
+          Resend-->>Email: Provider result or delivery error
+        end
+        Email-->>Notify: Return or throw delivery error
+        opt Email adapter threw an error
+          Notify->>Notify: Catch email delivery error
+        end
+      end
+      Notify-->>Booking: Student promise settles
+    and Tutor notification
+      Notify->>DB: Read Tutor email and preferences
+      DB-->>Notify: Tutor notification settings
+      opt Tutor enabled booking notifications
+        Notify->>Email: sendBookingNotificationEmail(Tutor)
+        alt Email delivery mode is log
+          Email->>Email: Log booking update
+        else Email delivery mode is resend
+          Email->>Resend: emails.send(booking update)
+          Resend-->>Email: Provider result or delivery error
+        end
+        Email-->>Notify: Return or throw delivery error
+        opt Email adapter threw an error
+          Notify->>Notify: Catch email delivery error
+        end
+      end
+      Notify-->>Booking: Tutor promise settles
+    end
+  and Request waits for settlement or timeout
+    Booking->>Booking: waitForBookingNotifications(promises)<br/>Promise.allSettled races a 1000 ms timer
+    alt Both promises settle before timeout
+      Booking->>Booking: Collect results and log rejected lookups<br/>without recipient data
+    else Timer finishes first
+      Booking->>Booking: Stop waiting, attempts may continue
+    end
+    Booking-->>-API: Confirmed Booking
+    API-->>-Web: Confirmed Booking JSON
+    Web->>Web: setBooking and publishWalletBalance
+    Web-->>Student: Show Confirmed and updated balance
+  end

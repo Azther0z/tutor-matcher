@@ -1,0 +1,81 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Tutors["Tutor search"] {
+    <<Resource>>
+    +GET(q : QueryParam, sort : QueryParam, page : QueryParam, filters : QueryParam) 200
+  }
+  class Tutor["Tutor summary"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Profile["Public Tutor profile"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Subject["Public subject page"] {
+    <<Resource>>
+    +GET(date : QueryParam) 200
+  }
+  class Areas["Learning areas"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Prices["Search price range"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class SearchResult {
+    <<Representation>>
+    results
+    total
+    page
+    pageSize
+    recommendationMode
+  }
+  class TutorSummary {
+    <<Representation>>
+    id
+    firstName
+    lastName
+  }
+  class PublicTutorProfile {
+    <<Representation>>
+    id
+    subjects
+    availability
+    reviews
+    teachingStats
+  }
+  class SubjectPage {
+    <<Representation>>
+    tutor
+    subject
+    date
+    openDates
+    openSlots
+    reviews
+  }
+  class LearningAreas {
+    <<Representation>>
+    learningAreas
+  }
+  class PriceRange {
+    <<Representation>>
+    priceRange
+  }
+  API --> Tutors : «Path» /discovery/tutors
+  Tutors --> Tutor : «Path» /{id}
+  Tutor --> Profile : «Path» /profile
+  Tutor --> Subject : «Path» /subjects/{subjectId}
+  API --> Areas : «Path» /discovery/learning-areas
+  API --> Prices : «Path» /discovery/price-range
+  Tutors ..> SearchResult : «use» response
+  Tutor ..> TutorSummary : «use» response
+  Profile ..> PublicTutorProfile : «use» response
+  Subject ..> SubjectPage : «use» response
+  Areas ..> LearningAreas : «use» response
+  Prices ..> PriceRange : «use» response

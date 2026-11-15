@@ -174,3 +174,15 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/pay-6-policy-confirmation.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, CONTEXT.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
 - Scope: Paid completed lessons clear after Tutor confirmation and 24 hours from scheduled end; pending refund requests pause clearing; prior eligible completions are included; wallet access triggers settlement; the platform covers approved refunds after clearing without clawing back Tutor earnings
+
+## [2026-11-14] compile | REST API diagrams
+
+- Evidence: Supplied UML_Profile_REST_API_Design-360766-17893667244803.pdf (notation), apps/backend/src/app.ts, apps/backend/src/routes.ts, apps/backend/src/modules/ route, schema, controller, and service files (implemented contract)
+- Updated: docs/api-diagram.md, docs/index.md
+- Scope: Mermaid UML API views with Application, Resource, Path, and Representation; implemented paths, methods, success statuses, selected payload fields, access rules, and differences from the PDF's design advice. No runtime or route changes; live deployment is not tested.
+
+## [2026-11-15] compile | API design quality
+
+- Evidence: Supplied 2110423ProjectYear69_4Aug2026-1025996-17865855620250 (1).pdf, page 7 (assessment criteria); apps/backend/src/modules/README.md; backend routes, authentication and validation middleware, auth, discovery, booking, payout and wallet services; apps/backend/src/lib/serializable.ts; apps/backend/prisma/schema.prisma; apps/frontend/src/lib/auth.ts
+- Updated: docs/api-diagram.md, docs/index.md
+- Scope: Reusability, maintainability, scalability, and security discussion of the implemented UML API views, with source links and explicit limitations. Existing diagrams and application code are unchanged. No load tests, deployment checks, or security audit were performed.

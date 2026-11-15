@@ -1,0 +1,87 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Profile["Profile update"] {
+    <<Resource>>
+    +PUT(ProfileBody) 200
+  }
+  class Account["Account"] {
+    <<Resource>>
+    +GET() 200
+    +PUT(AccountUpdate) 200
+  }
+  class Student["Student profile"] {
+    <<Resource>>
+    +GET() 200
+    +PUT(StudentProfileBody) 200
+  }
+  class Areas["Learning area suggestions"] {
+    <<Resource>>
+    +GET(search : QueryParam) 200
+  }
+  class ProfileBody {
+    <<Representation>>
+    user optional
+    tutor
+  }
+  class AccountUpdate {
+    <<Representation>>
+    firstName optional
+    lastName optional
+    email optional
+    currentPassword
+    newPassword optional
+  }
+  class StudentProfileBody {
+    <<Representation>>
+    educationLevel
+    learningAreaIds
+    goals
+    preferredLearningPeriod
+    preferredDurationMinutes
+    user optional
+  }
+  class ProfileResult {
+    <<Representation>>
+    status
+    tutor
+    version
+  }
+  class AccountRecord {
+    <<Representation>>
+    id
+    firstName
+    lastName
+    email
+  }
+  class AccountResult {
+    <<Representation>>
+    account
+    token
+  }
+  class StudentProfileResult {
+    <<Representation>>
+    id
+    educationLevel
+    learningAreas
+    goals
+  }
+  class LearningAreaList {
+    <<Representation>>
+    array of id and name
+  }
+  API --> Profile : «Path» /profiles/me
+  API --> Account : «Path» /profiles/me/account
+  API --> Student : «Path» /profiles/me/student
+  API --> Areas : «Path» /profiles/learning-areas
+  Profile ..> ProfileBody : «use» request
+  Profile ..> ProfileResult : «use» response
+  Account ..> AccountUpdate : «use» PUT request
+  Account ..> AccountRecord : «use» GET response
+  Account ..> AccountResult : «use» PUT response
+  Student ..> StudentProfileBody : «use» PUT request
+  Student ..> StudentProfileResult : «use» response
+  Areas ..> LearningAreaList : «use» response

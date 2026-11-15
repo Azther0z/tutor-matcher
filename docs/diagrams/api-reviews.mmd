@@ -1,0 +1,61 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Reviews["Reviews"] {
+    <<Resource>>
+    +POST(ReviewBody) 201
+  }
+  class Reply["Tutor reply"] {
+    <<Resource>>
+    +POST(ReplyBody) 201
+    +PATCH(ReplyEditBody) 200
+  }
+  class Flags["Review flags"] {
+    <<Resource>>
+    +POST(FlagBody) 201
+  }
+  class ReviewBody {
+    <<Representation>>
+    bookingId
+    rating
+    comment optional
+  }
+  class ReviewResult {
+    <<Representation>>
+    review
+  }
+  class ReplyBody {
+    <<Representation>>
+    text
+  }
+  class ReplyEditBody {
+    <<Representation>>
+    text
+    expectedUpdatedAt
+  }
+  class ReplyResult {
+    <<Representation>>
+    reply
+  }
+  class FlagBody {
+    <<Representation>>
+    reason
+  }
+  class FlagResult {
+    <<Representation>>
+    reviewId
+    flagged
+  }
+  API --> Reviews : «Path» /reviews
+  Reviews --> Reply : «Path» /{id}/reply
+  Reviews --> Flags : «Path» /{id}/flags
+  Reviews ..> ReviewBody : «use» request
+  Reviews ..> ReviewResult : «use» response
+  Reply ..> ReplyBody : «use» POST request
+  Reply ..> ReplyEditBody : «use» PATCH request
+  Reply ..> ReplyResult : «use» response
+  Flags ..> FlagBody : «use» request
+  Flags ..> FlagResult : «use» response

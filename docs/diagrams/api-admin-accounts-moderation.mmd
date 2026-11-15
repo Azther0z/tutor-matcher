@@ -1,0 +1,80 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class Users["Managed users"] {
+    <<Resource>>
+    +GET(q : QueryParam, role : QueryParam, page : QueryParam) 200
+  }
+  class User["Managed user"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class Actions["Account actions"] {
+    <<Resource>>
+    +POST(AccountActionBody) 201
+  }
+  class Flags["Flagged review queue"] {
+    <<Resource>>
+    +GET(status : QueryParam) 200
+  }
+  class Moderation["Review moderation"] {
+    <<Resource>>
+    +POST(ModerationBody) 200
+  }
+  class UserPage {
+    <<Representation>>
+    results
+    page
+    pageSize
+    total
+  }
+  class ManagedUser {
+    <<Representation>>
+    id
+    firstName
+    lastName
+    email
+  }
+  class AccountActionBody {
+    <<Representation>>
+    type
+    reason
+    days optional
+  }
+  class AccountActionResult {
+    <<Representation>>
+    id
+    email
+    restriction
+    actions
+  }
+  class FlagQueue {
+    <<Representation>>
+    array of flagged reviews
+  }
+  class ModerationBody {
+    <<Representation>>
+    decision
+    reason optional
+  }
+  class ModerationResult {
+    <<Representation>>
+    id
+    removed
+    flags
+  }
+  API --> Users : «Path» /admin/users
+  Users --> User : «Path» /{id}
+  User --> Actions : «Path» /actions
+  API --> Flags : «Path» /admin/review-flags
+  API --> Moderation : «Path» /admin/reviews/{id}/moderation
+  Users ..> UserPage : «use» response
+  User ..> ManagedUser : «use» response
+  Actions ..> AccountActionBody : «use» request
+  Actions ..> AccountActionResult : «use» response
+  Flags ..> FlagQueue : «use» response
+  Moderation ..> ModerationBody : «use» request
+  Moderation ..> ModerationResult : «use» response

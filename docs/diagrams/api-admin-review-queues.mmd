@@ -1,0 +1,85 @@
+classDiagram
+  direction LR
+  class API["Tutor Matcher API"] {
+    <<Application>>
+    basePath = /api
+  }
+  class TutorRequests["Tutor requests"] {
+    <<Resource>>
+    +GET() 200
+  }
+  class TutorReview["Tutor request decision"] {
+    <<Resource>>
+    +POST(TutorDecision) 200
+  }
+  class Topups["Top-up queue"] {
+    <<Resource>>
+    +GET(status : QueryParam) 200
+  }
+  class TopupReview["Top-up decision"] {
+    <<Resource>>
+    +POST(MoneyDecision) 200
+  }
+  class Refunds["Refund queue"] {
+    <<Resource>>
+    +GET(status : QueryParam) 200
+  }
+  class RefundReview["Refund decision"] {
+    <<Resource>>
+    +POST(MoneyDecision) 200
+  }
+  class TutorDecision {
+    <<Representation>>
+    decision
+    rejectionReason optional
+  }
+  class MoneyDecision {
+    <<Representation>>
+    decision
+    rejectionReason optional
+  }
+  class TutorQueue {
+    <<Representation>>
+    array of Tutor requests
+  }
+  class ReviewedTutorVersion {
+    <<Representation>>
+    id
+    status
+    bio
+  }
+  class TopupQueue {
+    <<Representation>>
+    requests
+  }
+  class TopupResult {
+    <<Representation>>
+    id
+    amount
+    status
+  }
+  class RefundQueue {
+    <<Representation>>
+    requests
+  }
+  class RefundResult {
+    <<Representation>>
+    id
+    status
+    booking
+  }
+  API --> TutorRequests : «Path» /admin/tutor-requests
+  TutorRequests --> TutorReview : «Path» /{id}/review
+  API --> Topups : «Path» /admin/topups
+  Topups --> TopupReview : «Path» /{id}/review
+  API --> Refunds : «Path» /admin/refunds
+  Refunds --> RefundReview : «Path» /{id}/review
+  TutorRequests ..> TutorQueue : «use» response
+  TutorReview ..> TutorDecision : «use» request
+  TutorReview ..> ReviewedTutorVersion : «use» response
+  Topups ..> TopupQueue : «use» response
+  TopupReview ..> MoneyDecision : «use» request
+  TopupReview ..> TopupResult : «use» response
+  Refunds ..> RefundQueue : «use» response
+  RefundReview ..> MoneyDecision : «use» request
+  RefundReview ..> RefundResult : «use» response
