@@ -153,7 +153,9 @@ it("lets the assigned Tutor confirm an ended lesson with an irreversible confirm
   );
   fireEvent.click(screen.getByRole("button", { name: "Confirm completed" }));
 
-  expect(await screen.findByText("COMPLETED")).toBeInTheDocument();
+  expect(
+    await within(await screen.findByRole("banner")).findByText("Completed")
+  ).toBeInTheDocument();
   expect(screen.getByRole("status")).toHaveTextContent("Session marked completed.");
   const earnings = screen.getByRole("region", { name: "Lesson earnings" });
   expect(earnings).toHaveTextContent("Pending earnings");
@@ -236,11 +238,15 @@ it("closes the completion dialog when a refresh shows the lesson was cancelled",
   fireEvent.click(await screen.findByRole("button", { name: "Confirm session completed" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirm completed" }));
 
-  expect(await screen.findByText("CANCELLED")).toBeInTheDocument();
+  expect(
+    await within(await screen.findByRole("banner")).findByText("Cancelled")
+  ).toBeInTheDocument();
   expect(
     screen.queryByRole("dialog", { name: "Confirm session completed?" })
   ).not.toBeInTheDocument();
-  expect(screen.getByRole("status")).toHaveTextContent("This booking was cancelled.");
+  expect(
+    within(screen.getByRole("region", { name: "Booking progress" })).getByRole("status")
+  ).toHaveTextContent("This booking was cancelled.");
 });
 
 it("reloads the booking when the scheduled end passes while its page is open", async () => {
@@ -258,7 +264,7 @@ it("reloads the booking when the scheduled end passes while its page is open", a
     .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: afterEnd }) });
 
   render(<BookingDetailPage />);
-  await screen.findByText("CONFIRMED");
+  await within(await screen.findByRole("banner")).findByText("Confirmed");
   await act(async () => {
     await jest.advanceTimersByTimeAsync(1_500);
   });
@@ -284,7 +290,7 @@ it("reloads an ended booking when a suspended page becomes visible", async () =>
     .mockResolvedValueOnce({ ok: true, json: async () => ({ booking: afterEnd }) });
 
   render(<BookingDetailPage />);
-  await screen.findByText("CONFIRMED");
+  await within(await screen.findByRole("banner")).findByText("Confirmed");
   await act(async () => {
     jest.setSystemTime(new Date("2030-01-10T09:30:02.000Z"));
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
@@ -317,16 +323,18 @@ it("shows the completed status to the Student without a Tutor confirmation actio
 
   render(<BookingDetailPage />);
 
-  expect(await screen.findByText("COMPLETED")).toBeInTheDocument();
+  expect(
+    await within(await screen.findByRole("banner")).findByText("Completed")
+  ).toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: "Confirm session completed" })
   ).not.toBeInTheDocument();
 });
 
 it.each([
-  ["CONFIRMED", false, "Review not yet eligible"],
-  ["COMPLETED", true, "Review this lesson"],
-])("shows review eligibility for the Student's %s booking", async (status, canReview, heading) => {
+  ["CONFIRMED", false],
+  ["COMPLETED", true],
+])("shows review eligibility for the Student's %s booking", async (status, canReview) => {
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
     json: async () => ({
@@ -340,7 +348,13 @@ it.each([
     }),
   });
   render(<BookingDetailPage />);
-  expect(await screen.findByRole("heading", { name: heading as string })).toBeInTheDocument();
+  await screen.findByRole("heading", { name: "English" });
+  if (canReview) {
+    expect(screen.getByRole("region", { name: "Write a review" })).toBeInTheDocument();
+  } else {
+    expect(screen.queryByRole("region", { name: "Write a review" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Publish review" })).not.toBeInTheDocument();
+  }
   expect(screen.queryByRole("region", { name: "Lesson earnings" })).not.toBeInTheDocument();
 });
 
@@ -432,7 +446,7 @@ it("does not publish a wallet balance when payment fails", async () => {
   expect(global.fetch).toHaveBeenCalledTimes(1);
   fireEvent.click(within(paymentModal).getByRole("button", { name: "Pay from wallet" }));
   expect(await screen.findByText("Payment failed")).toBeInTheDocument();
-  expect(screen.queryByText("CONFIRMED")).not.toBeInTheDocument();
+  expect(within(screen.getByRole("banner")).queryByText("Confirmed")).not.toBeInTheDocument();
   expect(onBalance).not.toHaveBeenCalled();
   unsubscribe();
 });
@@ -446,7 +460,7 @@ it("does not show student actions when the backend denies them", async () => {
   }) as jest.Mock;
   render(<BookingDetailPage />);
   expect(await screen.findByText("Alice")).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Cancel lesson" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Refund" })).toBeDisabled();
   expect(screen.queryByRole("button", { name: "Reschedule" })).not.toBeInTheDocument();
 });
 
@@ -471,12 +485,12 @@ it("requires a second confirmation when the server quote changes", async () => {
       }),
     });
   render(<BookingDetailPage />);
-  fireEvent.click(await screen.findByRole("button", { name: "Cancel lesson" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Refund" }));
   await screen.findByText(/70\.00/);
-  fireEvent.click(screen.getByRole("button", { name: "Confirm cancellation" }));
-  expect(await screen.findByText(/terms changed/i)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Confirm refund" }));
+  expect(await within(screen.getByRole("dialog")).findByText(/terms changed/i)).toBeInTheDocument();
   expect(screen.getByText(/60\.00/)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Confirm cancellation" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Confirm refund" })).toBeEnabled();
   expect(global.fetch).toHaveBeenCalledTimes(3);
 });
 
@@ -487,13 +501,13 @@ it("keeps confirmation disabled until a failed quote is retried", async () => {
     .mockRejectedValueOnce(new Error("Terms are temporarily unavailable"))
     .mockResolvedValueOnce({ ok: true, json: async () => ({ quote }) });
   render(<BookingDetailPage />);
-  fireEvent.click(await screen.findByRole("button", { name: "Cancel lesson" }));
-  await screen.findByText("Terms are temporarily unavailable");
-  expect(screen.getByRole("button", { name: "Confirm cancellation" })).toBeDisabled();
+  fireEvent.click(await screen.findByRole("button", { name: "Refund" }));
+  await within(screen.getByRole("dialog")).findByText("Terms are temporarily unavailable");
+  expect(screen.getByRole("button", { name: "Confirm refund" })).toBeDisabled();
   expect(global.fetch).toHaveBeenCalledTimes(2);
   fireEvent.click(screen.getByRole("button", { name: "Retry cancellation terms" }));
   await screen.findByText(/70\.00/);
-  expect(screen.getByRole("button", { name: "Confirm cancellation" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Confirm refund" })).toBeEnabled();
 });
 
 it("shows Add meeting link when the Tutor has no custom URL and validates HTTPS locally", async () => {
@@ -615,11 +629,11 @@ it("hides the Join action when its deadline timeout reaches the booking end", as
       await Promise.resolve();
       await Promise.resolve();
     });
-    expect(screen.getByRole("link", { name: "Join lesson" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Join meeting" })).toBeInTheDocument();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2_001);
     });
-    expect(screen.queryByRole("link", { name: "Join lesson" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Join meeting" })).not.toBeInTheDocument();
   } finally {
     jest.useRealTimers();
   }
@@ -637,11 +651,11 @@ it("discards a stale quote when reloading its replacement fails", async () => {
     })
     .mockRejectedValueOnce(new Error("Could not reload current terms"));
   render(<BookingDetailPage />);
-  fireEvent.click(await screen.findByRole("button", { name: "Cancel lesson" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Refund" }));
   await screen.findByText(/70\.00/);
-  fireEvent.click(screen.getByRole("button", { name: "Confirm cancellation" }));
-  await screen.findByText("Could not reload current terms");
-  expect(screen.getByRole("button", { name: "Confirm cancellation" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Confirm refund" }));
+  await within(screen.getByRole("dialog")).findByText("Could not reload current terms");
+  expect(screen.getByRole("button", { name: "Confirm refund" })).toBeDisabled();
   expect(screen.queryByText(/70\.00/)).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Retry cancellation terms" })).toBeEnabled();
   expect(global.fetch).toHaveBeenCalledTimes(4);
@@ -653,11 +667,11 @@ it("does not submit cancellation when the student chooses to keep the lesson", a
     .mockResolvedValueOnce({ ok: true, json: async () => ({ booking }) })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ quote }) });
   render(<BookingDetailPage />);
-  fireEvent.click(await screen.findByRole("button", { name: "Cancel lesson" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Refund" }));
   await screen.findByText(/70\.00/);
   expect(screen.getByRole("textbox", { name: /Reason/ })).toHaveAttribute("maxLength", "500");
   fireEvent.click(screen.getByRole("button", { name: "Keep lesson" }));
-  expect(screen.queryByRole("button", { name: "Confirm cancellation" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Confirm refund" })).not.toBeInTheDocument();
   expect(global.fetch).toHaveBeenCalledTimes(2);
 });
 
@@ -675,9 +689,9 @@ it("ignores an old quote response after closing and reopening cancellation", asy
       json: async () => ({ quote: { ...quote, refundAmount: "60", cancellationFee: "40" } }),
     });
   render(<BookingDetailPage />);
-  fireEvent.click(await screen.findByRole("button", { name: "Cancel lesson" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Refund" }));
   fireEvent.click(screen.getByRole("button", { name: "Keep lesson" }));
-  fireEvent.click(screen.getByRole("button", { name: "Cancel lesson" }));
+  fireEvent.click(screen.getByRole("button", { name: "Refund" }));
   await screen.findByText(/60\.00/);
   resolveOldQuote({ ok: true, json: async () => ({ quote }) });
   await waitFor(() => expect(screen.queryByText(/70\.00/)).not.toBeInTheDocument());
@@ -697,13 +711,13 @@ it("blocks duplicate cancellation and competing actions while a request is pendi
         })
     );
   render(<BookingDetailPage />);
-  fireEvent.click(await screen.findByRole("button", { name: "Cancel lesson" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Refund" }));
   await screen.findByText(/70\.00/);
-  fireEvent.click(screen.getByRole("button", { name: "Confirm cancellation" }));
-  const pending = screen.getByRole("button", { name: "Cancelling…" });
+  fireEvent.click(screen.getByRole("button", { name: "Confirm refund" }));
+  const pending = screen.getByRole("button", { name: "Processing…" });
   expect(pending).toBeDisabled();
   expect(screen.getByRole("button", { name: "Keep lesson" })).toBeDisabled();
-  expect(screen.getByRole("button", { name: "Cancel lesson" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Refund" })).toBeDisabled();
   expect(screen.queryByRole("button", { name: "Reschedule" })).not.toBeInTheDocument();
   fireEvent.click(pending);
   expect(global.fetch).toHaveBeenCalledTimes(3);
@@ -712,8 +726,8 @@ it("blocks duplicate cancellation and competing actions while a request is pendi
     status: 500,
     json: async () => ({ message: "Try again later" }),
   });
-  await screen.findByText("Try again later");
-  expect(screen.getByRole("button", { name: "Confirm cancellation" })).toBeEnabled();
+  await within(screen.getByRole("dialog")).findByText("Try again later");
+  expect(screen.getByRole("button", { name: "Confirm refund" })).toBeEnabled();
 });
 
 it("does not claim a refund for an unpaid cancellation", async () => {
@@ -881,7 +895,7 @@ describe("PAY-3 refund requests", () => {
     const unsubscribe = subscribeToWalletBalance(onBalance);
     render(<BookingDetailPage />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Request a refund" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Refund" }));
     expect(screen.getByText(/An admin reviews every request/)).toBeInTheDocument();
     const send = screen.getByRole("button", { name: "Send refund request" });
     expect(send).toBeDisabled();
@@ -914,7 +928,7 @@ describe("PAY-3 refund requests", () => {
       .mockResolvedValueOnce(pendingAfter(reason, "The tutor left early"));
     render(<BookingDetailPage />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Request a refund" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Refund" }));
     fireEvent.click(screen.getByRole("radio", { name: label }));
     fireEvent.click(screen.getByRole("button", { name: "Send refund request" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Tell us what went wrong with the lesson.");
@@ -961,7 +975,7 @@ describe("PAY-3 refund requests", () => {
       }),
     });
     render(<BookingDetailPage />);
-    expect(await screen.findByRole("button", { name: "Cancel lesson" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Refund" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Request a refund" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Refund" })).not.toBeInTheDocument();
   });
@@ -980,7 +994,7 @@ describe("PAY-3 refund requests", () => {
       })
       .mockResolvedValueOnce(pendingAfter("TUTOR_NO_SHOW", null));
     render(<BookingDetailPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Request a refund" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Refund" }));
     fireEvent.click(screen.getByRole("radio", { name: /My tutor didn.t show up/ }));
     fireEvent.click(screen.getByRole("button", { name: "Send refund request" }));
 
@@ -1240,7 +1254,9 @@ describe("REV-1 review a completed lesson", () => {
       }),
     });
     render(<BookingDetailPage />);
-    expect(await screen.findByText("COMPLETED")).toBeInTheDocument();
+    expect(
+      await within(await screen.findByRole("banner")).findByText("Completed")
+    ).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Write a review" })).not.toBeInTheDocument();
   });
 });
@@ -1270,7 +1286,7 @@ it("offers fresh availability without changing wallet balance when another stude
   expect(await screen.findByText(/Your wallet was not charged/)).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Choose another time" })).toHaveAttribute(
     "href",
-    "/bookings/s/" + booking.subject.id
+    `/tutors/${booking.subject.tutor.id}/${booking.subject.id}`
   );
   expect(onBalance).not.toHaveBeenCalled();
   unsubscribe();
