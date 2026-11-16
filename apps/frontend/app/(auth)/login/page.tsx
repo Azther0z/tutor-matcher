@@ -92,9 +92,13 @@ function LoginForm() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-8 px-6 py-16">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-8 px-6 py-16"
+    >
       <div className="flex flex-col gap-2 text-center">
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Tutor Matcher</p>
+        <p className="text-sm font-medium text-muted">Tutor Matcher</p>
         <h1 className="text-3xl font-semibold tracking-tight">Log in</h1>
       </div>
 
@@ -108,7 +112,7 @@ function LoginForm() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+            className="h-11 rounded-lg border border-line bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
           />
         </label>
 
@@ -121,7 +125,7 @@ function LoginForm() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+            className="h-11 rounded-lg border border-line bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
           />
         </label>
 
@@ -140,13 +144,13 @@ function LoginForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-12 w-full items-center justify-center rounded-full bg-foreground px-5 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
+          className="flex h-12 w-full items-center justify-center rounded-lg bg-brand-navy px-5 text-base font-medium text-white transition-colors hover:bg-brand-navy-dark disabled:opacity-60"
         >
           {submitting ? "Logging in…" : "Log in"}
         </button>
       </form>
 
-      <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-center text-sm text-secondary">
         Don&apos;t have an account?{" "}
         <Link href="/signup" className="font-medium text-foreground underline">
           Sign up

@@ -22,7 +22,7 @@ import { TutorApiError } from "@/src/lib/tutor-application";
 import { TutorAvailabilityCalendar } from "./tutor-availability-calendar";
 
 const buttonClass =
-  "rounded-lg border border-zinc-300 px-3 py-2 text-sm font-semibold disabled:opacity-50 dark:border-zinc-600";
+  "rounded-lg border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50";
 const emptySlot: EditableSlot = { isOpen: false, subjectIds: [] };
 type Selection = { date: string; time: string; base: StoredSlot | null };
 
@@ -186,21 +186,21 @@ export function TutorAvailabilityEditor() {
   return (
     <section
       aria-labelledby="availability-heading"
-      className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 sm:p-6 dark:border-zinc-700 dark:bg-zinc-950"
+      className="min-w-0 rounded-2xl border border-line bg-surface p-4 sm:p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 id="availability-heading" className="text-2xl font-semibold">
             Availability
           </h2>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mt-2 text-sm text-secondary">
             Choose a half-hour in the week calendar and save that slot. Asia/Bangkok (UTC+7).
           </p>
         </div>
         <div
           role="group"
           aria-label="Calendar view"
-          className="flex rounded-lg border border-zinc-300 p-1 dark:border-zinc-600"
+          className="flex rounded-lg border border-line p-1"
         >
           {(["week", "month"] as const).map((value) => (
             <button
@@ -209,7 +209,7 @@ export function TutorAvailabilityEditor() {
               aria-pressed={view === value}
               disabled={dirty || busy}
               onClick={() => navigate(anchor, value)}
-              className={`rounded-md px-4 py-1.5 text-sm font-semibold capitalize disabled:opacity-50 ${view === value ? "bg-violet-700 text-white" : ""}`}
+              className={`rounded-md px-4 py-1.5 text-sm font-semibold capitalize disabled:opacity-50 ${view === value ? "bg-brand-navy text-white" : ""}`}
             >
               {value}
             </button>
@@ -259,7 +259,7 @@ export function TutorAvailabilityEditor() {
             onChange={(event) => {
               if (event.target.value) navigate(event.target.value);
             }}
-            className="min-w-0 rounded-lg border border-zinc-300 bg-transparent px-2 py-1.5 dark:border-zinc-600"
+            className="min-w-0 rounded-lg border border-line bg-transparent px-2 py-1.5"
           />
         </label>
       </div>
@@ -302,9 +302,9 @@ export function TutorAvailabilityEditor() {
       )}
       {!loading && calendar && calendar.subjects.length > 0 && (
         <>
-          <div className="mt-4 flex flex-wrap gap-4 text-xs text-zinc-600 dark:text-zinc-400">
+          <div className="mt-4 flex flex-wrap gap-4 text-xs text-secondary">
             <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-violet-200" />
+              <span className="h-3 w-3 rounded bg-brand-soft" />
               Open
             </span>
             <span className="flex items-center gap-1.5">
@@ -321,7 +321,7 @@ export function TutorAvailabilityEditor() {
             onDate={(date) => navigate(date, "week")}
             onSlot={openSlot}
           />
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-muted">
             {view === "week"
               ? "Click a time to edit. Scroll for all 24 hours; on smaller screens, scroll sideways to see every day."
               : "Choose a date to open its week. Counts show saved slots."}
@@ -363,13 +363,11 @@ export function TutorAvailabilityEditor() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="slot-heading"
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-950"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface p-6 shadow-xl"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
-                  Half-hour slot · UTC+7
-                </p>
+                <p className="text-xs font-semibold text-brand-link">Half-hour slot · UTC+7</p>
                 <h3 id="slot-heading" className="mt-2 text-lg font-semibold">
                   {formatDate(selection.date, {
                     weekday: "long",
@@ -424,7 +422,7 @@ export function TutorAvailabilityEditor() {
                         setDraft({ subjectIds, isOpen: subjectIds.length > 0 });
                         setDiscard(false);
                       }}
-                      className={`rounded-lg border px-3 py-2 text-sm disabled:opacity-60 ${active ? "border-violet-700 bg-violet-700 text-white" : "border-zinc-300 dark:border-zinc-600"}`}
+                      className={`rounded-lg border px-3 py-2 text-sm disabled:opacity-60 ${active ? "border-brand-navy bg-brand-navy text-white" : "border-line"}`}
                     >
                       {subject.name}
                       <span className="ml-1 text-xs opacity-80">฿{subject.hourlyRate}/hr</span>
@@ -433,7 +431,7 @@ export function TutorAvailabilityEditor() {
                 })}
               </div>
             </fieldset>
-            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-3 text-sm text-secondary">
               {draft.isOpen
                 ? "This time will be available for the selected subjects."
                 : "Choose at least one subject to open this slot."}
@@ -498,7 +496,7 @@ export function TutorAvailabilityEditor() {
                   (!selection.base && !draft.isOpen)
                 }
                 onClick={() => void save()}
-                className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-lg bg-brand-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {busy ? "Saving…" : "Save slot"}
               </button>

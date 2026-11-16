@@ -15,7 +15,7 @@ import {
   type SubjectPageResult,
 } from "@/src/lib/tutor-profile-api";
 
-const card = "flex flex-col gap-4 rounded-3xl border border-black/10 p-6 dark:border-white/15";
+const card = "flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6";
 const shell = "mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-12";
 const FORMAT_LABELS: Record<ProfileSubject["format"], string> = { ONLINE: "Online" };
 const DAY_MS = 86_400_000;
@@ -31,8 +31,8 @@ export default function TutorSubjectPage() {
   return (
     <Suspense
       fallback={
-        <main className={shell}>
-          <p className="text-zinc-500">Loading…</p>
+        <main id="main-content" tabIndex={-1} className={shell}>
+          <p className="text-muted">Loading…</p>
         </main>
       }
     >
@@ -75,14 +75,14 @@ function SubjectPageContent() {
 
   if (!loading && loaded?.error) {
     return (
-      <main className={shell}>
+      <main id="main-content" tabIndex={-1} className={shell}>
         <p role="alert" className="text-red-600 dark:text-red-400">
           {loaded.error}
         </p>
         <button
           type="button"
           onClick={() => setAttempt((count) => count + 1)}
-          className="w-fit rounded-full border border-black/15 px-5 py-2 font-medium dark:border-white/20"
+          className="w-fit rounded-lg border border-line px-5 py-2 font-medium"
         >
           Try again
         </button>
@@ -92,8 +92,8 @@ function SubjectPageContent() {
   if (!loading && loaded?.result?.kind === "unavailable") return <UnavailableSubject />;
   if (!page) {
     return (
-      <main className={shell}>
-        <p className="text-zinc-500">Loading…</p>
+      <main id="main-content" tabIndex={-1} className={shell}>
+        <p className="text-muted">Loading…</p>
       </main>
     );
   }
@@ -113,14 +113,14 @@ function SubjectPageContent() {
 // An unpublished tutor, another tutor's subject or a missing one shows this and nothing else.
 function UnavailableSubject() {
   return (
-    <main className={shell}>
+    <main id="main-content" tabIndex={-1} className={shell}>
       <h1 className="text-3xl font-semibold tracking-tight">This subject is unavailable</h1>
-      <p role="status" className="text-zinc-600 dark:text-zinc-400">
+      <p role="status" className="text-secondary">
         This subject isn’t available right now. Try another tutor or subject.
       </p>
       <Link
         href="/search"
-        className="flex h-11 w-fit items-center rounded-full bg-foreground px-5 font-medium text-background"
+        className="flex h-11 w-fit items-center rounded-lg bg-brand-navy px-5 font-medium text-white"
       >
         Find a tutor
       </Link>
@@ -145,17 +145,14 @@ function SubjectView({
   const [now] = useState(() => Date.now());
 
   return (
-    <main className={shell}>
-      <Link
-        href={`/tutors/${tutor.id}`}
-        className="w-fit text-sm text-zinc-600 hover:underline dark:text-zinc-400"
-      >
+    <main id="main-content" tabIndex={-1} className={shell}>
+      <Link href={`/tutors/${tutor.id}`} className="w-fit text-sm text-secondary hover:underline">
         ← Back to {tutorName}
       </Link>
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <h1 className="text-4xl font-semibold tracking-tight">{subject.name}</h1>
-          <p className="flex flex-wrap items-center gap-3 text-zinc-600 dark:text-zinc-400">
+          <p className="flex flex-wrap items-center gap-3 text-secondary">
             <span>with {tutorName}</span>
             {tutor.verified && (
               <span className="rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-300">
@@ -166,8 +163,8 @@ function SubjectView({
           </p>
         </div>
         <p>
-          <span className="text-2xl font-bold">{formatRate(subject.hourlyRate)}</span>
-          <span className="text-zinc-500"> / hr</span>
+          <span className="text-2xl font-semibold">{formatRate(subject.hourlyRate)}</span>
+          <span className="text-muted"> / hr</span>
         </p>
       </header>
 
@@ -176,19 +173,17 @@ function SubjectView({
           About this subject
         </h2>
         {subject.description ? (
-          <p className="whitespace-pre-wrap text-zinc-600 dark:text-zinc-400">
-            {subject.description}
-          </p>
+          <p className="whitespace-pre-wrap text-secondary">{subject.description}</p>
         ) : (
-          <p className="text-zinc-500">This subject has no description yet.</p>
+          <p className="text-muted">This subject has no description yet.</p>
         )}
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-zinc-500">Format</dt>
+            <dt className="text-muted">Format</dt>
             <dd className="font-medium">{FORMAT_LABELS[subject.format]}</dd>
           </div>
           <div>
-            <dt className="text-zinc-500">Next opening</dt>
+            <dt className="text-muted">Next opening</dt>
             <dd className="font-medium">
               {subject.nextOpening
                 ? openingDateTime(subject.nextOpening)
@@ -202,7 +197,7 @@ function SubjectView({
         <h2 id="availability-heading" className="text-xl font-semibold">
           Availability
         </h2>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted">
           Times in Asia/Bangkok (UTC+7). Days with a dot have open times.
         </p>
         <SubjectDateCalendar
@@ -214,7 +209,7 @@ function SubjectView({
           onSelect={onSelect}
         />
         {loading ? (
-          <p className="text-zinc-500">Loading availability…</p>
+          <p className="text-muted">Loading availability…</p>
         ) : (
           <>
             <SubjectDayCalendar date={page.date} openSlots={page.openSlots} />
@@ -253,7 +248,7 @@ function BookButton({
   const signedIn = useSyncExternalStore(subscribeToAuth, getAuthSnapshot, () => null);
   const bookingPath = `/bookings/s/${subjectId}?date=${date}`;
   const buttonClass =
-    "flex h-11 w-fit items-center rounded-full bg-foreground px-5 font-medium text-background disabled:opacity-50";
+    "flex h-11 w-fit items-center rounded-lg bg-brand-navy px-5 font-medium text-white disabled:opacity-50";
 
   if (!available) {
     return (
@@ -261,7 +256,7 @@ function BookButton({
         <button type="button" disabled aria-describedby="book-hint" className={buttonClass}>
           Book this subject
         </button>
-        <p id="book-hint" className="text-sm text-zinc-500">
+        <p id="book-hint" className="text-sm text-muted">
           No open times on this day. Pick a day marked with a dot.
         </p>
       </div>

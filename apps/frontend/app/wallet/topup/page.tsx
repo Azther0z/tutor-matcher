@@ -5,6 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
 import { StatusBadge } from "@/src/components/status-badge";
+import { formatBangkokDateTime } from "@/src/lib/date-time";
 import { isPromptPayId, promptPayPayload } from "@/src/lib/promptpay";
 import { getMyTopups, getWallet, submitTopup, type TopupRequest } from "@/src/lib/wallet-api";
 
@@ -100,17 +101,21 @@ function TopupContent() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12 lg:py-16">
-      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">PromptPay</p>
-      <h1 className="mt-2 text-4xl font-bold tracking-tight">Top up your wallet</h1>
-      <p className="mt-3 text-zinc-500">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto w-full max-w-3xl flex-1 px-6 py-12 lg:py-16"
+    >
+      <p className="text-sm font-semibold text-brand-link">PromptPay</p>
+      <h1 className="mt-2 text-4xl font-semibold tracking-tight">Top up your wallet</h1>
+      <p className="mt-3 text-muted">
         Transfer by PromptPay, then send us the slip. An admin checks it and adds the money to the
         same balance you use to confirm lessons.
       </p>
 
-      <section className="mt-8 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm dark:border-white/15 dark:bg-zinc-950">
-        <div className="flex items-center justify-between border-b border-black/10 px-6 py-5 dark:border-white/15">
-          <span className="text-sm text-zinc-500">Current balance</span>
+      <section className="mt-8 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+        <div className="flex items-center justify-between border-b border-line px-6 py-5">
+          <span className="text-sm text-muted">Current balance</span>
           <strong className="text-xl">
             {loading ? "Loading…" : balance === null ? "—" : money(Number(balance))}
           </strong>
@@ -136,7 +141,7 @@ function TopupContent() {
               <h2 className="text-xl font-semibold">Top-up of {money(Number(pending.amount))}</h2>
               <StatusBadge status="PENDING" />
             </div>
-            <p className="mt-2 text-zinc-500">
+            <p className="mt-2 text-muted">
               Your balance updates once an admin approves the slip. You can send another top-up
               after this one is reviewed.
             </p>
@@ -147,12 +152,12 @@ function TopupContent() {
               </p>
             )}
             <p className="mt-4 text-sm">
-              Sent {new Date(pending.createdAt).toLocaleString()} ·{" "}
+              Sent {formatBangkokDateTime(pending.createdAt)} ·{" "}
               <a
                 href={pending.slipUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-violet-700 underline dark:text-violet-300"
+                className="font-medium text-brand-link underline"
               >
                 View slip
               </a>
@@ -170,10 +175,10 @@ function TopupContent() {
                   type="button"
                   aria-pressed={amount === preset}
                   onClick={() => setAmount(preset)}
-                  className={`rounded-2xl border px-4 py-3 font-semibold transition ${
+                  className={`rounded-2xl border px-4 py-3 font-semibold transition-colors ${
                     amount === preset
-                      ? "border-violet-600 bg-violet-600 text-white"
-                      : "border-black/15 hover:border-violet-500 dark:border-white/20"
+                      ? "border-brand-navy bg-brand-navy text-white"
+                      : "border-line hover:border-brand-navy"
                   }`}
                 >
                   ฿{preset.toLocaleString("en-US")}
@@ -191,7 +196,7 @@ function TopupContent() {
               step="0.01"
               value={amount}
               onChange={(event) => setAmount(Number(event.target.value))}
-              className="mt-2 h-12 w-full rounded-2xl border border-black/15 bg-transparent px-4 text-lg outline-none focus:border-violet-600 dark:border-white/20"
+              className="mt-2 h-12 w-full rounded-2xl border border-line bg-transparent px-4 text-lg focus-visible:outline-2 focus-visible:outline-brand-link focus:border-brand-navy"
             />
             {balance !== null && !isPromptPayId(promptPayId) && (
               <p role="alert" className="mt-6 text-sm text-red-700 dark:text-red-400">
@@ -203,7 +208,7 @@ function TopupContent() {
               type="button"
               disabled={balance === null || !isPromptPayId(promptPayId)}
               onClick={showQr}
-              className="mt-6 h-12 w-full rounded-full bg-violet-600 font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-6 h-12 w-full rounded-lg bg-brand-navy font-semibold text-white transition-colors hover:bg-brand-navy-dark disabled:cursor-not-allowed disabled:opacity-50"
             >
               Show PromptPay QR
             </button>
@@ -221,8 +226,8 @@ function TopupContent() {
               level="M"
               className="rounded-2xl"
             />
-            <h2 className="mt-5 text-2xl font-bold">Transfer {money(amount)}</h2>
-            <p className="mt-2 text-sm text-zinc-500">
+            <h2 className="mt-5 text-2xl font-semibold">Transfer {money(amount)}</h2>
+            <p className="mt-2 text-sm text-muted">
               Scan with your banking app. The amount is already filled in.
             </p>
             <form onSubmit={sendSlip} noValidate className="mt-6 flex w-full flex-col text-left">
@@ -239,14 +244,14 @@ function TopupContent() {
                 onChange={(event) => setSlipUrl(event.target.value)}
                 aria-invalid={!!slipError}
                 aria-describedby={slipError ? "slip-url-error" : "slip-url-help"}
-                className="mt-2 h-12 w-full rounded-2xl border border-black/15 bg-transparent px-4 outline-none focus:border-violet-600 aria-[invalid=true]:border-red-500 dark:border-white/20"
+                className="mt-2 h-12 w-full rounded-2xl border border-line bg-transparent px-4 focus-visible:outline-2 focus-visible:outline-brand-link focus:border-brand-navy aria-[invalid=true]:border-red-500"
               />
               {slipError ? (
                 <span id="slip-url-error" className="mt-1 text-sm text-red-600">
                   {slipError}
                 </span>
               ) : (
-                <span id="slip-url-help" className="mt-1 text-sm text-zinc-500">
+                <span id="slip-url-help" className="mt-1 text-sm text-muted">
                   Upload the slip image (for example to Google Drive, shared with anyone who has the
                   link) and paste the link here.
                 </span>
@@ -254,7 +259,7 @@ function TopupContent() {
               <button
                 type="submit"
                 disabled={busy}
-                className="mt-6 h-12 w-full rounded-full bg-violet-600 font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50"
+                className="mt-6 h-12 w-full rounded-lg bg-brand-navy font-semibold text-white transition-colors hover:bg-brand-navy-dark disabled:opacity-50"
               >
                 {busy ? "Sending…" : "Send slip for review"}
               </button>
@@ -267,7 +272,7 @@ function TopupContent() {
                 setSlipError(null);
                 setStage("amount");
               }}
-              className="mt-3 h-11 font-semibold text-violet-700 hover:underline dark:text-violet-300"
+              className="mt-3 h-11 font-semibold text-brand-link hover:underline"
             >
               Change amount
             </button>
@@ -278,15 +283,15 @@ function TopupContent() {
       {requests.length > 0 && (
         <section aria-label="Recent top-ups" className="mt-8">
           <h2 className="text-lg font-semibold">Recent top-ups</h2>
-          <ul className="mt-3 divide-y divide-black/10 rounded-2xl border border-black/10 dark:divide-white/15 dark:border-white/15">
+          <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-surface">
             {requests.map((request) => (
               <li key={request.id} className="flex flex-col gap-1 px-5 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="font-medium">{money(Number(request.amount))}</span>
                   <StatusBadge status={request.status} />
                 </div>
-                <span className="text-sm text-zinc-500">
-                  Sent {new Date(request.createdAt).toLocaleString()}
+                <span className="text-sm text-muted">
+                  Sent {formatBangkokDateTime(request.createdAt)}
                 </span>
                 {request.rejectionReason && (
                   <span className="text-sm">Reason: {request.rejectionReason}</span>

@@ -51,7 +51,7 @@ export function SubjectDayCalendar({ date, openSlots }: { date: string; openSlot
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h3 className="font-semibold">{heading}</h3>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-secondary">
           {blocks.length
             ? `Open times: ${blocks.map(blockLabel).join(", ")}`
             : "No open times on this day"}
@@ -62,7 +62,7 @@ export function SubjectDayCalendar({ date, openSlots }: { date: string; openSlot
         role="region"
         aria-label={`Calendar for ${heading}`}
         tabIndex={0}
-        className="max-h-[28rem] overflow-y-auto rounded-2xl border border-black/10 focus-visible:outline-2 focus-visible:outline-violet-600 dark:border-white/15"
+        className="max-h-[28rem] overflow-y-auto rounded-2xl border border-line bg-surface focus-visible:outline-2 focus-visible:outline-brand-link"
       >
         <div className="relative">
           <ol ref={listRef}>
@@ -73,16 +73,14 @@ export function SubjectDayCalendar({ date, openSlots }: { date: string; openSlot
                   slot.index === 0
                     ? ""
                     : slot.time.endsWith(":00")
-                      ? "border-t border-black/10 dark:border-white/15"
-                      : "border-t border-dashed border-black/5 dark:border-white/10"
+                      ? "border-t border-line"
+                      : "border-t border-dashed border-line"
                 }`}
               >
                 <span
                   aria-hidden="true"
                   className={`pr-2 pt-1 text-right text-[11px] leading-none tabular-nums ${
-                    slot.time.endsWith(":00")
-                      ? "text-zinc-600 dark:text-zinc-300"
-                      : "text-zinc-400 dark:text-zinc-500"
+                    slot.time.endsWith(":00") ? "text-secondary" : "text-muted"
                   }`}
                 >
                   {slot.time}

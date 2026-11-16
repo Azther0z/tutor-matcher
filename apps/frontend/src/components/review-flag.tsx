@@ -5,8 +5,7 @@ import { TutorDialog } from "@/src/components/tutor-dialog";
 import { getAuthToken, subscribeToAuth } from "@/src/lib/auth";
 import { flagReview, ReviewFlagApiError } from "@/src/lib/review-flags-api";
 
-const button =
-  "rounded-full border border-black/[.12] px-5 py-2.5 font-medium disabled:opacity-60 dark:border-white/[.18]";
+const button = "rounded-lg border border-line px-5 py-2.5 font-medium disabled:opacity-60";
 
 // REV-3: a signed-in member flags a review's comment; the flagger then sees a Flagged marker
 // instead of the button, and the comment stays public until an Admin decides.
@@ -76,7 +75,7 @@ export function ReviewFlag({
           type="button"
           aria-label={`Flag review by ${reviewer}`}
           onClick={() => setOpen(true)}
-          className="text-sm text-zinc-500 underline underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"
+          className="text-sm text-muted underline underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-link"
         >
           Flag
         </button>
@@ -100,7 +99,7 @@ export function ReviewFlag({
               <button
                 type="submit"
                 form={`${id}-form`}
-                className={`${button} bg-foreground text-background`}
+                className={`${button} bg-brand-navy text-white`}
                 disabled={busy}
               >
                 {busy ? "Flagging…" : "Flag review"}
@@ -121,7 +120,7 @@ export function ReviewFlag({
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
                 aria-invalid={reasonMissing}
-                className="rounded-lg border border-black/[.12] bg-transparent p-3 text-base font-normal dark:border-white/[.18]"
+                className="rounded-lg border border-line bg-transparent p-3 text-base font-normal"
               />
             </label>
             {reasonMissing && (

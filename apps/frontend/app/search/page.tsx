@@ -6,7 +6,11 @@ export default function SearchPage() {
   return (
     <Suspense
       fallback={
-        <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-14 text-zinc-500">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-6xl flex-1 px-6 py-14 text-muted"
+        >
           Loading search…
         </main>
       }

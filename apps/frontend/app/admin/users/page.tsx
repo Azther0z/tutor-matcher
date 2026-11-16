@@ -20,13 +20,13 @@ import { TutorApiError } from "@/src/lib/tutor-application";
 
 const shell = "mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-16";
 const button =
-  "inline-flex items-center justify-center rounded-full border border-black/[.12] px-5 py-2.5 font-medium disabled:opacity-60 dark:border-white/[.18]";
+  "inline-flex items-center justify-center rounded-lg border border-line px-5 py-2.5 font-medium disabled:opacity-60";
 const dangerButton =
   "inline-flex items-center justify-center rounded-full bg-red-600 px-5 py-2.5 font-medium text-white disabled:opacity-60";
 const badge = "inline-flex rounded-md px-2 py-1 text-xs font-medium";
 const badgeColors = {
-  role: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300",
-  admin: "bg-violet-500/10 text-violet-800 dark:text-violet-300",
+  role: "bg-surface-muted text-secondary",
+  admin: "bg-brand-navy/10 text-brand-link",
   SUSPEND: "bg-amber-500/10 text-amber-800 dark:text-amber-300",
   BAN: "bg-rose-500/10 text-rose-800 dark:text-rose-300",
 };
@@ -94,11 +94,11 @@ function UserManagement() {
   }, []);
 
   return (
-    <main className={shell}>
+    <main id="main-content" tabIndex={-1} className={shell}>
       <div>
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Admin</p>
+        <p className="text-sm font-medium text-muted">Admin</p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight">Users</h1>
-        <p className="mt-3 text-zinc-500">
+        <p className="mt-3 text-muted">
           Search accounts by name, then message, suspend or ban the selected user. A suspension
           lifts automatically when it ends; a ban is permanent.
         </p>
@@ -111,9 +111,9 @@ function UserManagement() {
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <section
             aria-label="User search"
-            className="overflow-hidden rounded-lg border border-black/[.12] dark:border-white/[.18]"
+            className="overflow-hidden rounded-lg border border-line"
           >
-            <div className="flex flex-col gap-3 border-b border-black/[.12] p-4 dark:border-white/[.18]">
+            <div className="flex flex-col gap-3 border-b border-line p-4">
               <form
                 role="search"
                 className="flex gap-2"
@@ -129,7 +129,7 @@ function UserManagement() {
                   maxLength={100}
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
-                  className="h-11 min-w-0 flex-1 rounded-full border border-black/[.12] bg-transparent px-4 outline-none focus:border-foreground dark:border-white/[.18]"
+                  className="h-11 min-w-0 flex-1 rounded-lg border border-line bg-transparent px-4 focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
                 />
                 <button type="submit" className={button}>
                   Search
@@ -142,10 +142,10 @@ function UserManagement() {
                     type="button"
                     aria-pressed={search.role === value}
                     onClick={() => changeSearch({ role: value, page: 1 })}
-                    className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
+                    className={`rounded-lg border px-4 py-1.5 text-sm font-semibold transition-colors ${
                       search.role === value
-                        ? "border-violet-600 bg-violet-600 text-white"
-                        : "border-black/15 hover:border-violet-500 dark:border-white/20"
+                        ? "border-brand-navy bg-brand-navy text-white"
+                        : "border-line hover:border-brand-navy"
                     }`}
                   >
                     {label}
@@ -166,35 +166,31 @@ function UserManagement() {
                 </button>
               </div>
             )}
-            {loading && !results && (
-              <p className="px-4 py-5 text-sm text-zinc-500">Loading users…</p>
-            )}
+            {loading && !results && <p className="px-4 py-5 text-sm text-muted">Loading users…</p>}
             {results && (
               <div aria-busy={loading}>
-                <p aria-live="polite" className="px-4 pt-3 text-sm text-zinc-500">
+                <p aria-live="polite" className="px-4 pt-3 text-sm text-muted">
                   {results.total === 1 ? "1 user" : `${results.total} users`}
                 </p>
                 {results.results.length === 0 ? (
-                  <p className="px-4 py-5 text-sm text-zinc-500">No users match this search.</p>
+                  <p className="px-4 py-5 text-sm text-muted">No users match this search.</p>
                 ) : (
-                  <ul className="divide-y divide-black/[.12] dark:divide-white/[.18]">
+                  <ul className="divide-y divide-line ">
                     {results.results.map((user) => (
                       <li key={user.id}>
                         <button
                           type="button"
                           aria-current={selectedId === user.id ? "true" : undefined}
                           onClick={() => setSelectedId(user.id)}
-                          className={`flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-black/[.03] dark:hover:bg-white/[.05] ${
-                            selectedId === user.id ? "bg-black/[.05] dark:bg-white/[.08]" : ""
+                          className={`flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-muted  ${
+                            selectedId === user.id ? "bg-surface-muted" : ""
                           }`}
                         >
                           <span className="min-w-0">
                             <span className="block font-medium">
                               {user.firstName} {user.lastName}
                             </span>
-                            <span className="block break-all text-sm text-zinc-500">
-                              {user.email}
-                            </span>
+                            <span className="block break-all text-sm text-muted">{user.email}</span>
                           </span>
                           <UserBadges user={user} />
                         </button>
@@ -205,7 +201,7 @@ function UserManagement() {
                 {results.totalPages > 1 && (
                   <nav
                     aria-label="Result pages"
-                    className="flex items-center justify-between gap-3 border-t border-black/[.12] px-4 py-3 text-sm dark:border-white/[.18]"
+                    className="flex items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm"
                   >
                     <button
                       type="button"
@@ -234,7 +230,7 @@ function UserManagement() {
           {selectedId ? (
             <ManagedUserPanel key={selectedId} userId={selectedId} onUpdated={updateRow} />
           ) : (
-            <p className="rounded-lg border border-dashed border-black/[.12] p-6 text-sm text-zinc-500 dark:border-white/[.18]">
+            <p className="rounded-lg border border-dashed border-line p-6 text-sm text-muted">
               Select a user to message, suspend or ban them.
             </p>
           )}
@@ -289,8 +285,7 @@ function ManagedUserPanel({
     return () => controller.abort();
   }, [userId, attempt]);
 
-  const panel =
-    "flex flex-col gap-5 rounded-lg border border-black/[.12] p-5 dark:border-white/[.18]";
+  const panel = "flex flex-col gap-5 rounded-lg border border-line p-5";
   if (error) {
     return (
       <section aria-label="Selected user" className={panel}>
@@ -313,7 +308,7 @@ function ManagedUserPanel({
   if (!detail) {
     return (
       <section aria-label="Selected user" className={panel}>
-        <p className="text-sm text-zinc-500">Loading account…</p>
+        <p className="text-sm text-muted">Loading account…</p>
       </section>
     );
   }
@@ -331,14 +326,14 @@ function ManagedUserPanel({
           id="managed-user-name"
           ref={focusHeading}
           tabIndex={-1}
-          className="text-2xl font-semibold focus:outline-none"
+          className="text-2xl font-semibold focus-visible:outline-2 focus-visible:outline-brand-link"
         >
           {name}
         </h2>
-        <p className="break-all text-sm text-zinc-500">{detail.email}</p>
+        <p className="break-all text-sm text-muted">{detail.email}</p>
         <UserBadges user={detail} />
       </div>
-      <div className="rounded-lg bg-black/[.03] p-4 text-sm dark:bg-white/[.05]">
+      <div className="rounded-lg bg-surface-muted p-4 text-sm">
         {detail.restriction ? (
           <>
             <p className="font-medium">{restrictionLabel(detail.restriction)}</p>
@@ -373,7 +368,7 @@ function ManagedUserPanel({
         </button>
       </div>
       {detail.isAdmin && (
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted">
           Administrator accounts can&apos;t be suspended or banned.
         </p>
       )}
@@ -383,17 +378,14 @@ function ManagedUserPanel({
           Administration history
         </h3>
         {detail.actions.length === 0 ? (
-          <p className="mt-2 text-sm text-zinc-500">No suspensions or bans recorded.</p>
+          <p className="mt-2 text-sm text-muted">No suspensions or bans recorded.</p>
         ) : (
           <ol className="mt-3 flex flex-col gap-3">
             {detail.actions.map((record) => (
-              <li
-                key={record.id}
-                className="rounded-lg border border-black/[.08] p-3 text-sm dark:border-white/[.12]"
-              >
+              <li key={record.id} className="rounded-lg border border-line p-3 text-sm">
                 <p className="font-medium">{restrictionLabel(record)}</p>
                 <p className="mt-1">Reason: {record.reason}</p>
-                <p className="mt-1 text-zinc-500">
+                <p className="mt-1 text-muted">
                   By {record.admin} on{" "}
                   <time dateTime={record.createdAt}>{formatAccountTime(record.createdAt)}</time>
                 </p>
@@ -520,7 +512,7 @@ function AccountActionDialog({
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             aria-invalid={reasonMissing}
-            className="rounded-lg border border-black/[.12] bg-transparent p-3 text-base font-normal dark:border-white/[.18]"
+            className="rounded-lg border border-line bg-transparent p-3 text-base font-normal"
           />
         </label>
         {reasonMissing && (

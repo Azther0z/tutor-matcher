@@ -11,7 +11,7 @@ const fields: { name: ProfileFieldName; label: string; private?: boolean }[] = [
 ];
 
 function ProfileValue({ name, value }: { name: ProfileFieldName; value: string | null }) {
-  if (!value) return <span className="text-zinc-500">Not provided</span>;
+  if (!value) return <span className="text-muted">Not provided</span>;
   if (name !== "bio" && /^https?:\/\//i.test(value)) {
     return (
       <a href={value} target="_blank" rel="noopener noreferrer" className="break-all underline">
@@ -32,7 +32,7 @@ export function TutorProfileComparison({
   return (
     <div className="overflow-x-auto">
       <table className="w-full table-fixed text-left text-sm">
-        <caption className="mb-3 text-left text-zinc-500">
+        <caption className="mb-3 text-left text-muted">
           {current
             ? "Compare the current approved profile with the submitted changes."
             : "Initial application — no approved Tutor profile exists yet."}
@@ -51,17 +51,13 @@ export function TutorProfileComparison({
               <tr
                 key={field.name}
                 className={
-                  changed
-                    ? "border-t border-black/[.12] bg-amber-500/10 dark:border-white/[.18]"
-                    : "border-t border-black/[.12] dark:border-white/[.18]"
+                  changed ? "border-t border-line bg-amber-500/10" : "border-t border-line"
                 }
               >
                 <th className="p-3 align-top font-medium" scope="row">
                   {field.label}
                   {field.private && (
-                    <span className="block text-xs text-zinc-500">
-                      Private verification document
-                    </span>
+                    <span className="block text-xs text-muted">Private verification document</span>
                   )}
                   {changed && (
                     <span className="block text-xs text-amber-800 dark:text-amber-300">

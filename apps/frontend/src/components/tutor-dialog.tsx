@@ -129,9 +129,9 @@ export function TutorDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="flex max-h-[calc(100dvh-3rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-black/[.12] bg-background text-left shadow-xl dark:border-white/[.18]"
+        className="flex max-h-[calc(100dvh-3rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-line bg-background text-left shadow-xl"
       >
-        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-black/[.12] bg-background px-6 py-4 dark:border-white/[.18]">
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-line bg-background px-6 py-4">
           <div className="flex flex-wrap items-center gap-3">
             <h2 id={titleId} className="text-xl font-semibold">
               {title}
@@ -139,7 +139,7 @@ export function TutorDialog({
             {status && (
               <span
                 aria-label="Draft status"
-                className="rounded-md bg-black/[.05] px-2 py-1 text-xs font-medium dark:bg-white/[.08]"
+                className="rounded-md bg-surface-muted px-2 py-1 text-xs font-medium"
               >
                 {status}
               </span>
@@ -150,16 +150,14 @@ export function TutorDialog({
             aria-label={`Close ${title}`}
             disabled={busy}
             onClick={onCloseButton}
-            className="rounded-lg px-3 py-2 text-xl leading-none hover:bg-black/[.06] disabled:opacity-60 dark:hover:bg-white/[.1]"
+            className="rounded-lg px-3 py-2 text-xl leading-none hover:bg-surface-muted disabled:opacity-60"
           >
             ×
           </button>
         </div>
         <div className="min-h-0 overflow-y-auto px-6 py-5">{children}</div>
         {footer && (
-          <div className="shrink-0 border-t border-black/[.12] bg-background px-6 py-4 dark:border-white/[.18]">
-            {footer}
-          </div>
+          <div className="shrink-0 border-t border-line bg-background px-6 py-4">{footer}</div>
         )}
       </section>
     </div>,

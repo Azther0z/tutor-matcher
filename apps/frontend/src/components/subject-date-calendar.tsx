@@ -42,7 +42,7 @@ export function SubjectDateCalendar({
           aria-label="Previous month"
           disabled={month <= today.slice(0, 7)}
           onClick={() => move(-1)}
-          className="rounded-lg border border-black/10 px-3 py-2 disabled:opacity-40 dark:border-white/15"
+          className="rounded-lg border border-line px-3 py-2 disabled:opacity-40"
         >
           ←
         </button>
@@ -54,14 +54,14 @@ export function SubjectDateCalendar({
           aria-label="Next month"
           disabled={month >= lastDay.slice(0, 7)}
           onClick={() => move(1)}
-          className="rounded-lg border border-black/10 px-3 py-2 disabled:opacity-40 dark:border-white/15"
+          className="rounded-lg border border-line px-3 py-2 disabled:opacity-40"
         >
           →
         </button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center">
         {weekdays.map((label) => (
-          <span key={label} className="text-xs text-zinc-500">
+          <span key={label} className="text-xs text-muted">
             {label}
           </span>
         ))}
@@ -82,8 +82,8 @@ export function SubjectDateCalendar({
               onClick={() => onSelect(date)}
               className={`rounded-lg p-2 text-sm disabled:opacity-30 ${
                 isSelected
-                  ? "bg-violet-600 text-white"
-                  : "border border-black/10 hover:border-violet-500 dark:border-white/15"
+                  ? "bg-brand-navy text-white"
+                  : "border border-line hover:border-brand-navy"
               }`}
             >
               {index + 1}

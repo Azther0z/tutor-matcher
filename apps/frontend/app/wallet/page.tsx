@@ -22,16 +22,16 @@ import {
 } from "@/src/lib/wallet-transactions";
 
 const primaryButton =
-  "inline-flex h-11 items-center justify-center rounded-full bg-violet-600 px-5 text-sm font-semibold text-white transition hover:bg-violet-500";
+  "inline-flex h-11 items-center justify-center rounded-lg bg-brand-navy px-5 text-sm font-semibold text-white transition-colors hover:bg-brand-navy-dark";
 const secondaryButton =
-  "inline-flex h-11 items-center justify-center rounded-full border border-black/10 px-5 text-sm font-semibold transition hover:border-violet-400 hover:text-violet-700 dark:border-white/15 dark:hover:text-violet-300";
+  "inline-flex h-11 items-center justify-center rounded-lg border border-line px-5 text-sm font-semibold transition-colors hover:border-brand-navy hover:text-brand-link";
 
 function SummaryCard({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/15 dark:bg-zinc-950">
-      <p className="text-sm text-zinc-500">{label}</p>
+    <div className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
+      <p className="text-sm text-muted">{label}</p>
       <p className="mt-2 text-2xl font-semibold">{value}</p>
-      {note && <p className="mt-1 text-xs text-zinc-500">{note}</p>}
+      {note && <p className="mt-1 text-xs text-muted">{note}</p>}
     </div>
   );
 }
@@ -112,14 +112,16 @@ function WalletContent() {
   const activeFilter = filters.find((filter) => filter.type === type)!;
 
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12 lg:py-16">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto w-full max-w-4xl flex-1 px-6 py-12 lg:py-16"
+    >
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">
-            Wallet
-          </p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight">Your wallet</h1>
-          <p className="mt-3 text-zinc-500">
+          <p className="text-sm font-semibold text-brand-link">Wallet</p>
+          <h1 className="mt-2 text-4xl font-semibold tracking-tight">Your wallet</h1>
+          <p className="mt-3 text-muted">
             {overview?.isTutor === false
               ? "One balance for top-ups, lesson payments and refunds."
               : "One balance for top-ups, lesson payments, earnings, refunds and payouts."}
@@ -196,10 +198,10 @@ function WalletContent() {
                 type="button"
                 aria-pressed={active}
                 onClick={() => show(filter.type)}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                   active
-                    ? "bg-violet-600 text-white"
-                    : "border border-black/10 text-zinc-700 hover:border-violet-400 dark:border-white/15 dark:text-zinc-300"
+                    ? "bg-brand-navy text-white"
+                    : "border border-line text-secondary hover:border-brand-navy"
                 }`}
               >
                 {filter.label}
@@ -208,7 +210,7 @@ function WalletContent() {
           })}
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm dark:border-white/15 dark:bg-zinc-950">
+        <div className="mt-6 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
           {listError ? (
             <div role="alert" className="flex flex-wrap items-center justify-between gap-3 p-6">
               <p className="text-sm text-red-700">{listError}</p>
@@ -221,27 +223,27 @@ function WalletContent() {
               </button>
             </div>
           ) : listLoading && !list ? (
-            <p className="p-6 text-zinc-500">Loading transactions…</p>
+            <p className="p-6 text-muted">Loading transactions…</p>
           ) : list && list.transactions.length === 0 ? (
             <div className="p-8 text-center">
               <p className="font-semibold">
                 {type ? `No ${activeFilter.label.toLowerCase()} yet` : "No transactions yet"}
               </p>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-muted">
                 Money moves appear here once they are completed.
               </p>
             </div>
           ) : (
-            <ul aria-busy={listLoading} className="divide-y divide-black/10 dark:divide-white/10">
+            <ul aria-busy={listLoading} className="divide-y divide-line ">
               {list?.transactions.map((transaction) => (
                 <li key={transaction.id}>
                   <Link
                     href={`/wallet/transactions/${transaction.id}`}
-                    className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 transition hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                    className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 transition-colors hover:bg-surface-muted"
                   >
                     <div>
                       <p className="font-semibold">{transactionTypeLabels[transaction.type]}</p>
-                      <p className="text-sm text-zinc-500">
+                      <p className="text-sm text-muted">
                         {walletDateTime.format(new Date(transaction.createdAt))}
                         {transaction.booking && ` · ${transaction.booking.subjectName}`}
                       </p>
@@ -251,12 +253,12 @@ function WalletContent() {
                         className={`font-semibold ${
                           transaction.direction === "IN"
                             ? "text-emerald-700 dark:text-emerald-400"
-                            : "text-zinc-900 dark:text-zinc-100"
+                            : "text-foreground"
                         }`}
                       >
                         {signedAmount(transaction)}
                       </p>
-                      <p className="text-xs text-zinc-500">
+                      <p className="text-xs text-muted">
                         Balance {money(transaction.balanceAfter)}
                       </p>
                     </div>
@@ -277,7 +279,7 @@ function WalletContent() {
             >
               Previous
             </button>
-            <span className="text-sm text-zinc-500">
+            <span className="text-sm text-muted">
               Page {page} of {pages}
             </span>
             <button
@@ -301,7 +303,11 @@ export default function WalletPage() {
     <RequireAuth>
       <Suspense
         fallback={
-          <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12 text-zinc-500">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="mx-auto w-full max-w-4xl flex-1 px-6 py-12 text-muted"
+          >
             Loading wallet…
           </main>
         }

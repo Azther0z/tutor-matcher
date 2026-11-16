@@ -62,7 +62,7 @@ export function SubjectBookingCalendar({
   }
   return (
     <section aria-label="Booking calendar" className="space-y-5">
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-muted">
         Times in Asia/Bangkok (UTC+7). Book up to three months ahead.
       </p>
       <div className="flex items-center justify-between">
@@ -116,7 +116,7 @@ export function SubjectBookingCalendar({
                 onChange([]);
                 onSelectionMessage(null);
               }}
-              className={`rounded-lg p-2 disabled:opacity-30 ${selectedDay === date ? "bg-violet-600 text-white" : "border border-zinc-300"}`}
+              className={`rounded-lg p-2 disabled:opacity-30 ${selectedDay === date ? "bg-brand-navy text-white" : "border border-line"}`}
             >
               {i + 1}
               <span aria-hidden="true" className="block h-2 text-xs">
@@ -154,7 +154,7 @@ export function SubjectBookingCalendar({
                     onChange(next.ids);
                     onSelectionMessage(next.message);
                   }}
-                  className={`rounded-lg border p-2 text-sm disabled:opacity-35 ${active ? "bg-violet-600 text-white" : "border-zinc-300"}`}
+                  className={`rounded-lg border p-2 text-sm disabled:opacity-35 ${active ? "bg-brand-navy text-white" : "border-line"}`}
                 >
                   {time}
                   <span className="block text-xs">{slot ? "Available" : "Not available"}</span>

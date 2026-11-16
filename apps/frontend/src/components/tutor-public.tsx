@@ -18,15 +18,15 @@ export function Stars({ rating }: { rating: number }) {
   return (
     <span role="img" aria-label={`${stars} out of 5 stars`} className="text-amber-400">
       {"★".repeat(stars)}
-      <span className="text-zinc-300 dark:text-zinc-700">{"★".repeat(5 - stars)}</span>
+      <span className="text-zinc-300">{"★".repeat(5 - stars)}</span>
     </span>
   );
 }
 
 export function Rating({ rating, count }: { rating: number | null; count: number }) {
-  if (rating === null) return <span className="text-sm text-zinc-500">No reviews yet</span>;
+  if (rating === null) return <span className="text-sm text-muted">No reviews yet</span>;
   return (
-    <span className="text-sm text-zinc-500">
+    <span className="text-sm text-muted">
       <span className="font-semibold text-foreground">★ {rating.toFixed(1)}</span> ({count}{" "}
       {count === 1 ? "review" : "reviews"})
     </span>
@@ -65,18 +65,18 @@ export function ReviewList({
     return () => controller.abort();
   }, [token, tutorId]);
   const mayReply = canReply || (!!token && owner?.token === token && owner.tutorId === tutorId);
-  if (reviews.length === 0) return <p className="text-zinc-500">No reviews yet.</p>;
+  if (reviews.length === 0) return <p className="text-muted">No reviews yet.</p>;
   return (
     <ul className="flex flex-col gap-4">
       {reviews.map((review) => (
         <li
           key={review.id}
-          className="flex flex-col gap-1 border-t border-black/10 pt-4 first:border-0 first:pt-0 dark:border-white/15"
+          className="flex flex-col gap-1 border-t border-line pt-4 first:border-0 first:pt-0"
         >
           <p className="flex flex-wrap items-center gap-2 text-sm">
             <Stars rating={review.rating} />
             <span className="font-medium">{review.reviewer}</span>
-            <span className="text-zinc-500">
+            <span className="text-muted">
               · {review.subjectName} ·{" "}
               {new Date(review.createdAt).toLocaleDateString("en-GB", {
                 day: "numeric",
@@ -86,7 +86,7 @@ export function ReviewList({
               })}
             </span>
           </p>
-          {review.text && <p className="text-zinc-600 dark:text-zinc-400">{review.text}</p>}
+          {review.text && <p className="text-secondary">{review.text}</p>}
           {review.text && (
             <ReviewFlag
               reviewId={review.id}

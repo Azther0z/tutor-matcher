@@ -58,13 +58,11 @@ export function ReviewReply({
 
   if (displayed && (!editing || !canReply))
     return (
-      <div className="mt-3 border-l-2 border-zinc-300 pl-4 dark:border-zinc-600">
+      <div className="mt-3 border-l-2 border-line pl-4">
         <p className="text-sm font-semibold">Tutor reply</p>
-        <p className="whitespace-pre-wrap break-words text-sm text-zinc-600 dark:text-zinc-400">
-          {displayed.text}
-        </p>
+        <p className="whitespace-pre-wrap break-words text-sm text-secondary">{displayed.text}</p>
         {displayed.editedAt && (
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-muted">
             Edited ·{" "}
             <time dateTime={displayed.editedAt}>
               {new Date(displayed.editedAt).toLocaleString("en-GB", {
@@ -87,12 +85,12 @@ export function ReviewReply({
               setError(null);
               setEditing(true);
             }}
-            className="mt-2 text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 disabled:opacity-50"
+            className="mt-2 text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-link disabled:opacity-50"
           >
             Edit reply
           </button>
         )}
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-muted">
           {new Date(displayed.repliedAt).toLocaleDateString("en-GB", {
             timeZone: "Asia/Bangkok",
             day: "numeric",
@@ -110,7 +108,7 @@ export function ReviewReply({
           <label htmlFor={id} className="text-sm font-medium">
             Your public reply
           </label>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted">
             Everyone can read your reply. You can edit it later; edited replies are labelled.
           </p>
           <textarea
@@ -122,9 +120,9 @@ export function ReviewReply({
             disabled={pending}
             readOnly={unavailable}
             rows={3}
-            className="rounded-xl border border-black/20 bg-transparent p-3 text-sm dark:border-white/20"
+            className="rounded-xl border border-line bg-transparent p-3 text-sm"
           />
-          <span className="text-xs text-zinc-500">{text.length}/2000</span>
+          <span className="text-xs text-muted">{text.length}/2000</span>
           <div className="flex gap-3">
             <button
               type="submit"
@@ -134,7 +132,7 @@ export function ReviewReply({
                 !text.trim() ||
                 (!!displayed && text.trim() === displayed.text)
               }
-              className="rounded-full bg-foreground px-4 py-2 text-sm text-background disabled:opacity-50"
+              className="rounded-lg bg-brand-navy px-4 py-2 text-sm text-white disabled:opacity-50"
             >
               {pending
                 ? displayed

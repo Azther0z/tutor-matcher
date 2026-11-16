@@ -263,3 +263,30 @@ it("shows subject setup and retries access/load failures", async () => {
   );
   expect(screen.queryByRole("grid")).not.toBeInTheDocument();
 });
+
+it("offers one keyboard entry to the weekly grid and moves focus between days and half-hours", async () => {
+  await load();
+  const buttons = within(screen.getByRole("grid")).getAllByRole("button");
+  expect(buttons.filter((button) => button.tabIndex === 0)).toHaveLength(1);
+  const start = cell("10:00");
+  start.focus();
+  fireEvent.keyDown(start, { key: "ArrowRight" });
+  const nextDay = cell("10:00", "2030-10-16");
+  expect(nextDay).toHaveFocus();
+  fireEvent.keyDown(nextDay, { key: "ArrowDown" });
+  const nextTime = cell("10:30", "2030-10-16");
+  expect(nextTime).toHaveFocus();
+  fireEvent.keyDown(nextTime, { key: "Home", ctrlKey: true });
+  expect(cell("00:00", "2030-10-16")).toHaveFocus();
+  expect(buttons.filter((button) => button.tabIndex === 0)).toHaveLength(1);
+});
+
+it("keeps horizontal keyboard navigation in the current time row when earlier dates are past", async () => {
+  await load();
+  const first = cell("10:00");
+  first.focus();
+  fireEvent.keyDown(first, { key: "ArrowLeft" });
+  expect(first).toHaveFocus();
+  fireEvent.keyDown(first, { key: "Home" });
+  expect(first).toHaveFocus();
+});

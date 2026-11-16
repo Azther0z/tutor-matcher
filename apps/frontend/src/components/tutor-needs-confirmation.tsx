@@ -30,37 +30,37 @@ export function TutorNeedsConfirmation() {
   }, []);
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
+    <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
       <div>
         <h3 className="text-xl font-semibold">Needs confirmation</h3>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-muted">
           Lessons appear here as soon as their scheduled end time passes.
         </p>
       </div>
-      {loading && <p className="text-sm text-zinc-500">Loading lessons…</p>}
+      {loading && <p className="text-sm text-muted">Loading lessons…</p>}
       {error && (
         <p role="alert" className="text-sm text-red-600">
           {error}
         </p>
       )}
       {!loading && !error && bookings.length === 0 && (
-        <p className="text-sm text-zinc-500">No lessons need confirmation.</p>
+        <p className="text-sm text-muted">No lessons need confirmation.</p>
       )}
       {bookings.length > 0 && (
         <ul className="grid gap-3">
           {bookings.map((booking) => (
             <li
               key={booking.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/10 p-4 dark:border-white/15"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-4"
             >
               <div className="min-w-0">
                 <p className="font-semibold">{booking.subject.name}</p>
-                <p className="text-sm text-zinc-500">with {booking.student.name}</p>
+                <p className="text-sm text-muted">with {booking.student.name}</p>
                 <p className="mt-1 text-sm">{dateFormat.format(new Date(booking.startedAt))}</p>
               </div>
               <Link
                 href={`/bookings/${booking.id}`}
-                className="inline-flex h-10 items-center justify-center rounded-full bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-700"
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-brand-navy px-4 text-sm font-semibold text-white hover:bg-brand-navy-dark"
               >
                 Review lesson
               </Link>

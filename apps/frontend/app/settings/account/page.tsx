@@ -9,7 +9,7 @@ import { getAuthToken, setAuthToken } from "@/src/lib/auth";
 type FieldErrors = Partial<Record<string, string>>;
 
 const inputClassName =
-  "h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18]";
+  "h-11 rounded-lg border border-line bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground aria-[invalid=true]:border-red-500";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -382,16 +382,18 @@ function AccountSettingsForm() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row"
+    >
       <SettingsSidebar activeSection="account" />
 
       <div className="flex flex-1 flex-col gap-8">
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">
-            Tutor Matcher
-          </p>
+          <p className="text-sm font-medium text-muted">Tutor Matcher</p>
           <h1 className="text-4xl font-semibold tracking-tight">Account settings</h1>
-          <p className="max-w-2xl text-base leading-7 text-zinc-600 dark:text-zinc-400">
+          <p className="max-w-2xl text-base leading-7 text-secondary">
             Update your name, email address, and password you sign in with.
           </p>
         </div>
@@ -404,14 +406,12 @@ function AccountSettingsForm() {
 
         <form
           onSubmit={handleNameSubmit}
-          className="flex flex-col gap-5 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]"
+          className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6"
           noValidate
         >
           <div>
             <h2 className="text-xl font-semibold">Name</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              How you&apos;re addressed on Tutor Matcher.
-            </p>
+            <p className="mt-1 text-sm text-muted">How you&apos;re addressed on Tutor Matcher.</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -446,7 +446,7 @@ function AccountSettingsForm() {
           />
 
           {nameMessage && (
-            <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
+            <p role="status" className="text-sm text-secondary">
               {nameMessage}
             </p>
           )}
@@ -455,7 +455,7 @@ function AccountSettingsForm() {
             <button
               type="submit"
               disabled={nameSubmitting}
-              className="flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
+              className="flex h-11 items-center justify-center rounded-lg bg-brand-navy px-5 text-base font-medium text-white transition-colors hover:bg-brand-navy-dark disabled:opacity-60"
             >
               {nameSubmitting ? "Saving…" : "Save name"}
             </button>
@@ -464,12 +464,12 @@ function AccountSettingsForm() {
 
         <form
           onSubmit={handleEmailSubmit}
-          className="flex flex-col gap-5 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]"
+          className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6"
           noValidate
         >
           <div>
             <h2 className="text-xl font-semibold">Email address</h2>
-            <p className="mt-1 text-sm text-zinc-500">Used to sign in and to reach you.</p>
+            <p className="mt-1 text-sm text-muted">Used to sign in and to reach you.</p>
           </div>
 
           <Field
@@ -493,7 +493,7 @@ function AccountSettingsForm() {
           />
 
           {emailMessage && (
-            <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
+            <p role="status" className="text-sm text-secondary">
               {emailMessage}
             </p>
           )}
@@ -502,7 +502,7 @@ function AccountSettingsForm() {
             <button
               type="submit"
               disabled={emailSubmitting}
-              className="flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
+              className="flex h-11 items-center justify-center rounded-lg bg-brand-navy px-5 text-base font-medium text-white transition-colors hover:bg-brand-navy-dark disabled:opacity-60"
             >
               {emailSubmitting ? "Saving…" : "Save email"}
             </button>
@@ -511,12 +511,12 @@ function AccountSettingsForm() {
 
         <form
           onSubmit={handlePasswordSubmit}
-          className="flex flex-col gap-5 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]"
+          className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6"
           noValidate
         >
           <div>
             <h2 className="text-xl font-semibold">Password</h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-muted">
               Leave both fields empty to keep your current password.
             </p>
           </div>
@@ -553,7 +553,7 @@ function AccountSettingsForm() {
           />
 
           {passwordMessage && (
-            <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
+            <p role="status" className="text-sm text-secondary">
               {passwordMessage}
             </p>
           )}
@@ -562,7 +562,7 @@ function AccountSettingsForm() {
             <button
               type="submit"
               disabled={passwordSubmitting}
-              className="flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
+              className="flex h-11 items-center justify-center rounded-lg bg-brand-navy px-5 text-base font-medium text-white transition-colors hover:bg-brand-navy-dark disabled:opacity-60"
             >
               {passwordSubmitting ? "Saving…" : "Save password"}
             </button>

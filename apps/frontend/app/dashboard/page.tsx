@@ -108,16 +108,14 @@ export default function DashboardPage() {
   return (
     <RequireAuth>
       <main
-        className={`mx-auto flex w-full ${
-          isApprovedTutor ? "max-w-5xl" : "max-w-3xl"
-        } flex-1 flex-col gap-8 px-6 py-16`}
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8 lg:py-14"
       >
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">
-            Tutor Matcher
-          </p>
+          <p className="text-sm font-medium text-muted">Tutor Matcher</p>
           <h1 className="text-4xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-lg leading-8 text-zinc-600 dark:text-zinc-400">
+          <p className="text-lg leading-8 text-secondary">
             {isApprovedTutor
               ? "Choose whether to manage your learning or teaching."
               : "Find Tutors and manage your learning journey."}
@@ -128,7 +126,7 @@ export default function DashboardPage() {
           <div
             role="tablist"
             aria-label="Dashboard sections"
-            className="flex w-fit gap-1 rounded-xl border border-black/[.12] p-1 dark:border-white/[.18]"
+            className="flex w-fit gap-1 rounded-xl border border-line p-1"
           >
             {dashboardTabs.map((tab) => {
               const selected = activeTab === tab;
@@ -149,9 +147,7 @@ export default function DashboardPage() {
                   onClick={() => setActiveTab(tab)}
                   onKeyDown={(event) => handleTabKeyDown(event, tab)}
                   className={`rounded-lg px-5 py-2 text-sm font-medium transition-colors ${
-                    selected
-                      ? "bg-foreground text-background"
-                      : "text-zinc-600 hover:bg-black/[.06] dark:text-zinc-300 dark:hover:bg-white/[.08]"
+                    selected ? "bg-brand-navy text-white" : "text-secondary hover:bg-surface-muted"
                   }`}
                 >
                   {label}
@@ -171,12 +167,44 @@ export default function DashboardPage() {
         >
           <div className="flex flex-col gap-2">
             <h2 className="text-2xl font-semibold">Student dashboard</h2>
-            <p className="text-zinc-600 dark:text-zinc-400">
-              Find Tutors and manage your learning journey.
-            </p>
+            <p className="text-secondary">Find Tutors and manage your learning journey.</p>
           </div>
 
-          {status === "loading" && <p className="text-zinc-500">Loading your dashboard…</p>}
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              {
+                href: "/search",
+                title: "Find a tutor",
+                description: "Compare Subjects and find a time to learn.",
+              },
+              {
+                href: "/bookings",
+                title: "Your bookings",
+                description: "See lesson times, meeting links and next steps.",
+              },
+              {
+                href: "/wallet",
+                title: "Your wallet",
+                description: "Check your balance, top-ups and transactions.",
+              },
+            ].map(({ href, title, description }) => (
+              <Link
+                key={href}
+                href={href}
+                className="ui-card flex flex-col gap-3 p-6 transition-colors hover:border-brand-link"
+              >
+                <h3 className="flex items-center justify-between gap-3 text-lg font-medium">
+                  {title}
+                  <span aria-hidden="true" className="text-brand-link">
+                    →
+                  </span>
+                </h3>
+                <p className="text-sm leading-6 text-secondary">{description}</p>
+              </Link>
+            ))}
+          </div>
+
+          {status === "loading" && <p className="text-muted">Loading your dashboard…</p>}
 
           {status === "error" && (
             <p role="alert" className="text-red-600 dark:text-red-400">
@@ -185,16 +213,16 @@ export default function DashboardPage() {
           )}
 
           {status === "incomplete" && (
-            <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
+            <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
               <div className="flex flex-col gap-2">
                 <h3 className="text-2xl font-semibold">Complete your Student profile</h3>
-                <p className="leading-7 text-zinc-600 dark:text-zinc-400">
+                <p className="leading-7 text-secondary">
                   Tell us what you want to learn so we can help you find Tutors that fit your goals.
                 </p>
               </div>
               <Link
                 href="/settings/student"
-                className="flex h-11 w-fit items-center justify-center rounded-full bg-foreground px-5 font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+                className="flex h-11 w-fit items-center justify-center rounded-lg bg-brand-navy px-5 font-medium text-white transition-colors hover:bg-brand-navy-dark"
               >
                 Set up your profile
               </Link>
@@ -202,16 +230,16 @@ export default function DashboardPage() {
           )}
 
           {status === "complete" && (
-            <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
+            <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
               <div>
                 <h3 className="text-2xl font-semibold">Your Student profile is ready</h3>
-                <p className="mt-2 leading-7 text-zinc-600 dark:text-zinc-400">
+                <p className="mt-2 leading-7 text-secondary">
                   You can now explore Tutors matched to your learning preferences.
                 </p>
               </div>
               <Link
                 href="/settings/account"
-                className="flex h-11 w-fit items-center justify-center rounded-full bg-foreground px-5 font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+                className="flex h-11 w-fit items-center justify-center rounded-lg bg-brand-navy px-5 font-medium text-white transition-colors hover:bg-brand-navy-dark"
               >
                 Edit your profile
               </Link>
@@ -231,13 +259,13 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex flex-col gap-2">
                 <h2 className="text-2xl font-semibold">Tutor dashboard</h2>
-                <p className="text-zinc-600 dark:text-zinc-400">
+                <p className="text-secondary">
                   Manage your teaching availability, subjects, and Tutor profile.
                 </p>
               </div>
               <Link
                 href="/settings/tutor"
-                className="text-sm font-semibold text-violet-700 underline dark:text-violet-300"
+                className="text-sm font-semibold text-brand-link underline"
               >
                 Manage subjects and listing
               </Link>

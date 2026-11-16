@@ -196,3 +196,16 @@ it("retains tutor navigation while the latest profile edit is pending", async ()
     expect(screen.queryByRole("link", { name: "Become a tutor" })).not.toBeInTheDocument()
   );
 });
+
+it("opens navigation on small screens and returns focus to its trigger on Escape", async () => {
+  renderNavbar();
+  const trigger = await screen.findByRole("button", { name: "Open navigation" });
+  expect(trigger).toHaveAttribute("aria-expanded", "false");
+  fireEvent.click(trigger);
+  expect(trigger).toHaveAttribute("aria-expanded", "true");
+  const bookings = screen.getByRole("link", { name: "Bookings" });
+  bookings.focus();
+  fireEvent.keyDown(bookings, { key: "Escape" });
+  expect(trigger).toHaveAttribute("aria-expanded", "false");
+  expect(trigger).toHaveFocus();
+});

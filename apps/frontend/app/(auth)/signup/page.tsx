@@ -73,9 +73,13 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-8 px-6 py-16">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-8 px-6 py-16"
+    >
       <div className="flex flex-col gap-2 text-center">
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Tutor Matcher</p>
+        <p className="text-sm font-medium text-muted">Tutor Matcher</p>
         <h1 className="text-3xl font-semibold tracking-tight">Create your account</h1>
       </div>
 
@@ -90,7 +94,7 @@ export default function SignupPage() {
               autoComplete="given-name"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+              className="h-11 rounded-lg border border-line bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
             />
           </label>
 
@@ -103,7 +107,7 @@ export default function SignupPage() {
               autoComplete="family-name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+              className="h-11 rounded-lg border border-line bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
             />
           </label>
         </div>
@@ -117,7 +121,7 @@ export default function SignupPage() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+            className="h-11 rounded-lg border border-line bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
           />
         </label>
 
@@ -130,7 +134,7 @@ export default function SignupPage() {
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+            className="h-11 rounded-lg border border-line bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
           />
         </label>
 
@@ -143,32 +147,32 @@ export default function SignupPage() {
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+            className="h-11 rounded-lg border border-line bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
           />
         </label>
 
         <label className="flex flex-col gap-1.5 text-sm font-medium">
-          Referral code <span className="font-normal text-zinc-500">(optional)</span>
+          Referral code <span className="font-normal text-muted">(optional)</span>
           <input
             type="password"
             name="adminSignupKey"
             autoComplete="off"
             value={adminSignupKey}
             onChange={(e) => setAdminSignupKey(e.target.value)}
-            className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+            className="h-11 rounded-lg border border-line bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
           />
-          <span className="font-normal text-zinc-500">
+          <span className="font-normal text-muted">
             For authorized administrators. Leave blank for a standard account.
           </span>
         </label>
 
-        <label className="flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300">
+        <label className="flex items-start gap-2.5 text-sm text-secondary">
           <input
             type="checkbox"
             name="consentAccepted"
             checked={consentAccepted}
             onChange={(e) => setConsentAccepted(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-black/[.25] dark:border-white/[.3]"
+            className="mt-0.5 h-4 w-4 rounded border-line"
             aria-invalid={!consentAccepted && !!error}
             aria-describedby="consent-description"
           />
@@ -204,7 +208,7 @@ export default function SignupPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-12 w-full items-center justify-center rounded-full bg-foreground px-5 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
+          className="flex h-12 w-full items-center justify-center rounded-lg bg-brand-navy px-5 text-base font-medium text-white transition-colors hover:bg-brand-navy-dark disabled:opacity-60"
         >
           {submitting ? "Creating account…" : "Sign up"}
         </button>
@@ -220,7 +224,7 @@ export default function SignupPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="policy-dialog-title"
-            className="max-h-full w-full max-w-lg overflow-y-auto rounded-2xl border border-black/[.12] bg-background p-6 text-left shadow-xl dark:border-white/[.18]"
+            className="max-h-full w-full max-w-lg overflow-y-auto rounded-2xl border border-line bg-background p-6 text-left shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
@@ -230,7 +234,7 @@ export default function SignupPage() {
               <button
                 type="button"
                 onClick={() => setOpenDocument(null)}
-                className="rounded-full px-2 py-1 text-xl leading-none text-zinc-500 hover:bg-black/[.06] dark:hover:bg-white/[.1]"
+                className="rounded-full px-2 py-1 text-xl leading-none text-muted hover:bg-surface-muted"
                 aria-label="Close document"
               >
                 ×
@@ -238,7 +242,7 @@ export default function SignupPage() {
             </div>
 
             {openDocument === "privacy" ? (
-              <div className="mt-5 space-y-4 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+              <div className="mt-5 space-y-4 text-sm leading-6 text-secondary">
                 <p>Last updated: September 4, 2026</p>
                 <p>
                   Tutor Matcher collects the information you provide, such as your email address,
@@ -257,7 +261,7 @@ export default function SignupPage() {
                 </p>
               </div>
             ) : (
-              <div className="mt-5 space-y-4 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+              <div className="mt-5 space-y-4 text-sm leading-6 text-secondary">
                 <p>Last updated: September 4, 2026</p>
                 <p>
                   By using Tutor Matcher, you agree to provide accurate information, keep your
@@ -279,7 +283,7 @@ export default function SignupPage() {
         </div>
       )}
 
-      <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-center text-sm text-secondary">
         Already have an account?{" "}
         <Link href="/login" className="font-medium text-foreground underline">
           Log in

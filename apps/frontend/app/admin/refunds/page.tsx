@@ -16,7 +16,7 @@ import type { RefundRequestStatus } from "@/src/types/booking";
 
 const shell = "mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16";
 const button =
-  "h-9 rounded-full border border-black/[.12] px-4 text-sm font-medium disabled:opacity-60 dark:border-white/[.18]";
+  "min-h-11 rounded-lg border border-line px-4 text-sm font-medium disabled:opacity-60";
 const amountFormat = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -64,11 +64,11 @@ function RefundRequests() {
   }
 
   return (
-    <main className={shell}>
+    <main id="main-content" tabIndex={-1} className={shell}>
       <div>
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Admin</p>
+        <p className="text-sm font-medium text-muted">Admin</p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight">Refund requests</h1>
-        <p className="mt-3 text-zinc-500">
+        <p className="mt-3 text-muted">
           Students ask for a refund after a lesson ends: the tutor didn&apos;t show up, the lesson
           was unsatisfactory, or another problem. Approval returns the full amount to the
           Student&apos;s wallet and cancels the lesson; a rejection needs a reason the Student will
@@ -86,9 +86,9 @@ function RefundRequests() {
       {!forbidden && (
         <section
           aria-label="Refund requests"
-          className="overflow-hidden rounded-lg border border-black/[.12] dark:border-white/[.18]"
+          className="overflow-hidden rounded-lg border border-line"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[.12] px-4 py-3 dark:border-white/[.18]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
             <TutorRefreshButton label="Refresh refund requests" onClick={refresh} />
             <label className="ml-auto flex items-center gap-2 text-sm">
               <span>Status</span>
@@ -99,7 +99,7 @@ function RefundRequests() {
                   setRequests(null);
                   setMessage(null);
                 }}
-                className="rounded-md border border-black/[.12] bg-background py-2 pl-3 pr-3 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 dark:border-white/[.18] dark:[color-scheme:dark]"
+                className="rounded-md border border-line bg-background py-2 pl-3 pr-3 text-foreground focus-visible:outline-2 focus-visible:outline-brand-link focus-visible:ring-2 focus-visible:ring-foreground/30 dark:[color-scheme:dark]"
               >
                 <option value="PENDING">Pending</option>
                 <option value="APPROVED">Approved</option>
@@ -110,10 +110,10 @@ function RefundRequests() {
           </div>
           <div className="px-4">
             {!requests && !error && (
-              <p className="py-5 text-sm text-zinc-500">Loading refund requests…</p>
+              <p className="py-5 text-sm text-muted">Loading refund requests…</p>
             )}
             {requests?.length === 0 && (
-              <p className="py-5 text-sm text-zinc-500">
+              <p className="py-5 text-sm text-muted">
                 {status === "PENDING"
                   ? "No refund requests waiting for review."
                   : status === "ALL"
@@ -121,7 +121,7 @@ function RefundRequests() {
                     : "No matching refund requests."}
               </p>
             )}
-            <ul className="divide-y divide-black/[.12] dark:divide-white/[.18]">
+            <ul className="divide-y divide-line ">
               {requests?.map((request) => (
                 <li key={request.id}>
                   <RefundRow
@@ -201,7 +201,7 @@ function RefundRow({
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <p className="min-w-0 text-sm">
           <span className="font-medium">{name}</span>{" "}
-          <span className="break-all text-zinc-500">{request.student.email}</span>
+          <span className="break-all text-muted">{request.student.email}</span>
         </p>
         <div className="flex items-center gap-2">
           <StatusBadge status={request.status} />
@@ -220,11 +220,11 @@ function RefundRow({
         </Link>
       </p>
       {request.details && (
-        <p className="whitespace-pre-line rounded-md bg-black/[.04] p-2 text-sm dark:bg-white/[.06]">
+        <p className="whitespace-pre-line rounded-md bg-surface-muted p-2 text-sm">
           {request.details}
         </p>
       )}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
         <time dateTime={request.createdAt}>
           Sent {new Date(request.createdAt).toLocaleString(undefined, dateFormat)}
         </time>
@@ -237,7 +237,7 @@ function RefundRow({
       {request.rejectionReason && <p className="text-sm">Reason: {request.rejectionReason}</p>}
       {request.status === "PENDING" && (
         <fieldset disabled={busy} className="mt-1 flex flex-col gap-1.5">
-          <label htmlFor={`reason-${request.id}`} className="sr-only">
+          <label htmlFor={`reason-${request.id}`} className="text-sm font-medium">
             Rejection reason (required to reject)
           </label>
           <div className="flex flex-wrap items-center gap-2">
@@ -250,13 +250,13 @@ function RefundRow({
               onChange={(event) => setReason(event.target.value)}
               aria-invalid={reasonError}
               aria-describedby={reasonError ? `reason-error-${request.id}` : undefined}
-              className="h-9 min-w-48 flex-1 rounded-lg border border-black/[.12] bg-transparent px-3 text-sm dark:border-white/[.18]"
+              className="min-h-11 min-w-48 flex-1 rounded-lg border border-line bg-transparent px-3 text-sm"
             />
             <button className={button} disabled={busy} onClick={() => void review("REJECTED")}>
               Reject refund
             </button>
             <button
-              className={`${button} bg-foreground text-background`}
+              className={`${button} bg-brand-navy text-white`}
               disabled={busy}
               onClick={() => void review("APPROVED")}
             >

@@ -92,27 +92,31 @@ function SubjectBookingContent() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:px-8">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:px-8"
+    >
       <Link
         href={`/tutors/${data?.subject.tutor.id ?? ""}/${subjectId}`}
-        className="text-sm text-zinc-600 hover:underline"
+        className="text-sm text-secondary hover:underline"
       >
         ← Back to tutor
       </Link>
       <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_340px]">
         <section>
-          <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">Lesson</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">Choose a time</h1>
+          <p className="text-sm font-semibold text-brand-link">Lesson</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Choose a time</h1>
           {data && (
-            <p className="mt-2 text-zinc-600">
+            <p className="mt-2 text-secondary">
               {data.subject.name} with {data.subject.tutor.name}
             </p>
           )}
 
           {loading ? (
-            <p className="mt-10 text-zinc-500">Loading available times…</p>
+            <p className="mt-10 text-muted">Loading available times…</p>
           ) : openSlots.length === 0 ? (
-            <div className="mt-8 rounded-2xl border border-dashed border-zinc-300 p-8 text-center">
+            <div className="mt-8 rounded-2xl border border-dashed border-line p-8 text-center">
               <p className="font-medium">
                 {data?.acceptingBookings === false
                   ? "This tutor isn’t accepting bookings"
@@ -123,7 +127,7 @@ function SubjectBookingContent() {
                   setLoading(true);
                   void load();
                 }}
-                className="mt-3 text-sm font-semibold text-violet-700 hover:underline"
+                className="mt-3 text-sm font-semibold text-brand-link hover:underline"
               >
                 Refresh availability
               </button>
@@ -142,12 +146,12 @@ function SubjectBookingContent() {
           )}
         </section>
 
-        <aside className="h-fit rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <aside className="h-fit rounded-2xl border border-line bg-surface p-6 shadow-sm">
           <h2 className="text-lg font-semibold">Booking summary</h2>
           <dl className="mt-5 space-y-3 text-sm">
             {selectedSlots.length > 0 && (
               <div>
-                <dt className="text-zinc-500">Selected time (Bangkok)</dt>
+                <dt className="text-muted">Selected time (Bangkok)</dt>
                 <dd>
                   {windowFormat.format(new Date(selectedSlots[0].startedAt))} –{" "}
                   {windowFormat.format(
@@ -160,14 +164,14 @@ function SubjectBookingContent() {
               </div>
             )}
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Lesson</dt>
+              <dt className="text-muted">Lesson</dt>
               <dd className="text-right font-medium">{selectedIds.length * 30} min</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Rate</dt>
+              <dt className="text-muted">Rate</dt>
               <dd>{money.format(Number(data?.subject?.hourlyRate ?? 0))}/hr</dd>
             </div>
-            <div className="flex justify-between border-t border-zinc-200 pt-3 text-base font-semibold">
+            <div className="flex justify-between border-t border-line pt-3 text-base font-semibold">
               <dt>Total</dt>
               <dd>{money.format(total)}</dd>
             </div>
@@ -183,11 +187,11 @@ function SubjectBookingContent() {
             disabled={
               submitting || loading || data?.acceptingBookings === false || selectedIds.length === 0
             }
-            className="mt-5 h-12 w-full rounded-full bg-violet-600 font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-5 h-12 w-full rounded-lg bg-brand-navy font-semibold text-white hover:bg-brand-navy-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Booking…" : total > 0 ? "Continue to payment" : "Confirm booking"}
           </button>
-          <p className="mt-3 text-center text-xs text-zinc-500">
+          <p className="mt-3 text-center text-xs text-muted">
             These times remain available to others until your payment succeeds.
           </p>
         </aside>

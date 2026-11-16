@@ -208,25 +208,27 @@ export default function StudentSettingsPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row"
+    >
       <SettingsSidebar activeSection="student" />
 
       <div className="flex flex-1 flex-col gap-8">
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">
-            Tutor Matcher
-          </p>
+          <p className="text-sm font-medium text-muted">Tutor Matcher</p>
           <h1 className="text-4xl font-semibold tracking-tight">Student profile settings</h1>
-          <p className="max-w-2xl text-base leading-7 text-zinc-600 dark:text-zinc-400">
+          <p className="max-w-2xl text-base leading-7 text-secondary">
             Update your learning preferences. Tutors matched to you use these details.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-8" noValidate>
-          <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
+          <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
             <div>
               <h2 className="text-xl font-semibold">Learning areas</h2>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-muted">
                 Type to search, then select one or more areas.
               </p>
             </div>
@@ -240,16 +242,16 @@ export default function StudentSettingsPage() {
                   setSearch(value);
                 }}
                 placeholder="Search learning areas"
-                className="h-11 w-full rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+                className="h-11 w-full rounded-lg border border-line bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
               />
               {suggestions.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full rounded-lg border border-black/[.12] bg-background p-1 shadow-lg dark:border-white/[.18]">
+                <div className="absolute z-10 mt-1 w-full rounded-lg border border-line bg-background p-1 shadow-lg">
                   {suggestions.map((area) => (
                     <button
                       type="button"
                       key={area.id}
                       onClick={() => selectArea(area)}
-                      className="block w-full rounded-md px-3 py-2 text-left hover:bg-black/[.06] dark:hover:bg-white/[.08]"
+                      className="block w-full rounded-md px-3 py-2 text-left hover:bg-surface-muted"
                     >
                       {area.name}
                     </button>
@@ -261,7 +263,7 @@ export default function StudentSettingsPage() {
               {selectedAreas.map((area) => (
                 <span
                   key={area.id}
-                  className="inline-flex items-center gap-2 rounded-full bg-black/[.06] px-3 py-1.5 text-sm dark:bg-white/[.12]"
+                  className="inline-flex items-center gap-2 rounded-full bg-surface-muted px-3 py-1.5 text-sm"
                 >
                   {area.name}
                   <button
@@ -276,13 +278,13 @@ export default function StudentSettingsPage() {
             </div>
           </section>
 
-          <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
+          <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
             <h2 className="text-xl font-semibold">Education level</h2>
             <select
               aria-label="Education level"
               value={educationLevel}
               onChange={(event) => setEducationLevel(event.target.value)}
-              className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base dark:border-white/[.18]"
+              className="h-11 rounded-lg border border-line bg-transparent px-3 text-base"
             >
               <option value="">Select your education level</option>
               {educationLevels.map(([value, label]) => (
@@ -293,7 +295,7 @@ export default function StudentSettingsPage() {
             </select>
           </section>
 
-          <section className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
+          <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
             <h2 className="text-xl font-semibold">Learning goals</h2>
             <div className="flex flex-col gap-3">
               {goalOptions.map(([value, label]) => (
@@ -309,14 +311,14 @@ export default function StudentSettingsPage() {
             </div>
           </section>
 
-          <section className="grid gap-4 rounded-2xl border border-black/[.12] p-6 sm:grid-cols-2 dark:border-white/[.18]">
+          <section className="grid gap-4 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5 text-sm font-medium">
               Preferred learning period
               <select
                 aria-label="Preferred learning period"
                 value={period}
                 onChange={(event) => setPeriod(event.target.value)}
-                className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base dark:border-white/[.18]"
+                className="h-11 rounded-lg border border-line bg-transparent px-3 text-base"
               >
                 <option value="">Select a period</option>
                 {periodOptions.map(([value, label]) => (
@@ -332,7 +334,7 @@ export default function StudentSettingsPage() {
                 aria-label="Preferred lesson duration"
                 value={duration}
                 onChange={(event) => setDuration(event.target.value)}
-                className="h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base dark:border-white/[.18]"
+                className="h-11 rounded-lg border border-line bg-transparent px-3 text-base"
               >
                 <option value="">Select a duration</option>
                 {durationOptions.map((minutes) => (
@@ -345,7 +347,7 @@ export default function StudentSettingsPage() {
           </section>
 
           {message && (
-            <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
+            <p role="status" className="text-sm text-secondary">
               {message}
             </p>
           )}
@@ -353,14 +355,14 @@ export default function StudentSettingsPage() {
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Link
               href="/dashboard"
-              className="flex h-12 items-center justify-center rounded-full border border-black/[.12] px-6 text-base font-medium hover:bg-black/[.04] dark:border-white/[.18] dark:hover:bg-white/[.08]"
+              className="flex h-12 items-center justify-center rounded-lg border border-line px-6 text-base font-medium hover:bg-surface-muted"
             >
               Cancel
             </Link>
             <button
               type="submit"
               disabled={submitting}
-              className="flex h-12 items-center justify-center rounded-full bg-foreground px-6 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
+              className="flex h-12 items-center justify-center rounded-lg bg-brand-navy px-6 text-base font-medium text-white transition-colors hover:bg-brand-navy-dark disabled:opacity-60"
             >
               {submitting ? "Saving…" : "Save profile"}
             </button>

@@ -14,7 +14,7 @@ export function SettingsSidebar({ activeSection }: { activeSection: SettingsSect
   return (
     <nav
       aria-label="Settings"
-      className="flex w-full flex-none flex-col gap-1 rounded-2xl border border-black/[.12] p-3 sm:w-56 dark:border-white/[.18]"
+      className="flex w-full flex-none flex-row flex-wrap gap-1 sm:sticky sm:top-24 sm:self-start sm:flex-col rounded-2xl border border-line bg-surface p-3 sm:w-60"
     >
       {settingsLinks.map(({ section, href, label }) => {
         const isActive = section === activeSection;
@@ -26,8 +26,8 @@ export function SettingsSidebar({ activeSection }: { activeSection: SettingsSect
             aria-current={isActive ? "page" : undefined}
             className={
               isActive
-                ? "rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background"
-                : "rounded-lg px-3 py-2 text-sm font-medium hover:bg-black/[.06] dark:hover:bg-white/[.08]"
+                ? "rounded-lg bg-brand-navy min-h-11 px-3 py-3 text-sm font-medium text-white"
+                : "rounded-lg min-h-11 px-3 py-3 text-sm font-medium hover:bg-surface-muted"
             }
           >
             {label}

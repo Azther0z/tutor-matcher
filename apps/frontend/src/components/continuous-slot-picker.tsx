@@ -143,10 +143,10 @@ export function ContinuousSlotPicker({
                     onChange(next.ids);
                     onSelectionMessage?.(next.message);
                   }}
-                  className={`rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                  className={`rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
                     active
-                      ? "border-violet-600 bg-violet-600 text-white"
-                      : "border-zinc-200 bg-white hover:border-violet-400 dark:border-zinc-700 dark:bg-zinc-950"
+                      ? "border-brand-navy bg-brand-navy text-white"
+                      : "border-line bg-surface hover:border-brand-navy"
                   }`}
                 >
                   {timeFormatter.format(new Date(slot.startedAt))}

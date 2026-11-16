@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
+import { formatBangkokDateTime } from "@/src/lib/date-time";
 import { getAuthToken } from "@/src/lib/auth";
 
 // MSG-1: one entry per person the user wrote to or heard from, newest first.
@@ -29,15 +30,6 @@ function initials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("");
-}
-
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 export default function MessagesPage() {
@@ -159,9 +151,13 @@ function MessagesView() {
     (thread === null || thread.length === 0);
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10"
+    >
       <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Tutor Matcher</p>
+        <p className="text-sm font-medium text-muted">Tutor Matcher</p>
         <h1 className="text-3xl font-semibold tracking-tight">Messages</h1>
       </div>
 
@@ -171,12 +167,12 @@ function MessagesView() {
         </p>
       )}
 
-      <div className="flex h-[36rem] overflow-hidden rounded-2xl border border-black/[.12] dark:border-white/[.18]">
-        <aside className="flex w-72 min-h-0 shrink-0 flex-col overflow-y-auto border-r border-black/[.12] dark:border-white/[.18]">
+      <div className="flex h-[42rem] flex-col overflow-hidden bg-surface md:h-[36rem] md:flex-row rounded-2xl border border-line bg-surface">
+        <aside className="flex max-h-44 min-h-0 w-full shrink-0 flex-col overflow-y-auto border-b border-line md:max-h-none md:w-72 md:border-r md:border-b-0">
           {conversations === null ? (
-            <p className="p-4 text-sm text-zinc-500">Loading…</p>
+            <p className="p-4 text-sm text-muted">Loading…</p>
           ) : conversations.length === 0 && !selected ? (
-            <p className="p-4 text-sm text-zinc-500">No messages yet.</p>
+            <p className="p-4 text-sm text-muted">No messages yet.</p>
           ) : (
             conversations.map((conversation) => (
               <button
@@ -185,23 +181,21 @@ function MessagesView() {
                 onClick={() =>
                   setSelected({ userId: conversation.userId, name: conversation.name })
                 }
-                className={`flex items-start gap-3 border-b border-black/[.06] p-4 text-left transition-colors last:border-b-0 hover:bg-black/[.03] dark:border-white/[.08] dark:hover:bg-white/[.06] ${
-                  selected?.userId === conversation.userId
-                    ? "bg-black/[.04] dark:bg-white/[.08]"
-                    : ""
+                className={`flex items-start gap-3 border-b border-line p-4 text-left transition-colors last:border-b-0 hover:bg-surface-muted   ${
+                  selected?.userId === conversation.userId ? "bg-surface-muted" : ""
                 }`}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-medium text-background">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-navy text-sm font-medium text-white">
                   {initials(conversation.name)}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="truncate font-medium">{conversation.name}</span>
-                    <span className="shrink-0 text-xs text-zinc-500">
-                      {formatTime(conversation.lastMessageAt)}
+                    <span className="shrink-0 text-xs text-muted">
+                      {formatBangkokDateTime(conversation.lastMessageAt)}
                     </span>
                   </span>
-                  <span className="truncate text-sm text-zinc-600 dark:text-zinc-400">
+                  <span className="truncate text-sm text-secondary">
                     {conversation.sentByMe && "You: "}
                     {conversation.lastMessage}
                   </span>
@@ -211,28 +205,26 @@ function MessagesView() {
           )}
 
           {selectedIsNew && selected && (
-            <div className="flex items-start gap-3 border-b border-black/[.06] bg-black/[.04] p-4 dark:border-white/[.08] dark:bg-white/[.08]">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-medium text-background">
+            <div className="flex items-start gap-3 border-b border-line bg-surface-muted p-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-navy text-sm font-medium text-white">
                 {initials(selected.name)}
               </span>
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="truncate font-medium">{selected.name}</span>
-                <span className="truncate text-sm text-zinc-500">Start the conversation</span>
+                <span className="truncate text-sm text-muted">Start the conversation</span>
               </span>
             </div>
           )}
         </aside>
 
-        <section className="flex min-h-0 flex-1 flex-col">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col">
           {!selected ? (
-            <div className="flex flex-1 items-center justify-center p-6 text-sm text-zinc-500">
+            <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted">
               Select a conversation to see messages.
             </div>
           ) : (
             <>
-              <header className="border-b border-black/[.12] p-4 font-medium dark:border-white/[.18]">
-                {selected.name}
-              </header>
+              <header className="border-b border-line p-4 font-medium">{selected.name}</header>
 
               <div
                 ref={threadScrollRef}
@@ -244,9 +236,9 @@ function MessagesView() {
                   </p>
                 )}
                 {thread === null ? (
-                  <p className="text-sm text-zinc-500">Loading…</p>
+                  <p className="text-sm text-muted">Loading…</p>
                 ) : thread.length === 0 ? (
-                  <p className="text-sm text-zinc-500">No messages yet — say hi!</p>
+                  <p className="text-sm text-muted">No messages yet. Start the conversation.</p>
                 ) : (
                   thread.map((item) => {
                     const isMine = item.toUserId === selected.userId;
@@ -256,15 +248,15 @@ function MessagesView() {
                         className={`flex flex-col gap-1 ${isMine ? "items-end" : "items-start"}`}
                       >
                         <div
-                          className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap ${
-                            isMine
-                              ? "bg-foreground text-background"
-                              : "border border-black/[.12] dark:border-white/[.18]"
+                          className={`max-w-[85%] break-words rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap ${
+                            isMine ? "bg-brand-navy text-white" : "border border-line"
                           }`}
                         >
                           {item.message}
                         </div>
-                        <span className="text-xs text-zinc-500">{formatTime(item.createdAt)}</span>
+                        <span className="text-xs text-muted">
+                          {formatBangkokDateTime(item.createdAt)}
+                        </span>
                       </div>
                     );
                   })
@@ -276,7 +268,7 @@ function MessagesView() {
                   event.preventDefault();
                   handleSend();
                 }}
-                className="flex items-end gap-2 border-t border-black/[.12] p-4 dark:border-white/[.18]"
+                className="flex items-end gap-2 border-t border-line p-4"
               >
                 <textarea
                   value={draft}
@@ -287,14 +279,15 @@ function MessagesView() {
                       handleSend();
                     }
                   }}
+                  aria-label="Message"
                   placeholder="Write a message…"
                   rows={1}
-                  className="h-11 flex-1 resize-none overflow-y-auto rounded-lg border border-black/[.12] bg-transparent px-3 py-2.5 text-sm outline-none focus:border-foreground dark:border-white/[.18]"
+                  className="h-11 flex-1 resize-none overflow-y-auto rounded-lg border border-line bg-transparent px-3 py-2.5 text-sm focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
                 />
                 <button
                   type="submit"
                   disabled={sending || !draft.trim()}
-                  className="flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
+                  className="flex h-11 items-center justify-center rounded-lg bg-brand-navy px-5 text-sm font-medium text-white transition-colors hover:bg-brand-navy-dark disabled:opacity-60"
                 >
                   {sending ? "Sending…" : "Send"}
                 </button>

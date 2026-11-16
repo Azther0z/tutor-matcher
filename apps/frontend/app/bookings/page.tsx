@@ -26,7 +26,7 @@ const statusLabel: Record<BookingStatus, string> = {
 const statusStyle: Record<BookingStatus, string> = {
   PENDING_PAYMENT: "bg-amber-100 text-amber-800",
   CONFIRMED: "bg-emerald-100 text-emerald-800",
-  COMPLETED: "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
+  COMPLETED: "bg-surface-muted text-secondary",
   CANCELLED: "bg-red-100 text-red-700",
 };
 
@@ -105,24 +105,26 @@ function BookingsContent() {
   );
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-12 lg:px-10 lg:py-16">
-      <header className="flex flex-col gap-3 border-b border-black/10 pb-8 dark:border-white/15 sm:flex-row sm:items-end sm:justify-between">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto w-full max-w-6xl flex-1 px-6 py-12 lg:px-10 lg:py-16"
+    >
+      <header className="flex flex-col gap-3 border-b border-line pb-8 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-500">
-            Lesson schedule
-          </p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight">Your bookings</h1>
-          <p className="mt-2 text-zinc-500">View and manage all of your lessons in one place.</p>
+          <p className="text-sm font-semibold text-brand-link">Lesson schedule</p>
+          <h1 className="mt-2 text-4xl font-semibold tracking-tight">Your bookings</h1>
+          <p className="mt-2 text-muted">View and manage all of your lessons in one place.</p>
         </div>
         <Link
           href="/search"
-          className="inline-flex h-11 items-center justify-center rounded-full bg-violet-600 px-6 font-semibold text-white transition hover:bg-violet-500"
+          className="inline-flex h-11 items-center justify-center rounded-lg bg-brand-navy px-6 font-semibold text-white transition-colors hover:bg-brand-navy-dark"
         >
           Find a tutor
         </Link>
       </header>
 
-      <div className="mt-8 flex items-center justify-between gap-3">
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 gap-2 overflow-x-auto pb-2" aria-label="Booking filters">
           {filters.map((item) => (
             <button
@@ -130,10 +132,10 @@ function BookingsContent() {
               type="button"
               aria-pressed={filter === item.value}
               onClick={() => setFilter(item.value)}
-              className={`shrink-0 rounded-full border px-5 py-2 text-sm font-semibold transition ${
+              className={`shrink-0 rounded-lg border px-5 py-2 text-sm font-semibold transition-colors ${
                 filter === item.value
-                  ? "border-violet-600 bg-violet-600 text-white"
-                  : "border-black/15 hover:border-violet-500 dark:border-white/20"
+                  ? "border-brand-navy bg-brand-navy text-white"
+                  : "border-line hover:border-brand-navy"
               }`}
             >
               {item.label}
@@ -142,13 +144,13 @@ function BookingsContent() {
         </div>
         {isApprovedTutor && (
           <div
-            className="relative grid h-11 w-52 shrink-0 grid-cols-2 items-center rounded-full bg-zinc-100 p-1 dark:bg-zinc-800"
+            className="relative grid h-11 w-52 shrink-0 grid-cols-2 items-center rounded-full bg-surface-muted p-1"
             role="group"
             aria-label="Booking role"
           >
             <span
               aria-hidden="true"
-              className={`absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-violet-600 shadow-sm transition-transform duration-200 ${
+              className={`absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg bg-brand-navy shadow-sm transition-transform duration-200 ${
                 role === "TUTOR" ? "translate-x-full" : "translate-x-0"
               }`}
             />
@@ -165,7 +167,7 @@ function BookingsContent() {
                   setError(null);
                 }}
                 className={`relative z-10 rounded-full px-3 py-2 text-sm font-semibold transition-colors ${
-                  role === item ? "text-white" : "text-zinc-700 dark:text-zinc-200"
+                  role === item ? "text-white" : "text-secondary"
                 }`}
               >
                 {item === "STUDENT" ? "Student" : "Tutor"}
@@ -175,16 +177,16 @@ function BookingsContent() {
         )}
       </div>
 
-      {loading && <p className="mt-12 text-zinc-500">Loading bookings…</p>}
+      {loading && <p className="mt-12 text-muted">Loading bookings…</p>}
       {error && (
         <p role="alert" className="mt-8 rounded-2xl bg-red-50 p-5 text-red-700 dark:bg-red-950/30">
           {error}
         </p>
       )}
       {!loading && !error && visibleBookings.length === 0 && (
-        <section className="mt-8 rounded-3xl border border-dashed border-black/25 px-6 py-16 text-center dark:border-white/25">
+        <section className="mt-8 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <h2 className="text-xl font-semibold">No bookings in this view</h2>
-          <p className="mt-2 text-zinc-500">
+          <p className="mt-2 text-muted">
             {filter === "ALL" ? "Book a tutor to see your lessons here." : "Try another filter."}
           </p>
         </section>
@@ -195,10 +197,10 @@ function BookingsContent() {
           <Link
             key={booking.id}
             href={`/bookings/${booking.id}`}
-            className="group grid gap-5 rounded-3xl border border-black/10 p-6 transition hover:-translate-y-0.5 hover:border-violet-500 hover:shadow-lg dark:border-white/15 sm:grid-cols-[1fr_auto] sm:items-center"
+            className="group grid gap-5 rounded-2xl border border-line bg-surface p-6 transition-colors hover:border-brand-navy sm:grid-cols-[1fr_auto] sm:items-center"
           >
             <div className="flex min-w-0 items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-lg font-bold text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-soft text-lg font-semibold text-brand-link">
                 {(booking.viewerRole === "TUTOR"
                   ? booking.student.name
                   : booking.subject.tutor.name
@@ -208,9 +210,9 @@ function BookingsContent() {
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="truncate text-lg font-bold">{booking.subject.name}</h2>
+                  <h2 className="truncate text-lg font-semibold">{booking.subject.name}</h2>
                 </div>
-                <p className="mt-1 text-sm text-zinc-500">
+                <p className="mt-1 text-sm text-muted">
                   with{" "}
                   {booking.viewerRole === "TUTOR"
                     ? booking.student.name
@@ -223,7 +225,7 @@ function BookingsContent() {
             </div>
             <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end">
               <span
-                className={`rounded-full px-3 py-1 text-xs font-bold ${statusStyle[booking.status]}`}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyle[booking.status]}`}
               >
                 {booking.status === "CONFIRMED" && new Date(booking.endedAt).getTime() <= now
                   ? "Awaiting completion"
@@ -234,7 +236,7 @@ function BookingsContent() {
                       ? "Expired"
                       : statusLabel[booking.status]}
               </span>
-              <span className="font-semibold text-violet-600 group-hover:underline">
+              <span className="font-semibold text-brand-link group-hover:underline">
                 View details →
               </span>
             </div>

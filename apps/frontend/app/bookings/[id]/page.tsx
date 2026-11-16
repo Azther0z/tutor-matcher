@@ -39,7 +39,7 @@ const statusStyle: Record<Booking["status"], string> = {
   PENDING_PAYMENT: "bg-amber-100 text-amber-800",
   CONFIRMED: "bg-emerald-100 text-emerald-800",
   COMPLETED: "bg-blue-100 text-blue-800",
-  CANCELLED: "bg-zinc-200 text-zinc-700",
+  CANCELLED: "bg-surface-muted text-secondary",
 };
 
 // PAY-3: the reasons a Student can give; an admin decides every request.
@@ -424,14 +424,18 @@ function BookingDetailContent() {
 
   if (loading)
     return (
-      <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-16 text-zinc-500">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto w-full max-w-4xl flex-1 px-6 py-16 text-muted"
+      >
         Loading booking…
       </main>
     );
   if (!booking)
     return (
-      <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-16">
-        <h1 className="text-2xl font-bold">Booking unavailable</h1>
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-4xl flex-1 px-6 py-16">
+        <h1 className="text-2xl font-semibold">Booking unavailable</h1>
         {message && (
           <p role="alert" className="mt-3 text-red-600">
             {message}
@@ -452,16 +456,22 @@ function BookingDetailContent() {
   const displayStatus = isExpired ? "EXPIRED" : booking.status.replaceAll("_", " ");
 
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 px-5 py-10 sm:px-8">
-      <Link href="/bookings" className="text-sm text-zinc-600 hover:underline">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto w-full max-w-4xl flex-1 px-5 py-10 sm:px-8"
+    >
+      <Link href="/bookings" className="text-sm text-secondary hover:underline">
         ← Bookings
       </Link>
       <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">Lesson</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">{booking.subject.name}</h1>
+          <p className="text-sm font-semibold text-brand-link">Lesson</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">{booking.subject.name}</h1>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusStyle[booking.status]}`}>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyle[booking.status]}`}
+        >
           {displayStatus}
         </span>
       </div>
@@ -471,7 +481,7 @@ function BookingDetailContent() {
         </p>
       )}
       {booking.status === "CANCELLED" && booking.cancelledBy === "TUTOR" && (
-        <div className="mt-6 rounded-2xl border border-zinc-200 p-4 text-sm dark:border-zinc-800">
+        <div className="mt-6 rounded-2xl border border-line bg-surface p-4 text-sm">
           <p className="font-semibold">
             {isTutorView ? "You cancelled this class." : "Your tutor cancelled this lesson."}
           </p>
@@ -480,157 +490,30 @@ function BookingDetailContent() {
       )}
       {slotUnavailable && (
         <Link
-          className="mt-4 inline-block text-violet-600 underline"
+          className="mt-4 inline-block text-brand-link underline"
           href={`/bookings/s/${booking.subject.id}`}
         >
           Choose another time
         </Link>
       )}
       {message && (
-        <p role="status" className="mt-6 rounded-xl bg-violet-50 p-4 text-sm text-violet-900">
+        <p role="status" className="mt-6 rounded-xl bg-brand-soft p-4 text-sm text-brand-link">
           {message}
         </p>
       )}
       <div className="mt-8 grid gap-6 md:grid-cols-[1fr_280px]">
-        <section className="rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
-          <h2 className="text-xl font-semibold">Lesson details</h2>
-          <dl className="mt-5 grid gap-5 sm:grid-cols-2">
-            <div>
-              <dt className="text-sm text-zinc-500">{isTutorView ? "Student" : "Tutor"}</dt>
-              <dd className="mt-1 font-semibold">
-                {isTutorView ? booking.student.name : booking.subject.tutor.name}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm text-zinc-500">Subject</dt>
-              <dd className="mt-1 font-semibold">{booking.subject.name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-zinc-500">Format</dt>
-              <dd className="mt-1 font-semibold">
-                {booking.subject.format === "ONLINE" ? "Online" : booking.subject.format}
-              </dd>
-            </div>
-            <div className="sm:col-span-2">
-              <dt className="text-sm text-zinc-500">Time</dt>
-              <dd className="mt-1 font-semibold">
-                {startsAt
-                  ? dateTime.formatRange(new Date(startsAt), new Date(booking.endedAt))
-                  : "To be confirmed"}
-              </dd>
-            </div>
-            {booking.description && (
-              <div className="sm:col-span-2">
-                <dt className="text-sm text-zinc-500">Learning goal</dt>
-                <dd className="mt-1">{booking.description}</dd>
-              </div>
-            )}
-          </dl>
-          {canJoinLesson && booking.effectiveMeetingUrl && (
-            <a
-              href={booking.effectiveMeetingUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-6 inline-flex h-11 items-center rounded-full bg-violet-600 px-5 font-semibold text-white"
-            >
-              Join lesson
-            </a>
-          )}
-          {booking.status === "CONFIRMED" && !booking.effectiveMeetingUrl && (
-            <p className="mt-6 text-sm text-zinc-600 dark:text-zinc-400">
-              Your booking is confirmed. A meeting link is not available yet.
-            </p>
-          )}
-          {booking.effectiveMeetingUrl && (
-            <p className="mt-3 text-sm text-zinc-500">
-              Using {booking.customMeetingUrl ? "the Tutor-provided link" : "the generated link"}.
-            </p>
-          )}
-          {booking.meetingLinkUpdatedAt && (
-            <p className="mt-2 text-sm text-zinc-500">
-              Meeting link last updated on {dateTime.format(new Date(booking.meetingLinkUpdatedAt))}
-              .
-            </p>
-          )}
-          {canConfirmCompletion && (
-            <div className="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-800">
-              <h3 className="font-semibold">Confirm this lesson</h3>
-              <p className="mt-1 text-sm text-zinc-500">
-                The scheduled lesson time has ended. Confirm when the session is complete.
-              </p>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setCompletionError(null);
-                  setCompletionDialogOpen(true);
-                }}
-                className="mt-3 h-11 rounded-full bg-violet-600 px-5 font-semibold text-white disabled:opacity-50"
-              >
-                Confirm session completed
-              </button>
-            </div>
-          )}
-          {canEditMeetingLink && (
-            <div className="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-800">
-              <label htmlFor="custom-meeting-url" className="block text-sm font-semibold">
-                {booking.customMeetingUrl ? "Replace meeting link" : "Add meeting link"}
-              </label>
-              <p className="mt-1 text-sm text-zinc-500">
-                Enter an HTTPS meeting link. The link is not checked with the provider.
-              </p>
-              <input
-                id="custom-meeting-url"
-                type="url"
-                inputMode="url"
-                autoComplete="url"
-                value={meetingUrlDraft}
-                onChange={(event) => setMeetingUrlDraft(event.target.value)}
-                placeholder="https://..."
-                className="mt-3 min-h-11 w-full rounded-lg border border-zinc-300 bg-transparent px-3 dark:border-zinc-700"
-              />
-              <div className="mt-3 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  disabled={
-                    meetingLinkBusy ||
-                    !meetingUrlDraft.trim() ||
-                    meetingUrlDraft.trim() === booking.customMeetingUrl
-                  }
-                  onClick={() => void saveMeetingLink(meetingUrlDraft.trim())}
-                  className="inline-flex min-h-10 items-center rounded-full bg-zinc-900 px-4 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
-                >
-                  {meetingLinkBusy ? "Saving…" : "Save link"}
-                </button>
-                {booking.customMeetingUrl && (
-                  <button
-                    type="button"
-                    disabled={meetingLinkBusy}
-                    onClick={() => void saveMeetingLink(null)}
-                    className="inline-flex min-h-10 items-center rounded-full border border-zinc-300 px-4 text-sm font-semibold disabled:opacity-50 dark:border-zinc-700"
-                  >
-                    {booking.zoomMeetingUrl ? "Restore generated link" : "Remove Tutor link"}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </section>
-        <aside className="rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
-          <p className="text-sm text-zinc-500">Total</p>
-          <p className="mt-1 text-2xl font-bold">{money.format(Number(booking.totalAmount))}</p>
+        <aside className="h-fit md:sticky md:top-24 md:col-start-2 md:row-start-1 rounded-2xl border border-line bg-surface p-6">
+          <p className="text-sm text-muted">Total</p>
+          <p className="mt-1 text-2xl font-semibold">{money.format(Number(booking.totalAmount))}</p>
           {isTutorView && booking.earnings && (
-            <section
-              aria-label="Lesson earnings"
-              className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-800"
-            >
+            <section aria-label="Lesson earnings" className="mt-5 border-t border-line pt-5">
               <h3 className="font-semibold">
                 {booking.earnings.status === "PENDING" ? "Pending earnings" : "Cleared earnings"}
               </h3>
-              <p className="mt-1 text-xl font-bold">
+              <p className="mt-1 text-xl font-semibold">
                 {money.format(Number(booking.earnings.amount))}
               </p>
-              <p className="mt-2 text-sm text-zinc-500">
+              <p className="mt-2 text-sm text-muted">
                 {booking.earnings.status === "PENDING" ? (
                   <>
                     After the 15% platform fee. Available after{" "}
@@ -652,7 +535,7 @@ function BookingDetailContent() {
               </p>
               <Link
                 href="/wallet"
-                className="mt-3 inline-block text-sm font-semibold text-violet-600 underline"
+                className="mt-3 inline-block text-sm font-semibold text-brand-link underline"
               >
                 View wallet
               </Link>
@@ -662,12 +545,9 @@ function BookingDetailContent() {
             <StudentRefundStatus booking={booking} busy={busy} onRequest={openRefund} />
           )}
           {isTutorView && booking.refundRequest && (
-            <section
-              aria-label="Refund request"
-              className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-800"
-            >
+            <section aria-label="Refund request" className="mt-5 border-t border-line pt-5">
               <h3 className="font-semibold">Refund requested</h3>
-              <p className="mt-2 text-sm text-zinc-500">
+              <p className="mt-2 text-sm text-muted">
                 {booking.student.name} asked for a refund:{" "}
                 {refundReasonLabels[booking.refundRequest.reason].toLowerCase()}.{" "}
                 {booking.refundRequest.status === "PENDING"
@@ -686,7 +566,7 @@ function BookingDetailContent() {
             }}
           />
           {booking.status === "PENDING_PAYMENT" && booking.payment.expiresAt && (
-            <p className="mt-2 text-xs text-zinc-500">
+            <p className="mt-2 text-xs text-muted">
               Payment request expires {dateTime.format(new Date(booking.payment.expiresAt))}
             </p>
           )}
@@ -694,7 +574,7 @@ function BookingDetailContent() {
             <button
               disabled={busy || !booking.actions.canPay || !booking.payment.canPay}
               onClick={() => void pay()}
-              className="mt-5 h-11 w-full rounded-full bg-violet-600 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-5 h-11 w-full rounded-lg bg-brand-navy font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? "Processing…" : "Confirm payment"}
             </button>
@@ -713,7 +593,7 @@ function BookingDetailContent() {
                 <button
                   disabled={busy || quoteLoading}
                   onClick={() => void openCancellation()}
-                  className="h-10 rounded-full border border-red-200 font-medium text-red-700"
+                  className="h-10 rounded-lg border border-red-200 font-medium text-red-700"
                 >
                   {isTutorView ? "Cancel class" : "Cancel lesson"}
                 </button>
@@ -721,6 +601,130 @@ function BookingDetailContent() {
             </div>
           )}
         </aside>
+        <section className="min-w-0 md:col-start-1 md:row-start-1 rounded-2xl border border-line bg-surface p-6">
+          <h2 className="text-xl font-semibold">Lesson details</h2>
+          <dl className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div>
+              <dt className="text-sm text-muted">{isTutorView ? "Student" : "Tutor"}</dt>
+              <dd className="mt-1 font-semibold">
+                {isTutorView ? booking.student.name : booking.subject.tutor.name}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm text-muted">Subject</dt>
+              <dd className="mt-1 font-semibold">{booking.subject.name}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-muted">Format</dt>
+              <dd className="mt-1 font-semibold">
+                {booking.subject.format === "ONLINE" ? "Online" : booking.subject.format}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-sm text-muted">Time</dt>
+              <dd className="mt-1 font-semibold">
+                {startsAt
+                  ? dateTime.formatRange(new Date(startsAt), new Date(booking.endedAt))
+                  : "To be confirmed"}
+              </dd>
+            </div>
+            {booking.description && (
+              <div className="sm:col-span-2">
+                <dt className="text-sm text-muted">Learning goal</dt>
+                <dd className="mt-1">{booking.description}</dd>
+              </div>
+            )}
+          </dl>
+          {canJoinLesson && booking.effectiveMeetingUrl && (
+            <a
+              href={booking.effectiveMeetingUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-6 inline-flex h-11 items-center rounded-lg bg-brand-navy px-5 font-semibold text-white"
+            >
+              Join lesson
+            </a>
+          )}
+          {booking.status === "CONFIRMED" && !booking.effectiveMeetingUrl && (
+            <p className="mt-6 text-sm text-secondary">
+              Your booking is confirmed. A meeting link is not available yet.
+            </p>
+          )}
+          {booking.effectiveMeetingUrl && (
+            <p className="mt-3 text-sm text-muted">
+              Using {booking.customMeetingUrl ? "the Tutor-provided link" : "the generated link"}.
+            </p>
+          )}
+          {booking.meetingLinkUpdatedAt && (
+            <p className="mt-2 text-sm text-muted">
+              Meeting link last updated on {dateTime.format(new Date(booking.meetingLinkUpdatedAt))}
+              .
+            </p>
+          )}
+          {canConfirmCompletion && (
+            <div className="mt-6 border-t border-line pt-5">
+              <h3 className="font-semibold">Confirm this lesson</h3>
+              <p className="mt-1 text-sm text-muted">
+                The scheduled lesson time has ended. Confirm when the session is complete.
+              </p>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setCompletionError(null);
+                  setCompletionDialogOpen(true);
+                }}
+                className="mt-3 h-11 rounded-lg bg-brand-navy px-5 font-semibold text-white disabled:opacity-50"
+              >
+                Confirm session completed
+              </button>
+            </div>
+          )}
+          {canEditMeetingLink && (
+            <div className="mt-6 border-t border-line pt-5">
+              <label htmlFor="custom-meeting-url" className="block text-sm font-semibold">
+                {booking.customMeetingUrl ? "Replace meeting link" : "Add meeting link"}
+              </label>
+              <p className="mt-1 text-sm text-muted">
+                Enter an HTTPS meeting link. The link is not checked with the provider.
+              </p>
+              <input
+                id="custom-meeting-url"
+                type="url"
+                inputMode="url"
+                autoComplete="url"
+                value={meetingUrlDraft}
+                onChange={(event) => setMeetingUrlDraft(event.target.value)}
+                placeholder="https://..."
+                className="mt-3 min-h-11 w-full rounded-lg border border-line bg-transparent px-3"
+              />
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  disabled={
+                    meetingLinkBusy ||
+                    !meetingUrlDraft.trim() ||
+                    meetingUrlDraft.trim() === booking.customMeetingUrl
+                  }
+                  onClick={() => void saveMeetingLink(meetingUrlDraft.trim())}
+                  className="inline-flex min-h-10 items-center rounded-full bg-brand-navy px-4 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {meetingLinkBusy ? "Saving…" : "Save link"}
+                </button>
+                {booking.customMeetingUrl && (
+                  <button
+                    type="button"
+                    disabled={meetingLinkBusy}
+                    onClick={() => void saveMeetingLink(null)}
+                    className="inline-flex min-h-10 items-center rounded-lg border border-line px-4 text-sm font-semibold disabled:opacity-50"
+                  >
+                    {booking.zoomMeetingUrl ? "Restore generated link" : "Remove Tutor link"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
       </div>
 
       {completionDialogOpen && (
@@ -735,7 +739,7 @@ function BookingDetailContent() {
                 type="button"
                 disabled={busy}
                 onClick={() => setCompletionDialogOpen(false)}
-                className="h-10 rounded-full border border-zinc-300 px-4 font-medium disabled:opacity-50"
+                className="h-10 rounded-lg border border-line px-4 font-medium disabled:opacity-50"
               >
                 Go back
               </button>
@@ -743,14 +747,14 @@ function BookingDetailContent() {
                 type="button"
                 disabled={busy}
                 onClick={() => void confirmCompletion()}
-                className="h-10 rounded-full bg-violet-600 px-4 font-semibold text-white disabled:opacity-50"
+                className="h-10 rounded-lg bg-brand-navy px-4 font-semibold text-white disabled:opacity-50"
               >
                 {busy ? "Confirming…" : "Confirm completed"}
               </button>
             </div>
           }
         >
-          <p className="px-6 py-5 text-sm text-zinc-600 dark:text-zinc-300">
+          <p className="px-6 py-5 text-sm text-secondary">
             This will mark the lesson completed. You cannot undo this confirmation.
           </p>
           {completionError && (
@@ -762,14 +766,12 @@ function BookingDetailContent() {
       )}
 
       {mode === "cancel" && (
-        <section className="mt-6 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
+        <section className="mt-6 rounded-2xl border border-line bg-surface p-6">
           <h2 className="text-lg font-semibold">
             {isTutorView ? "Cancel this class?" : "Cancel this lesson?"}
           </h2>
           {quoteLoading && (
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              Loading cancellation terms…
-            </p>
+            <p className="mt-2 text-sm text-secondary">Loading cancellation terms…</p>
           )}
           {!quoteLoading && !quote && (
             <button
@@ -792,17 +794,17 @@ function BookingDetailContent() {
                   leaves {booking.student.name} without a lesson at short notice.
                 </p>
               ) : (
-                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="mt-2 text-sm text-secondary">
                   This class is more than {quote.policyWindowHours} hours away.
                 </p>
               )}
-              <dl className="mt-4 grid gap-3 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800 sm:grid-cols-2">
+              <dl className="mt-4 grid gap-3 rounded-xl border border-line p-4 text-sm sm:grid-cols-2">
                 <div>
-                  <dt className="text-zinc-500">Student&apos;s payment</dt>
+                  <dt className="text-muted">Student&apos;s payment</dt>
                   <dd className="font-semibold">{money.format(Number(quote.originalAmount))}</dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500">Refund to the student&apos;s wallet</dt>
+                  <dt className="text-muted">Refund to the student&apos;s wallet</dt>
                   <dd className="font-semibold">{money.format(Number(quote.refundAmount))}</dd>
                 </div>
               </dl>
@@ -810,26 +812,26 @@ function BookingDetailContent() {
           )}
           {quote && !isTutorView && (
             <>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mt-2 text-sm text-secondary">
                 {quote.lateCancellation
                   ? `This lesson is within the ${quote.policyWindowHours}-hour policy window.`
                   : `This lesson is outside the ${quote.policyWindowHours}-hour policy window.`}
               </p>
-              <dl className="mt-4 grid gap-3 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800 sm:grid-cols-2">
+              <dl className="mt-4 grid gap-3 rounded-xl border border-line p-4 text-sm sm:grid-cols-2">
                 <div>
-                  <dt className="text-zinc-500">Original payment</dt>
+                  <dt className="text-muted">Original payment</dt>
                   <dd className="font-semibold">{money.format(Number(quote.originalAmount))}</dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500">Refund rate</dt>
+                  <dt className="text-muted">Refund rate</dt>
                   <dd className="font-semibold">{Math.round(quote.refundRate * 100)}%</dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500">Cancellation fee</dt>
+                  <dt className="text-muted">Cancellation fee</dt>
                   <dd className="font-semibold">{money.format(Number(quote.cancellationFee))}</dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500">Refund to your wallet</dt>
+                  <dt className="text-muted">Refund to your wallet</dt>
                   <dd className="font-semibold">{money.format(Number(quote.refundAmount))}</dd>
                 </div>
               </dl>
@@ -838,11 +840,11 @@ function BookingDetailContent() {
           <label className="mt-4 block text-sm font-medium">
             {isTutorView ? (
               <>
-                Reason <span className="font-normal text-zinc-500">(shown to the student)</span>
+                Reason <span className="font-normal text-muted">(shown to the student)</span>
               </>
             ) : (
               <>
-                Reason <span className="font-normal text-zinc-500">(optional)</span>
+                Reason <span className="font-normal text-muted">(optional)</span>
               </>
             )}
             <textarea
@@ -851,14 +853,14 @@ function BookingDetailContent() {
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               rows={3}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-transparent p-3 dark:border-zinc-700"
+              className="mt-2 w-full rounded-xl border border-line bg-transparent p-3"
             />
           </label>
           <div className="mt-4 flex gap-3">
             <button
               disabled={busy}
               onClick={keepLesson}
-              className="h-10 rounded-full border border-zinc-300 px-5"
+              className="h-10 rounded-lg border border-line px-5"
             >
               {isTutorView ? "Keep class" : "Keep lesson"}
             </button>
@@ -876,22 +878,19 @@ function BookingDetailContent() {
       {mode === "refund" && (
         <section
           aria-labelledby="refund-request-title"
-          className="mt-6 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800"
+          className="mt-6 rounded-2xl border border-line bg-surface p-6"
         >
           <h2 id="refund-request-title" className="text-lg font-semibold">
             Request a refund
           </h2>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-muted">
             An admin reviews every request. If it&apos;s approved, the full{" "}
             {money.format(Number(booking.totalAmount))} goes back to your wallet.
           </p>
           <fieldset disabled={busy} className="mt-4 grid gap-3">
             <legend className="text-sm font-medium">What happened?</legend>
             {REFUND_OPTIONS.map((option) => (
-              <label
-                key={option.reason}
-                className="flex gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800"
-              >
+              <label key={option.reason} className="flex gap-3 rounded-xl border border-line p-3">
                 <input
                   type="radio"
                   name="refund-reason"
@@ -904,7 +903,7 @@ function BookingDetailContent() {
           </fieldset>
           <label className="mt-4 block text-sm font-medium">
             What went wrong?{" "}
-            <span className="font-normal text-zinc-500">
+            <span className="font-normal text-muted">
               {refundReason === "TUTOR_NO_SHOW" ? "(optional)" : "(required)"}
             </span>
             <textarea
@@ -913,7 +912,7 @@ function BookingDetailContent() {
               value={refundDetails}
               onChange={(event) => setRefundDetails(event.target.value)}
               rows={4}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-transparent p-3 dark:border-zinc-700"
+              className="mt-2 w-full rounded-xl border border-line bg-transparent p-3"
             />
           </label>
           {refundError && (
@@ -925,14 +924,14 @@ function BookingDetailContent() {
             <button
               disabled={busy}
               onClick={() => setMode(null)}
-              className="h-10 rounded-full border border-zinc-300 px-5"
+              className="h-10 rounded-lg border border-line px-5"
             >
               Close
             </button>
             <button
               disabled={busy || !refundReason}
               onClick={() => void submitRefund()}
-              className="h-10 rounded-full bg-violet-600 px-5 font-semibold text-white disabled:opacity-50"
+              className="h-10 rounded-lg bg-brand-navy px-5 font-semibold text-white disabled:opacity-50"
             >
               {busy ? "Sending…" : "Send refund request"}
             </button>
@@ -956,10 +955,7 @@ function StudentRefundStatus({
   const request = booking.refundRequest;
   if (!request && !booking.actions.canRequestRefund) return null;
   return (
-    <section
-      aria-label="Refund"
-      className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-800"
-    >
+    <section aria-label="Refund" className="mt-5 border-t border-line pt-5">
       {request ? (
         <>
           <h3 className="font-semibold">
@@ -969,7 +965,7 @@ function StudentRefundStatus({
                 ? "Refunded"
                 : "Refund request rejected"}
           </h3>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-muted">
             {request.status === "PENDING"
               ? `An admin is reviewing your request for ${money.format(Number(request.amount))}.`
               : request.status === "APPROVED"
@@ -983,7 +979,7 @@ function StudentRefundStatus({
       ) : (
         <>
           <h3 className="font-semibold">Problem with this lesson?</h3>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-muted">
             If your tutor didn&apos;t show up or something went wrong, you can ask an admin for a
             full refund.
           </p>
@@ -991,7 +987,7 @@ function StudentRefundStatus({
             type="button"
             disabled={busy}
             onClick={onRequest}
-            className="mt-3 h-10 w-full rounded-full border border-zinc-300 font-medium disabled:opacity-50"
+            className="mt-3 h-10 w-full rounded-lg border border-line font-medium disabled:opacity-50"
           >
             Request a refund
           </button>

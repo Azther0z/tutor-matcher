@@ -25,15 +25,15 @@ const balanceFormat = new Intl.NumberFormat("en-US", {
 });
 
 const inputClassName =
-  "h-11 rounded-lg border border-black/[.12] bg-background px-3 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18] dark:[color-scheme:dark]";
+  "h-11 rounded-lg border border-line bg-background px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground aria-[invalid=true]:border-red-500 dark:[color-scheme:dark]";
 const primaryButton =
-  "flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]";
+  "flex h-11 items-center justify-center rounded-lg bg-brand-navy px-5 text-base font-medium text-white transition-colors hover:bg-brand-navy-dark disabled:opacity-60";
 const secondaryButton =
-  "flex h-11 items-center justify-center rounded-full border border-black/[.12] px-5 text-base font-medium transition-colors hover:bg-black/[.06] dark:border-white/[.18] dark:hover:bg-white/[.08]";
+  "flex h-11 items-center justify-center rounded-lg border border-line px-5 text-base font-medium transition-colors hover:bg-surface-muted";
 const smallButton =
-  "rounded-full border border-black/[.12] px-3 py-1.5 text-sm font-medium hover:bg-black/[.06] disabled:opacity-60 dark:border-white/[.18] dark:hover:bg-white/[.08]";
+  "rounded-lg border border-line px-3 py-1.5 text-sm font-medium hover:bg-surface-muted disabled:opacity-60";
 const dangerButton =
-  "rounded-full border border-red-600/40 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-400/40 dark:text-red-400 dark:hover:bg-red-950/40";
+  "rounded-lg border border-red-600/40 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-400/40 dark:text-red-400 dark:hover:bg-red-950/40";
 
 function validate(bankCode: string, accountHolderName: string, accountNumber: string) {
   const errors: FieldErrors = {};
@@ -142,25 +142,27 @@ function WalletSettings() {
   const atLimit = (accounts?.length ?? 0) >= MAX_PAYOUT_ACCOUNTS;
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row"
+    >
       <SettingsSidebar activeSection="wallet" />
 
       <div className="flex flex-1 flex-col gap-8">
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">
-            Tutor Matcher
-          </p>
+          <p className="text-sm font-medium text-muted">Tutor Matcher</p>
           <h1 className="text-4xl font-semibold tracking-tight">Wallet settings</h1>
-          <p className="max-w-2xl text-base leading-7 text-zinc-600 dark:text-zinc-400">
+          <p className="max-w-2xl text-base leading-7 text-secondary">
             {tutor
               ? "Choose the bank accounts your wallet balance is paid out to."
               : "Check your wallet balance and top up."}
           </p>
         </div>
 
-        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]">
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line bg-surface p-6">
           <div>
-            <h2 className="text-sm font-medium text-zinc-500">Wallet balance</h2>
+            <h2 className="text-sm font-medium text-muted">Wallet balance</h2>
             {balanceError ? (
               <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
                 {balanceError}
@@ -192,22 +194,22 @@ function WalletSettings() {
         {accounts && (
           <section
             aria-label="Payout accounts"
-            className="flex flex-col gap-4 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]"
+            className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6"
           >
             <div>
               <h2 className="text-xl font-semibold">Payout accounts</h2>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-muted">
                 Payouts go to your default account unless you pick another one. Account numbers are
                 hidden after saving.
               </p>
             </div>
 
             {accounts.length === 0 ? (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="text-sm text-secondary">
                 No payout accounts yet. Add a bank account below to withdraw your balance.
               </p>
             ) : (
-              <ul className="divide-y divide-black/[.08] dark:divide-white/[.12]">
+              <ul className="divide-y divide-line ">
                 {accounts.map((account) => (
                   <li
                     key={account.id}
@@ -224,7 +226,7 @@ function WalletSettings() {
                             </span>
                           )}
                         </p>
-                        <p className="break-words text-sm text-zinc-500">
+                        <p className="break-words text-sm text-muted">
                           {account.accountHolderName} · {account.maskedAccountNumber}
                         </p>
                       </div>
@@ -298,7 +300,7 @@ function WalletSettings() {
             )}
 
             {message && (
-              <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
+              <p role="status" className="text-sm text-secondary">
                 {message}
               </p>
             )}
@@ -314,17 +316,17 @@ function WalletSettings() {
           <form
             onSubmit={handleAdd}
             noValidate
-            className="flex flex-col gap-5 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]"
+            className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6"
           >
             <div>
               <h2 className="text-xl font-semibold">Add account</h2>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-muted">
                 Thai bank accounts only. To change an account, remove it and add it again.
               </p>
             </div>
 
             {atLimit ? (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="text-sm text-secondary">
                 You can save up to {MAX_PAYOUT_ACCOUNTS} payout accounts. Remove one to add another.
               </p>
             ) : (
@@ -404,12 +406,12 @@ function WalletSettings() {
                       type="checkbox"
                       checked={makeDefault}
                       onChange={(event) => setMakeDefault(event.target.checked)}
-                      className="h-4 w-4 rounded border-black/[.25] dark:border-white/[.3]"
+                      className="h-4 w-4 rounded border-line"
                     />
                     Make this my default account
                   </label>
                 ) : (
-                  <p className="text-sm text-zinc-500">Your first account becomes your default.</p>
+                  <p className="text-sm text-muted">Your first account becomes your default.</p>
                 )}
 
                 {formError && (

@@ -12,7 +12,7 @@ function Stars({ rating }: { rating: number }) {
   return (
     <span aria-label={`${rating} out of 5 stars`} className="text-amber-500">
       {"★".repeat(rating)}
-      <span className="text-zinc-300 dark:text-zinc-600">{"★".repeat(5 - rating)}</span>
+      <span className="text-zinc-300">{"★".repeat(5 - rating)}</span>
     </span>
   );
 }
@@ -61,7 +61,7 @@ export function BookingReviewSection({
     }
   }
 
-  const sectionClass = "mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-800";
+  const sectionClass = "mt-5 border-t border-line pt-5";
 
   if (booking.review?.removed) {
     return (
@@ -70,7 +70,7 @@ export function BookingReviewSection({
         <p className="mt-2 text-sm">
           Your review was removed by an admin. Reason: {booking.review.removed.reason}
         </p>
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="mt-2 text-sm text-muted">
           It no longer shows on {booking.subject.tutor.name}&apos;s profile or counts in ratings.
           Each lesson can be reviewed once, so a new review can&apos;t be written.
         </p>
@@ -88,9 +88,9 @@ export function BookingReviewSection({
         {booking.review.comment && (
           <p className="mt-2 whitespace-pre-line text-sm">{booking.review.comment}</p>
         )}
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="mt-2 text-sm text-muted">
           Published for {booking.subject.tutor.name} on the{" "}
-          <Link href={subjectHref} className="font-semibold text-violet-600 underline">
+          <Link href={subjectHref} className="font-semibold text-brand-link underline">
             {booking.subject.name}
           </Link>{" "}
           page.
@@ -103,7 +103,7 @@ export function BookingReviewSection({
     return (
       <section aria-label="Write a review" className={sectionClass}>
         <h3 className="font-semibold">Review this lesson</h3>
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="mt-2 text-sm text-muted">
           Your review is published for {booking.subject.tutor.name}&apos;s {booking.subject.name}{" "}
           lessons.
         </p>
@@ -122,9 +122,7 @@ export function BookingReviewSection({
                   setError(null);
                 }}
                 className={`text-2xl leading-none ${
-                  rating !== null && value <= rating
-                    ? "text-amber-500"
-                    : "text-zinc-300 dark:text-zinc-600"
+                  rating !== null && value <= rating ? "text-amber-500" : "text-zinc-300"
                 }`}
               >
                 ★
@@ -132,13 +130,13 @@ export function BookingReviewSection({
             ))}
           </div>
           <label className="mt-3 block text-sm font-medium">
-            Comment <span className="font-normal text-zinc-500">(optional)</span>
+            Comment <span className="font-normal text-muted">(optional)</span>
             <textarea
               value={comment}
               maxLength={MAX_COMMENT_LENGTH}
               rows={4}
               onChange={(event) => setComment(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-transparent p-3 dark:border-zinc-700"
+              className="mt-2 w-full rounded-xl border border-line bg-transparent p-3"
             />
           </label>
         </fieldset>
@@ -151,7 +149,7 @@ export function BookingReviewSection({
           type="button"
           disabled={busy}
           onClick={() => void publish()}
-          className="mt-3 h-10 w-full rounded-full bg-violet-600 font-semibold text-white disabled:opacity-50"
+          className="mt-3 h-10 w-full rounded-lg bg-brand-navy font-semibold text-white disabled:opacity-50"
         >
           {busy ? "Publishing…" : "Publish review"}
         </button>
@@ -163,7 +161,7 @@ export function BookingReviewSection({
     return (
       <section aria-label="Review eligibility" className={sectionClass}>
         <h3 className="font-semibold">Review not yet eligible</h3>
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="mt-2 text-sm text-muted">
           Your Tutor must confirm completion before you can review this lesson.
         </p>
       </section>

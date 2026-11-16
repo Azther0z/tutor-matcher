@@ -89,7 +89,7 @@ describe("MessagesPage", () => {
     render(<MessagesPage />);
 
     expect(await screen.findByText("Start the conversation")).toBeInTheDocument();
-    expect(await screen.findByText("No messages yet — say hi!")).toBeInTheDocument();
+    expect(await screen.findByText("No messages yet. Start the conversation.")).toBeInTheDocument();
   });
 
   it("lists a conversation the user started even before the other person replies", async () => {

@@ -17,7 +17,7 @@ import {
   type TutorProfile,
 } from "@/src/lib/tutor-profile-api";
 
-const card = "flex flex-col gap-4 rounded-3xl border border-black/10 p-6 dark:border-white/15";
+const card = "flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6";
 const shell = "mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-12";
 
 export default function TutorDetailPage() {
@@ -47,22 +47,22 @@ export default function TutorDetailPage() {
 
   if (loaded?.key !== requestKey) {
     return (
-      <main className={shell}>
-        <p className="text-zinc-500">Loading…</p>
+      <main id="main-content" tabIndex={-1} className={shell}>
+        <p className="text-muted">Loading…</p>
       </main>
     );
   }
 
   if (loaded.error) {
     return (
-      <main className={shell}>
+      <main id="main-content" tabIndex={-1} className={shell}>
         <p role="alert" className="text-red-600 dark:text-red-400">
           {loaded.error}
         </p>
         <button
           type="button"
           onClick={() => setAttempt((count) => count + 1)}
-          className="w-fit rounded-full border border-black/15 px-5 py-2 font-medium dark:border-white/20"
+          className="w-fit rounded-lg border border-line px-5 py-2 font-medium"
         >
           Try again
         </button>
@@ -77,14 +77,14 @@ export default function TutorDetailPage() {
 // DISC-3: an unpublished or missing tutor shows this and nothing else about them.
 function UnavailableProfile() {
   return (
-    <main className={shell}>
+    <main id="main-content" tabIndex={-1} className={shell}>
       <h1 className="text-3xl font-semibold tracking-tight">This tutor profile is unavailable</h1>
-      <p role="status" className="text-zinc-600 dark:text-zinc-400">
+      <p role="status" className="text-secondary">
         This tutor isn’t available right now. Try another tutor.
       </p>
       <Link
         href="/search"
-        className="flex h-11 w-fit items-center rounded-full bg-foreground px-5 font-medium text-background"
+        className="flex h-11 w-fit items-center rounded-lg bg-brand-navy px-5 font-medium text-white"
       >
         Find a tutor
       </Link>
@@ -99,19 +99,19 @@ function ProfileView({ profile }: { profile: TutorProfile }) {
     : null;
 
   return (
-    <main className={shell}>
+    <main id="main-content" tabIndex={-1} className={shell}>
       <header className="flex flex-wrap items-center gap-4">
         {profile.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={profile.avatarUrl}
             alt={`${fullName} profile photo`}
-            className="h-20 w-20 rounded-3xl object-cover"
+            className="h-20 w-20 rounded-2xl object-cover"
           />
         ) : (
           <div
             aria-hidden
-            className="flex h-20 w-20 items-center justify-center rounded-3xl bg-violet-100 text-2xl font-bold text-violet-700 dark:bg-violet-950 dark:text-violet-300"
+            className="flex h-20 w-20 items-center justify-center rounded-2xl bg-brand-soft text-2xl font-semibold text-brand-link"
           >
             {profile.firstName.charAt(0).toUpperCase()}
             {profile.lastName.charAt(0).toUpperCase()}
@@ -131,15 +131,15 @@ function ProfileView({ profile }: { profile: TutorProfile }) {
         <div className="flex flex-col items-end gap-2">
           {lowestRate !== null && (
             <p>
-              <span className="text-sm text-zinc-500">From </span>
-              <span className="text-2xl font-bold">{formatRate(lowestRate)}</span>
-              <span className="text-zinc-500"> / hr</span>
+              <span className="text-sm text-muted">From </span>
+              <span className="text-2xl font-semibold">{formatRate(lowestRate)}</span>
+              <span className="text-muted"> / hr</span>
             </p>
           )}
           {profile.subjects.length > 0 && (
             <a
               href="#subjects"
-              className="flex h-11 items-center rounded-full bg-foreground px-5 font-medium text-background"
+              className="flex h-11 items-center rounded-lg bg-brand-navy px-5 font-medium text-white"
             >
               Choose a subject
             </a>
@@ -153,17 +153,17 @@ function ProfileView({ profile }: { profile: TutorProfile }) {
         </h2>
         <dl className="grid grid-cols-2 gap-4">
           <div>
-            <dt className="text-sm text-zinc-500">Completed lessons</dt>
+            <dt className="text-sm text-muted">Completed lessons</dt>
             <dd className="mt-1 text-3xl font-semibold">
               {profile.teachingStats.completedLessons}
             </dd>
           </div>
           <div>
-            <dt className="text-sm text-zinc-500">Students taught</dt>
+            <dt className="text-sm text-muted">Students taught</dt>
             <dd className="mt-1 text-3xl font-semibold">{profile.teachingStats.studentsTaught}</dd>
           </div>
         </dl>
-        <p className="text-sm leading-6 text-zinc-500">
+        <p className="text-sm leading-6 text-muted">
           Lessons confirmed complete by the Tutor, across all their subjects. Students are counted
           once. These activity counts do not measure teaching quality; read the reviews to learn
           about students’ experiences.
@@ -191,9 +191,9 @@ function AboutSection({ profile }: { profile: TutorProfile }) {
         About {profile.firstName}
       </h2>
       {profile.bio ? (
-        <p className="whitespace-pre-wrap text-zinc-600 dark:text-zinc-400">{profile.bio}</p>
+        <p className="whitespace-pre-wrap text-secondary">{profile.bio}</p>
       ) : (
-        <p className="text-zinc-500">This tutor hasn’t added a bio yet.</p>
+        <p className="text-muted">This tutor hasn’t added a bio yet.</p>
       )}
       {video?.kind === "embed" && (
         <iframe
@@ -232,28 +232,26 @@ function SubjectsSection({ tutorId, subjects }: { tutorId: string; subjects: Pro
         Subjects and rates
       </h2>
       {subjects.length === 0 ? (
-        <p className="text-zinc-500">This tutor hasn’t listed any subjects yet.</p>
+        <p className="text-muted">This tutor hasn’t listed any subjects yet.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {subjects.map((subject) => (
             <li key={subject.id}>
               <Link
                 href={`/tutors/${tutorId}/${subject.id}`}
-                className="flex flex-col gap-2 rounded-2xl border border-black/10 p-4 transition hover:border-violet-500 dark:border-white/15"
+                className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-brand-navy"
               >
                 <span className="flex items-start justify-between gap-3">
-                  <span className="text-lg font-bold">{subject.name}</span>
+                  <span className="text-lg font-semibold">{subject.name}</span>
                   <span className="shrink-0">
-                    <span className="text-lg font-bold">{formatRate(subject.hourlyRate)}</span>
-                    <span className="text-zinc-500"> / hr</span>
+                    <span className="text-lg font-semibold">{formatRate(subject.hourlyRate)}</span>
+                    <span className="text-muted"> / hr</span>
                   </span>
                 </span>
                 {subject.description && (
-                  <span className="line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
-                    {subject.description}
-                  </span>
+                  <span className="line-clamp-2 text-sm text-secondary">{subject.description}</span>
                 )}
-                <span className="flex flex-wrap gap-x-4 text-sm text-zinc-500">
+                <span className="flex flex-wrap gap-x-4 text-sm text-muted">
                   <Rating rating={subject.rating} count={subject.reviewCount} />
                   <span>
                     {subject.nextOpening
@@ -278,13 +276,11 @@ function AvailabilitySection({ profile }: { profile: TutorProfile }) {
       <h2 id="availability-heading" className="text-xl font-semibold">
         Availability
       </h2>
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-muted">
         Open 30-minute slots over the next two weeks (Bangkok time).
       </p>
       {days.length === 0 ? (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          No open slots in the next two weeks. Check back soon.
-        </p>
+        <p className="text-secondary">No open slots in the next two weeks. Check back soon.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {days.map(({ day, slots }) => (
@@ -294,7 +290,7 @@ function AvailabilitySection({ profile }: { profile: TutorProfile }) {
                 {slots.map((slot) => (
                   <li
                     key={slot.startedAt}
-                    className="rounded-full bg-violet-100 px-3 py-1 text-sm font-medium text-violet-800 dark:bg-violet-950 dark:text-violet-200"
+                    className="rounded-full bg-brand-soft px-3 py-1 text-sm font-medium text-brand-link"
                   >
                     <span>{openingTime(slot.startedAt)}</span>{" "}
                     <span>
@@ -397,7 +393,7 @@ function MessageSection({ profile }: { profile: TutorProfile }) {
             }}
             placeholder={`Ask ${profile.firstName} a question before booking…`}
             rows={4}
-            className="h-28 resize-none overflow-y-auto rounded-lg border border-black/[.12] bg-transparent px-3 py-2.5 text-base outline-none focus:border-foreground dark:border-white/[.18]"
+            className="h-28 resize-none overflow-y-auto rounded-lg border border-line bg-transparent px-3 py-2.5 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
           />
           {sendError && (
             <p role="alert" className="text-sm text-red-600 dark:text-red-400">
@@ -408,13 +404,13 @@ function MessageSection({ profile }: { profile: TutorProfile }) {
             type="button"
             onClick={handleSend}
             disabled={sending || !draft.trim()}
-            className="flex h-11 w-fit items-center justify-center rounded-full bg-foreground px-5 font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
+            className="flex h-11 w-fit items-center justify-center rounded-lg bg-brand-navy px-5 font-medium text-white transition-colors hover:bg-brand-navy-dark disabled:opacity-60"
           >
             {sending ? "Sending…" : `Message ${profile.firstName}`}
           </button>
         </>
       ) : (
-        <p className="text-zinc-600 dark:text-zinc-400">
+        <p className="text-secondary">
           <Link
             className="underline"
             href={`/login?next=${encodeURIComponent(`/tutors/${profile.id}`)}`}

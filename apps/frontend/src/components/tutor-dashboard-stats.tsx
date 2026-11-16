@@ -12,7 +12,7 @@ const dateFormat = new Intl.DateTimeFormat("en", {
   year: "numeric",
   timeZone: "Asia/Bangkok",
 });
-const panel = "rounded-2xl border border-black/[.12] p-5 dark:border-white/[.18]";
+const panel = "rounded-2xl border border-line bg-surface p-5";
 
 export function TutorDashboardStats() {
   const [data, setData] = useState<TutorDashboard | null>(null);
@@ -52,7 +52,7 @@ export function TutorDashboardStats() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-xl font-semibold">Teaching overview</h3>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-muted">
             All-time activity, except classes this week. Each lesson is one booking.
           </p>
         </div>
@@ -60,13 +60,13 @@ export function TutorDashboardStats() {
           type="button"
           onClick={refresh}
           disabled={loading}
-          className="rounded-full border border-black/15 px-4 py-2 text-sm font-semibold disabled:opacity-50 dark:border-white/20"
+          className="rounded-lg border border-line px-4 py-2 text-sm font-semibold disabled:opacity-50"
         >
           Refresh overview
         </button>
       </div>
       {loading && (
-        <p role="status" className="text-sm text-zinc-500">
+        <p role="status" className="text-sm text-muted">
           Loading teaching overview…
         </p>
       )}
@@ -91,9 +91,9 @@ export function TutorDashboardStats() {
               ],
             ].map(([label, value, help]) => (
               <div key={label} className={panel}>
-                <dt className="text-sm text-zinc-500">{label}</dt>
+                <dt className="text-sm text-muted">{label}</dt>
                 <dd className="mt-2 text-3xl font-semibold tracking-tight">{value}</dd>
-                <dd className="mt-2 text-xs leading-5 text-zinc-500">{help}</dd>
+                <dd className="mt-2 text-xs leading-5 text-muted">{help}</dd>
               </div>
             ))}
           </dl>
@@ -110,12 +110,12 @@ export function TutorDashboardStats() {
                   ["Cancelled", data.lessons.cancelled],
                 ].map(([label, count]) => (
                   <div key={label} className="flex justify-between gap-3">
-                    <dt className="text-zinc-600 dark:text-zinc-400">{label}</dt>
+                    <dt className="text-secondary">{label}</dt>
                     <dd className="font-semibold">{count}</dd>
                   </div>
                 ))}
               </dl>
-              <p className="mt-4 text-xs leading-5 text-zinc-500">
+              <p className="mt-4 text-xs leading-5 text-muted">
                 Confirmed includes ended lessons awaiting your completion confirmation.
               </p>
             </section>
@@ -125,21 +125,21 @@ export function TutorDashboardStats() {
               </h4>
               <dl className="mt-4 grid gap-3 text-sm">
                 <div className="flex justify-between gap-3">
-                  <dt className="text-zinc-600 dark:text-zinc-400">Students taught</dt>
+                  <dt className="text-secondary">Students taught</dt>
                   <dd className="font-semibold">{data.students.withCompletedLessons}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-zinc-600 dark:text-zinc-400">Returning students</dt>
+                  <dt className="text-secondary">Returning students</dt>
                   <dd className="font-semibold">{data.students.returning}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-zinc-600 dark:text-zinc-400">Returning student rate</dt>
+                  <dt className="text-secondary">Returning student rate</dt>
                   <dd className="font-semibold">
                     {data.students.returningRate === null ? "—" : `${data.students.returningRate}%`}
                   </dd>
                 </div>
               </dl>
-              <p className="mt-4 text-xs leading-5 text-zinc-500">
+              <p className="mt-4 text-xs leading-5 text-muted">
                 Returning students have completed at least two lessons with you. The rate is out of
                 students taught.
               </p>
@@ -153,14 +153,14 @@ export function TutorDashboardStats() {
               {data.reviews.count > 0 && (
                 <Link
                   href={`/tutors/${data.tutorId}`}
-                  className="text-sm font-semibold text-violet-700 underline dark:text-violet-300"
+                  className="text-sm font-semibold text-brand-link underline"
                 >
                   View public profile
                 </Link>
               )}
             </div>
             {data.reviews.count === 0 ? (
-              <p className="mt-4 text-sm text-zinc-500">
+              <p className="mt-4 text-sm text-muted">
                 No reviews yet. Students can leave a review after you confirm their lesson is
                 complete.
               </p>
@@ -168,13 +168,10 @@ export function TutorDashboardStats() {
               <ul
                 aria-label="Recent tutor reviews"
                 tabIndex={0}
-                className="themed-scrollbar mt-4 max-h-[32rem] space-y-4 overflow-y-auto overscroll-y-contain rounded-xl pr-2 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-500"
+                className="themed-scrollbar mt-4 max-h-[32rem] space-y-4 overflow-y-auto overscroll-y-contain rounded-xl pr-2 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-link"
               >
                 {data.reviews.recent.map((review) => (
-                  <li
-                    key={review.id}
-                    className="rounded-xl border border-black/10 p-4 dark:border-white/15"
-                  >
+                  <li key={review.id} className="rounded-xl border border-line p-4">
                     <div className="flex flex-wrap justify-between gap-2 text-sm">
                       <span className="font-semibold">{review.studentName}</span>
                       <span
@@ -184,7 +181,7 @@ export function TutorDashboardStats() {
                         ★ {review.ratingStars} / 5
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">
+                    <p className="mt-1 text-xs text-muted">
                       {review.subject.name} · {dateFormat.format(new Date(review.createdAt))}
                     </p>
                     <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">

@@ -29,17 +29,18 @@ import {
 } from "@/src/lib/tutor-details";
 
 const shell = "mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-16";
-const panel = "rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]";
-const buttonBase =
-  "rounded-full border border-black/[.12] px-6 py-3 font-medium disabled:opacity-60 dark:border-white/[.18]";
-const button = `${buttonBase} hover:bg-black/[.04] dark:hover:bg-white/[.08]`;
-const primaryButton = `${buttonBase} bg-foreground text-background hover:opacity-80`;
+const panel = "rounded-2xl border border-line bg-surface p-6";
+const buttonBase = "rounded-lg border border-line px-6 py-3 font-medium disabled:opacity-60";
+const button = `${buttonBase} hover:bg-surface-muted `;
+const primaryButton = `${buttonBase} bg-brand-navy text-white hover:opacity-80`;
 const apiPath = "/api/profiles/me/tutor";
 const incompleteDraftMessage = "Complete this draft before submitting for review.";
 
 function ProfileLayout({ enrollment, children }: { enrollment: boolean; children: ReactNode }) {
   return (
     <main
+      id="main-content"
+      tabIndex={-1}
       className={
         enrollment
           ? shell
@@ -307,7 +308,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
   if (!data)
     return (
       <ProfileLayout enrollment={enrollment}>
-        <p className="text-zinc-500">Loading your application…</p>
+        <p className="text-muted">Loading your application…</p>
       </ProfileLayout>
     );
 
@@ -321,11 +322,11 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
   return (
     <ProfileLayout enrollment={enrollment}>
       <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Tutor Matcher</p>
+        <p className="text-sm font-medium text-muted">Tutor Matcher</p>
         <h1 className="text-4xl font-semibold tracking-tight">
           {enrollment ? "Become a Tutor" : "Tutor profile"}
         </h1>
-        <p className="text-zinc-600 dark:text-zinc-400">
+        <p className="text-secondary">
           Subjects and hourly rates are configured separately. Change your name in{" "}
           <Link
             className="underline"
@@ -346,7 +347,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
       {enrollment && !tutor && pending && (
         <section className={panel} aria-label="Application status">
           <h2 className="text-xl font-semibold">Awaiting approval</h2>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-muted">
             An admin is reviewing the documents and introduction video you submitted. You can cancel
             this application and re-submit corrected details.
           </p>
@@ -378,7 +379,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
             Publication:{" "}
             <strong>{tutor.status === "PUBLISHED" ? "Published" : "Unpublished"}</strong>
           </p>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-muted">
             Unpublishing stops discovery and new bookings. Existing chats and booked lessons remain
             accessible.
           </p>
@@ -405,7 +406,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           {!enrollment && (
             <div className="mt-5">
               <h3 className="font-semibold">Verification</h3>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-muted">
                 Your identity has been verified. Document changes use the profile review process
                 below.
               </p>
@@ -488,7 +489,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           />
         </div>
         {data.submissions?.length ? (
-          <ul className="mt-4 divide-y divide-black/[.12] dark:divide-white/[.18]">
+          <ul className="mt-4 divide-y divide-line ">
             {data.submissions.map((submission) => (
               <li key={submission.id} className="py-3">
                 <details>
@@ -499,7 +500,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                   </summary>
                   <div className="mt-4">
                     {submission.status === "PENDING" && (
-                      <p className="mb-4 text-sm text-zinc-500">
+                      <p className="mb-4 text-sm text-muted">
                         {tutor
                           ? "Your current approved profile stays unchanged while these edits are reviewed. You can keep teaching and change publication independently."
                           : "Your application is awaiting admin approval. You remain a student until it is approved."}{" "}
@@ -565,21 +566,21 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-zinc-500">No submissions yet.</p>
+          <p className="mt-3 text-sm text-muted">No submissions yet.</p>
         )}
       </section>
 
       {!approvedEnrollment && (
         <section className={panel} aria-label="Saved drafts">
           <h2 className="text-xl font-semibold">Your drafts</h2>
-          <p className="my-3 text-sm text-zinc-500">
+          <p className="my-3 text-sm text-muted">
             Select one saved snapshot to edit. Pending requests and reviewed versions cannot be
             edited.
           </p>
           {data.drafts.length === 0 ? (
             <p>No saved drafts yet.</p>
           ) : (
-            <ul className="divide-y divide-black/[.08] dark:divide-white/[.12]">
+            <ul className="divide-y divide-line ">
               {data.drafts.map((draft: TutorProfileVersion, index: number) => {
                 const unchanged = !!tutor && profileContent(draft) === profileContent(tutor);
                 const label = `draft ${index + 1}: ${draft.bio?.trim().slice(0, 100) || "Untitled draft"}`;
@@ -592,7 +593,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                       <p className="truncate font-medium">
                         {draft.bio?.trim().slice(0, 100) || "Untitled draft"}
                       </p>
-                      <time className="text-sm text-zinc-500" dateTime={draft.createdAt}>
+                      <time className="text-sm text-muted" dateTime={draft.createdAt}>
                         {new Date(draft.createdAt).toLocaleString()}
                       </time>
                     </div>
@@ -601,7 +602,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                         type="button"
                         aria-label={`Edit ${label}`}
                         aria-haspopup="dialog"
-                        className="rounded-md border border-black/[.12] px-3 py-2 text-sm hover:bg-black/[.04] dark:border-white/[.18] dark:hover:bg-white/[.08]"
+                        className="rounded-md border border-line px-3 py-2 text-sm hover:bg-surface-muted"
                         disabled={busy}
                         onClick={() =>
                           requestTransition(() => {
@@ -627,7 +628,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                       <button
                         type="button"
                         aria-label={`Trash ${label}`}
-                        className="rounded-md border border-black/[.12] px-3 py-2 text-sm text-red-700 hover:bg-red-500/10 dark:border-white/[.18] dark:text-red-300"
+                        className="rounded-md border border-line px-3 py-2 text-sm text-red-700 hover:bg-red-500/10 dark:text-red-300"
                         disabled={busy}
                         onClick={() => {
                           if (
@@ -668,7 +669,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                               ? "Change your profile before submitting for review."
                               : "Submit this draft for review"
                         }
-                        className="rounded-md border border-black/[.12] px-3 py-2 text-sm hover:bg-black/[.04] disabled:opacity-60 dark:border-white/[.18] dark:hover:bg-white/[.08]"
+                        className="rounded-md border border-line px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-60"
                         onClick={() =>
                           requestTransition(() => {
                             const next = tutorDetailsFromApplication(draft);
@@ -756,7 +757,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
               </p>
             )}
             {noChanges && (
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-muted">
                 Change at least one profile field before submitting for review.
               </p>
             )}

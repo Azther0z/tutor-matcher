@@ -8,10 +8,10 @@ import type {
 } from "@/src/lib/tutor-details";
 
 export const tutorDetailsInputClassName =
-  "h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18]";
+  "h-11 rounded-lg border border-line bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground aria-[invalid=true]:border-red-500";
 
 const tutorDetailsTextAreaClassName =
-  "rounded-lg border border-black/[.12] bg-transparent px-3 py-2 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18]";
+  "rounded-lg border border-line bg-transparent px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground aria-[invalid=true]:border-red-500";
 
 type TutorFieldProps = {
   name: TutorDetailsFieldName;
@@ -47,7 +47,7 @@ function TutorField({
   return (
     <label htmlFor={name} className="flex flex-col gap-1.5 text-sm font-medium">
       <span>
-        {label} {optional && <span className="font-normal text-zinc-500">(optional)</span>}
+        {label} {optional && <span className="font-normal text-muted">(optional)</span>}
       </span>
       {rows ? (
         <textarea
@@ -76,7 +76,7 @@ function TutorField({
         />
       )}
       {helper && (
-        <span id={helperId} className="font-normal text-zinc-500">
+        <span id={helperId} className="font-normal text-muted">
           {helper}
         </span>
       )}
@@ -107,15 +107,11 @@ export function TutorDetailsFields({
   description = "Information shown on your Tutor profile.",
 }: TutorDetailsFieldsProps) {
   return (
-    <section
-      className={
-        unframed ? undefined : "rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]"
-      }
-    >
+    <section className={unframed ? undefined : "rounded-2xl border border-line bg-surface p-6"}>
       {!unframed && (
         <div className="mb-5">
           <h2 className="text-xl font-semibold">{title}</h2>
-          <p className="mt-1 text-sm text-zinc-500">{description}</p>
+          <p className="mt-1 text-sm text-muted">{description}</p>
         </div>
       )}
 

@@ -27,10 +27,10 @@ const formatOptions = [
 ];
 
 const field =
-  "mt-1 w-full rounded-xl border border-black/15 bg-transparent px-3 py-2 outline-none focus:border-violet-500 dark:border-white/20";
+  "mt-1 w-full rounded-xl border border-line bg-transparent px-3 py-2 focus-visible:outline-2 focus-visible:outline-brand-link focus:border-brand-navy";
 
 const thumb =
-  "pointer-events-none absolute inset-0 h-6 w-full appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-violet-600 [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-violet-600";
+  "pointer-events-none absolute inset-0 h-6 w-full appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-brand-navy [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-brand-navy";
 
 // Fields that are typed or dragged wait for a pause before they search.
 type Draft = Pick<TutorSearchFilters, "q" | "tutorName" | "minPrice" | "maxPrice">;
@@ -70,6 +70,7 @@ export function TutorSearch() {
     error: string | null;
   } | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [bounds, setBounds] = useState<ReturnType<typeof sliderBounds>>(null);
   const [authRevision, setAuthRevision] = useState(0);
 
@@ -194,157 +195,185 @@ export function TutorSearch() {
   if (filters.format) suggestions.push({ label: "Any format", changes: { format: "" } });
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 lg:px-10 lg:py-14">
-      <header className="border-b border-black/10 pb-6 dark:border-white/15">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-500">
-          Tutor search
-        </p>
-        <h1 className="mt-2 text-4xl font-bold tracking-tight">Find a tutor</h1>
-        <p className="mt-2 text-zinc-500">
-          Filter by subject, tutor, price, rating and format, then open a tutor to see more.
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 lg:px-10 lg:py-14"
+    >
+      <header className="border-b border-line pb-6">
+        <p className="text-sm font-semibold text-brand-link">Tutor search</p>
+        <h1 className="mt-2 text-4xl font-semibold tracking-tight">Find a tutor</h1>
+        <p className="mt-2 text-muted">
+          Compare Subjects by price, reviews and availability. Open a Tutor’s profile to learn more.
         </p>
       </header>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[18rem_1fr]">
-        <aside className="lg:sticky lg:top-6 lg:self-start">
-          <form
-            role="search"
-            aria-label="Tutor filters"
-            onSubmit={(event) => event.preventDefault()}
-            className="space-y-5 rounded-3xl border border-black/10 p-5 dark:border-white/15"
+      <div className="mt-8 grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
+        <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+          <button
+            type="button"
+            aria-expanded={filtersOpen}
+            aria-controls="search-filters"
+            onClick={() => setFiltersOpen((open) => !open)}
+            className="ui-button-secondary mb-3 w-full justify-between lg:hidden"
           >
-            <div>
-              <label htmlFor="search-keyword" className="text-sm font-semibold">
-                Keyword
-              </label>
-              <input
-                id="search-keyword"
-                type="search"
-                className={field}
-                placeholder="Subject or topic"
-                maxLength={100}
-                value={draft.q}
-                onChange={(event) => setDraft({ ...draft, q: event.target.value })}
-              />
-            </div>
-            <div>
-              <label htmlFor="search-tutor-name" className="text-sm font-semibold">
-                Tutor name
-              </label>
-              <input
-                id="search-tutor-name"
-                type="search"
-                className={field}
-                placeholder="First or last name"
-                maxLength={100}
-                value={draft.tutorName}
-                onChange={(event) => setDraft({ ...draft, tutorName: event.target.value })}
-              />
-            </div>
-            <div>
-              <label htmlFor="search-area" className="text-sm font-semibold">
-                Learning area
-              </label>
-              <select
-                id="search-area"
-                className={field}
-                value={filters.learningAreaId}
-                onChange={(event) => apply({ learningAreaId: event.target.value })}
-              >
-                <option value="">All learning areas</option>
-                {learningAreas.map((area) => (
-                  <option key={area.id} value={area.id}>
-                    {area.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {bounds && (
+            {filtersOpen ? "Hide filters" : "Show filters"}
+            {suggestions.length > 0 ? ` (${suggestions.length})` : ""}
+            <span aria-hidden="true">{filtersOpen ? "−" : "+"}</span>
+          </button>
+          <div id="search-filters" className={`${filtersOpen ? "block" : "hidden"} lg:block`}>
+            <form
+              role="search"
+              aria-label="Tutor filters"
+              onSubmit={(event) => event.preventDefault()}
+              className="space-y-5 rounded-2xl border border-line bg-surface p-5 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto"
+            >
+              <div>
+                <label htmlFor="search-keyword" className="text-sm font-semibold">
+                  Keyword
+                </label>
+                <input
+                  id="search-keyword"
+                  type="search"
+                  className={field}
+                  placeholder="Subject or topic"
+                  maxLength={100}
+                  value={draft.q}
+                  onChange={(event) => setDraft({ ...draft, q: event.target.value })}
+                />
+              </div>
+              <div>
+                <label htmlFor="search-tutor-name" className="text-sm font-semibold">
+                  Tutor name
+                </label>
+                <input
+                  id="search-tutor-name"
+                  type="search"
+                  className={field}
+                  placeholder="First or last name"
+                  maxLength={100}
+                  value={draft.tutorName}
+                  onChange={(event) => setDraft({ ...draft, tutorName: event.target.value })}
+                />
+              </div>
+              <div>
+                <label htmlFor="search-area" className="text-sm font-semibold">
+                  Learning area
+                </label>
+                <select
+                  id="search-area"
+                  className={field}
+                  value={filters.learningAreaId}
+                  onChange={(event) => apply({ learningAreaId: event.target.value })}
+                >
+                  <option value="">All learning areas</option>
+                  {learningAreas.map((area) => (
+                    <option key={area.id} value={area.id}>
+                      {area.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {bounds && (
+                <fieldset>
+                  <legend className="text-sm font-semibold">Price (฿ / hr)</legend>
+                  <p className="mt-1 text-sm text-muted" aria-live="polite">
+                    {baht(lowPrice)} to {baht(highPrice)} / hr
+                  </p>
+                  <div className="relative mt-2 h-6">
+                    <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-surface-muted" />
+                    <div
+                      className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-brand-navy"
+                      style={{
+                        left: `${percent(lowPrice)}%`,
+                        right: `${100 - percent(highPrice)}%`,
+                      }}
+                    />
+                    <input
+                      type="range"
+                      aria-label="Minimum price"
+                      className={thumb}
+                      min={bounds.low}
+                      max={bounds.high}
+                      step={bounds.step}
+                      value={lowPrice}
+                      onChange={(event) =>
+                        setPrice(Math.min(Number(event.target.value), highPrice), highPrice)
+                      }
+                    />
+                    <input
+                      type="range"
+                      aria-label="Maximum price"
+                      className={thumb}
+                      min={bounds.low}
+                      max={bounds.high}
+                      step={bounds.step}
+                      value={highPrice}
+                      onChange={(event) =>
+                        setPrice(lowPrice, Math.max(Number(event.target.value), lowPrice))
+                      }
+                    />
+                  </div>
+                </fieldset>
+              )}
               <fieldset>
-                <legend className="text-sm font-semibold">Price (฿ / hr)</legend>
-                <p className="mt-1 text-sm text-zinc-500" aria-live="polite">
-                  {baht(lowPrice)} to {baht(highPrice)} / hr
-                </p>
-                <div className="relative mt-2 h-6">
-                  <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-black/10 dark:bg-white/15" />
-                  <div
-                    className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-violet-600"
-                    style={{ left: `${percent(lowPrice)}%`, right: `${100 - percent(highPrice)}%` }}
-                  />
-                  <input
-                    type="range"
-                    aria-label="Minimum price"
-                    className={thumb}
-                    min={bounds.low}
-                    max={bounds.high}
-                    step={bounds.step}
-                    value={lowPrice}
-                    onChange={(event) =>
-                      setPrice(Math.min(Number(event.target.value), highPrice), highPrice)
-                    }
-                  />
-                  <input
-                    type="range"
-                    aria-label="Maximum price"
-                    className={thumb}
-                    min={bounds.low}
-                    max={bounds.high}
-                    step={bounds.step}
-                    value={highPrice}
-                    onChange={(event) =>
-                      setPrice(lowPrice, Math.max(Number(event.target.value), lowPrice))
-                    }
-                  />
+                <legend className="text-sm font-semibold">Minimum rating</legend>
+                <RatingStars
+                  value={Number(filters.minRating) || 0}
+                  onChange={(value) => apply({ minRating: value ? String(value) : "" })}
+                />
+              </fieldset>
+              <fieldset>
+                <legend className="text-sm font-semibold">Format</legend>
+                <div className="mt-1 flex gap-2">
+                  {formatOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={filters.format === option.value}
+                      onClick={() => apply({ format: option.value })}
+                      className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors ${
+                        filters.format === option.value
+                          ? "border-brand-navy bg-brand-navy text-white"
+                          : "border-line hover:border-brand-navy"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
                 </div>
               </fieldset>
-            )}
-            <fieldset>
-              <legend className="text-sm font-semibold">Minimum rating</legend>
-              <RatingStars
-                value={Number(filters.minRating) || 0}
-                onChange={(value) => apply({ minRating: value ? String(value) : "" })}
-              />
-            </fieldset>
-            <fieldset>
-              <legend className="text-sm font-semibold">Format</legend>
-              <div className="mt-1 flex gap-2">
-                {formatOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    aria-pressed={filters.format === option.value}
-                    onClick={() => apply({ format: option.value })}
-                    className={`flex-1 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
-                      filters.format === option.value
-                        ? "border-violet-600 bg-violet-600 text-white"
-                        : "border-black/15 hover:border-violet-500 dark:border-white/20"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-            <button
-              type="button"
-              onClick={() => apply({ ...defaultFilters, sort: filters.sort })}
-              className="w-full rounded-full border border-black/15 px-4 py-2 text-sm font-semibold transition hover:border-violet-500 dark:border-white/20"
-            >
-              Clear filters
-            </button>
-          </form>
+              <button
+                type="button"
+                onClick={() => apply({ ...defaultFilters, sort: filters.sort })}
+                className="w-full rounded-lg border border-line px-4 py-2 text-sm font-semibold transition-colors hover:border-brand-navy"
+              >
+                Clear filters
+              </button>
+              <button
+                type="button"
+                className="ui-button w-full lg:hidden"
+                onClick={() => {
+                  setFiltersOpen(false);
+                  document.getElementById("search-results")?.focus();
+                }}
+              >
+                Show results
+              </button>
+            </form>
+          </div>
         </aside>
 
-        <section aria-label="Search results" aria-busy={loading}>
+        <section id="search-results" tabIndex={-1} aria-label="Search results" aria-busy={loading}>
           {filters.sort === "recommended" && !loading && result && (
-            <div className="mb-4 rounded-2xl bg-violet-50 p-4 text-sm dark:bg-violet-950/30">
+            <div className="mb-4 rounded-2xl bg-brand-soft p-4 text-sm">
               <p className="font-semibold">
                 {result.recommendationMode === "personalized"
                   ? "Recommended for you"
                   : "Recommended tutors"}
               </p>
               {result.recommendationMode === "fallback" && getAuthToken() && (
-                <p className="mt-1 text-zinc-600 dark:text-zinc-300">
+                <p className="mt-1 text-secondary">
                   <Link className="font-semibold underline" href="/settings/student">
                     Add learning areas to your profile
                   </Link>{" "}
@@ -352,7 +381,7 @@ export function TutorSearch() {
                 </p>
               )}
               {result.recommendationMode === "fallback" && !getAuthToken() && (
-                <p className="mt-1 text-zinc-600 dark:text-zinc-300">
+                <p className="mt-1 text-secondary">
                   Ranked by rating and upcoming availability.{" "}
                   <Link className="font-semibold underline" href="/login">
                     Log in
@@ -363,15 +392,15 @@ export function TutorSearch() {
             </div>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-zinc-500" role="status">
+            <p className="text-sm text-muted" role="status">
               {loading
                 ? "Searching…"
                 : result && `${result.total} ${result.total === 1 ? "subject" : "subjects"} found`}
             </p>
-            <label className="flex items-center gap-2 text-sm text-zinc-500">
+            <label className="flex items-center gap-2 text-sm text-muted">
               Sort
               <select
-                className="rounded-xl border border-black/15 bg-transparent px-3 py-1.5 text-foreground dark:border-white/20"
+                className="rounded-xl border border-line bg-transparent px-3 py-1.5 text-foreground"
                 value={filters.sort}
                 onChange={(event) =>
                   apply({ sort: event.target.value as TutorSearchFilters["sort"] })
@@ -403,18 +432,18 @@ export function TutorSearch() {
           )}
 
           {!error && result && result.total === 0 && !loading && (
-            <section className="mt-6 rounded-3xl border border-dashed border-black/25 px-6 py-12 text-center dark:border-white/25">
+            <section className="mt-6 rounded-2xl border border-dashed border-line px-6 py-12 text-center">
               <h2 className="text-xl font-semibold">No tutors match these filters</h2>
               {suggestions.length > 0 ? (
                 <>
-                  <p className="mt-2 text-zinc-500">Try broadening your search:</p>
+                  <p className="mt-2 text-muted">Try broadening your search:</p>
                   <div className="mt-4 flex flex-wrap justify-center gap-2">
                     {suggestions.map((suggestion) => (
                       <button
                         key={suggestion.label}
                         type="button"
                         onClick={() => apply(suggestion.changes)}
-                        className="rounded-full border border-black/15 px-4 py-1.5 text-sm font-semibold transition hover:border-violet-500 dark:border-white/20"
+                        className="rounded-lg border border-line px-4 py-1.5 text-sm font-semibold transition-colors hover:border-brand-navy"
                       >
                         {suggestion.label}
                       </button>
@@ -423,7 +452,7 @@ export function TutorSearch() {
                       <button
                         type="button"
                         onClick={() => apply({ ...defaultFilters, sort: filters.sort })}
-                        className="rounded-full bg-violet-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-violet-500"
+                        className="rounded-lg bg-brand-navy px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-brand-navy-dark"
                       >
                         Clear all filters
                       </button>
@@ -431,7 +460,7 @@ export function TutorSearch() {
                   </div>
                 </>
               ) : (
-                <p className="mt-2 text-zinc-500">No tutors are listed yet. Check back soon.</p>
+                <p className="mt-2 text-muted">No tutors are listed yet. Check back soon.</p>
               )}
             </section>
           )}
@@ -452,18 +481,18 @@ export function TutorSearch() {
                 type="button"
                 disabled={filters.page <= 1}
                 onClick={() => apply({ page: filters.page - 1 })}
-                className="rounded-full border border-black/15 px-4 py-2 text-sm font-semibold disabled:opacity-40 dark:border-white/20"
+                className="rounded-lg border border-line px-4 py-2 text-sm font-semibold disabled:opacity-40"
               >
                 Previous
               </button>
-              <span className="text-sm text-zinc-500">
+              <span className="text-sm text-muted">
                 Page {filters.page} of {result.totalPages}
               </span>
               <button
                 type="button"
                 disabled={filters.page >= result.totalPages}
                 onClick={() => apply({ page: filters.page + 1 })}
-                className="rounded-full border border-black/15 px-4 py-2 text-sm font-semibold disabled:opacity-40 dark:border-white/20"
+                className="rounded-lg border border-line px-4 py-2 text-sm font-semibold disabled:opacity-40"
               >
                 Next
               </button>
@@ -485,9 +514,9 @@ function RatingStars({ value, onChange }: { value: number; onChange: (value: num
           return (
             // Each star gets an equal share of the row, and its two half-star buttons fill that
             // share, so the buttons cover the whole row in ten even parts.
-            <span key={star} className="relative flex h-7 flex-1 justify-center">
+            <span key={star} className="relative flex h-11 flex-1 justify-center items-center">
               <span aria-hidden className="relative h-7 w-7 text-[28px] leading-7">
-                <span className="text-zinc-300 dark:text-zinc-700">★</span>
+                <span className="text-zinc-300">★</span>
                 <span
                   className="absolute inset-y-0 left-0 overflow-hidden text-amber-400"
                   style={{ width: `${fill * 100}%` }}
@@ -509,7 +538,7 @@ function RatingStars({ value, onChange }: { value: number; onChange: (value: num
           );
         })}
       </div>
-      <p className="mt-1 text-sm text-zinc-500">
+      <p className="mt-1 text-sm text-muted">
         {value ? `${value.toFixed(1)} and up` : "Any rating"}
       </p>
     </div>
@@ -522,15 +551,15 @@ function SubjectCard({ subject }: { subject: SubjectSearchResult }) {
     <Link
       href={`/tutors/${subject.tutor.id}`}
       aria-label={`${subject.name} with ${tutorName}`}
-      className="flex h-full flex-col gap-3 rounded-3xl border border-black/10 p-5 transition hover:-translate-y-0.5 hover:border-violet-500 hover:shadow-lg dark:border-white/15"
+      className="flex h-full flex-col gap-3 rounded-2xl border border-line bg-surface p-5 transition-colors hover:border-brand-navy"
     >
       <div className="flex items-start gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-lg font-bold text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-soft text-lg font-semibold text-brand-link">
           {subject.tutor.firstName.charAt(0).toUpperCase()}
           {subject.tutor.lastName.charAt(0).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-bold">{subject.name}</h2>
+          <h2 className="truncate text-lg font-semibold">{subject.name}</h2>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="truncate">{tutorName}</span>
             {subject.tutor.verified && (
@@ -541,7 +570,7 @@ function SubjectCard({ subject }: { subject: SubjectSearchResult }) {
           </div>
         </div>
       </div>
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-muted">
         {subject.rating === null ? (
           "New subject"
         ) : (
@@ -553,7 +582,7 @@ function SubjectCard({ subject }: { subject: SubjectSearchResult }) {
         {subject.classesTaught > 0 &&
           ` · ${subject.classesTaught} ${subject.classesTaught === 1 ? "class" : "classes"} taught`}
       </p>
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-muted">
         {subject.nextAvailableAt
           ? `Next available ${new Intl.DateTimeFormat("en", {
               timeZone: "Asia/Bangkok",
@@ -563,25 +592,23 @@ function SubjectCard({ subject }: { subject: SubjectSearchResult }) {
           : "No availability in the next 30 days"}
       </p>
       {subject.description && (
-        <p className="line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
-          {subject.description}
-        </p>
+        <p className="line-clamp-2 text-sm text-secondary">{subject.description}</p>
       )}
       <div className="flex flex-wrap gap-1.5">
         {subject.learningAreas.map((area) => (
           <span
             key={area.id}
-            className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium dark:bg-zinc-800"
+            className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium"
           >
             {area.name}
           </span>
         ))}
       </div>
-      <div className="mt-auto flex items-end justify-between gap-3 text-sm">
-        <span className="text-zinc-500">Online</span>
+      <div className="mt-auto flex items-end justify-between gap-3 border-t border-line pt-4 text-sm">
+        <span className="text-muted">Online</span>
         <span className="shrink-0">
-          <span className="text-lg font-bold">฿{subject.hourlyRate}</span>
-          <span className="text-zinc-500"> / hr</span>
+          <span className="text-lg font-semibold">฿{subject.hourlyRate}</span>
+          <span className="text-muted"> / hr</span>
         </span>
       </div>
     </Link>

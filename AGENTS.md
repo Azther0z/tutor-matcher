@@ -40,6 +40,7 @@
 - Keep `docs/database-schema.md` and `CONTEXT.md` aligned with canonical `docs/user-journeys.md` whenever product behaviour changes.
 
 ### Preferences
+- For website UX/UI work, retain the Tutor Matcher name and logo. The user approved a navy, white, and restrained-gold theme, usability-first changes across Student, Tutor, and Admin journeys, and mobile and desktop support in the current interface language.
 - For REV-2, Tutors can edit their own single public reply; edited replies show an Edited marker. Do not interpret one reply per review as a prohibition on editing its text.
 - For AI-assisted Sprint delivery, assign the entire story, including design integration and automated testing, to one fixed two-person pair.
 - Treat `docs/user-journeys.md` as behavioural authority and `apps/backend/prisma/schema.prisma` as the authority for what the database currently contains.
