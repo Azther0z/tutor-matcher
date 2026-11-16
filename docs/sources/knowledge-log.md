@@ -174,3 +174,57 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/pay-6-policy-confirmation.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, CONTEXT.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
 - Scope: Paid completed lessons clear after Tutor confirmation and 24 hours from scheduled end; pending refund requests pause clearing; prior eligible completions are included; wallet access triggers settlement; the platform covers approved refunds after clearing without clawing back Tutor earnings
+
+## [2026-11-16] ingest | Subject-page booking selection
+
+- Raw: docs/sources/subject-page-booking-confirmation.md
+- Updated: docs/user-journeys.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Move time selection into the public subject page; continue directly to pending-booking payment. Legacy selection URLs redirect.
+
+## [2026-11-16] ingest | Wallet settings route removal
+
+- Raw: docs/sources/wallet-settings-removal-confirmation.md
+- Updated: docs/user-journeys.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Remove `/settings/wallet`; preserve Tutor payout-account management on `/wallet/payout`.
+
+## [2026-11-16] ingest | Tutor availability layout
+
+- Raw: docs/sources/tutor-availability-layout-confirmation.md
+- Updated: docs/user-journeys.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Replace the weekly availability table with a month picker and one day's half-hour grid; retain individual-slot saves and conflict handling.
+
+## [2026-11-16] ingest | Subject-specific availability toggles
+
+- Raw: docs/sources/tutor-availability-subject-toggle-confirmation.md
+- Updated: docs/user-journeys.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Subject dropdown and immediate slot toggles, preserving shared assignments and locked-slot rules.
+
+## [2026-11-16] ingest | Availability period editor
+
+- Raw: docs/sources/tutor-availability-period-editor-confirmation.md
+- Updated: docs/user-journeys.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Draggable periods, anchored multi-subject checklist, and row/context-menu removal replace individual subject toggles.
+
+## [2026-11-16] ingest | Availability grid selection clarification
+
+- Raw: docs/sources/tutor-availability-grid-selection-clarification.md
+- Updated: docs/user-journeys.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Replace merged timeline periods with individual half-hour grid cells; dragging is only temporary selection and each chosen subject is appended separately inside every selected cell.
+
+## [2026-11-16] ingest | Mixed availability checklist
+
+- Raw: docs/sources/tutor-availability-mixed-checklist-confirmation.md
+- Updated: docs/user-journeys.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Tri-state subject checklist across selected slots; explicit edits check/uncheck all selected slots. Remove right-click deletion and separate row-removal selection.
+
+## [2026-11-16] ingest | Scrollable availability dates
+
+- Raw: docs/sources/tutor-availability-day-strip-confirmation.md
+- Updated: docs/user-journeys.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Lazily extended adjacent dates without navigation buttons; four rows of twelve slots on desktop.
+
+## [2026-11-16] ingest | Centered availability dates
+
+- Raw: docs/sources/tutor-availability-centered-dates-confirmation.md
+- Updated: docs/user-journeys.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Fixed centered date strip replaces scrolling; directional slide animation and no repeated full date above slots.

@@ -30,7 +30,7 @@ export function TutorNeedsConfirmation() {
   }, []);
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
+    <section className="flex min-w-0 flex-col gap-4 border-t border-line pt-5">
       <div>
         <h3 className="text-xl font-semibold">Needs confirmation</h3>
         <p className="mt-1 text-sm text-muted">
@@ -47,11 +47,11 @@ export function TutorNeedsConfirmation() {
         <p className="text-sm text-muted">No lessons need confirmation.</p>
       )}
       {bookings.length > 0 && (
-        <ul className="grid gap-3">
+        <ul className="divide-y divide-line">
           {bookings.map((booking) => (
             <li
               key={booking.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-4"
+              className="flex flex-wrap items-center justify-between gap-3 px-3 py-4"
             >
               <div className="min-w-0">
                 <p className="font-semibold">{booking.subject.name}</p>

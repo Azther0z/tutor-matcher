@@ -7,19 +7,51 @@ import { TutorUpcomingClasses } from "@/src/components/tutor-upcoming-classes";
 import { TutorDashboardStats } from "@/src/components/tutor-dashboard-stats";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { getBookings } from "@/src/lib/bookings-api";
+import type { Booking } from "@/src/types/booking";
 
 type StudentProfileStatus = "loading" | "incomplete" | "complete" | "error";
 type DashboardTab = "student" | "tutor";
 
 const dashboardTabs: DashboardTab[] = ["student", "tutor"];
+const studentDateFormat = new Intl.DateTimeFormat("en", {
+  weekday: "long",
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "Asia/Bangkok",
+});
 
 export default function DashboardPage() {
+  return (
+    <Suspense>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardContent() {
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<StudentProfileStatus>("loading");
-  const [activeTab, setActiveTab] = useState<DashboardTab>("student");
+  const [nextLesson, setNextLesson] = useState<Booking | null>(null);
+  const [nextLessonStatus, setNextLessonStatus] = useState<"loading" | "loaded" | "error">(
+    "loading"
+  );
   const [isApprovedTutor, setIsApprovedTutor] = useState(false);
+  const activeTab: DashboardTab =
+    isApprovedTutor && searchParams.get("tab") === "tutor" ? "tutor" : "student";
+
+  function selectTab(tab: DashboardTab) {
+    if (tab === activeTab) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tab);
+    router.push(`/dashboard?${params.toString()}`, { scroll: false });
+  }
   const tabRefs = useRef<Record<DashboardTab, HTMLButtonElement | null>>({
     student: null,
     tutor: null,
@@ -58,6 +90,30 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
+    if (!localStorage.getItem("authToken")) return;
+    let cancelled = false;
+    getBookings("STUDENT")
+      .then((bookings) => {
+        if (cancelled) return;
+        const now = Date.now();
+        const next = bookings
+          .filter(
+            (booking) => booking.status === "CONFIRMED" && Date.parse(booking.startedAt) > now
+          )
+          .sort((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt))[0];
+        setNextLesson(next ?? null);
+        setNextLessonStatus("loaded");
+      })
+      .catch(() => {
+        if (!cancelled) setNextLessonStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     const token = localStorage.getItem("authToken");
     if (!token) return;
 
@@ -72,10 +128,6 @@ export default function DashboardPage() {
 
         const approved = data?.status === "APPROVED";
         setIsApprovedTutor(approved);
-
-        if (approved && new URLSearchParams(window.location.search).get("tab") === "tutor") {
-          setActiveTab("tutor");
-        }
       })
       .catch(() => {
         if (!cancelled) setIsApprovedTutor(false);
@@ -101,7 +153,7 @@ export default function DashboardPage() {
 
     event.preventDefault();
     const nextTab = dashboardTabs[nextIndex];
-    setActiveTab(nextTab);
+    selectTab(nextTab);
     tabRefs.current[nextTab]?.focus();
   }
 
@@ -110,23 +162,15 @@ export default function DashboardPage() {
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8 lg:py-14"
+        className="mx-auto flex w-full max-w-[68rem] flex-1 flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8"
       >
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-muted">Tutor Matcher</p>
-          <h1 className="text-4xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-lg leading-8 text-secondary">
-            {isApprovedTutor
-              ? "Choose whether to manage your learning or teaching."
-              : "Find Tutors and manage your learning journey."}
-          </p>
-        </div>
+        <h1 className="text-2xl font-semibold leading-tight tracking-tight">Dashboard</h1>
 
         {isApprovedTutor && (
           <div
             role="tablist"
             aria-label="Dashboard sections"
-            className="flex w-fit gap-1 rounded-xl border border-line p-1"
+            className="flex w-fit gap-1 rounded-lg bg-surface-muted p-1"
           >
             {dashboardTabs.map((tab) => {
               const selected = activeTab === tab;
@@ -144,9 +188,9 @@ export default function DashboardPage() {
                   aria-controls={`${tab}-dashboard-panel`}
                   aria-selected={selected}
                   tabIndex={selected ? 0 : -1}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => selectTab(tab)}
                   onKeyDown={(event) => handleTabKeyDown(event, tab)}
-                  className={`rounded-lg px-5 py-2 text-sm font-medium transition-colors ${
+                  className={`min-h-11 rounded-lg px-5 py-2 text-sm font-medium transition-colors ${
                     selected ? "bg-brand-navy text-white" : "text-secondary hover:bg-surface-muted"
                   }`}
                 >
@@ -163,14 +207,59 @@ export default function DashboardPage() {
           aria-labelledby={isApprovedTutor ? "student-dashboard-tab" : undefined}
           tabIndex={isApprovedTutor ? 0 : undefined}
           hidden={isApprovedTutor && activeTab !== "student"}
-          className="flex flex-col gap-8"
+          className="flex flex-col gap-5"
         >
-          <div className="flex flex-col gap-2">
-            <h2 className="text-2xl font-semibold">Student dashboard</h2>
-            <p className="text-secondary">Find Tutors and manage your learning journey.</p>
-          </div>
+          <h2 className="sr-only">Student dashboard</h2>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <section
+            aria-labelledby="next-lesson-heading"
+            className="min-h-44 rounded-2xl border border-line bg-surface p-4 sm:p-5"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h3 id="next-lesson-heading" className="text-lg font-semibold">
+                  Next lesson
+                </h3>
+                {nextLessonStatus === "loading" && (
+                  <p className="mt-2 text-sm text-muted">Loading your schedule…</p>
+                )}
+                {nextLessonStatus === "error" && (
+                  <p role="status" className="mt-2 text-sm text-muted">
+                    We could not load your next lesson. You can still view all bookings.
+                  </p>
+                )}
+                {nextLessonStatus === "loaded" && nextLesson && (
+                  <>
+                    <p className="mt-2 break-words font-medium">{nextLesson.subject.name}</p>
+                    <p className="mt-1 text-sm text-secondary">
+                      with {nextLesson.subject.tutor.name}
+                    </p>
+                    <p className="mt-2 text-sm text-secondary">
+                      {studentDateFormat.format(new Date(nextLesson.startedAt))}
+                    </p>
+                  </>
+                )}
+                {nextLessonStatus === "loaded" && !nextLesson && (
+                  <p className="mt-2 text-sm text-secondary">No upcoming lessons yet.</p>
+                )}
+              </div>
+              {nextLesson ? (
+                <Link href={`/bookings/${nextLesson.id}`} className="ui-button-secondary shrink-0">
+                  View lesson
+                </Link>
+              ) : nextLessonStatus === "loaded" ? (
+                <Link href="/search" className="ui-button shrink-0">
+                  Find a tutor
+                </Link>
+              ) : (
+                <Link href="/bookings" className="ui-button-secondary shrink-0">
+                  View bookings
+                </Link>
+              )}
+            </div>
+          </section>
+
+          <div className="overflow-hidden rounded-2xl border border-line bg-surface">
             {[
               {
                 href: "/search",
@@ -191,13 +280,10 @@ export default function DashboardPage() {
               <Link
                 key={href}
                 href={href}
-                className="ui-card flex flex-col gap-3 p-6 transition-colors hover:border-brand-link"
+                className="flex min-w-0 flex-col gap-1 border-b border-line px-4 py-4 transition-colors last:border-b-0 hover:bg-surface-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-link sm:px-5"
               >
-                <h3 className="flex items-center justify-between gap-3 text-lg font-medium">
+                <h3 className="flex items-center justify-between gap-3 text-base font-semibold">
                   {title}
-                  <span aria-hidden="true" className="text-brand-link">
-                    →
-                  </span>
                 </h3>
                 <p className="text-sm leading-6 text-secondary">{description}</p>
               </Link>
@@ -213,9 +299,9 @@ export default function DashboardPage() {
           )}
 
           {status === "incomplete" && (
-            <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
+            <section className="flex flex-col gap-3 border-l-2 border-line pl-5">
               <div className="flex flex-col gap-2">
-                <h3 className="text-2xl font-semibold">Complete your Student profile</h3>
+                <h3 className="text-xl font-semibold">Complete your Student profile</h3>
                 <p className="leading-7 text-secondary">
                   Tell us what you want to learn so we can help you find Tutors that fit your goals.
                 </p>
@@ -230,10 +316,10 @@ export default function DashboardPage() {
           )}
 
           {status === "complete" && (
-            <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
+            <section className="flex flex-col gap-3 border-t border-line pt-5">
               <div>
-                <h3 className="text-2xl font-semibold">Your Student profile is ready</h3>
-                <p className="mt-2 leading-7 text-secondary">
+                <h3 className="text-lg font-semibold">Your Student profile is ready</h3>
+                <p className="mt-2 text-sm leading-6 text-secondary">
                   You can now explore Tutors matched to your learning preferences.
                 </p>
               </div>
@@ -254,26 +340,16 @@ export default function DashboardPage() {
             aria-labelledby="tutor-dashboard-tab"
             tabIndex={0}
             hidden={activeTab !== "tutor"}
-            className="flex flex-col gap-8"
+            className="flex flex-col gap-5"
           >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex flex-col gap-2">
-                <h2 className="text-2xl font-semibold">Tutor dashboard</h2>
-                <p className="text-secondary">
-                  Manage your teaching availability, subjects, and Tutor profile.
-                </p>
-              </div>
-              <Link
-                href="/settings/tutor"
-                className="text-sm font-semibold text-brand-link underline"
-              >
-                Manage subjects and listing
-              </Link>
-            </div>
-            {activeTab === "tutor" && <TutorDashboardStats />}
-            <TutorNeedsConfirmation />
-            <TutorUpcomingClasses />
-            <TutorAvailabilityEditor />
+            <h2 className="sr-only">Tutor dashboard</h2>
+            {activeTab === "tutor" && (
+              <TutorDashboardStats>
+                <TutorUpcomingClasses />
+                <TutorAvailabilityEditor />
+                <TutorNeedsConfirmation />
+              </TutorDashboardStats>
+            )}
           </section>
         )}
       </main>

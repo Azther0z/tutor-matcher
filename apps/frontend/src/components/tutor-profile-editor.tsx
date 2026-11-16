@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { VerifiedIcon } from "@/src/components/verified-icon";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
@@ -28,9 +29,10 @@ import {
   type TutorDetailsFieldErrors,
 } from "@/src/lib/tutor-details";
 
-const shell = "mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-16";
-const panel = "rounded-2xl border border-line bg-surface p-6";
-const buttonBase = "rounded-lg border border-line px-6 py-3 font-medium disabled:opacity-60";
+const shell = "mx-auto flex w-full max-w-[68rem] flex-1 flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8";
+const panel = "rounded-2xl border border-line bg-surface p-4 sm:p-5";
+const buttonBase =
+  "inline-flex min-h-11 items-center justify-center rounded-lg border border-line px-4 py-2 text-sm font-semibold disabled:opacity-60";
 const button = `${buttonBase} hover:bg-surface-muted `;
 const primaryButton = `${buttonBase} bg-brand-navy text-white hover:opacity-80`;
 const apiPath = "/api/profiles/me/tutor";
@@ -44,11 +46,13 @@ function ProfileLayout({ enrollment, children }: { enrollment: boolean; children
       className={
         enrollment
           ? shell
-          : "mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row"
+          : "mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:px-8"
       }
     >
       {!enrollment && <SettingsSidebar activeSection="tutor" />}
-      <div className="flex min-w-0 flex-1 flex-col gap-8">{children}</div>
+      <div className={`flex min-w-0 flex-1 flex-col ${enrollment ? "gap-5" : "gap-8"}`}>
+        {children}
+      </div>
     </main>
   );
 }
@@ -322,11 +326,10 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
   return (
     <ProfileLayout enrollment={enrollment}>
       <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium text-muted">Tutor Matcher</p>
-        <h1 className="text-4xl font-semibold tracking-tight">
-          {enrollment ? "Become a Tutor" : "Tutor profile"}
+        <h1 className="text-2xl font-semibold leading-tight tracking-tight">
+          {enrollment ? "Become a tutor" : "Tutor profile"}
         </h1>
-        <p className="text-secondary">
+        <p className="max-w-2xl text-sm leading-6 text-secondary">
           Subjects and hourly rates are configured separately. Change your name in{" "}
           <Link
             className="underline"
@@ -369,8 +372,8 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
           <h2 className="text-xl font-semibold">
             Current approved profile{" "}
             {tutor.verified && (
-              <span className="ml-2 rounded-full bg-green-500/10 px-3 py-1 text-sm text-green-700 dark:text-green-300">
-                Verified
+              <span className="ml-2 inline-flex align-middle">
+                <VerifiedIcon />
               </span>
             )}
           </h2>
@@ -494,7 +497,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
               <li key={submission.id} className="py-3">
                 <details>
                   <summary className="cursor-pointer font-medium">
-                    <TutorSubmissionStatus status={submission.status} />
+                    <TutorSubmissionStatus status={submission.status} plain />
                     {submission.submittedAt &&
                       ` · Submitted ${new Date(submission.submittedAt).toLocaleString()}`}
                   </summary>
@@ -587,9 +590,9 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
                 return (
                   <li
                     key={draft.id}
-                    className="flex items-center justify-between gap-4 rounded-md py-3"
+                    className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-2 py-3 hover:bg-surface-muted"
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">
                         {draft.bio?.trim().slice(0, 100) || "Untitled draft"}
                       </p>

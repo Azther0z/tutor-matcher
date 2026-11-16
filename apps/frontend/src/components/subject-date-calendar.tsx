@@ -80,14 +80,17 @@ export function SubjectDateCalendar({
               aria-pressed={isSelected}
               disabled={date < today || date > lastDay}
               onClick={() => onSelect(date)}
-              className={`rounded-lg p-2 text-sm disabled:opacity-30 ${
+              className={`relative flex aspect-square min-w-0 items-center justify-center rounded-lg border p-0 text-sm disabled:opacity-30 ${
                 isSelected
-                  ? "bg-brand-navy text-white"
+                  ? "border-brand-navy bg-brand-navy text-white"
                   : "border border-line hover:border-brand-navy"
               }`}
             >
               {index + 1}
-              <span aria-hidden="true" className="block h-2 text-xs leading-none">
+              <span
+                aria-hidden="true"
+                className="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs leading-none"
+              >
                 {hasOpenings ? "•" : ""}
               </span>
             </button>

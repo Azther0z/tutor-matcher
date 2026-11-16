@@ -157,16 +157,5 @@ export function BookingReviewSection({
     );
   }
 
-  if (booking.status === "CONFIRMED") {
-    return (
-      <section aria-label="Review eligibility" className={sectionClass}>
-        <h3 className="font-semibold">Review not yet eligible</h3>
-        <p className="mt-2 text-sm text-muted">
-          Your Tutor must confirm completion before you can review this lesson.
-        </p>
-      </section>
-    );
-  }
-
   return null;
 }

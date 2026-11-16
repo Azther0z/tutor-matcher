@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AuthProvider } from "./auth-provider";
 import { Navbar } from "./navbar";
 import { clearAuthToken, setAuthToken } from "@/src/lib/auth";
@@ -64,10 +64,7 @@ describe("Navbar", () => {
     renderNavbar();
 
     const accountButton = await screen.findByRole("button", { name: "Open account menu" });
-    expect(screen.getByRole("link", { name: "Wallet balance" })).toHaveAttribute(
-      "href",
-      "/wallet/topup"
-    );
+    expect(screen.getByRole("link", { name: "Wallet balance" })).toHaveAttribute("href", "/wallet");
     await waitFor(() =>
       expect(screen.getByLabelText("Wallet balance")).toHaveTextContent("฿ 1,250.50")
     );
@@ -90,7 +87,7 @@ describe("Navbar", () => {
       expect(screen.getByLabelText("Wallet balance")).toHaveTextContent("฿ 1,250.50")
     );
 
-    publishWalletBalance("1750.50");
+    act(() => publishWalletBalance("1750.50"));
 
     await waitFor(() =>
       expect(screen.getByLabelText("Wallet balance")).toHaveTextContent("฿ 1,750.50")

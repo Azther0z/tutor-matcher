@@ -31,7 +31,7 @@ export function TutorUpcomingClasses() {
   }, []);
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
+    <section className="flex min-w-0 flex-col gap-4 border-t border-line pt-5">
       <h3 className="text-xl font-semibold">Upcoming classes</h3>
       {loading && <p className="text-sm text-muted">Loading classes…</p>}
       {error && (
@@ -43,19 +43,19 @@ export function TutorUpcomingClasses() {
         <p className="text-sm text-muted">No upcoming classes.</p>
       )}
       {bookings.length > 0 && (
-        <ul className="grid gap-3">
+        <ul className="divide-y divide-line">
           {bookings.map((booking) => (
             <li key={booking.id}>
               <Link
                 href={`/bookings/${booking.id}`}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-4 hover:border-brand-navy"
+                className="flex flex-wrap items-center justify-between gap-3 px-3 py-4 transition-colors hover:bg-surface-muted"
               >
                 <div className="min-w-0">
                   <p className="font-semibold">{booking.subject.name}</p>
                   <p className="text-sm text-muted">with {booking.student.name}</p>
                   <p className="mt-1 text-sm">{dateFormat.format(new Date(booking.startedAt))}</p>
                 </div>
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
                   Confirmed
                 </span>
               </Link>

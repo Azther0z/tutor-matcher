@@ -202,6 +202,7 @@ describe("trial booking rules", () => {
         hourlyRate: new Prisma.Decimal("75.00"),
         format: "ONLINE",
         tutorId: SLOT_A,
+        learningAreas: [],
         tutor: {
           id: SLOT_A,
           currentProfileVersion: { avatarUrl: null, status: "APPROVED", certifications: [] },
@@ -297,6 +298,7 @@ describe("trial booking rules", () => {
         hourlyRate: new Prisma.Decimal("75.00"),
         format: "ONLINE",
         tutorId: SLOT_A,
+        learningAreas: [],
         tutor: {
           id: SLOT_A,
           currentProfileVersion: { avatarUrl: null, status: "APPROVED", certifications: [] },

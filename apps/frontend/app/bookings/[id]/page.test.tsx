@@ -93,11 +93,11 @@ it("shows server cancellation terms before sending the quote token", async () =>
   const onBalance = jest.fn();
   const unsubscribe = subscribeToWalletBalance(onBalance);
   render(<BookingDetailPage />);
-  fireEvent.click(await screen.findByRole("button", { name: "Cancel lesson" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Refund" }));
   expect(await screen.findByText(/30\.00/)).toBeInTheDocument();
   expect(screen.getByText(/70\.00/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Confirm cancellation" }));
-  await waitFor(() => expect(screen.getByText("CANCELLED")).toBeInTheDocument());
+  fireEvent.click(screen.getByRole("button", { name: "Confirm refund" }));
+  await waitFor(() => expect(screen.getByText("Cancelled")).toBeInTheDocument());
   expect(screen.getByText(/70.00.*returned to your wallet/)).toBeInTheDocument();
   expect(onBalance).toHaveBeenCalledWith("320.00");
   unsubscribe();
@@ -394,7 +394,10 @@ it("confirms wallet payment immediately without a tutor approval step", async ()
   const unsubscribe = subscribeToWalletBalance(onBalance);
   render(<BookingDetailPage />);
   fireEvent.click(await screen.findByRole("button", { name: "Confirm payment" }));
-  expect(await screen.findByText("CONFIRMED")).toBeInTheDocument();
+  const paymentModal = await screen.findByRole("dialog", { name: "Confirm payment" });
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  fireEvent.click(within(paymentModal).getByRole("button", { name: "Pay from wallet" }));
+  expect(await screen.findByText("Payment confirmed. Your lesson is booked.")).toBeInTheDocument();
   expect(screen.getByText("Payment confirmed. Your lesson is booked.")).toBeInTheDocument();
   expect(global.fetch).toHaveBeenLastCalledWith(
     `/api/bookings/${bookingId}/confirm-payment`,
@@ -425,6 +428,9 @@ it("does not publish a wallet balance when payment fails", async () => {
   const unsubscribe = subscribeToWalletBalance(onBalance);
   render(<BookingDetailPage />);
   fireEvent.click(await screen.findByRole("button", { name: "Confirm payment" }));
+  const paymentModal = await screen.findByRole("dialog", { name: "Confirm payment" });
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  fireEvent.click(within(paymentModal).getByRole("button", { name: "Pay from wallet" }));
   expect(await screen.findByText("Payment failed")).toBeInTheDocument();
   expect(screen.queryByText("CONFIRMED")).not.toBeInTheDocument();
   expect(onBalance).not.toHaveBeenCalled();
@@ -1258,6 +1264,9 @@ it("offers fresh availability without changing wallet balance when another stude
   const unsubscribe = subscribeToWalletBalance(onBalance);
   render(<BookingDetailPage />);
   fireEvent.click(await screen.findByRole("button", { name: "Confirm payment" }));
+  const paymentModal = await screen.findByRole("dialog", { name: "Confirm payment" });
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  fireEvent.click(within(paymentModal).getByRole("button", { name: "Pay from wallet" }));
   expect(await screen.findByText(/Your wallet was not charged/)).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Choose another time" })).toHaveAttribute(
     "href",
@@ -1265,4 +1274,45 @@ it("offers fresh availability without changing wallet balance when another stude
   );
   expect(onBalance).not.toHaveBeenCalled();
   unsubscribe();
+});
+
+it("opens confirmed lesson refund in an accessible modal and closes without cancelling", async () => {
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ booking }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ quote }) });
+  render(<BookingDetailPage />);
+  const refundButton = await screen.findByRole("button", { name: "Refund" });
+  refundButton.focus();
+  fireEvent.click(refundButton);
+  const modal = await screen.findByRole("dialog", { name: "Refund this lesson?" });
+  expect(await within(modal).findByText("70%")).toBeInTheDocument();
+  expect(within(modal).getByRole("button", { name: "Confirm refund" })).toBeEnabled();
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(refundButton).toHaveFocus();
+  expect(global.fetch).toHaveBeenCalledTimes(2);
+});
+
+it("uses one Refund action for an ended confirmed lesson", async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      booking: {
+        ...booking,
+        actions: { ...booking.actions, canCancel: false, canRequestRefund: true },
+      },
+    }),
+  });
+  render(<BookingDetailPage />);
+  const refund = await screen.findByRole("button", { name: "Refund" });
+  expect(refund).toBeEnabled();
+  expect(screen.queryByRole("button", { name: "Request a refund" })).not.toBeInTheDocument();
+  fireEvent.click(refund);
+  const modal = await screen.findByRole("dialog", { name: "Request a refund" });
+  expect(within(modal).getByRole("button", { name: "Send refund request" })).toBeDisabled();
+  expect(within(modal).getByText(/An admin reviews every request/)).toBeInTheDocument();
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(global.fetch).toHaveBeenCalledTimes(1);
 });

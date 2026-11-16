@@ -21,9 +21,9 @@ const bookingStatusLabels: Record<NonNullable<WalletTransaction["booking"]>["sta
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap justify-between gap-3 px-6 py-4">
+    <div className="grid min-w-0 gap-1 px-5 py-4 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4 sm:px-6">
       <dt className="text-sm text-muted">{label}</dt>
-      <dd className="text-right font-medium">{children}</dd>
+      <dd className="min-w-0 break-words font-medium sm:text-right">{children}</dd>
     </div>
   );
 }
@@ -60,12 +60,9 @@ function TransactionContent() {
     <main
       id="main-content"
       tabIndex={-1}
-      className="mx-auto w-full max-w-3xl flex-1 px-6 py-12 lg:py-16"
+      className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8"
     >
-      <Link href="/wallet" className="text-sm font-medium text-brand-link hover:text-brand-link">
-        ← Back to wallet
-      </Link>
-      <h1 className="mt-4 text-4xl font-semibold tracking-tight">Transaction</h1>
+      <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Transaction</h1>
       <p className="mt-3 text-muted">A read-only record of a completed wallet movement.</p>
 
       {error ? (

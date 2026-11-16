@@ -1,6 +1,20 @@
 # Documentation Index
 
+Planned Admin refund approval messages: [proposal](change/refund-approval-message/proposal.md), [design](change/refund-approval-message/design.md), [requirements](change/refund-approval-message/spec/refund-notifications.md), and [tasks](change/refund-approval-message/tasks.md).
+
 REV-2 reply editing is confirmed in [editable reply evidence](sources/rev-2-editable-reply-confirmation.md).
+
+Subject-page booking selection is confirmed in [the user request](sources/subject-page-booking-confirmation.md).
+
+Saved payout accounts now live on `/wallet/payout`: [confirmed route removal](sources/wallet-settings-removal-confirmation.md).
+
+Tutor availability uses a month picker beside daily slots: [layout request](sources/tutor-availability-layout-confirmation.md).
+
+Availability uses drag selection across individual grid cells, with one row per subject per slot: [clarification](sources/tutor-availability-grid-selection-clarification.md).
+
+Availability uses seven centered dates and four rows of twelve slots: [confirmation](sources/tutor-availability-centered-dates-confirmation.md).
+
+Availability checklists show mixed assignments across selected slots and support adding/removing through Apply: [confirmation](sources/tutor-availability-mixed-checklist-confirmation.md).
 
 Start here. This page tells you which document to open and which one to trust when two
 disagree.

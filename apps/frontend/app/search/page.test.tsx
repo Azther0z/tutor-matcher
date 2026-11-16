@@ -1,3 +1,6 @@
+import { renderToString } from "react-dom/server";
+import { hydrateRoot } from "react-dom/client";
+import { TutorSearch } from "@/src/components/tutor-search";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import SearchPage from "./page";
 import { jsonResponse } from "@/src/test/tutor-profile-fixtures";
@@ -475,4 +478,27 @@ describe("SearchPage (DISC-1)", () => {
     ).toBeInTheDocument();
     await waitFor(() => expect(searchCalls()).toHaveLength(2));
   });
+});
+
+it("hydrates the visitor HTML with a saved login without a mismatch", async () => {
+  respondWith(jsonResponse(page([subject()])));
+  const container = document.createElement("div");
+  container.innerHTML = renderToString(<TutorSearch />);
+  document.body.appendChild(container);
+  localStorage.setItem("authToken", "saved-token");
+  const onRecoverableError = jest.fn();
+  let root: ReturnType<typeof hydrateRoot> | undefined;
+  try {
+    await act(async () => {
+      root = hydrateRoot(container, <TutorSearch />, { onRecoverableError });
+    });
+    expect(
+      within(container).getByRole("link", { name: "Add learning areas to your profile" })
+    ).toBeInTheDocument();
+    expect(within(container).queryByRole("link", { name: "Log in" })).not.toBeInTheDocument();
+    expect(onRecoverableError).not.toHaveBeenCalled();
+  } finally {
+    act(() => root?.unmount());
+    container.remove();
+  }
 });

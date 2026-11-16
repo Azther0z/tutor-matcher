@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-
 const dayHeading = new Intl.DateTimeFormat("en-GB", {
   weekday: "long",
   day: "numeric",
@@ -11,15 +9,10 @@ const dayHeading = new Intl.DateTimeFormat("en-GB", {
 });
 const clock = (index: number) =>
   `${String(Math.floor(index / 2)).padStart(2, "0")}:${index % 2 ? "30" : "00"}`;
-// A day without openings opens on the morning, 08:00.
-const MORNING = 16;
 
-// DISC-4: the selected Bangkok day as a calendar. All 48 half-hours from 00:00 to 23:30 are
-// listed, each Available or Not available, and consecutive open half-hours draw as one block.
-// Nothing is clickable: booking starts from the button below the calendar.
+// Show every half-hour as a separate tile, matching the booking picker.
+// This preview remains informational; Book this subject opens the interactive picker.
 export function SubjectDayCalendar({ date, openSlots }: { date: string; openSlots: string[] }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLOListElement>(null);
   const open = new Set(openSlots.map((startedAt) => new Date(startedAt).getTime()));
   const halfHours = Array.from({ length: 48 }, (_, index) => ({
     index,
@@ -37,16 +30,6 @@ export function SubjectDayCalendar({ date, openSlots }: { date: string; openSlot
   const blockLabel = ({ start, end }: { start: number; end: number }) =>
     `${clock(start)}–${clock(end)}`;
   const heading = dayHeading.format(new Date(`${date}T12:00:00+07:00`));
-  const firstOpen = blocks[0]?.start ?? MORNING;
-
-  // Scroll to the first opening, keeping the half-hour before it in view.
-  useEffect(() => {
-    const row = listRef.current?.children[Math.max(firstOpen - 1, 0)];
-    if (scrollRef.current && row instanceof HTMLElement) {
-      scrollRef.current.scrollTop = row.offsetTop;
-    }
-  }, [date, firstOpen]);
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -57,54 +40,20 @@ export function SubjectDayCalendar({ date, openSlots }: { date: string; openSlot
             : "No open times on this day"}
         </p>
       </div>
-      <div
-        ref={scrollRef}
-        role="region"
-        aria-label={`Calendar for ${heading}`}
-        tabIndex={0}
-        className="max-h-[28rem] overflow-y-auto rounded-2xl border border-line bg-surface focus-visible:outline-2 focus-visible:outline-brand-link"
-      >
-        <div className="relative">
-          <ol ref={listRef}>
-            {halfHours.map((slot) => (
-              <li
-                key={slot.index}
-                className={`grid h-8 grid-cols-[3.5rem_minmax(0,1fr)] ${
-                  slot.index === 0
-                    ? ""
-                    : slot.time.endsWith(":00")
-                      ? "border-t border-line"
-                      : "border-t border-dashed border-line"
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`pr-2 pt-1 text-right text-[11px] leading-none tabular-nums ${
-                    slot.time.endsWith(":00") ? "text-secondary" : "text-muted"
-                  }`}
-                >
-                  {slot.time}
-                </span>
-                <span className="sr-only">
-                  {`${slot.label} ${slot.available ? "Available" : "Not available"}`}
-                </span>
-              </li>
-            ))}
-          </ol>
-          {blocks.map((block) => (
-            <div
-              key={block.start}
-              aria-hidden="true"
-              className="absolute left-14 right-2 overflow-hidden rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-100"
-              style={{
-                top: `calc(${block.start * 2}rem + 2px)`,
-                height: `calc(${(block.end - block.start) * 2}rem - 4px)`,
-              }}
+      <div role="region" aria-label={`Calendar for ${heading}`}>
+        <ol className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+          {halfHours.map((slot) => (
+            <li
+              key={slot.index}
+              className={`flex min-h-10 min-w-0 items-center justify-center rounded-lg border px-1 py-2 text-center text-sm tabular-nums ${slot.available ? "border-line bg-transparent text-foreground" : "border-transparent bg-surface-muted text-muted opacity-30"}`}
             >
-              {blockLabel(block)} · Available
-            </div>
+              <span aria-hidden="true" className="font-semibold">
+                {slot.time}
+              </span>
+              <span className="sr-only">{`${slot.label} ${slot.available ? "Available" : "Not available"}`}</span>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </div>
   );

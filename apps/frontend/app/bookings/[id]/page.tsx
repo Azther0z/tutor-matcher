@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import styles from "@/src/components/student-layout.module.css";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BookingReviewSection } from "@/src/components/booking-review";
+import { BookingProgress } from "@/src/components/booking-flow";
 import { RequireAuth } from "@/src/components/require-auth";
 import { TutorDialog } from "@/src/components/tutor-dialog";
 import {
@@ -23,6 +25,13 @@ import { refundReasonLabels } from "@/src/lib/refunds-api";
 import { publishWalletBalance } from "@/src/lib/wallet-api";
 
 const TIME_ZONE = "Asia/Bangkok";
+const dialogSecondary =
+  "inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-line px-5 text-sm font-semibold hover:bg-surface-muted disabled:opacity-50 sm:flex-none";
+const dialogPrimary =
+  "inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-brand-navy px-5 text-sm font-semibold text-white hover:bg-brand-navy-dark disabled:opacity-50 sm:flex-none";
+const dialogField =
+  "mt-2 w-full rounded-lg border border-line bg-transparent px-3 py-2 text-sm leading-6 focus-visible:outline-2 focus-visible:outline-brand-link";
+
 const MAX_MEETING_URL_LENGTH = 2048;
 const MAX_TIMEOUT_DELAY = 2_147_483_647;
 const money = new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" });
@@ -35,13 +44,6 @@ const dateTime = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
   timeZone: TIME_ZONE,
 });
-const statusStyle: Record<Booking["status"], string> = {
-  PENDING_PAYMENT: "bg-amber-100 text-amber-800",
-  CONFIRMED: "bg-emerald-100 text-emerald-800",
-  COMPLETED: "bg-blue-100 text-blue-800",
-  CANCELLED: "bg-surface-muted text-secondary",
-};
-
 // PAY-3: the reasons a Student can give; an admin decides every request.
 const REFUND_OPTIONS: Array<{ reason: RefundRequestReason; label: string }> = [
   { reason: "TUTOR_NO_SHOW", label: "My tutor didn't show up" },
@@ -85,6 +87,8 @@ function BookingDetailContent() {
   const [message, setMessage] = useState<string | null>(null);
   const [meetingUrlDraft, setMeetingUrlDraft] = useState("");
   const [meetingLinkBusy, setMeetingLinkBusy] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const paymentInFlight = useRef(false);
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
   const [clientNow, setClientNow] = useState(() => Date.now());
@@ -212,12 +216,23 @@ function BookingDetailContent() {
   }
 
   async function pay() {
-    if (!booking || !booking.actions.canPay || !booking.payment.canPay) return;
+    if (
+      !booking ||
+      busy ||
+      paymentInFlight.current ||
+      slotUnavailable ||
+      isExpired ||
+      !booking.actions.canPay ||
+      !booking.payment.canPay
+    )
+      return;
+    paymentInFlight.current = true;
     setBusy(true);
     setMessage(null);
     try {
       const confirmed = await confirmPayment(booking.id);
       setBooking(confirmed);
+      setPaymentDialogOpen(false);
       if (confirmed.payment.walletBalance !== null) {
         publishWalletBalance(confirmed.payment.walletBalance);
       }
@@ -241,6 +256,7 @@ function BookingDetailContent() {
         setMessage(error instanceof Error ? error.message : "Payment could not be confirmed.");
       }
     } finally {
+      paymentInFlight.current = false;
       setBusy(false);
     }
   }
@@ -453,27 +469,33 @@ function BookingDetailContent() {
     amount: String(shortfall),
     returnTo: `/bookings/${booking.id}`,
   }).toString()}`;
+  const isStudentDetails = !isTutorView;
   const displayStatus = isExpired ? "EXPIRED" : booking.status.replaceAll("_", " ");
+  const progressStep: 2 | 3 | 4 =
+    booking.status === "COMPLETED"
+      ? 4
+      : booking.status === "CONFIRMED"
+        ? 3
+        : booking.status === "CANCELLED" && booking.payment.status === "COMPLETED"
+          ? 3
+          : 2;
 
   return (
     <main
       id="main-content"
       tabIndex={-1}
-      className="mx-auto w-full max-w-4xl flex-1 px-5 py-10 sm:px-8"
+      className={`mx-auto w-full max-w-[68rem] flex-1 px-4 py-6 sm:px-6 lg:px-8 ${!isTutorView && booking.status === "PENDING_PAYMENT" ? "pb-40" : ""}`}
     >
-      <Link href="/bookings" className="text-sm text-secondary hover:underline">
-        ← Bookings
-      </Link>
-      <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold text-brand-link">Lesson</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">{booking.subject.name}</h1>
-        </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyle[booking.status]}`}
-        >
-          {displayStatus}
-        </span>
+      <header className="flex flex-wrap items-baseline justify-between gap-3">
+        <h1 className="text-2xl font-semibold leading-tight tracking-tight">
+          {booking.subject.name}
+        </h1>
+        <p className="text-sm font-medium text-secondary">
+          {displayStatus.charAt(0) + displayStatus.slice(1).toLowerCase()}
+        </p>
+      </header>
+      <div className="mt-4">
+        <BookingProgress status={booking.status} currentStep={progressStep} />
       </div>
       {isExpired && (
         <p role="status" className="mt-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
@@ -491,117 +513,34 @@ function BookingDetailContent() {
       {slotUnavailable && (
         <Link
           className="mt-4 inline-block text-brand-link underline"
-          href={`/bookings/s/${booking.subject.id}`}
+          href={`/tutors/${booking.subject.tutor.id}/${booking.subject.id}`}
         >
           Choose another time
         </Link>
       )}
-      {message && (
+      {message && !paymentDialogOpen && (
         <p role="status" className="mt-6 rounded-xl bg-brand-soft p-4 text-sm text-brand-link">
           {message}
         </p>
       )}
-      <div className="mt-8 grid gap-6 md:grid-cols-[1fr_280px]">
-        <aside className="h-fit md:sticky md:top-24 md:col-start-2 md:row-start-1 rounded-2xl border border-line bg-surface p-6">
-          <p className="text-sm text-muted">Total</p>
-          <p className="mt-1 text-2xl font-semibold">{money.format(Number(booking.totalAmount))}</p>
-          {isTutorView && booking.earnings && (
-            <section aria-label="Lesson earnings" className="mt-5 border-t border-line pt-5">
-              <h3 className="font-semibold">
-                {booking.earnings.status === "PENDING" ? "Pending earnings" : "Cleared earnings"}
-              </h3>
-              <p className="mt-1 text-xl font-semibold">
-                {money.format(Number(booking.earnings.amount))}
-              </p>
-              <p className="mt-2 text-sm text-muted">
-                {booking.earnings.status === "PENDING" ? (
-                  <>
-                    After the 15% platform fee. Available after{" "}
-                    {dateTime.format(new Date(booking.earnings.clearsAt))}; it is not in your
-                    available balance yet and moves to your wallet the next time you view or use
-                    your balance.
-                    {booking.earnings.holdReason === "AWAITING_COMPLETION" &&
-                      " The Tutor must confirm the lesson first."}
-                    {booking.earnings.holdReason === "CLEARING_PERIOD" &&
-                      " The 24-hour clearing period is still in progress."}
-                    {booking.earnings.holdReason === "REFUND_REVIEW" &&
-                      " It is held until the Admin decides the refund request."}
-                    {booking.earnings.holdReason === "READY_TO_CLEAR" &&
-                      " The clearing period has ended; it will move when you next view or use your wallet."}
-                  </>
-                ) : (
-                  "This earning has been cleared into your wallet."
-                )}
-              </p>
-              <Link
-                href="/wallet"
-                className="mt-3 inline-block text-sm font-semibold text-brand-link underline"
-              >
-                View wallet
-              </Link>
-            </section>
-          )}
-          {!isTutorView && (
-            <StudentRefundStatus booking={booking} busy={busy} onRequest={openRefund} />
-          )}
-          {isTutorView && booking.refundRequest && (
-            <section aria-label="Refund request" className="mt-5 border-t border-line pt-5">
-              <h3 className="font-semibold">Refund requested</h3>
-              <p className="mt-2 text-sm text-muted">
-                {booking.student.name} asked for a refund:{" "}
-                {refundReasonLabels[booking.refundRequest.reason].toLowerCase()}.{" "}
-                {booking.refundRequest.status === "PENDING"
-                  ? "An admin is reviewing it, so you can't confirm this lesson yet."
-                  : booking.refundRequest.status === "APPROVED"
-                    ? "The Student was refunded in full and this lesson was cancelled."
-                    : "An admin rejected the request, so you can confirm this lesson."}
-              </p>
-            </section>
-          )}
-          <BookingReviewSection
-            booking={booking}
-            onPublished={(review) => {
-              setBooking({ ...booking, review, actions: { ...booking.actions, canReview: false } });
-              setMessage("Thanks! Your review is published.");
-            }}
-          />
-          {booking.status === "PENDING_PAYMENT" && booking.payment.expiresAt && (
-            <p className="mt-2 text-xs text-muted">
-              Payment request expires {dateTime.format(new Date(booking.payment.expiresAt))}
-            </p>
-          )}
-          {booking.status === "PENDING_PAYMENT" && booking.payment.walletBalance !== null && (
-            <button
-              disabled={busy || !booking.actions.canPay || !booking.payment.canPay}
-              onClick={() => void pay()}
-              className="mt-5 h-11 w-full rounded-lg bg-brand-navy font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {busy ? "Processing…" : "Confirm payment"}
-            </button>
-          )}
-          {booking.status === "PENDING_PAYMENT" && shortfall > 0 && (
-            <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
-              <p>You need {money.format(shortfall)} more to pay.</p>
-              <Link href={topUpHref} className="mt-2 inline-block font-semibold underline">
-                Top up {money.format(shortfall)}
-              </Link>
-            </div>
-          )}
-          {(booking.actions.canCancel || booking.actions.canTutorCancel) && (
-            <div className="mt-4 grid gap-2">
-              {(booking.actions.canCancel || booking.actions.canTutorCancel) && (
-                <button
-                  disabled={busy || quoteLoading}
-                  onClick={() => void openCancellation()}
-                  className="h-10 rounded-lg border border-red-200 font-medium text-red-700"
-                >
-                  {isTutorView ? "Cancel class" : "Cancel lesson"}
-                </button>
-              )}
-            </div>
-          )}
-        </aside>
-        <section className="min-w-0 md:col-start-1 md:row-start-1 rounded-2xl border border-line bg-surface p-6">
+      <div
+        className={
+          isStudentDetails
+            ? "mt-6 flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:p-5"
+            : isTutorView
+              ? "mt-8 grid gap-6 md:grid-cols-[1fr_280px]"
+              : "mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]"
+        }
+      >
+        <section
+          className={
+            isStudentDetails
+              ? "min-w-0"
+              : isTutorView
+                ? "min-w-0 md:col-start-1 md:row-start-1 rounded-2xl border border-line bg-surface p-4 sm:p-5"
+                : "min-w-0 rounded-2xl border border-line bg-surface p-4 sm:p-5"
+          }
+        >
           <h2 className="text-xl font-semibold">Lesson details</h2>
           <dl className="mt-5 grid gap-5 sm:grid-cols-2">
             <div>
@@ -611,8 +550,11 @@ function BookingDetailContent() {
               </dd>
             </div>
             <div>
-              <dt className="text-sm text-muted">Subject</dt>
-              <dd className="mt-1 font-semibold">{booking.subject.name}</dd>
+              <dt className="text-sm text-muted">Fields</dt>
+              <dd className="mt-1 font-semibold">
+                {booking.subject.learningAreas?.map((area) => area.name).join(", ") ||
+                  "Not specified"}
+              </dd>
             </div>
             <div>
               <dt className="text-sm text-muted">Format</dt>
@@ -620,7 +562,7 @@ function BookingDetailContent() {
                 {booking.subject.format === "ONLINE" ? "Online" : booking.subject.format}
               </dd>
             </div>
-            <div className="sm:col-span-2">
+            <div>
               <dt className="text-sm text-muted">Time</dt>
               <dd className="mt-1 font-semibold">
                 {startsAt
@@ -635,32 +577,60 @@ function BookingDetailContent() {
               </div>
             )}
           </dl>
-          {canJoinLesson && booking.effectiveMeetingUrl && (
+          {!isTutorView && booking.status === "CONFIRMED" ? (
+            <>
+              <p className="mt-5 text-sm text-muted">
+                Total paid{" "}
+                <span className="ml-2 font-semibold text-foreground">
+                  {money.format(Number(booking.totalAmount))}
+                </span>
+              </p>
+              <div className="mt-5 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  disabled={
+                    busy ||
+                    quoteLoading ||
+                    (!booking.actions.canCancel && !booking.actions.canRequestRefund)
+                  }
+                  onClick={() => {
+                    if (booking.actions.canCancel) void openCancellation();
+                    else if (booking.actions.canRequestRefund) openRefund();
+                  }}
+                  className="flex min-h-11 items-center justify-center rounded-lg border border-line px-5 text-sm font-semibold text-red-700 hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Refund
+                </button>
+                {canJoinLesson && booking.effectiveMeetingUrl ? (
+                  <a
+                    href={booking.effectiveMeetingUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-navy px-5 text-sm font-semibold text-white hover:bg-brand-navy-dark"
+                  >
+                    Join meeting
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex min-h-11 cursor-not-allowed items-center justify-center rounded-lg bg-brand-navy px-5 text-sm font-semibold text-white opacity-50"
+                  >
+                    Join meeting
+                  </button>
+                )}
+              </div>
+            </>
+          ) : canJoinLesson && booking.effectiveMeetingUrl ? (
             <a
               href={booking.effectiveMeetingUrl}
               target="_blank"
               rel="noreferrer"
               className="mt-6 inline-flex h-11 items-center rounded-lg bg-brand-navy px-5 font-semibold text-white"
             >
-              Join lesson
+              Join meeting
             </a>
-          )}
-          {booking.status === "CONFIRMED" && !booking.effectiveMeetingUrl && (
-            <p className="mt-6 text-sm text-secondary">
-              Your booking is confirmed. A meeting link is not available yet.
-            </p>
-          )}
-          {booking.effectiveMeetingUrl && (
-            <p className="mt-3 text-sm text-muted">
-              Using {booking.customMeetingUrl ? "the Tutor-provided link" : "the generated link"}.
-            </p>
-          )}
-          {booking.meetingLinkUpdatedAt && (
-            <p className="mt-2 text-sm text-muted">
-              Meeting link last updated on {dateTime.format(new Date(booking.meetingLinkUpdatedAt))}
-              .
-            </p>
-          )}
+          ) : null}
           {canConfirmCompletion && (
             <div className="mt-6 border-t border-line pt-5">
               <h3 className="font-semibold">Confirm this lesson</h3>
@@ -707,7 +677,7 @@ function BookingDetailContent() {
                     meetingUrlDraft.trim() === booking.customMeetingUrl
                   }
                   onClick={() => void saveMeetingLink(meetingUrlDraft.trim())}
-                  className="inline-flex min-h-10 items-center rounded-full bg-brand-navy px-4 text-sm font-semibold text-white disabled:opacity-50"
+                  className="inline-flex min-h-10 items-center rounded-lg bg-brand-navy px-4 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   {meetingLinkBusy ? "Saving…" : "Save link"}
                 </button>
@@ -725,7 +695,234 @@ function BookingDetailContent() {
             </div>
           )}
         </section>
+        <aside
+          className={
+            isStudentDetails
+              ? "min-w-0"
+              : isTutorView
+                ? "h-fit md:sticky md:top-24 md:col-start-2 md:row-start-1 rounded-2xl border border-line bg-surface p-6"
+                : `${styles.summary} rounded-2xl border border-line bg-surface p-5 sm:p-6`
+          }
+        >
+          {!isTutorView &&
+          (booking.status === "PENDING_PAYMENT" || booking.status === "CONFIRMED") ? (
+            <h2 className="sr-only">Payment and lesson information</h2>
+          ) : (
+            <>
+              <p className="text-sm text-muted">Total</p>
+              <p className="mt-1 text-2xl font-semibold">
+                {money.format(Number(booking.totalAmount))}
+              </p>
+            </>
+          )}
+          {isTutorView && booking.earnings && (
+            <section aria-label="Lesson earnings" className="mt-5 border-t border-line pt-5">
+              <h3 className="font-semibold">
+                {booking.earnings.status === "PENDING" ? "Pending earnings" : "Cleared earnings"}
+              </h3>
+              <p className="mt-1 text-xl font-semibold">
+                {money.format(Number(booking.earnings.amount))}
+              </p>
+              <p className="mt-2 text-sm text-muted">
+                {booking.earnings.status === "PENDING" ? (
+                  <>
+                    After the 15% platform fee. Available after{" "}
+                    {dateTime.format(new Date(booking.earnings.clearsAt))}; it is not in your
+                    available balance yet and moves to your wallet the next time you view or use
+                    your balance.
+                    {booking.earnings.holdReason === "AWAITING_COMPLETION" &&
+                      " The Tutor must confirm the lesson first."}
+                    {booking.earnings.holdReason === "CLEARING_PERIOD" &&
+                      " The 24-hour clearing period is still in progress."}
+                    {booking.earnings.holdReason === "REFUND_REVIEW" &&
+                      " It is held until the Admin decides the refund request."}
+                    {booking.earnings.holdReason === "READY_TO_CLEAR" &&
+                      " The clearing period has ended; it will move when you next view or use your wallet."}
+                  </>
+                ) : (
+                  "This earning has been cleared into your wallet."
+                )}
+              </p>
+              <Link
+                href="/wallet"
+                className="mt-3 inline-block text-sm font-semibold text-brand-link underline"
+              >
+                View wallet
+              </Link>
+            </section>
+          )}
+          {!isTutorView && (booking.status !== "CONFIRMED" || booking.refundRequest) && (
+            <StudentRefundStatus booking={booking} busy={busy} onRequest={openRefund} />
+          )}
+          {isTutorView && booking.refundRequest && (
+            <section aria-label="Refund request" className="mt-5 border-t border-line pt-5">
+              <h3 className="font-semibold">Refund requested</h3>
+              <p className="mt-2 text-sm text-muted">
+                {booking.student.name} asked for a refund:{" "}
+                {refundReasonLabels[booking.refundRequest.reason].toLowerCase()}.{" "}
+                {booking.refundRequest.status === "PENDING"
+                  ? "An admin is reviewing it, so you can't confirm this lesson yet."
+                  : booking.refundRequest.status === "APPROVED"
+                    ? "The Student was refunded in full and this lesson was cancelled."
+                    : "An admin rejected the request, so you can confirm this lesson."}
+              </p>
+            </section>
+          )}
+          <BookingReviewSection
+            booking={booking}
+            onPublished={(review) => {
+              setBooking({ ...booking, review, actions: { ...booking.actions, canReview: false } });
+              setMessage("Thanks! Your review is published.");
+            }}
+          />
+          {booking.status === "PENDING_PAYMENT" && booking.payment.expiresAt && (
+            <p className="mt-2 text-xs text-muted">
+              Payment request expires {dateTime.format(new Date(booking.payment.expiresAt))}
+            </p>
+          )}
+          {booking.status === "PENDING_PAYMENT" && booking.payment.walletBalance !== null && (
+            <div
+              className={
+                !isTutorView
+                  ? "fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.04)]"
+                  : "mt-5"
+              }
+            >
+              <div
+                className={
+                  !isTutorView
+                    ? "mx-auto flex w-full max-w-[68rem] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8"
+                    : ""
+                }
+              >
+                {!isTutorView && (
+                  <div>
+                    <p className="text-xs text-muted">Total</p>
+                    <p className="text-lg font-semibold tabular-nums">
+                      {money.format(Number(booking.totalAmount))}
+                    </p>
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {!isTutorView && booking.actions.canCancel && (
+                    <button
+                      type="button"
+                      disabled={busy || quoteLoading}
+                      onClick={() => void openCancellation()}
+                      className="flex min-h-11 items-center justify-center rounded-lg border border-line px-4 text-sm font-semibold text-red-700 hover:bg-surface-muted disabled:opacity-50"
+                    >
+                      Cancel lesson
+                    </button>
+                  )}
+                  <button
+                    disabled={busy || !booking.actions.canPay || !booking.payment.canPay}
+                    onClick={() => {
+                      setMessage(null);
+                      setPaymentDialogOpen(true);
+                    }}
+                    className="flex min-h-11 items-center justify-center rounded-lg bg-brand-navy px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {busy ? "Processing…" : "Confirm payment"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {booking.status === "PENDING_PAYMENT" && shortfall > 0 && (
+            <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+              <p>You need {money.format(shortfall)} more to pay.</p>
+              <Link href={topUpHref} className="mt-2 inline-block font-semibold underline">
+                Top up {money.format(shortfall)}
+              </Link>
+            </div>
+          )}
+          {(booking.actions.canCancel || booking.actions.canTutorCancel) &&
+            !(
+              !isTutorView &&
+              booking.status === "PENDING_PAYMENT" &&
+              booking.payment.walletBalance !== null
+            ) &&
+            !(!isTutorView && booking.status === "CONFIRMED") && (
+              <div className="mt-4 grid gap-2">
+                {(booking.actions.canCancel || booking.actions.canTutorCancel) && (
+                  <button
+                    disabled={busy || quoteLoading}
+                    onClick={() => void openCancellation()}
+                    className="h-10 rounded-lg border border-red-200 font-medium text-red-700"
+                  >
+                    {isTutorView ? "Cancel class" : "Cancel lesson"}
+                  </button>
+                )}
+              </div>
+            )}
+        </aside>
       </div>
+
+      {paymentDialogOpen && (
+        <TutorDialog
+          title="Confirm payment"
+          titleId="payment-confirmation-title"
+          busy={busy}
+          onClose={() => setPaymentDialogOpen(false)}
+          footer={
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                className={dialogSecondary}
+                disabled={busy}
+                onClick={() => setPaymentDialogOpen(false)}
+              >
+                Go back
+              </button>
+              <button
+                type="button"
+                className={dialogPrimary}
+                disabled={
+                  busy ||
+                  isExpired ||
+                  slotUnavailable ||
+                  !booking.actions.canPay ||
+                  !booking.payment.canPay
+                }
+                onClick={() => void pay()}
+              >
+                {busy ? "Processing…" : "Pay from wallet"}
+              </button>
+            </div>
+          }
+        >
+          <p className="text-sm leading-6 text-secondary">
+            This amount will be deducted from your wallet to confirm the lesson.
+          </p>
+          <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-muted">Subject</dt>
+              <dd className="mt-1 font-semibold">{booking.subject.name}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Tutor</dt>
+              <dd className="mt-1 font-semibold">{booking.subject.tutor.name}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-muted">Time (Bangkok)</dt>
+              <dd className="mt-1 font-semibold">
+                {startsAt
+                  ? dateTime.formatRange(new Date(startsAt), new Date(booking.endedAt))
+                  : "To be confirmed"}
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 border-t border-line pt-4 sm:col-span-2">
+              <dt>Total</dt>
+              <dd className="text-xl font-semibold">{money.format(Number(booking.totalAmount))}</dd>
+            </div>
+          </dl>
+          {message && (
+            <p role="alert" className="mt-4 text-sm text-red-700">
+              {message}
+            </p>
+          )}
+        </TutorDialog>
+      )}
 
       {completionDialogOpen && (
         <TutorDialog
@@ -766,10 +963,46 @@ function BookingDetailContent() {
       )}
 
       {mode === "cancel" && (
-        <section className="mt-6 rounded-2xl border border-line bg-surface p-6">
-          <h2 className="text-lg font-semibold">
-            {isTutorView ? "Cancel this class?" : "Cancel this lesson?"}
-          </h2>
+        <TutorDialog
+          title={
+            isTutorView
+              ? "Cancel this class?"
+              : booking.status === "CONFIRMED"
+                ? "Refund this lesson?"
+                : "Cancel this lesson?"
+          }
+          titleId="cancel-lesson-title"
+          onClose={keepLesson}
+          busy={busy}
+          footer={
+            <div className="flex items-center justify-end gap-3">
+              <button disabled={busy} onClick={keepLesson} className={dialogSecondary}>
+                {isTutorView ? "Keep class" : "Keep lesson"}
+              </button>
+              <button
+                disabled={busy || quoteLoading || !quote || (isTutorView && !reason.trim())}
+                onClick={() => void cancel()}
+                className={dialogPrimary}
+              >
+                {busy
+                  ? "Processing…"
+                  : !isTutorView && booking.status === "CONFIRMED"
+                    ? "Confirm refund"
+                    : "Confirm cancellation"}
+              </button>
+            </div>
+          }
+        >
+          {!isTutorView && booking.status === "CONFIRMED" && (
+            <p className="mb-4 text-sm leading-6 text-secondary">
+              Refunding cancels this lesson. Check the refund amount and fee before confirming.
+            </p>
+          )}
+          {message && (
+            <p role="alert" className="mb-3 text-sm text-red-700">
+              {message}
+            </p>
+          )}
           {quoteLoading && (
             <p className="mt-2 text-sm text-secondary">Loading cancellation terms…</p>
           )}
@@ -798,7 +1031,7 @@ function BookingDetailContent() {
                   This class is more than {quote.policyWindowHours} hours away.
                 </p>
               )}
-              <dl className="mt-4 grid gap-3 rounded-xl border border-line p-4 text-sm sm:grid-cols-2">
+              <dl className="mt-4 grid gap-3 border-t border-line pt-4 text-sm sm:grid-cols-2">
                 <div>
                   <dt className="text-muted">Student&apos;s payment</dt>
                   <dd className="font-semibold">{money.format(Number(quote.originalAmount))}</dd>
@@ -817,7 +1050,7 @@ function BookingDetailContent() {
                   ? `This lesson is within the ${quote.policyWindowHours}-hour policy window.`
                   : `This lesson is outside the ${quote.policyWindowHours}-hour policy window.`}
               </p>
-              <dl className="mt-4 grid gap-3 rounded-xl border border-line p-4 text-sm sm:grid-cols-2">
+              <dl className="mt-4 grid gap-3 border-t border-line pt-4 text-sm sm:grid-cols-2">
                 <div>
                   <dt className="text-muted">Original payment</dt>
                   <dd className="font-semibold">{money.format(Number(quote.originalAmount))}</dd>
@@ -852,46 +1085,47 @@ function BookingDetailContent() {
               disabled={busy}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              rows={3}
-              className="mt-2 w-full rounded-xl border border-line bg-transparent p-3"
+              rows={4}
+              className={dialogField}
             />
           </label>
-          <div className="mt-4 flex gap-3">
-            <button
-              disabled={busy}
-              onClick={keepLesson}
-              className="h-10 rounded-lg border border-line px-5"
-            >
-              {isTutorView ? "Keep class" : "Keep lesson"}
-            </button>
-            <button
-              disabled={busy || quoteLoading || !quote || (isTutorView && !reason.trim())}
-              onClick={() => void cancel()}
-              className="h-10 rounded-full bg-red-600 px-5 font-semibold text-white disabled:opacity-50"
-            >
-              {busy ? "Cancelling…" : "Confirm cancellation"}
-            </button>
-          </div>
-        </section>
+        </TutorDialog>
       )}
 
       {mode === "refund" && (
-        <section
-          aria-labelledby="refund-request-title"
-          className="mt-6 rounded-2xl border border-line bg-surface p-6"
+        <TutorDialog
+          title="Request a refund"
+          titleId="refund-request-title"
+          onClose={() => setMode(null)}
+          busy={busy}
+          footer={
+            <div className="flex items-center justify-end gap-3">
+              <button disabled={busy} onClick={() => setMode(null)} className={dialogSecondary}>
+                Close
+              </button>
+              <button
+                disabled={busy || !refundReason}
+                onClick={() => void submitRefund()}
+                className={dialogPrimary}
+              >
+                {busy ? "Sending…" : "Send refund request"}
+              </button>
+            </div>
+          }
         >
-          <h2 id="refund-request-title" className="text-lg font-semibold">
-            Request a refund
-          </h2>
-          <p className="mt-2 text-sm text-muted">
+          <p className="text-sm leading-6 text-secondary">
             An admin reviews every request. If it&apos;s approved, the full{" "}
             {money.format(Number(booking.totalAmount))} goes back to your wallet.
           </p>
-          <fieldset disabled={busy} className="mt-4 grid gap-3">
+          <fieldset disabled={busy} className="mt-4 grid gap-1">
             <legend className="text-sm font-medium">What happened?</legend>
             {REFUND_OPTIONS.map((option) => (
-              <label key={option.reason} className="flex gap-3 rounded-xl border border-line p-3">
+              <label
+                key={option.reason}
+                className="flex items-center gap-3 border-b border-line px-2 py-3 text-sm hover:bg-surface-muted"
+              >
                 <input
+                  className="accent-brand-navy"
                   type="radio"
                   name="refund-reason"
                   checked={refundReason === option.reason}
@@ -912,7 +1146,7 @@ function BookingDetailContent() {
               value={refundDetails}
               onChange={(event) => setRefundDetails(event.target.value)}
               rows={4}
-              className="mt-2 w-full rounded-xl border border-line bg-transparent p-3"
+              className={dialogField}
             />
           </label>
           {refundError && (
@@ -920,23 +1154,7 @@ function BookingDetailContent() {
               {refundError}
             </p>
           )}
-          <div className="mt-4 flex gap-3">
-            <button
-              disabled={busy}
-              onClick={() => setMode(null)}
-              className="h-10 rounded-lg border border-line px-5"
-            >
-              Close
-            </button>
-            <button
-              disabled={busy || !refundReason}
-              onClick={() => void submitRefund()}
-              className="h-10 rounded-lg bg-brand-navy px-5 font-semibold text-white disabled:opacity-50"
-            >
-              {busy ? "Sending…" : "Send refund request"}
-            </button>
-          </div>
-        </section>
+        </TutorDialog>
       )}
     </main>
   );

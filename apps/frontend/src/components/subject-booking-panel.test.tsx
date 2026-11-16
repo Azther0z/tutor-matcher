@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import SubjectBookingPage from "./page";
+import { SubjectBookingPanel } from "@/src/components/subject-booking-panel";
+import type { SubjectPage } from "@/src/lib/tutor-profile-api";
 
 const subjectId = "8f2dc6e2-27f8-4e7f-bd7f-f553e42bd05b";
 const bookingId = "f0f21183-1af0-49a9-b35f-63d9431b2748";
@@ -25,6 +26,39 @@ const availability = {
   },
   slots: [{ id: slotId, startedAt: "2030-01-10T09:00:00.000Z", available: true }],
 };
+
+const publicPage: SubjectPage = {
+  tutor: {
+    id: availability.subject.tutor.id,
+    firstName: "Alice",
+    lastName: "Johnson",
+    verified: true,
+  },
+  subject: {
+    id: subjectId,
+    name: "English",
+    description: "English lessons",
+    hourlyRate: "20",
+    format: "ONLINE",
+    learningAreas: [],
+    rating: null,
+    reviewCount: 0,
+    nextOpening: "2030-01-10T09:00:00.000Z",
+  },
+  date: "2030-01-10",
+  openDates: ["2030-01-10"],
+  openSlots: ["2030-01-10T09:00:00.000Z"],
+  reviews: [],
+};
+function SubjectBookingPage() {
+  return (
+    <SubjectBookingPanel
+      page={publicPage}
+      date={mockSearchParams.get("date") ?? ""}
+      onSelect={jest.fn()}
+    />
+  );
+}
 
 beforeEach(() => {
   jest.useFakeTimers({
@@ -53,7 +87,7 @@ it("opens the date passed by DISC-4 without selecting times or creating a bookin
     "aria-pressed",
     "false"
   );
-  expect(screen.getByRole("button", { name: "Confirm booking" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Continue to payment" })).toBeDisabled();
   expect(global.fetch).toHaveBeenCalledTimes(1);
   expect(push).not.toHaveBeenCalled();
 });
@@ -70,7 +104,7 @@ it("creates a booking with UUID identifiers", async () => {
   expect(screen.getByRole("button", { name: "00:00 Not available" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "23:30 Not available" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "16:00 Available" }));
-  expect(screen.getByText("30 min")).toBeInTheDocument();
+  expect(screen.getByText("30 min lesson")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
   await waitFor(() => expect(push).toHaveBeenCalledWith(`/bookings/${bookingId}`));
   expect(global.fetch).toHaveBeenLastCalledWith(
@@ -120,7 +154,7 @@ it("calculates a continuous hour from the locked subject rate without creating a
   fireEvent.click(screen.getByRole("button", { name: "16:00 Available" }));
   expect(screen.getByText("฿10.00")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "16:30 Available" }));
-  expect(screen.getByText("60 min")).toBeInTheDocument();
+  expect(screen.getByText("60 min lesson")).toBeInTheDocument();
   expect(screen.getByText("฿20.00")).toBeInTheDocument();
   expect(global.fetch).toHaveBeenCalledTimes(1);
   expect(push).not.toHaveBeenCalled();
@@ -133,8 +167,7 @@ it("keeps subject details visible but disables new bookings when unpublished", a
   });
   render(<SubjectBookingPage />);
   expect(await screen.findByText("This tutor isn’t accepting bookings")).toBeInTheDocument();
-  expect(screen.getByText("English with Alice")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Confirm booking" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Continue to payment" })).toBeDisabled();
 });
 
 it("keeps certificates and ID references out of the subject booking UI", async () => {
@@ -154,10 +187,40 @@ it("keeps certificates and ID references out of the subject booking UI", async (
     }),
   });
   render(<SubjectBookingPage />);
-  expect(await screen.findByText("English with Alice")).toBeInTheDocument();
+  await screen.findByRole("button", { name: "2030-01-10" });
   expect(
     screen.queryByRole("region", { name: "Teaching certifications / portfolio" })
   ).not.toBeInTheDocument();
   for (const url of certificates) expect(screen.queryByText(url)).not.toBeInTheDocument();
   expect(screen.queryByText("https://example.com/id-private")).not.toBeInTheDocument();
+});
+
+it("lets a visitor choose times before login without creating a booking", async () => {
+  localStorage.clear();
+  mockSearchParams = new URLSearchParams({ date: "2030-01-10" });
+  global.fetch = jest.fn();
+  render(<SubjectBookingPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "16:00 Available" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
+  expect(global.fetch).not.toHaveBeenCalled();
+  const destination = new URL(push.mock.calls[0][0], "http://localhost");
+  expect(destination.pathname).toBe("/login");
+  const next = new URL(destination.searchParams.get("next")!, "http://localhost");
+  expect(next.pathname).toBe(`/tutors/${publicPage.tutor.id}/${subjectId}`);
+  expect(next.searchParams.get("date")).toBe("2030-01-10");
+  expect(next.searchParams.get("times")).toBe("2030-01-10T09:00:00.000Z");
+});
+
+it("restores selected times after login using current availability IDs", async () => {
+  mockSearchParams = new URLSearchParams({ date: "2030-01-10", times: "2030-01-10T09:00:00.000Z" });
+  global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => availability });
+  render(<SubjectBookingPage />);
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "16:00 Available" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    )
+  );
+  expect(screen.getByRole("button", { name: "Continue to payment" })).toBeEnabled();
+  expect(push).not.toHaveBeenCalled();
 });

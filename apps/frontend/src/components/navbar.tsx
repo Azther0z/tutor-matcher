@@ -64,30 +64,36 @@ export function Navbar() {
     owner: string;
     balance: string;
   } | null>(null);
+  const [walletErrorOwner, setWalletErrorOwner] = useState<string | null>(null);
   const walletOwner = `${user?.email ?? ""}:${user?.firstName ?? ""}:${user?.lastName ?? ""}`;
   const walletBalance = walletSummary?.owner === walletOwner ? walletSummary.balance : null;
+  const walletStatus =
+    walletBalance !== null ? "ready" : walletErrorOwner === walletOwner ? "error" : "loading";
 
   useEffect(() => {
     if (status !== "authenticated" || !user) return;
 
     let cancelled = false;
+    function updateBalance(balance: string) {
+      if (cancelled) return;
+      setWalletSummary({ owner: walletOwner, balance });
+      setWalletErrorOwner(null);
+    }
     const unsubscribe = subscribeToWalletBalance((balance) => {
-      if (!cancelled) setWalletSummary({ owner: walletOwner, balance });
+      updateBalance(balance);
     });
 
     getWallet()
-      .then((wallet) => {
-        if (!cancelled) setWalletSummary({ owner: walletOwner, balance: wallet.balance });
-      })
+      .then((wallet) => updateBalance(wallet.balance))
       .catch(() => {
-        if (!cancelled) setWalletSummary(null);
+        if (!cancelled) setWalletErrorOwner(walletOwner);
       });
 
     return () => {
       cancelled = true;
       unsubscribe();
     };
-  }, [pathname, status, user, walletOwner]);
+  }, [status, user, walletOwner]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -163,6 +169,7 @@ export function Navbar() {
   function handleLogout() {
     clearAuthToken();
     setWalletSummary(null);
+    setWalletErrorOwner(null);
     setMenuOpen(false);
     router.push("/");
   }
@@ -171,7 +178,7 @@ export function Navbar() {
     <header ref={headerRef} className="sticky top-0 z-40 border-b border-line bg-surface">
       <nav
         aria-label="Main navigation"
-        className="relative mx-auto flex min-h-20 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
+        className="relative mx-auto flex min-h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
       >
         <Link
           href="/"
@@ -183,7 +190,7 @@ export function Navbar() {
         </Link>
         <div
           id="primary-navigation"
-          className={`${mobileOpen ? "flex" : "hidden"} absolute inset-x-0 top-full max-h-[calc(100dvh-5rem)] flex-col gap-1 overflow-y-auto border-b border-line bg-surface p-4 shadow-sm xl:static xl:flex xl:flex-row xl:items-center xl:overflow-visible xl:border-0 xl:p-0 xl:shadow-none`}
+          className={`${mobileOpen ? "flex" : "hidden"} absolute inset-x-0 top-full max-h-[calc(100dvh-5rem)] flex-col gap-1 overflow-y-auto border-b border-line bg-surface p-4 shadow-sm xl:flex xl:flex-row xl:items-center xl:overflow-visible xl:border-0 xl:p-0 xl:shadow-none ${isApprovedTutor ? "xl:inset-x-auto xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2" : "xl:static"}`}
         >
           {NAV_LINKS.map((link) => (
             <Link
@@ -191,11 +198,23 @@ export function Navbar() {
               href={link.href}
               aria-current={isActive(link.href) ? "page" : undefined}
               onClick={() => setMobileOpen(false)}
-              className={navItemClass(isActive(link.href))}
+              className={`${navItemClass(isActive(link.href))} ${
+                link.href === "/messages" ? "relative pr-6" : ""
+              }`}
             >
               {link.label}
-              {link.href === "/messages" && status === "authenticated" && hasUnreadMessages && (
-                <span aria-label="New messages" className="h-2 w-2 rounded-full bg-brand-navy" />
+              {link.href === "/messages" && (
+                <span
+                  aria-label={
+                    status === "authenticated" && hasUnreadMessages ? "New messages" : undefined
+                  }
+                  aria-hidden={status !== "authenticated" || !hasUnreadMessages}
+                  className={`absolute top-1/2 right-3 h-2 w-2 -translate-y-1/2 rounded-full ${
+                    status === "authenticated" && hasUnreadMessages
+                      ? "bg-brand-navy"
+                      : "bg-transparent"
+                  }`}
+                />
               )}
             </Link>
           ))}
@@ -203,32 +222,41 @@ export function Navbar() {
             <Link
               href="/enroll-tutor"
               onClick={() => setMobileOpen(false)}
-              className="ui-button-secondary xl:ml-2"
+              className="ui-button-secondary w-[9.25rem] shrink-0 justify-center xl:ml-2"
             >
               Become a tutor
             </Link>
           )}
+          {isAdmin && !isApprovedTutor && (
+            <span
+              aria-hidden="true"
+              className="hidden h-11 w-[9.25rem] shrink-0 xl:ml-2 xl:block"
+            />
+          )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex w-[9.25rem] shrink-0 items-center justify-end gap-2 sm:w-[16.5rem] xl:w-[13.25rem]">
           {status === "authenticated" && user ? (
             <div ref={menuRef} className="relative flex items-center gap-2">
               <Link
-                href="/wallet/topup"
+                href="/wallet"
                 aria-label="Wallet balance"
-                title="Top up your wallet"
+                aria-busy={walletStatus === "loading"}
+                title="View your wallet"
                 onClick={() => {
                   setMenuOpen(false);
                   setMobileOpen(false);
                 }}
-                className="flex min-h-11 items-center rounded-lg border border-line px-3 text-sm font-medium tabular-nums text-foreground transition-colors hover:bg-surface-muted"
+                className="flex min-h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line px-2 text-sm font-medium tabular-nums text-foreground transition-colors hover:bg-surface-muted sm:w-40"
               >
                 <span className="sm:hidden" aria-hidden="true">
                   ฿
                 </span>
                 <span className="hidden sm:inline">
-                  {walletBalance === null
-                    ? "฿ —"
-                    : `฿ ${walletFormat.format(Number(walletBalance))}`}
+                  {walletStatus === "error" ? (
+                    "฿ —"
+                  ) : (
+                    <>฿ {walletFormat.format(Number(walletBalance ?? 0))}</>
+                  )}
                 </span>
               </Link>
               <button
@@ -286,6 +314,11 @@ export function Navbar() {
                   </button>
                 </div>
               )}
+            </div>
+          ) : status === "loading" ? (
+            <div className="flex items-center gap-2" aria-hidden="true">
+              <span className="h-11 w-11 sm:w-40" />
+              <span className="h-11 w-11 rounded-full bg-surface-muted" />
             </div>
           ) : status === "unauthenticated" ? (
             <>

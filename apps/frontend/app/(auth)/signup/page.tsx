@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AuthPageLayout } from "@/src/components/auth-page-layout";
 
 type PolicyDocument = "privacy" | "terms";
 
@@ -73,17 +74,13 @@ export default function SignupPage() {
   }
 
   return (
-    <main
-      id="main-content"
-      tabIndex={-1}
-      className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-8 px-6 py-16"
+    <AuthPageLayout
+      introTitle="Start learning at your pace."
+      introDescription="Create an account to explore Tutors, choose a lesson time and manage your bookings in one place."
+      formTitle="Create your account"
+      formDescription="Every new account starts with Student access. You can apply to teach later."
     >
-      <div className="flex flex-col gap-2 text-center">
-        <p className="text-sm font-medium text-muted">Tutor Matcher</p>
-        <h1 className="text-3xl font-semibold tracking-tight">Create your account</h1>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm font-medium">
             First name
@@ -289,6 +286,6 @@ export default function SignupPage() {
           Log in
         </Link>
       </p>
-    </main>
+    </AuthPageLayout>
   );
 }

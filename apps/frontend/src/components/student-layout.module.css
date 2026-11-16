@@ -1,0 +1,89 @@
+/* Scoped to Student-facing pages; shared Tutor views retain their existing classes. */
+.shell {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: 2rem 1rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.profileGrid,
+.subjectGrid {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+.profileGrid > *,
+.subjectGrid > * {
+  min-width: 0;
+}
+.subjects {
+  grid-area: subjects;
+}
+.about {
+  grid-area: about;
+}
+.experience {
+  grid-area: experience;
+}
+.availability {
+  grid-area: availability;
+}
+.reviews {
+  grid-area: reviews;
+}
+.message {
+  grid-area: message;
+}
+.profileGrid {
+  grid-template-areas: "subjects" "about" "availability" "reviews" "message";
+}
+.subjectGrid > .availability {
+  width: 100%;
+  max-width: 48rem;
+  justify-self: center;
+}
+.subjectGrid {
+  grid-template-areas: "availability" "about" "reviews";
+}
+.summary {
+  min-width: 0;
+  height: fit-content;
+}
+.topupSlip {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  align-items: start;
+}
+.topupSlip > * {
+  min-width: 0;
+}
+@media (min-width: 640px) {
+  .shell {
+    padding-inline: 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .shell {
+    padding-inline: 2rem;
+  }
+  .profileGrid {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    grid-template-areas: "about subjects" "availability availability" "reviews reviews" "message message";
+  }
+  .subjectGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "availability availability" "about reviews";
+  }
+  .topupSlip {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2rem;
+  }
+}
+@media (min-width: 1024px) and (min-height: 800px) {
+  .summary {
+    position: sticky;
+    top: 6rem;
+  }
+}

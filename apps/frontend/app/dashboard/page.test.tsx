@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import DashboardPage from "./page";
 
 const mockPush = jest.fn();
@@ -15,12 +15,26 @@ jest.mock("../../src/components/tutor-upcoming-classes", () => ({
 }));
 
 jest.mock("next/navigation", () => ({
+  useSearchParams: () => {
+    const React = jest.requireActual("react");
+    const search = React.useSyncExternalStore(
+      (callback: () => void) => {
+        window.addEventListener("popstate", callback);
+        return () => window.removeEventListener("popstate", callback);
+      },
+      () => window.location.search
+    );
+    return new URLSearchParams(search);
+  },
   usePathname: () => "/dashboard",
   useRouter: () => ({ push: mockPush, replace: mockPush }),
 }));
 
 beforeEach(() => {
-  mockPush.mockReset();
+  mockPush.mockReset().mockImplementation((url: string) => {
+    window.history.pushState({}, "", url);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
   fetchMock.mockReset();
   global.fetch = fetchMock;
   localStorage.clear();
@@ -71,6 +85,7 @@ describe("DashboardPage", () => {
     const tutorTab = await screen.findByRole("tab", { name: "Tutor" });
     expect(fetchMock.mock.calls.some(([url]) => url === "/api/dashboard/tutor")).toBe(false);
     fireEvent.click(tutorTab);
+    expect(window.location.search).toBe("?tab=tutor");
     expect(await screen.findByText("Unrated")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Teaching overview" })).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(
@@ -81,6 +96,15 @@ describe("DashboardPage", () => {
     );
     fireEvent.click(screen.getByRole("tab", { name: "Student" }));
     expect(screen.queryByRole("region", { name: "Teaching overview" })).not.toBeInTheDocument();
+    expect(window.location.search).toBe("?tab=student");
+    expect(mockPush).toHaveBeenCalledWith("/dashboard?tab=student", { scroll: false });
+    act(() => {
+      window.history.replaceState({}, "", "/dashboard?tab=tutor");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(screen.getByRole("tab", { name: "Tutor" })).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Tutor" }), { key: "ArrowLeft" });
+    expect(window.location.search).toBe("?tab=student");
   });
 
   it("shows the onboarding prompt when the Student profile is missing", async () => {

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { PayoutAccountsManager } from "@/src/components/payout-accounts-manager";
 import { RequireAuth } from "@/src/components/require-auth";
 import { getPayoutAccounts, type PayoutAccount } from "@/src/lib/payout-accounts-api";
 import {
@@ -26,6 +27,7 @@ function accountLabel(account: PayoutAccount) {
 }
 
 function PayoutContent() {
+  const [tutorEligible, setTutorEligible] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<PayoutAccount[]>([]);
   const [accountId, setAccountId] = useState("");
@@ -49,6 +51,7 @@ function PayoutContent() {
           setBalance(wallet.balance);
           return;
         }
+        setTutorEligible(true);
         const saved = await getPayoutAccounts();
         setBalance(wallet.balance);
         setAccounts(saved);
@@ -56,6 +59,16 @@ function PayoutContent() {
       })
       .catch(() => setError("Could not load your wallet. Please refresh and try again."))
       .finally(() => setLoading(false));
+  }, []);
+
+  const updateAccounts = useCallback((saved: PayoutAccount[]) => {
+    setAccounts(saved);
+    setAccountId((current) =>
+      saved.some((item) => item.id === current)
+        ? current
+        : ((saved.find((item) => item.isDefault) ?? saved[0])?.id ?? "")
+    );
+    setStage((current) => (current === "confirm" ? "form" : current));
   }, []);
 
   function review() {
@@ -149,13 +162,13 @@ function PayoutContent() {
           <div className="p-8 text-center">
             <h2 className="text-xl font-semibold">No saved payout account</h2>
             <p className="mt-2 text-muted">
-              Add a payout account in Wallet settings, then come back to request a payout.
+              Add a payout account below, then choose it for your payout.
             </p>
             <Link
-              href="/settings/wallet"
+              href="#payout-accounts"
               className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-lg bg-brand-navy font-semibold text-white transition-colors hover:bg-brand-navy-dark"
             >
-              Go to Wallet settings
+              Add a payout account
             </Link>
           </div>
         )}
@@ -296,6 +309,13 @@ function PayoutContent() {
           </div>
         )}
       </section>
+      {!loading && tutorEligible && stage !== "tutorOnly" && stage !== "unavailable" && (
+        <PayoutAccountsManager
+          initialAccounts={accounts}
+          tutorVerified
+          onAccountsChange={updateAccounts}
+        />
+      )}
     </main>
   );
 }

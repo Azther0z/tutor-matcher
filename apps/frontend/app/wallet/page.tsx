@@ -28,10 +28,10 @@ const secondaryButton =
 
 function SummaryCard({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
+    <div className="border-b border-line p-4 last:border-0 sm:p-5 sm:odd:border-r lg:border-r lg:border-b-0">
       <p className="text-sm text-muted">{label}</p>
       <p className="mt-2 text-2xl font-semibold">{value}</p>
-      {note && <p className="mt-1 text-xs text-muted">{note}</p>}
+      {note && <p className="mt-1 text-sm text-muted">{note}</p>}
     </div>
   );
 }
@@ -115,13 +115,12 @@ function WalletContent() {
     <main
       id="main-content"
       tabIndex={-1}
-      className="mx-auto w-full max-w-4xl flex-1 px-6 py-12 lg:py-16"
+      className="mx-auto w-full max-w-[68rem] flex-1 px-4 py-6 sm:px-6 lg:px-8"
     >
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-brand-link">Wallet</p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-tight">Your wallet</h1>
-          <p className="mt-3 text-muted">
+          <h1 className="text-2xl font-semibold leading-tight tracking-tight">Your wallet</h1>
+          <p className="mt-2 text-sm text-muted">
             {overview?.isTutor === false
               ? "One balance for top-ups, lesson payments and refunds."
               : "One balance for top-ups, lesson payments, earnings, refunds and payouts."}
@@ -133,12 +132,11 @@ function WalletContent() {
               Request payout
             </Link>
           )}
-          <Link href="/settings/wallet" className={secondaryButton}>
-            Wallet settings
-          </Link>
-          <Link href="/wallet/topup" className={primaryButton}>
-            Top up
-          </Link>
+          {overview?.isTutor !== false && (
+            <Link href="/wallet/topup" className={primaryButton}>
+              Top up
+            </Link>
+          )}
         </div>
       </div>
 
@@ -148,6 +146,9 @@ function WalletContent() {
           className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 p-4 text-sm text-red-700"
         >
           {overviewError}
+          <Link href="/wallet/topup" className={primaryButton}>
+            Top up
+          </Link>
           <button type="button" onClick={retryOverview} className="font-semibold underline">
             Try again
           </button>
@@ -155,12 +156,26 @@ function WalletContent() {
       ) : (
         <section
           aria-label="Wallet summary"
-          className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+          className="mt-5 grid gap-0 overflow-hidden rounded-2xl border border-line bg-surface sm:grid-cols-2 lg:grid-cols-4"
         >
-          <SummaryCard
-            label="Available balance"
-            value={overview ? money(overview.balance) : "Loading…"}
-          />
+          {overview?.isTutor === false ? (
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-4 p-4 sm:p-5 sm:col-span-2 lg:col-span-4">
+              <div className="min-w-0">
+                <p className="text-sm text-secondary">Available balance</p>
+                <p className="mt-1 break-words text-3xl font-semibold">
+                  {overview ? money(overview.balance) : "Loading…"}
+                </p>
+              </div>
+              <Link href="/wallet/topup" className={primaryButton}>
+                Top up
+              </Link>
+            </div>
+          ) : (
+            <SummaryCard
+              label="Available balance"
+              value={overview ? money(overview.balance) : "Loading…"}
+            />
+          )}
           {overview?.pendingEarnings != null && (
             <SummaryCard
               label="Pending earnings"
@@ -185,8 +200,8 @@ function WalletContent() {
         </section>
       )}
 
-      <section className="mt-10" aria-labelledby="transactions-heading">
-        <h2 id="transactions-heading" className="text-2xl font-semibold">
+      <section className="mt-6" aria-labelledby="transactions-heading">
+        <h2 id="transactions-heading" className="text-xl font-semibold">
           Transactions
         </h2>
         <div role="group" aria-label="Filter transactions" className="mt-4 flex flex-wrap gap-2">
@@ -198,7 +213,7 @@ function WalletContent() {
                 type="button"
                 aria-pressed={active}
                 onClick={() => show(filter.type)}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                className={`min-h-11 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                   active
                     ? "bg-brand-navy text-white"
                     : "border border-line text-secondary hover:border-brand-navy"
@@ -245,7 +260,7 @@ function WalletContent() {
                       <p className="font-semibold">{transactionTypeLabels[transaction.type]}</p>
                       <p className="text-sm text-muted">
                         {walletDateTime.format(new Date(transaction.createdAt))}
-                        {transaction.booking && ` · ${transaction.booking.subjectName}`}
+                        {transaction.booking && `, ${transaction.booking.subjectName}`}
                       </p>
                     </div>
                     <div className="text-right">
@@ -253,7 +268,7 @@ function WalletContent() {
                         className={`font-semibold ${
                           transaction.direction === "IN"
                             ? "text-emerald-700 dark:text-emerald-400"
-                            : "text-foreground"
+                            : "text-red-700 dark:text-red-400"
                         }`}
                       >
                         {signedAmount(transaction)}

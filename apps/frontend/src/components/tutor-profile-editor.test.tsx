@@ -382,7 +382,7 @@ it("keeps drafting in a modal and uses concise list rows with explicit edit and 
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Tutor bio")).not.toBeInTheDocument();
   const edit = within(list).getByRole("button", { name: "Edit draft 2: Second saved draft" });
-  expect(edit.closest("li")).toHaveClass("rounded-md");
+  expect(edit.closest("li")).toHaveClass("border-b");
   expect(
     within(list).getByRole("button", { name: "Trash draft 2: Second saved draft" })
   ).toBeInTheDocument();

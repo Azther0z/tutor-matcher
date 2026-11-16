@@ -1,25 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { VerifiedIcon } from "@/src/components/verified-icon";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useEffectEvent, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState, useSyncExternalStore } from "react";
 import {
   defaultFilters,
   filtersFromParams,
   filtersToQuery,
   getLearningAreas,
-  getPriceRange,
   searchTutors,
   sortOptions,
   type LearningArea,
-  type PriceRange,
   type SubjectSearchResult,
   type TutorSearchFilters,
   type TutorSearchResponse,
 } from "@/src/lib/discovery-api";
-import { getAuthToken, subscribeToAuth } from "@/src/lib/auth";
+import { getAuthSnapshot, getAuthServerSnapshot, subscribeToAuth } from "@/src/lib/auth";
 
 const TYPING_DELAY = 300;
+const PRICE_SLIDER_MIN = 0;
+const PRICE_SLIDER_MAX = 3000;
+const PRICE_SLIDER_STEP = 50;
 
 const formatOptions = [
   { value: "", label: "Any" },
@@ -42,19 +44,64 @@ const draftOf = (filters: TutorSearchFilters): Draft => ({
   maxPrice: filters.maxPrice,
 });
 
-// Round the real price range outward, to hundreds or to thousands once prices pass ฿10,000.
-function sliderBounds(range: PriceRange) {
-  if (!range) return null;
-  const max = Number(range.max);
-  const unit = max >= 10_000 ? 1000 : 100;
-  const low = Math.floor(Number(range.min) / unit) * unit;
-  const high = Math.max(Math.ceil(max / unit) * unit, low + unit);
-  return { low, high, step: unit / 10 };
-}
-
 const baht = (amount: number) => `฿${amount.toLocaleString("en-US")}`;
 
+export function TutorSearchLoadingState() {
+  return (
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8"
+    >
+      <div className="grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
+        <aside className="min-w-0 lg:self-start">
+          <div
+            aria-hidden="true"
+            className="space-y-4 rounded-2xl border border-line bg-surface p-4"
+          >
+            {[0, 1, 2].map((fieldIndex) => (
+              <div key={fieldIndex} className="space-y-2">
+                <span className="block h-4 w-24 rounded bg-surface-muted" />
+                <span className="block h-11 rounded-xl border border-line bg-surface-muted/50" />
+              </div>
+            ))}
+            <div className="space-y-3">
+              <span className="block h-4 w-36 rounded bg-surface-muted" />
+              <span className="block h-6 rounded bg-surface-muted" />
+              <div className="grid grid-cols-2 gap-3">
+                <span className="h-11 rounded-xl border border-line bg-surface-muted/50" />
+                <span className="h-11 rounded-xl border border-line bg-surface-muted/50" />
+              </div>
+            </div>
+            <span className="block h-16 rounded bg-surface-muted/50" />
+            <span className="block h-11 rounded-xl border border-line bg-surface-muted/50" />
+          </div>
+        </aside>
+        <section aria-label="Search results" aria-busy="true">
+          <h1 className="mb-4 text-2xl font-semibold leading-tight tracking-tight">Find a tutor</h1>
+          <div aria-hidden="true" className="mb-4 min-h-20 rounded bg-surface-muted/50" />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted" role="status">
+              Searching…
+            </p>
+            <div aria-hidden="true" className="flex items-center gap-2">
+              <span className="h-4 w-10 rounded bg-surface-muted" />
+              <span className="h-10 w-36 rounded-xl border border-line bg-surface-muted/50" />
+            </div>
+          </div>
+          <SearchResultsSkeleton />
+        </section>
+      </div>
+    </main>
+  );
+}
+
 export function TutorSearch() {
+  const isAuthenticated = useSyncExternalStore(
+    subscribeToAuth,
+    getAuthSnapshot,
+    getAuthServerSnapshot
+  );
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -71,7 +118,6 @@ export function TutorSearch() {
   } | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [bounds, setBounds] = useState<ReturnType<typeof sliderBounds>>(null);
   const [authRevision, setAuthRevision] = useState(0);
 
   // Keep the typed fields in step when the URL changes from elsewhere (back, clear filters),
@@ -113,10 +159,6 @@ export function TutorSearch() {
     getLearningAreas()
       .then(setLearningAreas)
       .catch(() => setLearningAreas([]));
-    // Without a range the slider just stays hidden.
-    getPriceRange()
-      .then((range) => setBounds(sliderBounds(range)))
-      .catch(() => setBounds(null));
   }, []);
 
   // Runs with the filters current when the timer fires, so a filter picked while typing stays.
@@ -159,19 +201,28 @@ export function TutorSearch() {
     if (lastPage !== null && filters.page > lastPage) goToPage(lastPage);
   }, [lastPage, filters.page]);
 
-  const lowPrice = bounds ? Number(draft.minPrice || bounds.low) : 0;
-  const highPrice = bounds ? Number(draft.maxPrice || bounds.high) : 0;
+  const toSliderPrice = (value: string, fallback: number) =>
+    Math.max(
+      PRICE_SLIDER_MIN,
+      Math.min(
+        PRICE_SLIDER_MAX,
+        value.trim() === "" || !Number.isFinite(Number(value)) ? fallback : Number(value)
+      )
+    );
+  const minSliderPrice = toSliderPrice(draft.minPrice, PRICE_SLIDER_MIN);
+  const maxSliderPrice = toSliderPrice(draft.maxPrice, PRICE_SLIDER_MAX);
+  const lowPrice = Math.min(minSliderPrice, maxSliderPrice);
+  const highPrice = Math.max(minSliderPrice, maxSliderPrice);
   function setPrice(low: number, high: number) {
-    if (!bounds) return;
-    // At either end of the slider the price is not limited on that side.
+    // The endpoints mean no limit on that side. Values above ฿3,000 stay editable below.
     setDraft({
       ...draft,
-      minPrice: low > bounds.low ? String(low) : "",
-      maxPrice: high < bounds.high ? String(high) : "",
+      minPrice: low > PRICE_SLIDER_MIN ? String(low) : "",
+      maxPrice: high < PRICE_SLIDER_MAX ? String(high) : "",
     });
   }
   const percent = (value: number) =>
-    bounds ? ((value - bounds.low) / (bounds.high - bounds.low)) * 100 : 0;
+    ((value - PRICE_SLIDER_MIN) / (PRICE_SLIDER_MAX - PRICE_SLIDER_MIN)) * 100;
 
   const areaName = learningAreas.find(({ id }) => id === filters.learningAreaId)?.name;
   const suggestions: Array<{ label: string; changes: Partial<TutorSearchFilters> }> = [];
@@ -198,18 +249,10 @@ export function TutorSearch() {
     <main
       id="main-content"
       tabIndex={-1}
-      className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 lg:px-10 lg:py-14"
+      className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8"
     >
-      <header className="border-b border-line pb-6">
-        <p className="text-sm font-semibold text-brand-link">Tutor search</p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight">Find a tutor</h1>
-        <p className="mt-2 text-muted">
-          Compare Subjects by price, reviews and availability. Open a Tutor’s profile to learn more.
-        </p>
-      </header>
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
-        <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+      <div className="grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
+        <aside className="min-w-0 lg:self-start">
           <button
             type="button"
             aria-expanded={filtersOpen}
@@ -226,7 +269,7 @@ export function TutorSearch() {
               role="search"
               aria-label="Tutor filters"
               onSubmit={(event) => event.preventDefault()}
-              className="space-y-5 rounded-2xl border border-line bg-surface p-5 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto"
+              className="space-y-4 rounded-2xl border border-line bg-surface p-4"
             >
               <div>
                 <label htmlFor="search-keyword" className="text-sm font-semibold">
@@ -274,54 +317,87 @@ export function TutorSearch() {
                   ))}
                 </select>
               </div>
-              {bounds && (
-                <fieldset>
-                  <legend className="text-sm font-semibold">Price (฿ / hr)</legend>
-                  <p className="mt-1 text-sm text-muted" aria-live="polite">
-                    {baht(lowPrice)} to {baht(highPrice)} / hr
-                  </p>
-                  <div className="relative mt-2 h-6">
-                    <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-surface-muted" />
-                    <div
-                      className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-brand-navy"
-                      style={{
-                        left: `${percent(lowPrice)}%`,
-                        right: `${100 - percent(highPrice)}%`,
-                      }}
-                    />
-                    <input
-                      type="range"
-                      aria-label="Minimum price"
-                      className={thumb}
-                      min={bounds.low}
-                      max={bounds.high}
-                      step={bounds.step}
-                      value={lowPrice}
-                      onChange={(event) =>
-                        setPrice(Math.min(Number(event.target.value), highPrice), highPrice)
-                      }
-                    />
-                    <input
-                      type="range"
-                      aria-label="Maximum price"
-                      className={thumb}
-                      min={bounds.low}
-                      max={bounds.high}
-                      step={bounds.step}
-                      value={highPrice}
-                      onChange={(event) =>
-                        setPrice(lowPrice, Math.max(Number(event.target.value), lowPrice))
-                      }
-                    />
-                  </div>
-                </fieldset>
-              )}
               <fieldset>
                 <legend className="text-sm font-semibold">Minimum rating</legend>
                 <RatingStars
                   value={Number(filters.minRating) || 0}
                   onChange={(value) => apply({ minRating: value ? String(value) : "" })}
                 />
+              </fieldset>
+              <fieldset>
+                <legend className="text-sm font-semibold">Price per hour (THB)</legend>
+                <p className="sr-only" aria-live="polite">
+                  {baht(Number(draft.minPrice || PRICE_SLIDER_MIN))} to{" "}
+                  {draft.maxPrice ? baht(Number(draft.maxPrice)) : "any price"} per hour
+                </p>
+                <div className="relative mt-2 h-6">
+                  <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-surface-muted" />
+                  <div
+                    className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-brand-navy"
+                    style={{
+                      left: `${percent(lowPrice)}%`,
+                      right: `${100 - percent(highPrice)}%`,
+                    }}
+                  />
+                  <input
+                    type="range"
+                    aria-label="Minimum price"
+                    className={thumb}
+                    min={PRICE_SLIDER_MIN}
+                    max={PRICE_SLIDER_MAX}
+                    step={PRICE_SLIDER_STEP}
+                    value={lowPrice}
+                    onChange={(event) =>
+                      setPrice(Math.min(Number(event.target.value), highPrice), highPrice)
+                    }
+                  />
+                  <input
+                    type="range"
+                    aria-label="Maximum price"
+                    className={thumb}
+                    min={PRICE_SLIDER_MIN}
+                    max={PRICE_SLIDER_MAX}
+                    step={PRICE_SLIDER_STEP}
+                    value={highPrice}
+                    onChange={(event) =>
+                      setPrice(lowPrice, Math.max(Number(event.target.value), lowPrice))
+                    }
+                  />
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="search-min-price" className="text-sm font-semibold">
+                      Min
+                    </label>
+                    <input
+                      id="search-min-price"
+                      type="number"
+                      min={PRICE_SLIDER_MIN}
+                      step="any"
+                      inputMode="decimal"
+                      className={field}
+                      placeholder="0"
+                      value={draft.minPrice}
+                      onChange={(event) => setDraft({ ...draft, minPrice: event.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="search-max-price" className="text-sm font-semibold">
+                      Max
+                    </label>
+                    <input
+                      id="search-max-price"
+                      type="number"
+                      min={PRICE_SLIDER_MIN}
+                      step="any"
+                      inputMode="decimal"
+                      className={field}
+                      placeholder={`${PRICE_SLIDER_MAX}+`}
+                      value={draft.maxPrice}
+                      onChange={(event) => setDraft({ ...draft, maxPrice: event.target.value })}
+                    />
+                  </div>
+                </div>
               </fieldset>
               <fieldset>
                 <legend className="text-sm font-semibold">Format</legend>
@@ -365,14 +441,15 @@ export function TutorSearch() {
         </aside>
 
         <section id="search-results" tabIndex={-1} aria-label="Search results" aria-busy={loading}>
-          {filters.sort === "recommended" && !loading && result && (
-            <div className="mb-4 rounded-2xl bg-brand-soft p-4 text-sm">
+          <h1 className="mb-4 text-2xl font-semibold leading-tight tracking-tight">Find a tutor</h1>
+          {filters.sort === "recommended" && (
+            <div className="mb-4 min-h-20 text-sm leading-6 text-secondary">
               <p className="font-semibold">
-                {result.recommendationMode === "personalized"
+                {result?.recommendationMode === "personalized"
                   ? "Recommended for you"
                   : "Recommended tutors"}
               </p>
-              {result.recommendationMode === "fallback" && getAuthToken() && (
+              {result?.recommendationMode !== "personalized" && isAuthenticated === true && (
                 <p className="mt-1 text-secondary">
                   <Link className="font-semibold underline" href="/settings/student">
                     Add learning areas to your profile
@@ -380,7 +457,7 @@ export function TutorSearch() {
                   for recommendations tailored to you.
                 </p>
               )}
-              {result.recommendationMode === "fallback" && !getAuthToken() && (
+              {result?.recommendationMode !== "personalized" && isAuthenticated === false && (
                 <p className="mt-1 text-secondary">
                   Ranked by rating and upcoming availability.{" "}
                   <Link className="font-semibold underline" href="/login">
@@ -389,6 +466,32 @@ export function TutorSearch() {
                   to get recommendations based on your learning areas.
                 </p>
               )}
+            </div>
+          )}
+          {suggestions.length > 0 && (
+            <div
+              role="group"
+              className="my-4 flex flex-wrap items-center gap-2"
+              aria-label="Active filters"
+            >
+              <span className="mr-1 text-sm font-medium text-secondary">Filters:</span>
+              {suggestions.map((suggestion) => (
+                <button
+                  key={suggestion.label}
+                  type="button"
+                  onClick={() => apply(suggestion.changes)}
+                  className="min-h-10 rounded-full border border-line bg-surface px-3 py-1 text-sm text-secondary transition-colors hover:border-brand-navy hover:text-foreground"
+                >
+                  {suggestion.label} <span aria-hidden="true">×</span>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => apply({ ...defaultFilters, sort: filters.sort })}
+                className="min-h-10 px-2 text-sm font-semibold text-brand-link underline underline-offset-2"
+              >
+                Clear all
+              </button>
             </div>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -466,7 +569,7 @@ export function TutorSearch() {
           )}
 
           {result && result.results.length > 0 && (
-            <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+            <ul className="mt-5 grid gap-4 lg:grid-cols-2">
               {result.results.map((subject) => (
                 <li key={subject.id}>
                   <SubjectCard subject={subject} />
@@ -474,6 +577,8 @@ export function TutorSearch() {
               ))}
             </ul>
           )}
+
+          {loading && !result && <SearchResultsSkeleton />}
 
           {result && result.totalPages > 1 && (
             <nav aria-label="Pages" className="mt-8 flex items-center justify-center gap-4">
@@ -501,6 +606,37 @@ export function TutorSearch() {
         </section>
       </div>
     </main>
+  );
+}
+
+function SearchResultsSkeleton() {
+  return (
+    <ul aria-hidden="true" className="mt-5 grid gap-4 lg:grid-cols-2">
+      {[0, 1].map((card) => (
+        <li key={card}>
+          <div className="flex min-h-80 flex-col gap-3 rounded-2xl border border-line bg-surface p-5">
+            <div className="flex items-start gap-3">
+              <span className="h-12 w-12 shrink-0 rounded-2xl bg-surface-muted" />
+              <div className="min-w-0 flex-1 space-y-2 pt-1">
+                <span className="block h-5 w-3/5 rounded bg-surface-muted" />
+                <span className="block h-4 w-2/5 rounded bg-surface-muted" />
+              </div>
+            </div>
+            <span className="h-4 w-36 rounded bg-surface-muted" />
+            <span className="h-4 w-48 rounded bg-surface-muted" />
+            <span className="h-4 w-full rounded bg-surface-muted" />
+            <div className="flex gap-2">
+              <span className="h-7 w-24 rounded-full bg-surface-muted" />
+              <span className="h-7 w-20 rounded-full bg-surface-muted" />
+            </div>
+            <div className="mt-auto flex items-end justify-between gap-3 border-t border-line pt-4">
+              <span className="h-4 w-16 rounded bg-surface-muted" />
+              <span className="h-6 w-24 rounded bg-surface-muted" />
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -551,65 +687,48 @@ function SubjectCard({ subject }: { subject: SubjectSearchResult }) {
     <Link
       href={`/tutors/${subject.tutor.id}`}
       aria-label={`${subject.name} with ${tutorName}`}
-      className="flex h-full flex-col gap-3 rounded-2xl border border-line bg-surface p-5 transition-colors hover:border-brand-navy"
+      className="flex h-full min-w-0 flex-col rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-brand-navy sm:p-5"
     >
-      <div className="flex items-start gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-soft text-lg font-semibold text-brand-link">
-          {subject.tutor.firstName.charAt(0).toUpperCase()}
-          {subject.tutor.lastName.charAt(0).toUpperCase()}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-semibold">{subject.name}</h2>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="truncate">{tutorName}</span>
-            {subject.tutor.verified && (
-              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-                Verified
-              </span>
-            )}
-          </div>
-        </div>
+      <h2 className="break-words text-lg font-semibold leading-snug">{subject.name}</h2>
+      <div className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-secondary">
+        <span className="min-w-0 break-words">{tutorName}</span>
+        {subject.tutor.verified && <VerifiedIcon />}
       </div>
-      <p className="text-sm text-muted">
-        {subject.rating === null ? (
-          "New subject"
-        ) : (
-          <>
-            <span className="font-semibold text-foreground">★ {subject.rating.toFixed(1)}</span> (
-            {subject.reviewCount} {subject.reviewCount === 1 ? "review" : "reviews"})
-          </>
-        )}
-        {subject.classesTaught > 0 &&
-          ` · ${subject.classesTaught} ${subject.classesTaught === 1 ? "class" : "classes"} taught`}
+      <p className="mt-2 text-sm leading-5 text-muted">
+        Online
+        {subject.learningAreas.length > 0 &&
+          `, ${subject.learningAreas.map((area) => area.name).join(", ")}`}
       </p>
-      <p className="text-sm text-muted">
-        {subject.nextAvailableAt
-          ? `Next available ${new Intl.DateTimeFormat("en", {
-              timeZone: "Asia/Bangkok",
-              dateStyle: "medium",
-              timeStyle: "short",
-            }).format(new Date(subject.nextAvailableAt))} (Bangkok time)`
-          : "No availability in the next 30 days"}
+      <p className="mt-3 line-clamp-2 min-h-10 text-sm leading-5 text-secondary">
+        {subject.description}
       </p>
-      {subject.description && (
-        <p className="line-clamp-2 text-sm text-secondary">{subject.description}</p>
-      )}
-      <div className="flex flex-wrap gap-1.5">
-        {subject.learningAreas.map((area) => (
-          <span
-            key={area.id}
-            className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium"
-          >
-            {area.name}
+      <div className="mt-auto pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-sm">
+          <span className="font-semibold text-foreground">
+            ฿{subject.hourlyRate}
+            <span className="font-normal text-muted"> / hr</span>
           </span>
-        ))}
-      </div>
-      <div className="mt-auto flex items-end justify-between gap-3 border-t border-line pt-4 text-sm">
-        <span className="text-muted">Online</span>
-        <span className="shrink-0">
-          <span className="text-lg font-semibold">฿{subject.hourlyRate}</span>
-          <span className="text-muted"> / hr</span>
-        </span>
+          <span className="text-muted">
+            {subject.rating === null ? (
+              "New subject"
+            ) : (
+              <>
+                <span className="text-amber-500" aria-hidden="true">
+                  ★
+                </span>{" "}
+                {subject.rating.toFixed(1)} ({subject.reviewCount}{" "}
+                {subject.reviewCount === 1 ? "review" : "reviews"})
+              </>
+            )}
+          </span>
+        </div>
+        <p className="mt-2 min-h-10 text-xs leading-5 text-muted">
+          {subject.nextAvailableAt
+            ? `Next available ${new Intl.DateTimeFormat("en", { timeZone: "Asia/Bangkok", dateStyle: "medium", timeStyle: "short" }).format(new Date(subject.nextAvailableAt))} (Bangkok time)`
+            : "No availability in the next 30 days"}
+          {subject.classesTaught > 0 &&
+            ` · ${subject.classesTaught} ${subject.classesTaught === 1 ? "class" : "classes"} taught`}
+        </p>
       </div>
     </Link>
   );

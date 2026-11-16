@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { getTutorDashboard, type TutorDashboard } from "@/src/lib/dashboard-api";
 import { ReviewFlag } from "./review-flag";
 import { ReviewReply } from "./review-reply";
@@ -12,9 +12,9 @@ const dateFormat = new Intl.DateTimeFormat("en", {
   year: "numeric",
   timeZone: "Asia/Bangkok",
 });
-const panel = "rounded-2xl border border-line bg-surface p-5";
+const panel = "min-w-0 border-t border-line pt-3";
 
-export function TutorDashboardStats() {
+export function TutorDashboardStats({ children }: { children?: ReactNode }) {
   const [data, setData] = useState<TutorDashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,160 +48,174 @@ export function TutorDashboardStats() {
   }
 
   return (
-    <section aria-label="Teaching overview" className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-xl font-semibold">Teaching overview</h3>
-          <p className="mt-1 text-sm text-muted">
-            All-time activity, except classes this week. Each lesson is one booking.
-          </p>
+    <>
+      <section aria-label="Teaching overview" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold">Teaching overview</h3>
+            <p className="mt-0.5 text-xs text-muted">
+              All-time activity, except classes this week. Each lesson is one booking.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link
+              href="/settings/tutor"
+              className="text-xs font-semibold text-brand-link underline"
+            >
+              Manage subjects and listing
+            </Link>
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={loading}
+              className="rounded-lg border border-line px-3 py-2 text-xs font-semibold disabled:opacity-50"
+            >
+              Refresh overview
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={loading}
-          className="rounded-lg border border-line px-4 py-2 text-sm font-semibold disabled:opacity-50"
-        >
-          Refresh overview
-        </button>
-      </div>
-      {loading && (
-        <p role="status" className="text-sm text-muted">
-          Loading teaching overview…
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-          {error}
-        </p>
-      )}
-      {!loading && !error && data && (
-        <>
-          <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ["Classes this week", data.classesThisWeek, "Mon–Sun · Bangkok time"],
-              ["Completed lessons", data.lessons.completed, "Confirmed complete by you"],
-              ["Students", data.students.total, "With a paid or completed lesson"],
-              [
-                "Average rating",
-                data.reviews.averageRating === null
-                  ? "Unrated"
-                  : `${data.reviews.averageRating.toFixed(1)} / 5`,
-                `${data.reviews.count} published ${data.reviews.count === 1 ? "review" : "reviews"}`,
-              ],
-            ].map(([label, value, help]) => (
-              <div key={label} className={panel}>
-                <dt className="text-sm text-muted">{label}</dt>
-                <dd className="mt-2 text-3xl font-semibold tracking-tight">{value}</dd>
-                <dd className="mt-2 text-xs leading-5 text-muted">{help}</dd>
-              </div>
-            ))}
-          </dl>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <section className={panel} aria-labelledby="lesson-status-heading">
-              <h4 id="lesson-status-heading" className="font-semibold">
-                Lesson status
+        {loading && (
+          <p role="status" className="text-sm text-muted">
+            Loading teaching overview…
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            {error}
+          </p>
+        )}
+        {!loading && !error && data && (
+          <div className="grid gap-5 border-t border-line pt-4 lg:grid-cols-3 lg:gap-6">
+            <section className="min-w-0" aria-labelledby="teaching-activity-heading">
+              <h4 id="teaching-activity-heading" className="text-sm font-semibold">
+                Teaching activity
               </h4>
-              <dl className="mt-4 grid gap-3 text-sm">
+              <dl className="mt-3 grid gap-2 text-sm">
                 {[
-                  ["Confirmed", data.lessons.confirmed],
-                  ["Completed", data.lessons.completed],
-                  ["Awaiting payment", data.lessons.pendingPayment],
-                  ["Cancelled", data.lessons.cancelled],
-                ].map(([label, count]) => (
-                  <div key={label} className="flex justify-between gap-3">
+                  ["Classes this week", data.classesThisWeek],
+                  ["Completed lessons", data.lessons.completed],
+                  ["Students", data.students.total],
+                  [
+                    "Average rating",
+                    data.reviews.averageRating === null
+                      ? "Unrated"
+                      : `${data.reviews.averageRating.toFixed(1)} / 5`,
+                  ],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex min-w-0 items-baseline justify-between gap-4">
                     <dt className="text-secondary">{label}</dt>
-                    <dd className="font-semibold">{count}</dd>
+                    <dd className="shrink-0 font-semibold tabular-nums">{value}</dd>
                   </div>
                 ))}
               </dl>
-              <p className="mt-4 text-xs leading-5 text-muted">
-                Confirmed includes ended lessons awaiting your completion confirmation.
-              </p>
             </section>
-            <section className={panel} aria-labelledby="student-engagement-heading">
-              <h4 id="student-engagement-heading" className="font-semibold">
-                Student engagement
-              </h4>
-              <dl className="mt-4 grid gap-3 text-sm">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-secondary">Students taught</dt>
-                  <dd className="font-semibold">{data.students.withCompletedLessons}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-secondary">Returning students</dt>
-                  <dd className="font-semibold">{data.students.returning}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-secondary">Returning student rate</dt>
-                  <dd className="font-semibold">
-                    {data.students.returningRate === null ? "—" : `${data.students.returningRate}%`}
-                  </dd>
-                </div>
-              </dl>
-              <p className="mt-4 text-xs leading-5 text-muted">
-                Returning students have completed at least two lessons with you. The rate is out of
-                students taught.
-              </p>
-            </section>
-          </div>
-          <section className={panel} aria-labelledby="tutor-reviews-heading">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h4 id="tutor-reviews-heading" className="font-semibold">
-                Recent reviews
-              </h4>
-              {data.reviews.count > 0 && (
-                <Link
-                  href={`/tutors/${data.tutorId}`}
-                  className="text-sm font-semibold text-brand-link underline"
-                >
-                  View public profile
-                </Link>
-              )}
-            </div>
-            {data.reviews.count === 0 ? (
-              <p className="mt-4 text-sm text-muted">
-                No reviews yet. Students can leave a review after you confirm their lesson is
-                complete.
-              </p>
-            ) : (
-              <ul
-                aria-label="Recent tutor reviews"
-                tabIndex={0}
-                className="themed-scrollbar mt-4 max-h-[32rem] space-y-4 overflow-y-auto overscroll-y-contain rounded-xl pr-2 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-link"
-              >
-                {data.reviews.recent.map((review) => (
-                  <li key={review.id} className="rounded-xl border border-line p-4">
-                    <div className="flex flex-wrap justify-between gap-2 text-sm">
-                      <span className="font-semibold">{review.studentName}</span>
-                      <span
-                        aria-label={`${review.ratingStars} out of 5 stars`}
-                        className="font-semibold text-amber-700 dark:text-amber-400"
-                      >
-                        ★ {review.ratingStars} / 5
-                      </span>
+            <div className="grid gap-5 sm:grid-cols-2 lg:col-span-2 lg:gap-6 lg:border-l lg:border-line lg:pl-6">
+              <section className="min-w-0" aria-labelledby="lesson-status-heading">
+                <h4 id="lesson-status-heading" className="text-sm font-semibold">
+                  Lesson status
+                </h4>
+                <dl className="mt-3 grid gap-2 text-sm">
+                  {[
+                    ["Confirmed", data.lessons.confirmed],
+                    ["Completed", data.lessons.completed],
+                    ["Awaiting payment", data.lessons.pendingPayment],
+                    ["Cancelled", data.lessons.cancelled],
+                  ].map(([label, count]) => (
+                    <div key={label} className="flex justify-between gap-3">
+                      <dt className="text-secondary">{label}</dt>
+                      <dd className="shrink-0 font-semibold tabular-nums">{count}</dd>
                     </div>
-                    <p className="mt-1 text-xs text-muted">
-                      {review.subject.name} · {dateFormat.format(new Date(review.createdAt))}
-                    </p>
-                    <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">
-                      {review.text || "Rating only · no written comment"}
-                    </p>
-                    {review.text && (
-                      <ReviewFlag
-                        reviewId={review.id}
-                        reviewer={review.studentName}
-                        flagged={review.flaggedByMe}
-                      />
-                    )}
-                    <ReviewReply reviewId={review.id} reply={review.reply} canReply />
-                  </li>
-                ))}
-              </ul>
+                  ))}
+                </dl>
+              </section>
+              <section
+                className="min-w-0 lg:border-l lg:border-line lg:pl-6"
+                aria-labelledby="student-engagement-heading"
+              >
+                <h4 id="student-engagement-heading" className="text-sm font-semibold">
+                  Student engagement
+                </h4>
+                <dl className="mt-3 grid gap-2 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-secondary">Students taught</dt>
+                    <dd className="shrink-0 font-semibold tabular-nums">
+                      {data.students.withCompletedLessons}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-secondary">Returning students</dt>
+                    <dd className="shrink-0 font-semibold tabular-nums">
+                      {data.students.returning}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-secondary">Returning student rate</dt>
+                    <dd className="shrink-0 font-semibold tabular-nums">
+                      {data.students.returningRate === null
+                        ? "—"
+                        : `${data.students.returningRate}%`}
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+          </div>
+        )}
+      </section>
+      {children}
+      {!loading && !error && data && (
+        <section className={panel} aria-labelledby="tutor-reviews-heading">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 id="tutor-reviews-heading" className="font-semibold">
+              Recent reviews
+            </h3>
+            {data.reviews.count > 0 && (
+              <Link
+                href={`/tutors/${data.tutorId}`}
+                className="text-sm font-semibold text-brand-link underline"
+              >
+                View public profile
+              </Link>
             )}
-          </section>
-        </>
+          </div>
+          {data.reviews.count === 0 ? (
+            <p className="mt-4 text-sm text-muted">
+              No reviews yet. Students can leave a review after you confirm their lesson is
+              complete.
+            </p>
+          ) : (
+            <ul aria-label="Recent tutor reviews" className="mt-4 divide-y divide-line">
+              {data.reviews.recent.map((review) => (
+                <li key={review.id} className="py-4 first:pt-0">
+                  <div className="flex flex-wrap justify-between gap-2 text-sm">
+                    <span className="font-semibold">{review.studentName}</span>
+                    <span
+                      aria-label={`${review.ratingStars} out of 5 stars`}
+                      className="font-semibold text-amber-700 dark:text-amber-400"
+                    >
+                      ★ {review.ratingStars} / 5
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">
+                    {review.subject.name} · {dateFormat.format(new Date(review.createdAt))}
+                  </p>
+                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">
+                    {review.text || "Rating only · no written comment"}
+                  </p>
+                  {review.text && (
+                    <ReviewFlag
+                      reviewId={review.id}
+                      reviewer={review.studentName}
+                      flagged={review.flaggedByMe}
+                    />
+                  )}
+                  <ReviewReply reviewId={review.id} reply={review.reply} canReply />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
-    </section>
+    </>
   );
 }

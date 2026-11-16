@@ -105,14 +105,16 @@ function NotificationSettingsForm() {
     <main
       id="main-content"
       tabIndex={-1}
-      className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row"
+      className="mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:px-8"
     >
       <SettingsSidebar activeSection="notifications" />
 
-      <div className="flex flex-1 flex-col gap-8">
+      <div className="flex min-w-0 flex-1 flex-col gap-8">
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium text-muted">Tutor Matcher</p>
-          <h1 className="text-4xl font-semibold tracking-tight">Notification settings</h1>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Notification settings
+          </h1>
           <p className="max-w-2xl text-base leading-7 text-secondary">
             Choose which account activity sends you an email.
           </p>

@@ -14,8 +14,21 @@ const statuses: Record<TutorVersionStatus, { label: string; color: string }> = {
   CANCELLED: { label: "Cancelled", color: "bg-surface-muted text-secondary" },
 };
 
-export function TutorSubmissionStatus({ status }: { status: TutorVersionStatus }) {
+export function TutorSubmissionStatus({
+  status,
+  plain = false,
+}: {
+  status: TutorVersionStatus;
+  plain?: boolean;
+}) {
   const { label, color } = statuses[status];
+  if (plain) {
+    const textColor = color
+      .split(" ")
+      .filter((token) => !token.startsWith("bg-"))
+      .join(" ");
+    return <span className={`text-sm font-medium ${textColor}`}>{label}</span>;
+  }
   return (
     <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${color}`}>{label}</span>
   );

@@ -1,11 +1,11 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import WalletSettingsPage from "./page";
+import { PayoutAccountsManager as WalletSettingsPage } from "@/src/components/payout-accounts-manager";
 
 const mockReplace = jest.fn();
 const fetchMock = jest.fn();
 
 jest.mock("next/navigation", () => ({
-  usePathname: () => "/settings/wallet",
+  usePathname: () => "/wallet/payout",
   useRouter: () => ({ push: mockReplace, replace: mockReplace }),
 }));
 
@@ -68,62 +68,17 @@ beforeEach(() => {
   localStorage.setItem("authToken", "student-token");
 });
 
-describe("WalletSettingsPage", () => {
-  it("shows Request payout to Tutors", async () => {
-    mockLoad([]);
-    render(<WalletSettingsPage />);
-
-    expect(await screen.findByRole("link", { name: "Request payout" })).toHaveAttribute(
-      "href",
-      "/wallet/payout"
-    );
-  });
-
-  it("shows only the balance and Top up to a user who is not a Tutor", async () => {
+describe("PayoutAccountsManager", () => {
+  it("does not load payout accounts for a Student", async () => {
     mockLoad([], "1250.50", "NONE");
     render(<WalletSettingsPage />);
-
-    expect(await screen.findByText("฿1,250.50")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Top up" })).toHaveAttribute("href", "/wallet/topup");
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith("/api/profiles/me/tutor", expect.anything())
     );
-    expect(screen.getByText("Check your wallet balance and top up.")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Request payout" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Payout accounts" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add account" })).not.toBeInTheDocument();
     expect(
       fetchMock.mock.calls.some(([url]) => String(url).startsWith("/api/payout-accounts"))
     ).toBe(false);
-  });
-
-  it("keeps Request payout and shows a load error when the Tutor check fails", async () => {
-    mockLoad([], "1250.50", null);
-    render(<WalletSettingsPage />);
-
-    expect(await screen.findByRole("link", { name: "Request payout" })).toBeInTheDocument();
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "We could not load your payout accounts. Please refresh and try again."
-    );
-    expect(screen.queryByRole("button", { name: "Add account" })).not.toBeInTheDocument();
-  });
-
-  it("shows the balance with a top-up link and the empty state", async () => {
-    mockLoad([]);
-    render(<WalletSettingsPage />);
-
-    expect(await screen.findByText("฿1,250.50")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Top up" })).toHaveAttribute("href", "/wallet/topup");
-    expect(screen.getByRole("link", { name: "Wallet" })).toHaveAttribute("aria-current", "page");
-    expect(await screen.findByText(/No payout accounts yet/)).toBeInTheDocument();
-    expect(screen.getByText("Your first account becomes your default.")).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/payout-accounts",
-      expect.objectContaining({
-        headers: expect.objectContaining({ Authorization: "Bearer student-token" }),
-      })
-    );
   });
 
   it("lists saved accounts with the masked number and a Default badge", async () => {
@@ -132,7 +87,7 @@ describe("WalletSettingsPage", () => {
 
     const defaultRow = await screen.findByRole("listitem", { name: "Kasikornbank •••• 7890" });
     expect(within(defaultRow).getByText("Default")).toBeInTheDocument();
-    expect(within(defaultRow).getByText("Student One · •••• 7890")).toBeInTheDocument();
+    expect(within(defaultRow).getByText("Student One, •••• 7890")).toBeInTheDocument();
     expect(within(defaultRow).queryByRole("button", { name: "Set default" })).toBeNull();
     const otherRow = screen.getByRole("listitem", { name: "Siam Commercial Bank •••• 1234" });
     expect(within(otherRow).queryByText("Default")).toBeNull();

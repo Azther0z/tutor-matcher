@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { VerifiedIcon } from "@/src/components/verified-icon";
+import styles from "@/src/components/student-layout.module.css";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { formatRate, Rating, ReviewList } from "@/src/components/tutor-public";
@@ -17,8 +19,9 @@ import {
   type TutorProfile,
 } from "@/src/lib/tutor-profile-api";
 
-const card = "flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6";
-const shell = "mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-12";
+const card = "flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 sm:p-5";
+const shell =
+  "mx-auto flex w-full max-w-[68rem] min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8";
 
 export default function TutorDetailPage() {
   const params = useParams<{ id: string }>();
@@ -106,27 +109,33 @@ function ProfileView({ profile }: { profile: TutorProfile }) {
           <img
             src={profile.avatarUrl}
             alt={`${fullName} profile photo`}
-            className="h-20 w-20 rounded-2xl object-cover"
+            className="h-16 w-16 rounded-2xl object-cover"
           />
         ) : (
           <div
             aria-hidden
-            className="flex h-20 w-20 items-center justify-center rounded-2xl bg-brand-soft text-2xl font-semibold text-brand-link"
+            className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-soft text-2xl font-semibold text-brand-link"
           >
             {profile.firstName.charAt(0).toUpperCase()}
             {profile.lastName.charAt(0).toUpperCase()}
           </div>
         )}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h1 className="text-4xl font-semibold tracking-tight">{fullName}</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold leading-tight tracking-tight">
+            {fullName}
+            {profile.verified && <VerifiedIcon />}
+          </h1>
           <div className="flex flex-wrap items-center gap-3">
-            {profile.verified && (
-              <span className="rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-300">
-                Verified
-              </span>
-            )}
             <Rating rating={profile.rating} count={profile.reviewCount} />
           </div>
+          <p className="text-sm text-muted">
+            {profile.teachingStats.completedLessons}{" "}
+            {profile.teachingStats.completedLessons === 1
+              ? "completed lesson"
+              : "completed lessons"}
+            , {profile.teachingStats.studentsTaught}{" "}
+            {profile.teachingStats.studentsTaught === 1 ? "student taught" : "students taught"}
+          </p>
         </div>
         <div className="flex flex-col items-end gap-2">
           {lowestRate !== null && (
@@ -136,49 +145,31 @@ function ProfileView({ profile }: { profile: TutorProfile }) {
               <span className="text-muted"> / hr</span>
             </p>
           )}
-          {profile.subjects.length > 0 && (
-            <a
-              href="#subjects"
-              className="flex h-11 items-center rounded-lg bg-brand-navy px-5 font-medium text-white"
-            >
-              Choose a subject
-            </a>
-          )}
         </div>
       </header>
 
-      <section aria-labelledby="teaching-experience-heading" className={card}>
-        <h2 id="teaching-experience-heading" className="text-xl font-semibold">
-          Teaching experience
-        </h2>
-        <dl className="grid grid-cols-2 gap-4">
-          <div>
-            <dt className="text-sm text-muted">Completed lessons</dt>
-            <dd className="mt-1 text-3xl font-semibold">
-              {profile.teachingStats.completedLessons}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm text-muted">Students taught</dt>
-            <dd className="mt-1 text-3xl font-semibold">{profile.teachingStats.studentsTaught}</dd>
-          </div>
-        </dl>
-        <p className="text-sm leading-6 text-muted">
-          Lessons confirmed complete by the Tutor, across all their subjects. Students are counted
-          once. These activity counts do not measure teaching quality; read the reviews to learn
-          about students’ experiences.
-        </p>
-      </section>
-      <AboutSection profile={profile} />
-      <SubjectsSection tutorId={profile.id} subjects={profile.subjects} />
-      <AvailabilitySection profile={profile} />
-      <ReviewsSection
-        tutorId={profile.id}
-        reviews={profile.reviews}
-        rating={profile.rating}
-        count={profile.reviewCount}
-      />
-      <MessageSection profile={profile} />
+      <div className={`${styles.profileGrid} !gap-5`}>
+        <div className={styles.subjects}>
+          <SubjectsSection tutorId={profile.id} subjects={profile.subjects} />
+        </div>
+        <div className={styles.about}>
+          <AboutSection profile={profile} />
+        </div>
+        <div className={styles.availability}>
+          <AvailabilitySection profile={profile} />
+        </div>
+        <div className={styles.reviews}>
+          <ReviewsSection
+            tutorId={profile.id}
+            reviews={profile.reviews}
+            rating={profile.rating}
+            count={profile.reviewCount}
+          />
+        </div>
+        <div className={styles.message}>
+          <MessageSection profile={profile} />
+        </div>
+      </div>
     </main>
   );
 }
@@ -191,7 +182,7 @@ function AboutSection({ profile }: { profile: TutorProfile }) {
         About {profile.firstName}
       </h2>
       {profile.bio ? (
-        <p className="whitespace-pre-wrap text-secondary">{profile.bio}</p>
+        <p className="whitespace-pre-wrap text-sm leading-6 text-secondary">{profile.bio}</p>
       ) : (
         <p className="text-muted">This tutor hasn’t added a bio yet.</p>
       )}
@@ -229,29 +220,29 @@ function SubjectsSection({ tutorId, subjects }: { tutorId: string; subjects: Pro
   return (
     <section id="subjects" aria-labelledby="subjects-heading" className={card}>
       <h2 id="subjects-heading" className="text-xl font-semibold">
-        Subjects and rates
+        Subjects
       </h2>
       {subjects.length === 0 ? (
         <p className="text-muted">This tutor hasn’t listed any subjects yet.</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col border-t border-line">
           {subjects.map((subject) => (
             <li key={subject.id}>
               <Link
                 href={`/tutors/${tutorId}/${subject.id}`}
-                className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-brand-navy"
+                className="flex flex-col gap-2 border-b border-line px-3 py-4 transition-colors hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-2 focus-visible:outline-brand-link"
               >
-                <span className="flex items-start justify-between gap-3">
-                  <span className="text-lg font-semibold">{subject.name}</span>
+                <span className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                  <span className="min-w-0 break-words text-lg font-semibold">{subject.name}</span>
                   <span className="shrink-0">
                     <span className="text-lg font-semibold">{formatRate(subject.hourlyRate)}</span>
                     <span className="text-muted"> / hr</span>
                   </span>
                 </span>
-                {subject.description && (
-                  <span className="line-clamp-2 text-sm text-secondary">{subject.description}</span>
-                )}
-                <span className="flex flex-wrap gap-x-4 text-sm text-muted">
+                <span className="line-clamp-2 min-h-10 text-sm leading-5 text-secondary">
+                  {subject.description}
+                </span>
+                <span className="flex flex-col gap-1 text-sm leading-5 text-muted">
                   <Rating rating={subject.rating} count={subject.reviewCount} />
                   <span>
                     {subject.nextOpening
@@ -288,10 +279,7 @@ function AvailabilitySection({ profile }: { profile: TutorProfile }) {
               <span className="w-28 shrink-0 font-medium">{day}</span>
               <ul className="flex flex-wrap gap-2">
                 {slots.map((slot) => (
-                  <li
-                    key={slot.startedAt}
-                    className="rounded-full bg-brand-soft px-3 py-1 text-sm font-medium text-brand-link"
-                  >
+                  <li key={slot.startedAt} className="text-sm leading-6 text-secondary">
                     <span>{openingTime(slot.startedAt)}</span>{" "}
                     <span>
                       {slot.subjectIds

@@ -46,6 +46,7 @@ function MessagesView() {
   const searchParams = useSearchParams();
   const withUserId = searchParams.get("with");
   const withName = searchParams.get("name");
+  const [showThreadOnMobile, setShowThreadOnMobile] = useState(Boolean(withUserId));
 
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
@@ -154,12 +155,9 @@ function MessagesView() {
     <main
       id="main-content"
       tabIndex={-1}
-      className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10"
+      className="mx-auto flex w-full max-w-[68rem] flex-1 flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8"
     >
-      <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium text-muted">Tutor Matcher</p>
-        <h1 className="text-3xl font-semibold tracking-tight">Messages</h1>
-      </div>
+      <h1 className="text-2xl font-semibold leading-tight tracking-tight">Messages</h1>
 
       {listError && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
@@ -167,10 +165,28 @@ function MessagesView() {
         </p>
       )}
 
-      <div className="flex h-[42rem] flex-col overflow-hidden bg-surface md:h-[36rem] md:flex-row rounded-2xl border border-line bg-surface">
-        <aside className="flex max-h-44 min-h-0 w-full shrink-0 flex-col overflow-y-auto border-b border-line md:max-h-none md:w-72 md:border-r md:border-b-0">
+      <div className="flex h-[calc(100dvh-10rem)] min-h-80 flex-col overflow-hidden rounded-2xl border border-line bg-surface md:flex-row">
+        <aside
+          className={`${showThreadOnMobile ? "hidden" : "flex"} min-h-0 w-full shrink-0 flex-col overflow-y-auto border-b border-line md:flex md:max-h-none md:w-80 md:border-r md:border-b-0`}
+        >
           {conversations === null ? (
-            <p className="p-4 text-sm text-muted">Loading…</p>
+            <div role="status" aria-label="Loading conversations">
+              <span className="sr-only">Loading…</span>
+              {[0, 1, 2].map((row) => (
+                <div
+                  key={row}
+                  aria-hidden="true"
+                  className="flex gap-3 border-b border-line px-4 py-3"
+                >
+                  <span className="h-9 w-9 shrink-0 rounded-lg bg-surface-muted" />
+                  <span className="flex flex-1 flex-col gap-2">
+                    <span className="h-4 w-28 rounded bg-surface-muted" />
+                    <span className="h-3 w-20 rounded bg-surface-muted" />
+                    <span className="h-3 w-full rounded bg-surface-muted" />
+                  </span>
+                </div>
+              ))}
+            </div>
           ) : conversations.length === 0 && !selected ? (
             <p className="p-4 text-sm text-muted">No messages yet.</p>
           ) : (
@@ -178,10 +194,11 @@ function MessagesView() {
               <button
                 key={conversation.userId}
                 type="button"
-                onClick={() =>
-                  setSelected({ userId: conversation.userId, name: conversation.name })
-                }
-                className={`flex items-start gap-3 border-b border-line p-4 text-left transition-colors last:border-b-0 hover:bg-surface-muted   ${
+                onClick={() => {
+                  setSelected({ userId: conversation.userId, name: conversation.name });
+                  setShowThreadOnMobile(true);
+                }}
+                className={`flex items-start gap-3 border-b border-line px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-surface-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-link ${
                   selected?.userId === conversation.userId ? "bg-surface-muted" : ""
                 }`}
               >
@@ -189,7 +206,7 @@ function MessagesView() {
                   {initials(conversation.name)}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="flex items-baseline justify-between gap-2">
+                  <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate font-medium">{conversation.name}</span>
                     <span className="shrink-0 text-xs text-muted">
                       {formatBangkokDateTime(conversation.lastMessageAt)}
@@ -217,14 +234,25 @@ function MessagesView() {
           )}
         </aside>
 
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <section
+          className={`${showThreadOnMobile ? "flex" : "hidden"} min-h-0 min-w-0 flex-1 flex-col md:flex`}
+        >
           {!selected ? (
             <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted">
               Select a conversation to see messages.
             </div>
           ) : (
             <>
-              <header className="border-b border-line p-4 font-medium">{selected.name}</header>
+              <header className="flex min-h-16 items-center gap-3 border-b border-line px-4 py-3 font-medium">
+                <button
+                  type="button"
+                  className="min-h-10 rounded-lg px-2 text-sm text-secondary hover:bg-surface-muted md:hidden"
+                  onClick={() => setShowThreadOnMobile(false)}
+                >
+                  <span aria-hidden="true">←</span> Conversations
+                </button>
+                <span className="min-w-0 truncate">{selected.name}</span>
+              </header>
 
               <div
                 ref={threadScrollRef}
@@ -268,7 +296,7 @@ function MessagesView() {
                   event.preventDefault();
                   handleSend();
                 }}
-                className="flex items-end gap-2 border-t border-line p-4"
+                className="flex items-end gap-2 border-t border-line px-4 py-3"
               >
                 <textarea
                   value={draft}
@@ -282,7 +310,7 @@ function MessagesView() {
                   aria-label="Message"
                   placeholder="Write a message…"
                   rows={1}
-                  className="h-11 flex-1 resize-none overflow-y-auto rounded-lg border border-line bg-transparent px-3 py-2.5 text-sm focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
+                  className="h-11 min-w-0 flex-1 resize-none overflow-y-auto rounded-lg border border-line bg-transparent px-3 py-2.5 text-sm focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
                 />
                 <button
                   type="submit"

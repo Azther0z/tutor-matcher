@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { AuthPageLayout } from "@/src/components/auth-page-layout";
 import { useAuth } from "@/src/components/auth-provider";
 import { setAuthToken } from "@/src/lib/auth";
 
@@ -92,17 +93,13 @@ function LoginForm() {
   }
 
   return (
-    <main
-      id="main-content"
-      tabIndex={-1}
-      className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-8 px-6 py-16"
+    <AuthPageLayout
+      introTitle="Pick up where you left off."
+      introDescription="Sign in to manage your learning account and continue your journey."
+      formTitle="Log in"
+      formDescription="Use the email address linked to your account."
     >
-      <div className="flex flex-col gap-2 text-center">
-        <p className="text-sm font-medium text-muted">Tutor Matcher</p>
-        <h1 className="text-3xl font-semibold tracking-tight">Log in</h1>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Email
           <input
@@ -156,6 +153,6 @@ function LoginForm() {
           Sign up
         </Link>
       </p>
-    </main>
+    </AuthPageLayout>
   );
 }
