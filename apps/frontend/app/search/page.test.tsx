@@ -1,3 +1,6 @@
+import { renderToString } from "react-dom/server";
+import { hydrateRoot } from "react-dom/client";
+import { TutorSearch } from "@/src/components/tutor-search";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import SearchPage from "./page";
 import { jsonResponse } from "@/src/test/tutor-profile-fixtures";
@@ -52,16 +55,11 @@ function page(results: SubjectSearchResult[], extra: Partial<TutorSearchResponse
   };
 }
 
-let priceRange: { min: string; max: string } | null = { min: "75.00", max: "860.00" };
-
 function respondWith(...responses: Array<ReturnType<typeof jsonResponse>>) {
   const queue = [...responses];
   fetchMock.mockImplementation((path: string) => {
     if (path === "/api/discovery/learning-areas") {
       return Promise.resolve(jsonResponse({ learningAreas: [mathematics, physics] }));
-    }
-    if (path === "/api/discovery/price-range") {
-      return Promise.resolve(jsonResponse({ priceRange }));
     }
     return Promise.resolve(queue.length > 1 ? queue.shift() : queue[0]);
   });
@@ -74,7 +72,6 @@ const searchCalls = () =>
 
 beforeEach(() => {
   mockParams = new URLSearchParams();
-  priceRange = { min: "75.00", max: "860.00" };
   mockReplace.mockReset();
   fetchMock.mockReset();
   global.fetch = fetchMock;
@@ -107,7 +104,7 @@ describe("SearchPage (DISC-1)", () => {
     expect(screen.getByLabelText("Learning area")).toHaveValue("area-math");
     expect(screen.getByLabelText("Minimum price")).toHaveValue("200");
     expect(screen.getByLabelText("Maximum price")).toHaveValue("600");
-    expect(screen.getByText("฿200 to ฿600 / hr")).toBeInTheDocument();
+    expect(screen.getByText("฿200 to ฿600 per hour")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "3.5 stars and up" })).toHaveAttribute(
       "aria-pressed",
       "true"
@@ -138,8 +135,9 @@ describe("SearchPage (DISC-1)", () => {
 
     const calculus = screen.getByRole("link", { name: "A-Level Calculus with Anong Pattana" });
     expect(calculus).toHaveAttribute("href", "/tutors/tutor-anong");
-    expect(within(calculus).getByText("Verified")).toBeInTheDocument();
-    expect(calculus).toHaveTextContent("★ 4.5 (2 reviews) · 3 classes taught");
+    expect(within(calculus).getByRole("img", { name: "Verified" })).toBeInTheDocument();
+    expect(calculus).toHaveTextContent("★ 4.5 (2 reviews)");
+    expect(calculus).toHaveTextContent("3 classes taught");
     expect(calculus).toHaveTextContent("Limits and derivatives");
     expect(calculus).toHaveTextContent("Mathematics");
     expect(calculus).toHaveTextContent("฿300.00 / hr");
@@ -148,7 +146,7 @@ describe("SearchPage (DISC-1)", () => {
     // The same tutor's second subject is its own card with its own price.
     const satPhysics = screen.getByRole("link", { name: "SAT Physics with Anong Pattana" });
     expect(satPhysics).toHaveTextContent("New subject");
-    expect(satPhysics).toHaveTextContent("PhysicsMathematics");
+    expect(satPhysics).toHaveTextContent("Online, Physics, Mathematics");
     expect(satPhysics).toHaveTextContent("฿860.00 / hr");
   });
 
@@ -178,7 +176,7 @@ describe("SearchPage (DISC-1)", () => {
     expect(
       await screen.findByRole("link", { name: "Add learning areas to your profile" })
     ).toHaveAttribute("href", "/settings/student");
-    expect(screen.getByText("No availability in the next 30 days")).toBeInTheDocument();
+    expect(await screen.findByText(/No availability in the next 30 days/)).toBeInTheDocument();
   });
 
   it("clears and reloads discovery after the current account changes", async () => {
@@ -206,9 +204,6 @@ describe("SearchPage (DISC-1)", () => {
     fetchMock.mockImplementation((path: string, options?: RequestInit) => {
       if (path === "/api/discovery/learning-areas") {
         return Promise.resolve(jsonResponse({ learningAreas: [mathematics] }));
-      }
-      if (path === "/api/discovery/price-range") {
-        return Promise.resolve(jsonResponse({ priceRange }));
       }
       if ((options?.headers as Record<string, string> | undefined)?.Authorization) {
         return Promise.resolve(jsonResponse({ message: "Invalid or expired token" }, 401));
@@ -258,26 +253,26 @@ describe("SearchPage (DISC-1)", () => {
     expect(mockReplace).toHaveBeenLastCalledWith("/search", { scroll: false });
   });
 
-  it("sets a price range with two thumbs rounded to the real prices", async () => {
+  it("sets a price range with two non-crossing thumbs and clears limits at the endpoints", async () => {
     respondWith(jsonResponse(page([subject()])));
     const { rerender } = render(<SearchPage />);
     await screen.findByText("1 subject found");
 
-    // Real prices ฿75 to ฿860 become a ฿0 to ฿900 slider in ฿10 steps.
+    // The slider covers ฿0 to ฿3,000; its endpoints leave that side unlimited.
     const low = screen.getByLabelText("Minimum price");
     const high = screen.getByLabelText("Maximum price");
     expect(low).toHaveAttribute("min", "0");
-    expect(low).toHaveAttribute("max", "900");
-    expect(low).toHaveAttribute("step", "10");
-    expect(screen.getByText("฿0 to ฿900 / hr")).toBeInTheDocument();
+    expect(low).toHaveAttribute("max", "3000");
+    expect(low).toHaveAttribute("step", "50");
+    expect(screen.getByText("฿0 to any price per hour")).toBeInTheDocument();
 
     jest.useFakeTimers();
     fireEvent.change(low, { target: { value: "200" } });
     fireEvent.change(high, { target: { value: "650" } });
-    expect(screen.getByText("฿200 to ฿650 / hr")).toBeInTheDocument();
+    expect(screen.getByText("฿200 to ฿650 per hour")).toBeInTheDocument();
     // The thumbs can't cross.
     fireEvent.change(low, { target: { value: "800" } });
-    expect(screen.getByText("฿650 to ฿650 / hr")).toBeInTheDocument();
+    expect(screen.getByText("฿650 to ฿650 per hour")).toBeInTheDocument();
     fireEvent.change(low, { target: { value: "200" } });
     act(() => jest.advanceTimersByTime(300));
     expect(mockReplace).toHaveBeenCalledTimes(1);
@@ -289,18 +284,27 @@ describe("SearchPage (DISC-1)", () => {
     mockParams = new URLSearchParams("minPrice=200&maxPrice=650");
     rerender(<SearchPage />);
     fireEvent.change(low, { target: { value: "0" } });
-    fireEvent.change(high, { target: { value: "900" } });
+    fireEvent.change(high, { target: { value: "3000" } });
     act(() => jest.advanceTimersByTime(300));
     expect(mockReplace).toHaveBeenLastCalledWith("/search", { scroll: false });
   });
 
-  it("rounds the slider to thousands once prices pass ฿10,000", async () => {
-    priceRange = { min: "1500.00", max: "12400.00" };
+  it("keeps prices above the slider maximum editable in the number fields", async () => {
+    mockParams = new URLSearchParams("minPrice=1500&maxPrice=12400");
     respondWith(jsonResponse(page([subject()])));
     render(<SearchPage />);
     await screen.findByText("1 subject found");
-    expect(screen.getByText("฿1,000 to ฿13,000 / hr")).toBeInTheDocument();
-    expect(screen.getByLabelText("Maximum price")).toHaveAttribute("step", "100");
+    expect(screen.getByText("฿1,500 to ฿12,400 per hour")).toBeInTheDocument();
+    expect(screen.getByLabelText("Maximum price")).toHaveValue("3000");
+    expect(screen.getByRole("spinbutton", { name: "Max" })).toHaveValue(12400);
+    jest.useFakeTimers();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Max" }), {
+      target: { value: "13500.50" },
+    });
+    act(() => jest.advanceTimersByTime(300));
+    expect(mockReplace).toHaveBeenLastCalledWith("/search?minPrice=1500&maxPrice=13500.50", {
+      scroll: false,
+    });
   });
 
   it("waits for typing to pause before searching by keyword or tutor name", async () => {
@@ -356,21 +360,24 @@ describe("SearchPage (DISC-1)", () => {
     const loginLink = screen.getByRole("link", { name: "Log in" });
     expect(loginLink).toHaveAttribute("href", "/login");
     expect(screen.getAllByRole("link")).toEqual([loginLink]);
+    const emptyResults = within(
+      screen.getByRole("heading", { name: "No tutors match these filters" }).closest("section")!
+    );
     expect(
-      await screen.findByRole("button", { name: "Search all areas, not just Mathematics" })
+      await emptyResults.findByRole("button", { name: "Search all areas, not just Mathematics" })
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Remove the price range" }));
+    fireEvent.click(emptyResults.getByRole("button", { name: "Remove the price range" }));
     expect(mockReplace).toHaveBeenLastCalledWith(
       "/search?q=quantum&tutorName=zed&learningAreaId=area-math&minRating=4.5",
       { scroll: false }
     );
-    fireEvent.click(screen.getByRole("button", { name: 'Any tutor, not just "zed"' }));
+    fireEvent.click(emptyResults.getByRole("button", { name: 'Any tutor, not just "zed"' }));
     expect(mockReplace).toHaveBeenLastCalledWith(
       "/search?q=quantum&learningAreaId=area-math&minPrice=100&maxPrice=200&minRating=4.5",
       { scroll: false }
     );
-    fireEvent.click(screen.getByRole("button", { name: "Any rating" }));
+    fireEvent.click(emptyResults.getByRole("button", { name: "Any rating" }));
     expect(mockReplace).toHaveBeenLastCalledWith(
       "/search?q=quantum&tutorName=zed&learningAreaId=area-math&minPrice=100&maxPrice=200",
       { scroll: false }
@@ -389,17 +396,17 @@ describe("SearchPage (DISC-1)", () => {
   });
 
   it("says no tutors are listed yet when there are no filters to broaden", async () => {
-    priceRange = null;
     respondWith(jsonResponse(page([])));
     render(<SearchPage />);
     expect(
       await screen.findByText("No tutors are listed yet. Check back soon.")
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Clear all filters" })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Minimum price")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Minimum price")).toHaveValue("0");
+    expect(screen.getByRole("spinbutton", { name: "Min" })).toHaveValue(null);
   });
 
-  it("loads the price range once, not on every search", async () => {
+  it("keeps price controls available across searches without fetching a price range", async () => {
     respondWith(jsonResponse(page([subject()])));
     const { rerender } = render(<SearchPage />);
     await screen.findByText("1 subject found");
@@ -409,7 +416,8 @@ describe("SearchPage (DISC-1)", () => {
     const rangeCalls = fetchMock.mock.calls.filter(
       ([path]) => path === "/api/discovery/price-range"
     );
-    expect(rangeCalls).toHaveLength(1);
+    expect(rangeCalls).toHaveLength(0);
+    expect(screen.getByLabelText("Maximum price")).toHaveAttribute("max", "3000");
   });
 
   it("goes to the last page when the URL points past the end", async () => {
@@ -475,4 +483,27 @@ describe("SearchPage (DISC-1)", () => {
     ).toBeInTheDocument();
     await waitFor(() => expect(searchCalls()).toHaveLength(2));
   });
+});
+
+it("hydrates the visitor HTML with a saved login without a mismatch", async () => {
+  respondWith(jsonResponse(page([subject()])));
+  const container = document.createElement("div");
+  container.innerHTML = renderToString(<TutorSearch />);
+  document.body.appendChild(container);
+  localStorage.setItem("authToken", "saved-token");
+  const onRecoverableError = jest.fn();
+  let root: ReturnType<typeof hydrateRoot> | undefined;
+  try {
+    await act(async () => {
+      root = hydrateRoot(container, <TutorSearch />, { onRecoverableError });
+    });
+    expect(
+      within(container).getByRole("link", { name: "Add learning areas to your profile" })
+    ).toBeInTheDocument();
+    expect(within(container).queryByRole("link", { name: "Log in" })).not.toBeInTheDocument();
+    expect(onRecoverableError).not.toHaveBeenCalled();
+  } finally {
+    act(() => root?.unmount());
+    container.remove();
+  }
 });

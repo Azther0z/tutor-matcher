@@ -26,9 +26,8 @@ const emptySubject: SubjectInput = {
   learningAreaIds: [],
 };
 const button =
-  "rounded-full border border-black/[.12] px-5 py-2 text-sm font-medium hover:bg-black/[.04] disabled:opacity-60 dark:border-white/[.18] dark:hover:bg-white/[.08]";
-const field =
-  "mt-1 w-full rounded-lg border border-black/[.15] bg-transparent px-3 py-2 dark:border-white/[.2]";
+  "rounded-lg border border-line px-5 py-2 text-sm font-medium hover:bg-surface-muted disabled:opacity-60";
+const field = "mt-1 w-full rounded-lg border border-line bg-transparent px-3 py-2";
 
 export function TutorSubjectsManager({
   subjects,
@@ -228,7 +227,7 @@ export function TutorSubjectsManager({
             aria-describedby={errors.learningAreaIds ? "subject-areas-error" : "subject-areas-hint"}
           >
             <legend className="font-medium">Learning areas</legend>
-            <p id="subject-areas-hint" className="mt-1 text-sm text-zinc-500">
+            <p id="subject-areas-hint" className="mt-1 text-sm text-muted">
               Pick 1 to {MAX_SUBJECT_LEARNING_AREAS}. Students find this subject by these areas in
               search.
             </p>
@@ -255,10 +254,10 @@ export function TutorSubjectsManager({
                           : [...input.learningAreaIds, area.id],
                       })
                     }
-                    className={`rounded-full border px-3 py-1 text-sm transition disabled:opacity-40 ${
+                    className={`rounded-lg border px-3 py-1 text-sm transition-colors disabled:opacity-40 ${
                       selected
-                        ? "border-violet-600 bg-violet-600 text-white"
-                        : "border-black/[.15] hover:border-violet-500 dark:border-white/[.2]"
+                        ? "border-brand-navy bg-brand-navy text-white"
+                        : "border-line hover:border-brand-navy"
                     }`}
                   >
                     {area.name}
@@ -299,10 +298,7 @@ export function TutorSubjectsManager({
   }
 
   return (
-    <section
-      className="rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]"
-      aria-label="Subjects"
-    >
+    <section className="rounded-2xl border border-line bg-surface p-6" aria-label="Subjects">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-xl font-semibold">Subjects</h2>
         <button
@@ -314,12 +310,12 @@ export function TutorSubjectsManager({
           Add subject
         </button>
       </div>
-      <p className="mt-3 text-sm text-zinc-500">
+      <p className="mt-3 text-sm text-muted">
         Subjects are taught online. Changes save immediately; existing bookings keep their agreed
         details.
       </p>
       {subjects.length === 0 && <p className="mt-4">No subjects yet.</p>}
-      <ul className="mt-4 divide-y divide-black/[.08] dark:divide-white/[.12]">
+      <ul className="mt-4 divide-y divide-line ">
         {subjects.map((subject) => (
           <li key={subject.id} className="py-4" aria-label={`Subject: ${subject.name}`}>
             {editing === subject.id ? (
@@ -331,11 +327,11 @@ export function TutorSubjectsManager({
                   <span>฿{subject.hourlyRate} / hr · Online</span>
                 </div>
                 {subject.learningAreas.length > 0 && (
-                  <p className="mt-1 text-sm text-violet-700 dark:text-violet-300">
+                  <p className="mt-1 text-sm text-brand-link">
                     {subject.learningAreas.map(({ name }) => name).join(", ")}
                   </p>
                 )}
-                <p className="mt-2 whitespace-pre-wrap break-words text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="mt-2 whitespace-pre-wrap break-words text-sm text-secondary">
                   {subject.description}
                 </p>
                 <button

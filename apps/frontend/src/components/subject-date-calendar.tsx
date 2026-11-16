@@ -42,7 +42,7 @@ export function SubjectDateCalendar({
           aria-label="Previous month"
           disabled={month <= today.slice(0, 7)}
           onClick={() => move(-1)}
-          className="rounded-lg border border-black/10 px-3 py-2 disabled:opacity-40 dark:border-white/15"
+          className="rounded-lg border border-line px-3 py-2 disabled:opacity-40"
         >
           ←
         </button>
@@ -54,14 +54,14 @@ export function SubjectDateCalendar({
           aria-label="Next month"
           disabled={month >= lastDay.slice(0, 7)}
           onClick={() => move(1)}
-          className="rounded-lg border border-black/10 px-3 py-2 disabled:opacity-40 dark:border-white/15"
+          className="rounded-lg border border-line px-3 py-2 disabled:opacity-40"
         >
           →
         </button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center">
         {weekdays.map((label) => (
-          <span key={label} className="text-xs text-zinc-500">
+          <span key={label} className="text-xs text-muted">
             {label}
           </span>
         ))}
@@ -80,14 +80,17 @@ export function SubjectDateCalendar({
               aria-pressed={isSelected}
               disabled={date < today || date > lastDay}
               onClick={() => onSelect(date)}
-              className={`rounded-lg p-2 text-sm disabled:opacity-30 ${
+              className={`relative flex aspect-square min-w-0 items-center justify-center rounded-lg border p-0 text-sm disabled:opacity-30 ${
                 isSelected
-                  ? "bg-violet-600 text-white"
-                  : "border border-black/10 hover:border-violet-500 dark:border-white/15"
+                  ? "border-brand-navy bg-brand-navy text-white"
+                  : "border border-line hover:border-brand-navy"
               }`}
             >
               {index + 1}
-              <span aria-hidden="true" className="block h-2 text-xs leading-none">
+              <span
+                aria-hidden="true"
+                className="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs leading-none"
+              >
                 {hasOpenings ? "•" : ""}
               </span>
             </button>

@@ -1,0 +1,51 @@
+.next {
+  animation: days-next 260ms ease-out;
+}
+
+.previous {
+  animation: days-previous 260ms ease-out;
+}
+
+@keyframes days-next {
+  from {
+    opacity: 0.5;
+    transform: translateX(14.2857%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes days-previous {
+  from {
+    opacity: 0.5;
+    transform: translateX(-14.2857%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slots {
+  min-width: 0;
+  animation: slots-appear 160ms ease-out;
+}
+
+@keyframes slots-appear {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .next,
+  .previous,
+  .slots {
+    animation: none;
+  }
+}

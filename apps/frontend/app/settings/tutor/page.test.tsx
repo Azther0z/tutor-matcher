@@ -62,7 +62,7 @@ it("keeps the approved profile and publication controls while an edit is pending
   const current = screen.getByRole("region", { name: "Current approved profile" });
   expect(within(current).getByText(approvedTutor.bio!)).toBeInTheDocument();
   expect(within(current).queryByText("New bio awaiting review.")).not.toBeInTheDocument();
-  expect(within(current).getByText("Verified")).toBeInTheDocument();
+  expect(within(current).getByText(/Your identity has been verified/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Unpublish profile" })).toBeEnabled();
   expect(screen.queryByLabelText("Tutor bio")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "New draft" })).toBeEnabled();

@@ -14,7 +14,7 @@ import { TutorApiError } from "@/src/lib/tutor-application";
 
 const shell = "mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16";
 const button =
-  "h-9 rounded-full border border-black/[.12] px-4 text-sm font-medium disabled:opacity-60 dark:border-white/[.18]";
+  "min-h-11 rounded-lg border border-line px-4 text-sm font-medium disabled:opacity-60";
 const badge = "inline-flex rounded-md px-2 py-1 text-xs font-medium";
 const dateFormat: Intl.DateTimeFormatOptions = { dateStyle: "medium", timeStyle: "short" };
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, dateFormat);
@@ -62,11 +62,11 @@ function FlaggedReviews() {
   }
 
   return (
-    <main className={shell}>
+    <main id="main-content" tabIndex={-1} className={shell}>
       <div>
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Admin</p>
+        <p className="text-sm font-medium text-muted">Admin</p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight">Flagged reviews</h1>
-        <p className="mt-3 text-zinc-500">
+        <p className="mt-3 text-muted">
           Members flag review comments they find inappropriate. Keep a review that follows the
           rules, or remove the whole review with a reason the author will see. Everyone who flagged
           it is told the outcome.
@@ -83,9 +83,9 @@ function FlaggedReviews() {
       {!forbidden && (
         <section
           aria-label="Flagged reviews"
-          className="overflow-hidden rounded-lg border border-black/[.12] dark:border-white/[.18]"
+          className="overflow-hidden rounded-lg border border-line"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[.12] px-4 py-3 dark:border-white/[.18]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
             <TutorRefreshButton label="Refresh flagged reviews" onClick={refresh} />
             <label className="ml-auto flex items-center gap-2 text-sm">
               <span>Status</span>
@@ -96,7 +96,7 @@ function FlaggedReviews() {
                   setReviews(null);
                   setMessage(null);
                 }}
-                className="rounded-md border border-black/[.12] bg-background py-2 pl-3 pr-3 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 dark:border-white/[.18] dark:[color-scheme:dark]"
+                className="rounded-md border border-line bg-background py-2 pl-3 pr-3 text-foreground focus-visible:outline-2 focus-visible:outline-brand-link focus-visible:ring-2 focus-visible:ring-foreground/30 dark:[color-scheme:dark]"
               >
                 <option value="PENDING">Pending</option>
                 <option value="DECIDED">Decided</option>
@@ -105,16 +105,16 @@ function FlaggedReviews() {
           </div>
           <div className="px-4">
             {!reviews && !error && (
-              <p className="py-5 text-sm text-zinc-500">Loading flagged reviews…</p>
+              <p className="py-5 text-sm text-muted">Loading flagged reviews…</p>
             )}
             {reviews?.length === 0 && (
-              <p className="py-5 text-sm text-zinc-500">
+              <p className="py-5 text-sm text-muted">
                 {status === "PENDING"
                   ? "No flagged reviews waiting for a decision."
                   : "No decisions yet."}
               </p>
             )}
-            <ul className="divide-y divide-black/[.12] dark:divide-white/[.18]">
+            <ul className="divide-y divide-line ">
               {reviews?.map((review) => (
                 <li key={review.id}>
                   <FlaggedReviewRow
@@ -161,7 +161,7 @@ function FlaggedReviewRow({
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <p className="min-w-0 text-sm">
           <span className="font-medium">{review.author}</span>
-          <span className="text-zinc-500">
+          <span className="text-muted">
             {" "}
             reviewed {review.tutor} · {review.subject} ·{" "}
           </span>
@@ -184,7 +184,7 @@ function FlaggedReviewRow({
         )}
       </div>
       {review.comment && (
-        <p className="whitespace-pre-line rounded-md bg-black/[.04] p-2 text-sm dark:bg-white/[.06]">
+        <p className="whitespace-pre-line rounded-md bg-surface-muted p-2 text-sm">
           {review.comment}
         </p>
       )}
@@ -192,7 +192,7 @@ function FlaggedReviewRow({
         {review.flags.map((flag) => (
           <li key={flag.id}>
             <span className="font-medium">{flag.reporter}</span>: {flag.reason}{" "}
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-muted">
               · <time dateTime={flag.createdAt}>{when(flag.createdAt)}</time>
               {flag.outcome && flag.decidedAt && (
                 <>
@@ -298,7 +298,7 @@ function DecisionDialog({
             type="submit"
             form={formId}
             disabled={busy}
-            className={`${button} border-transparent ${remove ? "bg-red-600 text-white" : "bg-foreground text-background"}`}
+            className={`${button} border-transparent ${remove ? "bg-red-600 text-white" : "bg-brand-navy text-white"}`}
           >
             {busy ? "Saving…" : remove ? "Remove review" : "Keep review"}
           </button>
@@ -320,7 +320,7 @@ function DecisionDialog({
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               aria-invalid={reasonMissing}
-              className="rounded-lg border border-black/[.12] bg-transparent p-3 text-base font-normal dark:border-white/[.18]"
+              className="rounded-lg border border-line bg-transparent p-3 text-base font-normal"
             />
           </label>
         )}

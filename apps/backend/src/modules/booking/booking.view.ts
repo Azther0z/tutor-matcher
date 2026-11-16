@@ -12,6 +12,7 @@ export const detailInclude = {
   user: { select: { id: true, firstName: true, lastName: true, balance: true } },
   subject: {
     include: {
+      learningAreas: { include: { learningArea: true } },
       tutor: {
         include: {
           user: { select: { id: true, firstName: true, lastName: true } },
@@ -157,6 +158,10 @@ export function mapBookingResponse(
       description:
         booking.subjectName == null ? booking.subject.description : booking.subjectDescription,
       hourlyRate: decimalString(booking.subjectHourlyRate ?? booking.subject.hourlyRate),
+      learningAreas: (booking.subject.learningAreas ?? []).map(({ learningArea }) => ({
+        id: learningArea.id,
+        name: learningArea.name,
+      })),
       format: booking.subjectFormat ?? booking.subject.format,
       tutor: {
         id: booking.subject.tutor.id,

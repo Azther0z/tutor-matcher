@@ -2,32 +2,203 @@
 
 :root {
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #171717;
-
-  /* Brand palette — adapted from besttutorthailand.com (navy + gold, tutoring/trust tone) */
-  --color-brand-navy: #2c3792;
-  --color-brand-navy-dark: #1b2a63;
-  --color-brand-gold: #f0b429;
-  --color-brand-surface: #eef1f7;
+  --background: #f8fafc;
+  --foreground: #172033;
+  --surface: #ffffff;
+  --surface-muted: #eef1f7;
+  --secondary: #526079;
+  --muted: #647087;
+  --line: #d9dfe9;
+  --brand-navy: #2c3792;
+  --brand-navy-dark: #1b2a63;
+  --brand-gold: #f0b429;
+  --brand-link: #2c3792;
+  --brand-soft: #edf0fb;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-secondary: var(--secondary);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-navy-dark: var(--brand-navy-dark);
+  --color-brand-gold: var(--brand-gold);
+  --color-brand-link: var(--brand-link);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-surface: var(--surface-muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --color-brand-navy: var(--color-brand-navy);
-  --color-brand-navy-dark: var(--color-brand-navy-dark);
-  --color-brand-gold: var(--color-brand-gold);
-  --color-brand-surface: var(--color-brand-surface);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #11151e;
+    --foreground: #edf1f8;
+    --surface: #191f2b;
+    --surface-muted: #232b3b;
+    --secondary: #c2cad9;
+    --muted: #a1aec3;
+    --line: #394458;
+    --brand-navy: #404eb5;
+    --brand-navy-dark: #35419d;
+    --brand-link: #bdc8ff;
+    --brand-soft: #252e4b;
+  }
+}
+
+@layer base {
+  html {
+    scroll-padding-top: 6rem;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+    line-height: 1.6;
+  }
+
+  main {
+    min-width: 0;
+    scroll-margin-top: 6rem;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+
+  p,
+  dd {
+    overflow-wrap: anywhere;
+  }
+
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  summary {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    scroll-margin-top: 6rem;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--brand-link);
+    outline-offset: 4px;
+  }
+
+  button:not(:disabled),
+  summary,
+  select {
+    cursor: pointer;
+  }
+
+  :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+    min-height: 2.75rem;
+    background-color: var(--surface);
+    color: var(--foreground);
+    font-size: 1rem;
+  }
+
+  :where(input[type="checkbox"], input[type="radio"]) {
+    accent-color: var(--brand-navy);
+  }
+
+  :where(input, textarea)::placeholder {
+    color: var(--muted);
+    opacity: 1;
+  }
+
+  [role="dialog"] {
+    overscroll-behavior: contain;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+@layer components {
+  .ui-card {
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: var(--surface);
+  }
+
+  .ui-button,
+  .ui-button-secondary {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid transparent;
+    border-radius: 0.625rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-align: center;
+    transition:
+      background-color 160ms,
+      border-color 160ms,
+      color 160ms;
+  }
+
+  .ui-button {
+    background: var(--brand-navy);
+    color: #ffffff;
+  }
+
+  .ui-button:hover {
+    background: var(--brand-navy-dark);
+  }
+
+  .ui-button-secondary {
+    border-color: var(--line);
+    background: var(--surface);
+    color: var(--foreground);
+  }
+
+  .ui-button-secondary:hover {
+    background: var(--surface-muted);
+    border-color: var(--brand-link);
+  }
+
+  .skip-link {
+    position: fixed;
+    top: 0.75rem;
+    left: 1rem;
+    z-index: 100;
+    transform: translateY(-200%);
+    border-radius: 0.5rem;
+    background: var(--brand-navy);
+    padding: 0.75rem 1rem;
+    color: #ffffff;
+  }
+
+  .skip-link:focus {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -85,10 +256,4 @@
   .themed-scrollbar {
     scrollbar-color: auto;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }

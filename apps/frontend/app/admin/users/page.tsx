@@ -21,11 +21,11 @@ function UserManagement() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   return (
-    <main className={shell}>
+    <main id="main-content" tabIndex={-1} className={shell}>
       <div>
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Admin</p>
+        <p className="text-sm font-medium text-muted">Admin</p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight">Users</h1>
-        <p className="mt-3 text-zinc-500">
+        <p className="mt-3 text-muted">
           Search accounts by name, then message, suspend or ban the selected user. A suspension
           lifts automatically when it ends; a ban is permanent.
         </p>
@@ -40,7 +40,7 @@ function UserManagement() {
           {selectedId ? (
             <ManagedUserPanel key={selectedId} userId={selectedId} onUpdated={state.updateRow} />
           ) : (
-            <p className="rounded-lg border border-dashed border-black/[.12] p-6 text-sm text-zinc-500 dark:border-white/[.18]">
+            <p className="rounded-lg border border-dashed border-line p-6 text-sm text-muted">
               Select a user to message, suspend or ban them.
             </p>
           )}

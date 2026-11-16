@@ -23,11 +23,8 @@ export function UserSearchPanel({
   const { search, results, loading, error, changeSearch } = state;
   const [draft, setDraft] = useState("");
   return (
-    <section
-      aria-label="User search"
-      className="overflow-hidden rounded-lg border border-black/[.12] dark:border-white/[.18]"
-    >
-      <div className="flex flex-col gap-3 border-b border-black/[.12] p-4 dark:border-white/[.18]">
+    <section aria-label="User search" className="overflow-hidden rounded-lg border border-line">
+      <div className="flex flex-col gap-3 border-b border-line p-4">
         <form
           role="search"
           className="flex gap-2"
@@ -43,7 +40,7 @@ export function UserSearchPanel({
             maxLength={100}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            className="h-11 min-w-0 flex-1 rounded-full border border-black/[.12] bg-transparent px-4 outline-none focus:border-foreground dark:border-white/[.18]"
+            className="h-11 min-w-0 flex-1 rounded-lg border border-line bg-transparent px-4 focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground"
           />
           <button type="submit" className={button}>
             Search
@@ -56,10 +53,10 @@ export function UserSearchPanel({
               type="button"
               aria-pressed={search.role === value}
               onClick={() => changeSearch({ role: value, page: 1 })}
-              className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
+              className={`rounded-lg border px-4 py-1.5 text-sm font-semibold transition-colors ${
                 search.role === value
-                  ? "border-violet-600 bg-violet-600 text-white"
-                  : "border-black/15 hover:border-violet-500 dark:border-white/20"
+                  ? "border-brand-navy bg-brand-navy text-white"
+                  : "border-line hover:border-brand-navy"
               }`}
             >
               {label}
@@ -80,31 +77,31 @@ export function UserSearchPanel({
           </button>
         </div>
       )}
-      {loading && !results && <p className="px-4 py-5 text-sm text-zinc-500">Loading users…</p>}
+      {loading && !results && <p className="px-4 py-5 text-sm text-muted">Loading users…</p>}
       {results && (
         <div aria-busy={loading}>
-          <p aria-live="polite" className="px-4 pt-3 text-sm text-zinc-500">
+          <p aria-live="polite" className="px-4 pt-3 text-sm text-muted">
             {results.total === 1 ? "1 user" : `${results.total} users`}
           </p>
           {results.results.length === 0 ? (
-            <p className="px-4 py-5 text-sm text-zinc-500">No users match this search.</p>
+            <p className="px-4 py-5 text-sm text-muted">No users match this search.</p>
           ) : (
-            <ul className="divide-y divide-black/[.12] dark:divide-white/[.18]">
+            <ul className="divide-y divide-line ">
               {results.results.map((user) => (
                 <li key={user.id}>
                   <button
                     type="button"
                     aria-current={selectedId === user.id ? "true" : undefined}
                     onClick={() => onSelect(user.id)}
-                    className={`flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-black/[.03] dark:hover:bg-white/[.05] ${
-                      selectedId === user.id ? "bg-black/[.05] dark:bg-white/[.08]" : ""
+                    className={`flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-muted  ${
+                      selectedId === user.id ? "bg-surface-muted" : ""
                     }`}
                   >
                     <span className="min-w-0">
                       <span className="block font-medium">
                         {user.firstName} {user.lastName}
                       </span>
-                      <span className="block break-all text-sm text-zinc-500">{user.email}</span>
+                      <span className="block break-all text-sm text-muted">{user.email}</span>
                     </span>
                     <UserBadges user={user} />
                   </button>
@@ -115,7 +112,7 @@ export function UserSearchPanel({
           {results.totalPages > 1 && (
             <nav
               aria-label="Result pages"
-              className="flex items-center justify-between gap-3 border-t border-black/[.12] px-4 py-3 text-sm dark:border-white/[.18]"
+              className="flex items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm"
             >
               <button
                 type="button"

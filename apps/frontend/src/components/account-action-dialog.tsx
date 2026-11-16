@@ -106,7 +106,7 @@ export function AccountActionDialog({
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             aria-invalid={reasonMissing}
-            className="rounded-lg border border-black/[.12] bg-transparent p-3 text-base font-normal dark:border-white/[.18]"
+            className="rounded-lg border border-line bg-transparent p-3 text-base font-normal"
           />
         </label>
         {reasonMissing && (

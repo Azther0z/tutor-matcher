@@ -12,6 +12,7 @@ export type BookingSubject = {
   id: string;
   name: string;
   description?: string | null;
+  learningAreas?: { id: string; name: string }[];
   hourlyRate: string;
   format: "ONLINE";
   tutor: {

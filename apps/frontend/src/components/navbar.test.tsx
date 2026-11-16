@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AuthProvider } from "./auth-provider";
 import { Navbar } from "./navbar";
 import { clearAuthToken, setAuthToken } from "@/src/lib/auth";
@@ -64,10 +64,7 @@ describe("Navbar", () => {
     renderNavbar();
 
     const accountButton = await screen.findByRole("button", { name: "Open account menu" });
-    expect(screen.getByRole("link", { name: "Wallet balance" })).toHaveAttribute(
-      "href",
-      "/wallet/topup"
-    );
+    expect(screen.getByRole("link", { name: "Wallet balance" })).toHaveAttribute("href", "/wallet");
     await waitFor(() =>
       expect(screen.getByLabelText("Wallet balance")).toHaveTextContent("฿ 1,250.50")
     );
@@ -90,7 +87,7 @@ describe("Navbar", () => {
       expect(screen.getByLabelText("Wallet balance")).toHaveTextContent("฿ 1,250.50")
     );
 
-    publishWalletBalance("1750.50");
+    act(() => publishWalletBalance("1750.50"));
 
     await waitFor(() =>
       expect(screen.getByLabelText("Wallet balance")).toHaveTextContent("฿ 1,750.50")
@@ -195,4 +192,17 @@ it("retains tutor navigation while the latest profile edit is pending", async ()
   await waitFor(() =>
     expect(screen.queryByRole("link", { name: "Become a tutor" })).not.toBeInTheDocument()
   );
+});
+
+it("opens navigation on small screens and returns focus to its trigger on Escape", async () => {
+  renderNavbar();
+  const trigger = await screen.findByRole("button", { name: "Open navigation" });
+  expect(trigger).toHaveAttribute("aria-expanded", "false");
+  fireEvent.click(trigger);
+  expect(trigger).toHaveAttribute("aria-expanded", "true");
+  const bookings = screen.getByRole("link", { name: "Bookings" });
+  bookings.focus();
+  fireEvent.keyDown(bookings, { key: "Escape" });
+  expect(trigger).toHaveAttribute("aria-expanded", "false");
+  expect(trigger).toHaveFocus();
 });

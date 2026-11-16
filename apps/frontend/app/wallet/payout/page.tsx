@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { PayoutAccountsManager } from "@/src/components/payout-accounts-manager";
 import { RequireAuth } from "@/src/components/require-auth";
 import { getPayoutAccounts, type PayoutAccount } from "@/src/lib/payout-accounts-api";
 import {
@@ -26,6 +27,7 @@ function accountLabel(account: PayoutAccount) {
 }
 
 function PayoutContent() {
+  const [tutorEligible, setTutorEligible] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<PayoutAccount[]>([]);
   const [accountId, setAccountId] = useState("");
@@ -49,6 +51,7 @@ function PayoutContent() {
           setBalance(wallet.balance);
           return;
         }
+        setTutorEligible(true);
         const saved = await getPayoutAccounts();
         setBalance(wallet.balance);
         setAccounts(saved);
@@ -56,6 +59,16 @@ function PayoutContent() {
       })
       .catch(() => setError("Could not load your wallet. Please refresh and try again."))
       .finally(() => setLoading(false));
+  }, []);
+
+  const updateAccounts = useCallback((saved: PayoutAccount[]) => {
+    setAccounts(saved);
+    setAccountId((current) =>
+      saved.some((item) => item.id === current)
+        ? current
+        : ((saved.find((item) => item.isDefault) ?? saved[0])?.id ?? "")
+    );
+    setStage((current) => (current === "confirm" ? "form" : current));
   }, []);
 
   function review() {
@@ -117,19 +130,23 @@ function PayoutContent() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12 lg:py-16">
-      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">Payout</p>
-      <h1 className="mt-2 text-4xl font-bold tracking-tight">Request a payout</h1>
-      <p className="mt-3 text-zinc-500">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto w-full max-w-3xl flex-1 px-6 py-12 lg:py-16"
+    >
+      <p className="text-sm font-semibold text-brand-link">Payout</p>
+      <h1 className="mt-2 text-4xl font-semibold tracking-tight">Request a payout</h1>
+      <p className="mt-3 text-muted">
         Send money from your available wallet balance to a saved payout account.
       </p>
       <p className="mt-4 inline-flex rounded-full bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-800 dark:text-amber-300">
         Simulated payout, no real money is transferred.
       </p>
 
-      <section className="mt-8 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm dark:border-white/15 dark:bg-zinc-950">
-        <div className="flex items-center justify-between border-b border-black/10 px-6 py-5 dark:border-white/15">
-          <span className="text-sm text-zinc-500">Available balance</span>
+      <section className="mt-8 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+        <div className="flex items-center justify-between border-b border-line px-6 py-5">
+          <span className="text-sm text-muted">Available balance</span>
           <strong className="text-xl">
             {loading ? "Loading…" : balance === null ? "Unavailable" : money(Number(balance))}
           </strong>
@@ -144,14 +161,14 @@ function PayoutContent() {
         {!loading && balance !== null && stage !== "tutorOnly" && accounts.length === 0 && (
           <div className="p-8 text-center">
             <h2 className="text-xl font-semibold">No saved payout account</h2>
-            <p className="mt-2 text-zinc-500">
-              Add a payout account in Wallet settings, then come back to request a payout.
+            <p className="mt-2 text-muted">
+              Add a payout account below, then choose it for your payout.
             </p>
             <Link
-              href="/settings/wallet"
-              className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-full bg-violet-600 font-semibold text-white transition hover:bg-violet-500"
+              href="#payout-accounts"
+              className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-lg bg-brand-navy font-semibold text-white transition-colors hover:bg-brand-navy-dark"
             >
-              Go to Wallet settings
+              Add a payout account
             </Link>
           </div>
         )}
@@ -164,10 +181,10 @@ function PayoutContent() {
                 {accounts.map((item) => (
                   <label
                     key={item.id}
-                    className={`flex cursor-pointer items-center gap-4 rounded-2xl border px-4 py-3 transition ${
+                    className={`flex cursor-pointer items-center gap-4 rounded-2xl border px-4 py-3 transition-colors ${
                       accountId === item.id
-                        ? "border-violet-600 bg-violet-600/5"
-                        : "border-black/15 hover:border-violet-500 dark:border-white/20"
+                        ? "border-brand-navy bg-brand-navy/5"
+                        : "border-line hover:border-brand-navy"
                     }`}
                   >
                     <input
@@ -176,14 +193,14 @@ function PayoutContent() {
                       value={item.id}
                       checked={accountId === item.id}
                       onChange={() => setAccountId(item.id)}
-                      className="accent-violet-600"
+                      className="accent-brand-navy"
                     />
-                    <span className="flex-1">
-                      <span className="block font-semibold">{accountLabel(item)}</span>
-                      <span className="block text-sm text-zinc-500">{item.accountHolderName}</span>
+                    <span className="min-w-0 flex-1 break-words">
+                      <span className="block break-words font-semibold">{accountLabel(item)}</span>
+                      <span className="block text-sm text-muted">{item.accountHolderName}</span>
                     </span>
                     {item.isDefault && (
-                      <span className="rounded-full bg-violet-600/10 px-2 py-0.5 text-xs font-semibold text-violet-700 dark:text-violet-300">
+                      <span className="rounded-full bg-brand-navy/10 px-2 py-0.5 text-xs font-semibold text-brand-link">
                         Default
                       </span>
                     )}
@@ -204,12 +221,12 @@ function PayoutContent() {
               onChange={(event) =>
                 setAmount(event.target.value === "" ? "" : Number(event.target.value))
               }
-              className="mt-2 h-12 w-full rounded-2xl border border-black/15 bg-transparent px-4 text-lg outline-none focus:border-violet-600 dark:border-white/20"
+              className="mt-2 h-12 w-full rounded-2xl border border-line bg-transparent px-4 text-lg focus-visible:outline-2 focus-visible:outline-brand-link focus:border-brand-navy"
             />
             <button
               type="button"
               onClick={review}
-              className="mt-6 h-12 w-full rounded-full bg-violet-600 font-semibold text-white transition hover:bg-violet-500"
+              className="mt-6 h-12 w-full rounded-lg bg-brand-navy font-semibold text-white transition-colors hover:bg-brand-navy-dark"
             >
               Review payout
             </button>
@@ -218,18 +235,18 @@ function PayoutContent() {
 
         {stage === "confirm" && account && (
           <div className="p-6 text-center sm:p-8">
-            <h2 className="text-2xl font-bold">Pay out {money(Number(amount))}?</h2>
-            <p className="mt-2 text-zinc-500">
+            <h2 className="text-2xl font-semibold">Pay out {money(Number(amount))}?</h2>
+            <p className="mt-2 text-muted">
               To {accountLabel(account)} · {account.accountHolderName}
             </p>
-            <p className="mt-1 text-zinc-500">
+            <p className="mt-1 text-muted">
               Balance after payout {money(Number(balance) - Number(amount))}
             </p>
             <button
               type="button"
               disabled={sending}
               onClick={() => void confirm()}
-              className="mt-6 h-12 w-full rounded-full bg-violet-600 font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50"
+              className="mt-6 h-12 w-full rounded-lg bg-brand-navy font-semibold text-white transition-colors hover:bg-brand-navy-dark disabled:opacity-50"
             >
               {sending ? "Sending payout…" : "Confirm payout"}
             </button>
@@ -240,7 +257,7 @@ function PayoutContent() {
                 setError(null);
                 setStage("form");
               }}
-              className="mt-3 h-11 font-semibold text-violet-700 hover:underline dark:text-violet-300"
+              className="mt-3 h-11 font-semibold text-brand-link hover:underline"
             >
               Change details
             </button>
@@ -252,13 +269,13 @@ function PayoutContent() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl text-emerald-700">
               ✓
             </div>
-            <h2 className="mt-5 text-2xl font-bold">Payout complete</h2>
-            <p className="mt-2 text-zinc-500">
+            <h2 className="mt-5 text-2xl font-semibold">Payout complete</h2>
+            <p className="mt-2 text-muted">
               Sent {money(Number(result.transaction.amount))} to{" "}
               {accountLabel(result.transaction.payoutAccount)} · new balance{" "}
               {money(Number(result.balance))}
             </p>
-            <p className="mt-2 text-xs text-zinc-400">Reference {result.transaction.id}</p>
+            <p className="mt-2 text-xs text-muted">Reference {result.transaction.id}</p>
             <button
               type="button"
               onClick={() => {
@@ -267,7 +284,7 @@ function PayoutContent() {
                 setAmount("");
                 setStage("form");
               }}
-              className="mt-6 h-12 w-full rounded-full bg-violet-600 font-semibold text-white transition hover:bg-violet-500"
+              className="mt-6 h-12 w-full rounded-lg bg-brand-navy font-semibold text-white transition-colors hover:bg-brand-navy-dark"
             >
               Request another payout
             </button>
@@ -277,7 +294,7 @@ function PayoutContent() {
         {stage === "tutorOnly" && (
           <div role="alert" className="p-8 text-center">
             <h2 className="text-xl font-semibold">Payouts are for Tutors</h2>
-            <p className="mt-2 text-zinc-500">
+            <p className="mt-2 text-muted">
               Only Tutors can request a payout from their wallet balance.
             </p>
           </div>
@@ -286,12 +303,19 @@ function PayoutContent() {
         {stage === "unavailable" && (
           <div role="alert" className="p-8 text-center">
             <h2 className="text-xl font-semibold">Payouts are not available here yet</h2>
-            <p className="mt-2 text-zinc-500">
+            <p className="mt-2 text-muted">
               Simulated payouts are turned off in production. Your balance was not changed.
             </p>
           </div>
         )}
       </section>
+      {!loading && tutorEligible && stage !== "tutorOnly" && stage !== "unavailable" && (
+        <PayoutAccountsManager
+          initialAccounts={accounts}
+          tutorVerified
+          onAccountsChange={updateAccounts}
+        />
+      )}
     </main>
   );
 }

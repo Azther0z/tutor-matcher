@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { TutorAvailabilityEditor } from "./tutor-availability-editor";
 import { jsonResponse } from "@/src/test/tutor-profile-fixtures";
 import { calendarDates, type AvailabilityCalendar, type StoredSlot } from "@/src/lib/availability";
@@ -37,7 +37,7 @@ function slot(overrides: Partial<StoredSlot> = {}): StoredSlot {
 function calendar(
   slots: StoredSlot[] = [],
   anchor = date,
-  view: "week" | "month" = "week"
+  view: "week" | "month" = "month"
 ): AvailabilityCalendar {
   return {
     timeZone: "Asia/Bangkok",
@@ -51,20 +51,15 @@ function calendar(
 async function load(value = calendar()) {
   fetchMock.mockResolvedValueOnce(jsonResponse(value));
   const result = render(<TutorAvailabilityEditor />);
-  await screen.findByRole("grid", { name: "Weekly half-hour calendar" });
+  await screen.findByRole("button", { name: "Select time 10:00" });
   return result;
 }
-function cell(time = "10:00", day = date, state = "Closed") {
-  return screen.getByRole("button", { name: `${day} ${time}: ${state}` });
-}
-function edit(time = "10:00", day = date, state = "Closed") {
-  fireEvent.click(cell(time, day, state));
-  return within(screen.getByRole("dialog"));
-}
-function toggle(name = "Mathematics") {
-  fireEvent.click(
-    within(screen.getByRole("dialog")).getByRole("button", { name: new RegExp(name) })
-  );
+function choosePeriod() {
+  fireEvent.click(screen.getByRole("button", { name: "Select time 10:00" }));
+  const popup = within(screen.getByRole("dialog", { name: "Edit subjects in selected slots" }));
+  fireEvent.change(popup.getByLabelText("Selection end"), { target: { value: "22" } });
+  fireEvent.click(popup.getByRole("checkbox", { name: "Mathematics" }));
+  return popup;
 }
 beforeEach(() => {
   fetchMock.mockReset();
@@ -75,191 +70,240 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-it("shows seven dated columns with 48 selectable half-hours, disables past cells and loads one calendar request", async () => {
+it("opens a period checklist from a time without saving until Add", async () => {
   await load();
-  expect(screen.getAllByRole("columnheader")).toHaveLength(8);
-  expect(screen.getAllByRole("gridcell")).toHaveLength(336);
-  expect(cell("08:30")).toBeDisabled();
-  expect(cell("10:00")).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Select time 08:30" })).toBeDisabled();
+  const popup = choosePeriod();
+  expect(popup.getByRole("checkbox", { name: "English" })).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(1);
-  expect(fetchMock.mock.calls[0][0]).toBe(
-    "/api/profiles/me/tutor/availability/calendar?from=2030-10-14&to=2030-10-20"
-  );
-  expect(screen.queryByRole("button", { name: "Save day" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Save week" })).not.toBeInTheDocument();
+  fireEvent.click(popup.getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 
-it("publishes only the selected slot with shared subjects in one save and retains it after reload", async () => {
-  const rendered = await load();
-  edit();
-  expect(screen.getByRole("button", { name: "Save slot" })).toBeDisabled();
-  toggle();
-  toggle("English");
-  const saved = slot({ subjectIds: ["math", "english"] });
-  fetchMock.mockResolvedValueOnce(jsonResponse({ date, slot: saved }));
-  fireEvent.click(screen.getByRole("button", { name: "Save slot" }));
-  await screen.findByText(`${date} 10:00: slot saved.`);
+it("adds several subjects over a period using one save per half-hour", async () => {
+  await load();
+  const popup = choosePeriod();
+  fireEvent.click(popup.getByRole("checkbox", { name: "English" }));
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse({ date, slot: slot({ subjectIds: ["math", "english"] }) }))
+    .mockResolvedValueOnce(
+      jsonResponse({ date, slot: slot({ time: "10:30", subjectIds: ["math", "english"] }) })
+    );
+  fireEvent.click(popup.getByRole("button", { name: "Apply" }));
+  await screen.findByText("2 half-hour slots updated.");
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  expect(cell("10:00", date, "Open")).toHaveTextContent("Mathematics, English");
-  expect(cell("11:00")).toBeInTheDocument();
-  const [url, options] = fetchMock.mock.calls[1];
-  expect(url).toBe(`/api/profiles/me/tutor/availability/${date}/10:00`);
-  expect(options.method).toBe("PUT");
-  expect(JSON.parse(options.body)).toEqual({
+  expect(screen.getByRole("button", { name: "Mathematics, 10:00–10:30" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "English, 10:00–10:30" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Mathematics, 10:30–11:00" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "English, 10:30–11:00" })).toBeInTheDocument();
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
     revision: null,
     isOpen: true,
     subjectIds: ["math", "english"],
   });
-  rendered.unmount();
-  await load(calendar([saved]));
-  const editor = edit("10:00", date, "Open");
-  expect(editor.getByRole("button", { name: /Mathematics/ })).toHaveAttribute(
-    "aria-pressed",
-    "true"
-  );
-  expect(editor.getByRole("button", { name: /English/ })).toHaveAttribute("aria-pressed", "true");
+  expect(fetchMock.mock.calls[2][0]).toContain("/10:30");
 });
 
-it("summarizes saved slots in the month and opens the clicked date's week", async () => {
-  await load(calendar([slot()]));
-  fetchMock.mockResolvedValueOnce(jsonResponse(calendar([slot()], date, "month")));
-  fireEvent.click(screen.getByRole("button", { name: "month" }));
-  const monthDay = await screen.findByRole("button", { name: `View week of ${date}` });
-  expect(monthDay).toHaveTextContent("1 open");
-  fetchMock.mockResolvedValueOnce(jsonResponse(calendar([slot()])));
-  fireEvent.click(monthDay);
-  await screen.findByRole("grid");
-  expect(screen.getByRole("button", { name: "week" })).toHaveAttribute("aria-pressed", "true");
-  expect(cell("10:00", date, "Open")).toBeInTheDocument();
-});
-
-it("navigates across year boundaries and allows any future date", async () => {
-  await load();
-  fetchMock.mockResolvedValueOnce(jsonResponse(calendar([], "2035-01-01")));
-  fireEvent.change(screen.getByLabelText("Go to date"), { target: { value: "2035-01-01" } });
-  await waitFor(() =>
-    expect(fetchMock.mock.calls[1][0]).toBe(
-      "/api/profiles/me/tutor/availability/calendar?from=2035-01-01&to=2035-01-07"
-    )
-  );
-  await screen.findByRole("grid");
-  fetchMock.mockResolvedValueOnce(jsonResponse(calendar([], "2034-12-25")));
-  fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
-  await waitFor(() =>
-    expect(fetchMock.mock.calls[2][0]).toBe(
-      "/api/profiles/me/tutor/availability/calendar?from=2034-12-25&to=2034-12-31"
-    )
-  );
-  expect(screen.getByLabelText("Go to date")).not.toHaveAttribute("max");
-});
-
-it("saves Close slot directly without another day/week save", async () => {
-  const original = slot();
-  await load(calendar([original]));
-  edit("10:00", date, "Open");
-  fetchMock.mockResolvedValueOnce(
-    jsonResponse({ date, slot: slot({ isOpen: false, revision: "b".repeat(64) }) })
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Close slot" }));
-  await screen.findByText(`${date} 10:00: slot closed.`);
-  expect(cell()).toBeInTheDocument();
-  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
-    revision: original.revision,
-    isOpen: false,
-    subjectIds: ["math"],
-  });
-});
-
-it("keeps the slot draft after a network failure, protects navigation and retries", async () => {
-  await load();
-  edit();
-  toggle();
-  fetchMock.mockRejectedValueOnce(new Error("Network unavailable"));
-  fireEvent.click(screen.getByRole("button", { name: "Save slot" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("Network unavailable");
-  expect(screen.getByRole("button", { name: /Mathematics/ })).toHaveAttribute(
-    "aria-pressed",
-    "true"
-  );
-  expect(screen.getByLabelText("Go to date")).toBeDisabled();
-  fetchMock.mockResolvedValueOnce(jsonResponse({ date, slot: slot() }));
-  fireEvent.click(screen.getByRole("button", { name: "Save slot" }));
-  await screen.findByText(`${date} 10:00: slot saved.`);
-});
-
-it("requires explicit discard on cancel or Escape and restores focus to the cell", async () => {
-  await load();
-  cell().focus();
-  edit();
-  toggle();
-  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
-  expect(screen.getByRole("group", { name: "Confirm discard" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Mathematics/ })).toHaveAttribute(
-    "aria-pressed",
-    "true"
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
-  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-  fireEvent.click(screen.getByRole("button", { name: "Discard draft" }));
-  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  expect(cell()).toHaveFocus();
-  expect(fetchMock).toHaveBeenCalledTimes(1);
-});
-
-it("preserves a stale draft, shows the latest free slot and requires explicit revision adoption before retry", async () => {
-  await load();
-  edit();
-  toggle("English");
-  fetchMock.mockResolvedValueOnce(jsonResponse({ message: "This slot changed" }, 409));
-  fireEvent.click(screen.getByRole("button", { name: "Save slot" }));
-  await screen.findByRole("button", { name: "Review latest slot" });
-  expect(screen.getByRole("button", { name: "Save slot" })).toBeDisabled();
-  fetchMock.mockResolvedValueOnce(jsonResponse({ date, slots: [slot()], subjects }));
-  fireEvent.click(screen.getByRole("button", { name: "Review latest slot" }));
-  await screen.findByText(/Latest: Open; subjects: Mathematics/);
-  expect(screen.getByRole("button", { name: /English/ })).toHaveAttribute("aria-pressed", "true");
-  fireEvent.click(screen.getByRole("button", { name: "Keep draft with latest revision" }));
-  fetchMock.mockResolvedValueOnce(
-    jsonResponse({ date, slot: slot({ subjectIds: ["english"], revision: "b".repeat(64) }) })
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Save slot" }));
-  await screen.findByText(`${date} 10:00: slot saved.`);
-  expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toEqual({
-    revision: "a".repeat(64),
+it("shows fully checked subjects and removes them through the checklist", async () => {
+  await load(calendar([slot({ subjectIds: ["math", "english"] })]));
+  fireEvent.click(screen.getByRole("button", { name: "Mathematics, 10:00–10:30" }));
+  const popup = within(screen.getByRole("dialog"));
+  expect(popup.getByRole("checkbox", { name: "Mathematics" })).toBeChecked();
+  expect(popup.getByRole("checkbox", { name: "English" })).toBeChecked();
+  expect(popup.getByRole("button", { name: "Apply" })).toBeDisabled();
+  fireEvent.click(popup.getByRole("checkbox", { name: "Mathematics" }));
+  fetchMock.mockResolvedValueOnce(jsonResponse({ date, slot: slot({ subjectIds: ["english"] }) }));
+  fireEvent.click(popup.getByRole("button", { name: "Apply" }));
+  await screen.findByText("1 half-hour slot updated.");
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({
     isOpen: true,
     subjectIds: ["english"],
   });
 });
 
-it("prevents retrying over a newly held slot while preserving the draft until latest is accepted", async () => {
+it("shows mixed subjects, clears all on first click and checks all on the next click", async () => {
   await load(calendar([slot()]));
-  edit("10:00", date, "Open");
-  toggle("English");
-  fetchMock.mockResolvedValueOnce(jsonResponse({ message: "This slot changed" }, 409));
-  fireEvent.click(screen.getByRole("button", { name: "Save slot" }));
-  await screen.findByRole("button", { name: "Review latest slot" });
+  fireEvent.click(screen.getByRole("button", { name: "Select time 10:00" }));
+  const popup = within(screen.getByRole("dialog"));
+  fireEvent.change(popup.getByLabelText("Selection end"), { target: { value: "22" } });
+  const checkbox = popup.getByRole("checkbox", { name: "Mathematics" });
+  expect(checkbox).toBePartiallyChecked();
+  expect(popup.getByText("Mixed")).toBeInTheDocument();
+  fireEvent.click(checkbox);
+  expect(checkbox).not.toBeChecked();
+  expect(checkbox).not.toBePartiallyChecked();
+  fireEvent.click(checkbox);
+  expect(checkbox).toBeChecked();
+  fireEvent.click(checkbox);
+  expect(checkbox).not.toBeChecked();
+  expect(checkbox).not.toBePartiallyChecked();
   fetchMock.mockResolvedValueOnce(
-    jsonResponse({ date, slots: [slot({ locked: true, revision: "b".repeat(64) })], subjects })
+    jsonResponse({ date, slot: slot({ isOpen: false, subjectIds: [] }) })
   );
-  fireEvent.click(screen.getByRole("button", { name: "Review latest slot" }));
-  await screen.findByText(/Latest: Reserved/);
-  expect(screen.getByRole("button", { name: "Keep draft with latest revision" })).toBeDisabled();
-  expect(screen.getByRole("button", { name: /English/ })).toHaveAttribute("aria-pressed", "true");
-  fireEvent.click(screen.getByRole("button", { name: "Use latest slot" }));
-  expect(screen.getByText("Reserved / booked. This slot cannot be changed.")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Close slot" })).toBeDisabled();
-  expect(screen.getByRole("button", { name: "Save slot" })).toBeDisabled();
+  fireEvent.click(popup.getByRole("button", { name: "Apply" }));
+  await screen.findByText("1 half-hour slot updated.");
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({
+    isOpen: false,
+    subjectIds: [],
+  });
 });
 
-it("shows subject setup and retries access/load failures", async () => {
-  fetchMock.mockResolvedValueOnce(jsonResponse({ message: "Forbidden" }, 403));
-  render(<TutorAvailabilityEditor />);
-  expect(await screen.findByRole("alert")).toHaveTextContent("You do not have permission");
-  fetchMock.mockResolvedValueOnce(jsonResponse({ ...calendar(), subjects: [] }));
-  fireEvent.click(screen.getByRole("button", { name: "Retry loading" }));
-  expect(await screen.findByRole("link", { name: "Tutor settings" })).toHaveAttribute(
-    "href",
-    "/settings/tutor"
+it("leaves untouched mixed subjects unchanged and removes the right-click menu", async () => {
+  await load(calendar([slot()]));
+  const row = screen.getByRole("button", { name: "Mathematics, 10:00–10:30" });
+  fireEvent.contextMenu(row);
+  expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Select time 10:00" }));
+  const popup = within(screen.getByRole("dialog"));
+  fireEvent.change(popup.getByLabelText("Selection end"), { target: { value: "22" } });
+  fireEvent.click(popup.getByRole("checkbox", { name: "English" }));
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse({ date, slot: slot({ subjectIds: ["math", "english"] }) }))
+    .mockResolvedValueOnce(
+      jsonResponse({ date, slot: slot({ time: "10:30", subjectIds: ["english"] }) })
+    );
+  fireEvent.click(popup.getByRole("button", { name: "Apply" }));
+  await screen.findByText("2 half-hour slots updated.");
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body).subjectIds).toEqual(["math", "english"]);
+  expect(JSON.parse(fetchMock.mock.calls[2][1].body).subjectIds).toEqual(["english"]);
+});
+
+it("keeps the selected period and checked subjects after partial failure", async () => {
+  await load();
+  const popup = choosePeriod();
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse({ date, slot: slot() }))
+    .mockRejectedValueOnce(new Error("Network unavailable"))
+    .mockResolvedValueOnce(
+      jsonResponse({ date, slots: [slot()], subjects, timeZone: "Asia/Bangkok" })
+    );
+  fireEvent.click(popup.getByRole("button", { name: "Apply" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("1 slots saved");
+  expect(popup.getByRole("checkbox", { name: "Mathematics" })).toBeChecked();
+  expect(screen.getByRole("button", { name: "Mathematics, 10:00–10:30" })).toBeInTheDocument();
+  fetchMock.mockResolvedValueOnce(jsonResponse({ date, slot: slot({ time: "10:30" }) }));
+  fireEvent.click(popup.getByRole("button", { name: "Apply" }));
+  await screen.findByText("1 half-hour slot updated.");
+  expect(fetchMock.mock.calls[4][0]).toContain("/10:30");
+});
+
+it("keeps booked rows and time slots uneditable", async () => {
+  await load(calendar([slot({ locked: true })]));
+  expect(screen.getByRole("button", { name: "Select time 10:00" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Mathematics, 10:00–10:30" })).toBeDisabled();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+it("adds to existing subjects without replacing their assignments", async () => {
+  await load(calendar([slot({ subjectIds: ["english"] })]));
+  fireEvent.click(screen.getByRole("button", { name: "Select time 10:00" }));
+  const popup = within(screen.getByRole("dialog"));
+  fireEvent.click(popup.getByRole("checkbox", { name: "Mathematics" }));
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse({ date, slot: slot({ subjectIds: ["english", "math"] }) })
   );
-  expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+  fireEvent.click(popup.getByRole("button", { name: "Apply" }));
+  await screen.findByText("1 half-hour slot updated.");
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body).subjectIds).toEqual(["english", "math"]);
+});
+
+it("dragging across half-hours previews a period and opens the adjacent checklist", async () => {
+  await load();
+  const original = window.PointerEvent;
+  Object.defineProperty(window, "PointerEvent", { configurable: true, value: MouseEvent });
+  const track = screen.getByRole("group", { name: "Select availability slots" });
+  Object.defineProperty(track, "setPointerCapture", { configurable: true, value: jest.fn() });
+  Object.defineProperty(track, "hasPointerCapture", { configurable: true, value: () => false });
+  track.querySelectorAll<HTMLElement>("[data-slot-index]").forEach((cell, index) => {
+    const left = (index % 12) * 80,
+      top = Math.floor(index / 12) * 96;
+    jest.spyOn(cell, "getBoundingClientRect").mockReturnValue({
+      left,
+      top,
+      right: left + 80,
+      bottom: top + 96,
+      width: 80,
+      height: 96,
+      x: left,
+      y: top,
+      toJSON: () => ({}),
+    });
+  });
+  try {
+    fireEvent.pointerDown(track, { button: 0, clientX: 650, clientY: 106 });
+    fireEvent.pointerMove(track, { clientX: 890, clientY: 106 });
+    fireEvent.pointerUp(track, { button: 0, clientX: 890, clientY: 106 });
+    const popup = within(
+      await screen.findByRole("dialog", { name: "Edit subjects in selected slots" })
+    );
+    expect(popup.getByLabelText("Selection start")).toHaveValue("20");
+    expect(popup.getByLabelText("Selection end")).toHaveValue("24");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  } finally {
+    Object.defineProperty(window, "PointerEvent", { configurable: true, value: original });
+  }
+});
+
+it("creates five separate rows per subject when five slots are selected", async () => {
+  await load();
+  const popup = choosePeriod();
+  fireEvent.change(popup.getByLabelText("Selection end"), { target: { value: "25" } });
+  fireEvent.click(popup.getByRole("checkbox", { name: "English" }));
+  for (const time of ["10:00", "10:30", "11:00", "11:30", "12:00"]) {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ date, slot: slot({ time, subjectIds: ["math", "english"] }) })
+    );
+  }
+  fireEvent.click(popup.getByRole("button", { name: "Apply" }));
+  await screen.findByText("5 half-hour slots updated.");
+  expect(screen.getAllByRole("button", { name: /^(Mathematics|English), / })).toHaveLength(10);
+  expect(fetchMock).toHaveBeenCalledTimes(6);
+});
+
+it("shows at most two subject rows per fixed-height slot and opens all subjects from the overflow", async () => {
+  const value = calendar([slot({ subjectIds: ["math", "english", "science", "art"] })]);
+  value.subjects = [
+    ...subjects,
+    { ...subjects[0], id: "science", name: "Science" },
+    { ...subjects[0], id: "art", name: "Art" },
+  ];
+  await load(value);
+  expect(screen.queryByRole("button", { name: "Science, 10:00–10:30" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Art, 10:00–10:30" })).not.toBeInTheDocument();
+  const more = screen.getByRole("button", { name: "Show 2 more subjects at 10:00" });
+  expect(more).toHaveTextContent("...");
+  fireEvent.click(more);
+  const popup = within(screen.getByRole("dialog"));
+  expect(popup.getByRole("checkbox", { name: "Art" })).toBeChecked();
+  expect(popup.getAllByRole("checkbox")).toHaveLength(4);
+});
+
+it("navigates adjacent days without refetching the same month", async () => {
+  await load();
+  expect(screen.queryByRole("button", { name: "Previous day" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: date })).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(screen.getByRole("button", { name: "2030-10-16" }));
+  expect(screen.getByRole("button", { name: "2030-10-16" })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+  expect(screen.queryByRole("button", { name: "Next day" })).not.toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+it("centers the selected day between three past and three future dates", async () => {
+  await load();
+  const strip = screen.getByLabelText("Nearby days");
+  expect(within(strip).getAllByRole("button")).toHaveLength(7);
+  expect(within(strip).getAllByRole("button")[3]).toHaveAttribute("aria-label", date);
+  expect(screen.getByRole("button", { name: "2030-10-14" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "2030-10-18" }));
+  const updated = within(screen.getByLabelText("Nearby days")).getAllByRole("button");
+  expect(updated).toHaveLength(7);
+  expect(updated[0]).toHaveAttribute("aria-label", date);
+  expect(updated[3]).toHaveAttribute("aria-label", "2030-10-18");
+  expect(updated[3]).toHaveAttribute("aria-pressed", "true");
+  expect(updated[6]).toHaveAttribute("aria-label", "2030-10-21");
+  expect(fetchMock).toHaveBeenCalledTimes(1);
 });

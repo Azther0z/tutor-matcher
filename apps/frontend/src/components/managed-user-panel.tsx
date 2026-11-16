@@ -11,8 +11,7 @@ import {
 } from "@/src/lib/admin-users-api";
 import { button, dangerButton } from "@/src/lib/admin-users-style";
 
-const panel =
-  "flex flex-col gap-5 rounded-lg border border-black/[.12] p-5 dark:border-white/[.18]";
+const panel = "flex flex-col gap-5 rounded-lg border border-line p-5";
 
 // The selected account: its status, message and restriction actions, and its history.
 export function ManagedUserPanel({
@@ -68,7 +67,7 @@ export function ManagedUserPanel({
   if (!detail) {
     return (
       <section aria-label="Selected user" className={panel}>
-        <p className="text-sm text-zinc-500">Loading account…</p>
+        <p className="text-sm text-muted">Loading account…</p>
       </section>
     );
   }
@@ -86,14 +85,14 @@ export function ManagedUserPanel({
           id="managed-user-name"
           ref={focusHeading}
           tabIndex={-1}
-          className="text-2xl font-semibold focus:outline-none"
+          className="text-2xl font-semibold focus-visible:outline-2 focus-visible:outline-brand-link"
         >
           {name}
         </h2>
-        <p className="break-all text-sm text-zinc-500">{detail.email}</p>
+        <p className="break-all text-sm text-muted">{detail.email}</p>
         <UserBadges user={detail} />
       </div>
-      <div className="rounded-lg bg-black/[.03] p-4 text-sm dark:bg-white/[.05]">
+      <div className="rounded-lg bg-surface-muted p-4 text-sm">
         {detail.restriction ? (
           <>
             <p className="font-medium">{restrictionLabel(detail.restriction)}</p>
@@ -128,7 +127,7 @@ export function ManagedUserPanel({
         </button>
       </div>
       {detail.isAdmin && (
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted">
           Administrator accounts can&apos;t be suspended or banned.
         </p>
       )}
@@ -138,17 +137,14 @@ export function ManagedUserPanel({
           Administration history
         </h3>
         {detail.actions.length === 0 ? (
-          <p className="mt-2 text-sm text-zinc-500">No suspensions or bans recorded.</p>
+          <p className="mt-2 text-sm text-muted">No suspensions or bans recorded.</p>
         ) : (
           <ol className="mt-3 flex flex-col gap-3">
             {detail.actions.map((record) => (
-              <li
-                key={record.id}
-                className="rounded-lg border border-black/[.08] p-3 text-sm dark:border-white/[.12]"
-              >
+              <li key={record.id} className="rounded-lg border border-line p-3 text-sm">
                 <p className="font-medium">{restrictionLabel(record)}</p>
                 <p className="mt-1">Reason: {record.reason}</p>
-                <p className="mt-1 text-zinc-500">
+                <p className="mt-1 text-muted">
                   By {record.admin} on{" "}
                   <time dateTime={record.createdAt}>{formatAccountTime(record.createdAt)}</time>
                 </p>

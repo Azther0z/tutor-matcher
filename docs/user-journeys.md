@@ -104,7 +104,7 @@ Guards run before render, not after.
 | `/dashboard`               | Student dashboard; approved Tutors also get a Tutor dashboard tab       | Requires login |
 | `/dashboard/tutor`         | Compatibility redirect to `/dashboard?tab=tutor`                        | Redirect       |
 | `/bookings`                | All bookings, tabbed by status                                          | Requires login |
-| `/bookings/s/:subjectId`   | Subject booking — pick a date and a block of slots (no booking yet)     | Requires login |
+| `/bookings/s/:subjectId`   | Legacy link redirects to the subject page, preserving date context      | Requires login |
 | `/bookings/:id`            | One booking — payment, confirmation, meeting link, review               | Requires login |
 | `/messages/:id`            | Conversation thread with student ⇄ tutor context switch                 | Requires login |
 | `/wallet`                  | Combined ledger: top-ups, lesson payments, earnings, refunds, payouts   | Requires login |
@@ -113,7 +113,6 @@ Guards run before render, not after.
 | `/wallet/transactions/:id` | Read-only transaction detail                                            | Requires login |
 | `/settings/account`        | Email, password, deactivate account                                     | Requires login |
 | `/settings/notifications`  | Per-event email and push preferences                                    | Requires login |
-| `/settings/wallet`         | Balance shortcut; payout account details for Tutors                     | Requires login |
 | `/settings/tutor`          | Tutor profile — public listing, verification, subjects                  | Role: tutor    |
 | `/reviews/:tutorId`        | Read-only review list for a tutor                                       | Requires login |
 | `/admin/tutor-requests`    | Tutor application queue — approve or reject                             | Role: admin    |
@@ -224,23 +223,17 @@ pending/cancelled status counts and earnings remain private to the Tutor dashboa
 subject's description, hourly rate, format, and next opening; a month calendar; a day
 calendar for the selected day; and **only that subject's reviews**.
 
-The day calendar lays out **all 48 half-hour slots from `00:00` to `23:30`** on a time grid.
-Consecutive half-hours open for that subject draw as one `Available` block (for example
-`09:00–11:00`); the rest of the day stays empty as `Not available`, and a summary above the
-grid lists the open times. Screen readers still hear every half-hour as `Available` or
-`Not available`, and the grid opens scrolled to the first open block. The calendar is
-informational — it is not the picker. Booking starts from the button below the calendar,
-which carries the tutor, subject, rate, and date context.
+The subject page includes the interactive booking picker: all 48 half-hour slots,
+with unavailable times faded and published free slots selectable as one continuous block.
+Its rating breakdown and reviews refer only to this subject. The page remains public;
+visitors can choose a date and times, then sign in and return with their selection.
+Authenticated selection uses the booking availability API to obtain current slot IDs.
+Continuing creates a pending booking and opens `/bookings/:id` for payment; there is no
+separate review or time-selection page. Old `/bookings/s/:subjectId` links redirect here.
+A day without openings keeps the calendar visible so another open date can be chosen.
+No booking is created by browsing or selecting slots.
 
-The page is public (`GET /api/discovery/tutors/:id/subjects/:subjectId?date=YYYY-MM-DD`) under
-the same rule as the tutor profile: a published tutor with an approved current profile who owns
-the subject; anything else shows an unavailable message and nothing else. The month calendar lets
-the Student pick any day from today to three months ahead (Bangkok time); days with openings show
-a dot, and without a `date` the page opens on the next opening. The selected day lives in the URL.
-A day with no openings shows an empty day calendar, every half-hour `Not available`, and disables
-**Book this subject**.
-The button links to `/bookings/s/:subjectId?date=YYYY-MM-DD`; a logged-out visitor goes to
-login first and returns there with the date. A back link returns to `/tutors/:id`.
+Confirmed in [subject-page booking request](sources/subject-page-booking-confirmation.md).
 
 Related stories: US3-1 … US3-6.
 
@@ -250,9 +243,9 @@ Related stories: US3-1 … US3-6.
 
 The booking is a three-step tracker: **Pick time → Payment → Confirmed**.
 
-### Step 1 — Subject booking (`/bookings/s/:subjectId`)
+### Step 1 — Subject booking (`/tutors/:id/:subjectId`)
 
-Entered from the subject page with the subject and rate already locked in, so the
+The picker lives on the public subject page with the subject and rate already locked in, so the
 student never picks the subject twice. **No booking record exists in this step.**
 
 - A month calendar marks days the tutor has free slots for this subject with a dot;
@@ -499,11 +492,11 @@ Wallet settings. An asynchronous provider would need a separate request table, n
 status. PAY-6 settles eligible lesson earnings before the Tutor requests a payout. See the
 [PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
 
-**Payout accounts (`/settings/wallet`, PROF-7).** Any logged-in user can open Wallet
-settings from the Settings navigation. The page starts with the wallet balance and a **Top up**
-link to `/wallet/topup`. Payout accounts are tutor-only, like requesting a payout (PAY-7): a
-user who is not a Tutor sees only the balance and Top up, and the server rejects their payout
-account requests (changed 2026-11-03, see the [tutor-only confirmation](sources/prof-7-tutor-only-confirmation.md)).
+**Payout accounts (`/wallet/payout`, PROF-7).** Tutors manage saved payout accounts on
+the payout page, alongside payout selection. Students use `/wallet` for balance and top-up.
+The `/settings/wallet` frontend route has been removed. Confirmed in the
+[wallet settings removal request](sources/wallet-settings-removal-confirmation.md).
+
 For a Tutor, the saved payout accounts are listed with bank, account holder name, masked number
 (`•••• 1234`). The default has a **Default** badge, the others a **Set default** action,
 and every row has **Remove**, which asks for an inline confirm. An **Add account** form takes a Thai bank from the list, the account
@@ -688,18 +681,36 @@ compact toggle boxes that scroll inside their own area. Availability is per date
 recurring weekly pattern. Approved Tutors can manage it while unpublished; publication
 still controls new bookings.
 
-The availability editor on `/dashboard` shows seven dated day columns with all
-48 half-hours, from `00:00` to `23:30`, in **Asia/Bangkok (UTC+7)**. A month overview
-summarizes availability; clicking a date opens its week for slot editing. Tutors may
+The availability editor on `/dashboard?tab=tutor` shows seven fixed adjacent dates above
+the slots, with the selected date centered between three earlier and three later dates.
+Past dates remain visible but disabled. There is no scrolling or Previous/Next control.
+Date changes slide directionally and slots fade in, respecting reduced motion. A date
+input supports direct navigation. The full selected date is not repeated above the slots.
+The 48 half-hours run from `00:00` to `23:30` in **Asia/Bangkok (UTC+7)**.
+See the [day-strip request](sources/tutor-availability-centered-dates-confirmation.md). Tutors may
 open any future date, close free future
 slots, and change their subject assignments. An open slot requires at least one owned
 subject. The same Tutor cannot have overlapping slots, including across different subjects.
 Past slots are read-only. Pending payment requests do not lock slots; Tutors may still edit them.
 
-Each slot has its own **Save slot** and **Close slot** actions. There is no day or week
-save step. If another edit or booking changes that slot, its save is rejected and its draft
-stays in the editor. The Tutor can review the latest value and explicitly retry if it is
-still free and in the future. Changes to a different slot do not invalidate this slot's
+The day editor shows the 48 half-hours in an twelve-column, four-row grid on desktop.
+Dragging selects multiple consecutive cells temporarily and opens an adjacent subject
+checklist. Adding subjects creates an individual row for each selected subject inside
+**every selected half-hour cell**. Existing assignments are preserved. There is no saved
+period entity and adjacent cells are not merged into blocks.
+The selection checklist reflects each subject across all selected half-hours: checked when
+present in every slot, unchecked when absent everywhere, and indeterminate/Mixed when only
+some slots contain it. Clicking mixed unchecks it for all slots first; clicking again checks it
+for all. Apply updates only the subjects the Tutor changed, preserving untouched mixed
+assignments. Subjects are removed by unchecking them; right-click deletion and separate
+row-selection removal controls are absent. Booked and past slots cannot be changed.
+See the [mixed checklist request](sources/tutor-availability-mixed-checklist-confirmation.md).
+Each half-hour saves through the revision-checked API.
+Range saves are not atomic: successful writes remain saved if a later write fails; the
+editor refreshes current data and retains the selection for review/retry. See the
+[grid selection clarification](sources/tutor-availability-grid-selection-clarification.md).
+
+Changes to a different slot do not invalidate this slot's
 revision. Changing the selected slot or calendar view requires saving or explicitly
 discarding its unsaved edits. Save and network errors preserve the draft.
 
@@ -855,7 +866,7 @@ Rules that are easy to break when building a slice in isolation:
    owned by one subject.
 4. **A booking is 1-1 and one continuous block.** No group booking, no invitations, no
    recurring or weekly plans.
-5. **No booking record exists until a time is chosen.** `/bookings/s/:subjectId` has no
+5. **No booking record exists until a time is chosen.** `/tutors/:id/:subjectId` has no
    booking id.
 6. **Payment confirms the booking; the tutor never accepts.** A slot published as
    available is a commitment.

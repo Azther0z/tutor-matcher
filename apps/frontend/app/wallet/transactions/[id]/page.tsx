@@ -21,9 +21,9 @@ const bookingStatusLabels: Record<NonNullable<WalletTransaction["booking"]>["sta
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap justify-between gap-3 px-6 py-4">
-      <dt className="text-sm text-zinc-500">{label}</dt>
-      <dd className="text-right font-medium">{children}</dd>
+    <div className="grid min-w-0 gap-1 px-5 py-4 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4 sm:px-6">
+      <dt className="text-sm text-muted">{label}</dt>
+      <dd className="min-w-0 break-words font-medium sm:text-right">{children}</dd>
     </div>
   );
 }
@@ -57,12 +57,13 @@ function TransactionContent() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12 lg:py-16">
-      <Link href="/wallet" className="text-sm font-medium text-violet-600 hover:text-violet-500">
-        ← Back to wallet
-      </Link>
-      <h1 className="mt-4 text-4xl font-bold tracking-tight">Transaction</h1>
-      <p className="mt-3 text-zinc-500">A read-only record of a completed wallet movement.</p>
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8"
+    >
+      <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Transaction</h1>
+      <p className="mt-3 text-muted">A read-only record of a completed wallet movement.</p>
 
       {error ? (
         <div
@@ -77,12 +78,12 @@ function TransactionContent() {
           )}
         </div>
       ) : !transaction ? (
-        <p className="mt-8 text-zinc-500">Loading transaction…</p>
+        <p className="mt-8 text-muted">Loading transaction…</p>
       ) : (
         <>
-          <section className="mt-8 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm dark:border-white/15 dark:bg-zinc-950">
-            <div className="border-b border-black/10 px-6 py-6 dark:border-white/15">
-              <p className="text-sm text-zinc-500">{transactionTypeLabels[transaction.type]}</p>
+          <section className="mt-8 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+            <div className="border-b border-line px-6 py-6">
+              <p className="text-sm text-muted">{transactionTypeLabels[transaction.type]}</p>
               <p
                 className={`mt-1 text-3xl font-semibold ${
                   transaction.direction === "IN" ? "text-emerald-700 dark:text-emerald-400" : ""
@@ -91,7 +92,7 @@ function TransactionContent() {
                 {signedAmount(transaction)}
               </p>
             </div>
-            <dl className="divide-y divide-black/10 dark:divide-white/10">
+            <dl className="divide-y divide-line ">
               <Row label="Type">{transactionTypeLabels[transaction.type]}</Row>
               <Row label="Amount">{money(transaction.amount)}</Row>
               <Row label="Direction">
@@ -113,7 +114,7 @@ function TransactionContent() {
                 {transaction.booking ? (
                   <Link
                     href={`/bookings/${transaction.booking.id}`}
-                    className="text-violet-600 hover:text-violet-500"
+                    className="text-brand-link hover:text-brand-link"
                   >
                     {transaction.booking.subjectName} ·{" "}
                     {walletDateTime.format(new Date(transaction.booking.startedAt))} (
@@ -127,11 +128,11 @@ function TransactionContent() {
           </section>
 
           {transaction.type === "LESSON_PAYMENT" && transaction.booking && (
-            <p className="mt-6 rounded-2xl bg-zinc-100 p-4 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+            <p className="mt-6 rounded-2xl bg-surface-muted p-4 text-sm text-secondary">
               Lesson payments are made only on the booking page. To pay for a booking, open{" "}
               <Link
                 href={`/bookings/${transaction.booking.id}`}
-                className="font-semibold text-violet-600 hover:text-violet-500"
+                className="font-semibold text-brand-link hover:text-brand-link"
               >
                 the booking
               </Link>

@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { VerifiedIcon } from "@/src/components/verified-icon";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
-import { SubjectDateCalendar } from "@/src/components/subject-date-calendar";
-import { SubjectDayCalendar } from "@/src/components/subject-day-calendar";
+import { Suspense, useEffect, useState } from "react";
+import { SubjectBookingPanel } from "@/src/components/subject-booking-panel";
 import { formatRate, Rating, ReviewList } from "@/src/components/tutor-public";
-import { getAuthSnapshot, subscribeToAuth } from "@/src/lib/auth";
 import {
   getTutorSubjectPage,
   openingDateTime,
@@ -15,14 +14,10 @@ import {
   type SubjectPageResult,
 } from "@/src/lib/tutor-profile-api";
 
-const card = "flex flex-col gap-4 rounded-3xl border border-black/10 p-6 dark:border-white/15";
-const shell = "mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-12";
+const card = "flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 sm:p-5";
+const shell =
+  "mx-auto flex w-full max-w-[68rem] min-w-0 flex-1 flex-col gap-6 px-4 pt-6 pb-40 sm:px-6 lg:px-8";
 const FORMAT_LABELS: Record<ProfileSubject["format"], string> = { ONLINE: "Online" };
-const DAY_MS = 86_400_000;
-const BANGKOK_MS = 7 * 60 * 60 * 1000;
-// Students browse up to three months ahead, the same 92-day window the API serves.
-const WINDOW_DAYS = 92;
-const bangkokDay = (instant: number) => new Date(instant + BANGKOK_MS).toISOString().slice(0, 10);
 const isDay = (value: string | null): value is string =>
   !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
 
@@ -31,8 +26,8 @@ export default function TutorSubjectPage() {
   return (
     <Suspense
       fallback={
-        <main className={shell}>
-          <p className="text-zinc-500">Loading…</p>
+        <main id="main-content" tabIndex={-1} className={shell}>
+          <p className="text-muted">Loading…</p>
         </main>
       }
     >
@@ -75,14 +70,14 @@ function SubjectPageContent() {
 
   if (!loading && loaded?.error) {
     return (
-      <main className={shell}>
+      <main id="main-content" tabIndex={-1} className={shell}>
         <p role="alert" className="text-red-600 dark:text-red-400">
           {loaded.error}
         </p>
         <button
           type="button"
           onClick={() => setAttempt((count) => count + 1)}
-          className="w-fit rounded-full border border-black/15 px-5 py-2 font-medium dark:border-white/20"
+          className="w-fit rounded-lg border border-line px-5 py-2 font-medium"
         >
           Try again
         </button>
@@ -92,8 +87,8 @@ function SubjectPageContent() {
   if (!loading && loaded?.result?.kind === "unavailable") return <UnavailableSubject />;
   if (!page) {
     return (
-      <main className={shell}>
-        <p className="text-zinc-500">Loading…</p>
+      <main id="main-content" tabIndex={-1} className={shell}>
+        <p className="text-muted">Loading…</p>
       </main>
     );
   }
@@ -102,7 +97,6 @@ function SubjectPageContent() {
     <SubjectView
       page={page}
       selected={date ?? page.date}
-      loading={loading}
       onSelect={(day) =>
         router.replace(`/tutors/${params.id}/${params.subjectId}?date=${day}`, { scroll: false })
       }
@@ -113,14 +107,14 @@ function SubjectPageContent() {
 // An unpublished tutor, another tutor's subject or a missing one shows this and nothing else.
 function UnavailableSubject() {
   return (
-    <main className={shell}>
+    <main id="main-content" tabIndex={-1} className={shell}>
       <h1 className="text-3xl font-semibold tracking-tight">This subject is unavailable</h1>
-      <p role="status" className="text-zinc-600 dark:text-zinc-400">
+      <p role="status" className="text-secondary">
         This subject isn’t available right now. Try another tutor or subject.
       </p>
       <Link
         href="/search"
-        className="flex h-11 w-fit items-center rounded-full bg-foreground px-5 font-medium text-background"
+        className="flex h-11 w-fit items-center rounded-lg bg-brand-navy px-5 font-medium text-white"
       >
         Find a tutor
       </Link>
@@ -131,148 +125,102 @@ function UnavailableSubject() {
 function SubjectView({
   page,
   selected,
-  loading,
   onSelect,
 }: {
   page: SubjectPage;
   selected: string;
-  loading: boolean;
   onSelect: (date: string) => void;
 }) {
   const { tutor, subject } = page;
   const tutorName = `${tutor.firstName} ${tutor.lastName}`;
-  // The browsable window is fixed when the page opens.
-  const [now] = useState(() => Date.now());
 
   return (
-    <main className={shell}>
-      <Link
-        href={`/tutors/${tutor.id}`}
-        className="w-fit text-sm text-zinc-600 hover:underline dark:text-zinc-400"
-      >
-        ← Back to {tutorName}
-      </Link>
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <h1 className="text-4xl font-semibold tracking-tight">{subject.name}</h1>
-          <p className="flex flex-wrap items-center gap-3 text-zinc-600 dark:text-zinc-400">
-            <span>with {tutorName}</span>
-            {tutor.verified && (
-              <span className="rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-300">
-                Verified
-              </span>
-            )}
-            <Rating rating={subject.rating} count={subject.reviewCount} />
-          </p>
+    <main id="main-content" tabIndex={-1} className={shell}>
+      <header className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h1 className="text-2xl font-semibold leading-tight tracking-tight">{subject.name}</h1>
+          <Link
+            href={`/tutors/${tutor.id}`}
+            className="flex items-center gap-1.5 text-sm font-semibold text-secondary hover:underline"
+          >
+            With {tutorName}
+            {tutor.verified && <VerifiedIcon />}
+          </Link>
         </div>
-        <p>
-          <span className="text-2xl font-bold">{formatRate(subject.hourlyRate)}</span>
-          <span className="text-zinc-500"> / hr</span>
+        <p className="text-sm text-muted">
+          {FORMAT_LABELS[subject.format]}
+          {subject.learningAreas.length > 0 &&
+            ` · ${subject.learningAreas.map((area) => area.name).join(", ")}`}
         </p>
-      </header>
-
-      <section aria-labelledby="subject-heading" className={card}>
-        <h2 id="subject-heading" className="text-xl font-semibold">
-          About this subject
-        </h2>
-        {subject.description ? (
-          <p className="whitespace-pre-wrap text-zinc-600 dark:text-zinc-400">
+        {subject.description && (
+          <p className="whitespace-pre-wrap text-sm leading-6 text-secondary">
             {subject.description}
           </p>
-        ) : (
-          <p className="text-zinc-500">This subject has no description yet.</p>
         )}
-        <dl className="grid gap-3 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-zinc-500">Format</dt>
-            <dd className="font-medium">{FORMAT_LABELS[subject.format]}</dd>
-          </div>
-          <div>
-            <dt className="text-zinc-500">Next opening</dt>
-            <dd className="font-medium">
-              {subject.nextOpening
-                ? openingDateTime(subject.nextOpening)
-                : "No openings in the next three months"}
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <section aria-labelledby="availability-heading" className={card}>
-        <h2 id="availability-heading" className="text-xl font-semibold">
-          Availability
-        </h2>
-        <p className="text-sm text-zinc-500">
-          Times in Asia/Bangkok (UTC+7). Days with a dot have open times.
-        </p>
-        <SubjectDateCalendar
-          key={selected.slice(0, 7)}
-          selected={selected}
-          today={bangkokDay(now)}
-          lastDay={bangkokDay(now + WINDOW_DAYS * DAY_MS)}
-          openDates={page.openDates}
-          onSelect={onSelect}
-        />
-        {loading ? (
-          <p className="text-zinc-500">Loading availability…</p>
-        ) : (
-          <>
-            <SubjectDayCalendar date={page.date} openSlots={page.openSlots} />
-            <BookButton
-              subjectId={subject.id}
-              date={page.date}
-              available={page.openSlots.length > 0}
-            />
-          </>
-        )}
-      </section>
-
-      <section aria-labelledby="reviews-heading" className={card}>
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="reviews-heading" className="text-xl font-semibold">
-            Reviews for {subject.name}
-          </h2>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <p>
+            <span className="text-lg font-semibold">{formatRate(subject.hourlyRate)}</span>
+            <span className="text-sm text-muted"> / hr</span>
+          </p>
           <Rating rating={subject.rating} count={subject.reviewCount} />
         </div>
-        <ReviewList tutorId={page.tutor.id} reviews={page.reviews} />
-      </section>
-    </main>
-  );
-}
-
-// Starts the subject-locked booking for the selected day; logged-out visitors log in first.
-function BookButton({
-  subjectId,
-  date,
-  available,
-}: {
-  subjectId: string;
-  date: string;
-  available: boolean;
-}) {
-  const signedIn = useSyncExternalStore(subscribeToAuth, getAuthSnapshot, () => null);
-  const bookingPath = `/bookings/s/${subjectId}?date=${date}`;
-  const buttonClass =
-    "flex h-11 w-fit items-center rounded-full bg-foreground px-5 font-medium text-background disabled:opacity-50";
-
-  if (!available) {
-    return (
-      <div className="flex flex-col gap-2">
-        <button type="button" disabled aria-describedby="book-hint" className={buttonClass}>
-          Book this subject
-        </button>
-        <p id="book-hint" className="text-sm text-zinc-500">
-          No open times on this day. Pick a day marked with a dot.
+        <p className="text-sm text-muted">
+          Next opening:{" "}
+          {subject.nextOpening
+            ? openingDateTime(subject.nextOpening)
+            : "No openings in the next three months"}
         </p>
+      </header>
+      <div className="flex flex-col gap-6">
+        <SubjectBookingPanel page={page} date={selected} onSelect={onSelect} />
+        <div>
+          <section aria-labelledby="rating-breakdown-heading" className={`${card} mb-6`}>
+            <h2 id="rating-breakdown-heading" className="text-xl font-semibold">
+              Rating breakdown
+            </h2>
+            {page.reviews.length !== subject.reviewCount && (
+              <p className="text-sm text-muted">Based on the reviews shown below.</p>
+            )}
+            <div className="flex w-full flex-col gap-3">
+              {[5, 4, 3, 2, 1].map((stars) => {
+                const count = page.reviews.filter((review) => review.rating === stars).length;
+                return (
+                  <div key={stars} className="flex items-center gap-3 text-sm text-muted">
+                    <span className="w-12 shrink-0">
+                      {stars} {stars === 1 ? "star" : "stars"}
+                    </span>
+                    <div
+                      role="meter"
+                      aria-label={`${stars} stars`}
+                      aria-valuemin={0}
+                      aria-valuemax={Math.max(page.reviews.length, 1)}
+                      aria-valuenow={count}
+                      className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-muted"
+                    >
+                      <div
+                        className="h-full bg-amber-400"
+                        style={{
+                          width: `${page.reviews.length ? (count / page.reviews.length) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="w-6 text-right tabular-nums">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+          <section aria-labelledby="reviews-heading" className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 id="reviews-heading" className="text-xl font-semibold">
+                Reviews ({subject.reviewCount})
+              </h2>
+              <Rating rating={subject.rating} count={subject.reviewCount} />
+            </div>
+            <ReviewList tutorId={page.tutor.id} reviews={page.reviews} />
+          </section>
+        </div>
       </div>
-    );
-  }
-  return (
-    <Link
-      href={signedIn === false ? `/login?next=${encodeURIComponent(bookingPath)}` : bookingPath}
-      className={buttonClass}
-    >
-      Book this subject
-    </Link>
+    </main>
   );
 }

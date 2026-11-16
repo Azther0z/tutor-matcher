@@ -75,7 +75,7 @@ export function NameForm({
     <form onSubmit={submit} className={formClass} noValidate>
       <div>
         <h2 className="text-xl font-semibold">Name</h2>
-        <p className="mt-1 text-sm text-zinc-500">How you&apos;re addressed on Tutor Matcher.</p>
+        <p className="mt-1 text-sm text-muted">How you&apos;re addressed on Tutor Matcher.</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <AccountField
@@ -107,7 +107,7 @@ export function NameForm({
         onChange={setPassword}
       />
       {message && (
-        <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
+        <p role="status" className="text-sm text-secondary">
           {message}
         </p>
       )}

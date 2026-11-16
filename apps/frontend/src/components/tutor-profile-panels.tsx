@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TutorProfileSnapshot } from "@/src/components/tutor-profile-comparison";
+import { VerifiedIcon } from "@/src/components/verified-icon";
 import { button, panel } from "@/src/lib/tutor-profile-style";
 import type { TutorProfileState } from "@/src/lib/use-tutor-profile";
 
@@ -10,7 +11,7 @@ export function PendingApplicationPanel({ profile }: { profile: TutorProfileStat
   return (
     <section className={panel} aria-label="Application status">
       <h2 className="text-xl font-semibold">Awaiting approval</h2>
-      <p className="mt-2 text-sm text-zinc-500">
+      <p className="mt-2 text-sm text-muted">
         An admin is reviewing the documents and introduction video you submitted. You can cancel
         this application and re-submit corrected details.
       </p>
@@ -43,8 +44,8 @@ export function ApprovedProfilePanel({
       <h2 className="text-xl font-semibold">
         Current approved profile{" "}
         {tutor.verified && (
-          <span className="ml-2 rounded-full bg-green-500/10 px-3 py-1 text-sm text-green-700 dark:text-green-300">
-            Verified
+          <span className="ml-2 inline-flex align-middle">
+            <VerifiedIcon />
           </span>
         )}
       </h2>
@@ -52,7 +53,7 @@ export function ApprovedProfilePanel({
       <p className="mt-3 text-sm">
         Publication: <strong>{tutor.status === "PUBLISHED" ? "Published" : "Unpublished"}</strong>
       </p>
-      <p className="mt-2 text-sm text-zinc-500">
+      <p className="mt-2 text-sm text-muted">
         Unpublishing stops discovery and new bookings. Existing chats and booked lessons remain
         accessible.
       </p>
@@ -66,7 +67,7 @@ export function ApprovedProfilePanel({
       {!enrollment && (
         <div className="mt-5">
           <h3 className="font-semibold">Verification</h3>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-muted">
             Your identity has been verified. Document changes use the profile review process below.
           </p>
         </div>

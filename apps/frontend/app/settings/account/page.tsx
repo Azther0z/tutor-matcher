@@ -35,15 +35,17 @@ function AccountSettings() {
   }, []);
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:px-8"
+    >
       <SettingsSidebar activeSection="account" />
-      <div className="flex flex-1 flex-col gap-8">
+      <div className="flex min-w-0 flex-1 flex-col gap-8">
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">
-            Tutor Matcher
-          </p>
-          <h1 className="text-4xl font-semibold tracking-tight">Account settings</h1>
-          <p className="max-w-2xl text-base leading-7 text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm font-medium text-muted">Tutor Matcher</p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Account settings</h1>
+          <p className="max-w-2xl text-base leading-7 text-secondary">
             Update your name, email address, and password you sign in with.
           </p>
         </div>

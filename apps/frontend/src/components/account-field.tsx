@@ -1,11 +1,10 @@
 export type FieldErrors = Partial<Record<string, string>>;
 
-export const formClass =
-  "flex flex-col gap-5 rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]";
+export const formClass = "flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6";
 export const saveClass =
-  "flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-base font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]";
+  "flex h-11 items-center justify-center rounded-lg bg-brand-navy px-5 text-base font-medium text-white transition-colors hover:bg-brand-navy-dark disabled:opacity-60";
 const inputClass =
-  "h-11 rounded-lg border border-black/[.12] bg-transparent px-3 text-base outline-none focus:border-foreground aria-[invalid=true]:border-red-500 dark:border-white/[.18]";
+  "h-11 rounded-lg border border-line bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-brand-link focus:border-foreground aria-[invalid=true]:border-red-500";
 
 type FieldProps = {
   name: string;

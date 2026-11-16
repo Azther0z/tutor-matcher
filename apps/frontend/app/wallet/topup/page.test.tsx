@@ -94,7 +94,9 @@ describe("wallet top-up by slip", () => {
     expect(screen.getByRole("heading", { name: "Top-up of ฿750.00" })).toBeInTheDocument();
     expect(screen.getByText("฿250.00")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View slip" })).toHaveAttribute("href", slipUrl);
-    expect(screen.getByText(/Your booking is held for a limited time/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Your unpaid booking has a payment deadline and does not reserve the time/)
+    ).toBeInTheDocument();
   });
 
   it("checks the slip link before sending anything", async () => {

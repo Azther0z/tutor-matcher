@@ -84,13 +84,7 @@ describe("DISC-3 tutor profile page", () => {
   it("shows public completed teaching experience without private operational statistics", async () => {
     respondWith(profile);
     render(<TutorDetailPage />);
-    const experience = await screen.findByRole("region", { name: "Teaching experience" });
-    expect(within(experience).getByText("18")).toBeInTheDocument();
-    expect(within(experience).getByText("7")).toBeInTheDocument();
-    expect(
-      within(experience).getByText(/Lessons confirmed complete by the Tutor/)
-    ).toBeInTheDocument();
-    expect(within(experience).getByText(/do not measure teaching quality/)).toBeInTheDocument();
+    expect(await screen.findByText("18 completed lessons, 7 students taught")).toBeInTheDocument();
     expect(screen.queryByText("Lesson status")).not.toBeInTheDocument();
     expect(screen.queryByText("Returning student rate")).not.toBeInTheDocument();
     expect(screen.queryByText("Earnings")).not.toBeInTheDocument();
@@ -101,7 +95,9 @@ describe("DISC-3 tutor profile page", () => {
 
     render(<TutorDetailPage />);
 
-    expect(await screen.findByRole("heading", { name: "Anong Pattanakul" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Anong Pattanakul Verified" })
+    ).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       `/api/discovery/tutors/${TUTOR_ID}/profile`,
       expect.anything()
@@ -128,7 +124,7 @@ describe("DISC-3 tutor profile page", () => {
     fetchMock.mockClear();
     respondWith(profile);
     render(<TutorDetailPage />);
-    await screen.findByRole("heading", { name: "Anong Pattanakul" });
+    await screen.findByRole("heading", { name: "Anong Pattanakul Verified" });
     expect(fetchMock).toHaveBeenCalledWith(`/api/discovery/tutors/${TUTOR_ID}/profile`, {
       headers: undefined,
       signal: expect.anything(),
@@ -141,9 +137,9 @@ describe("DISC-3 tutor profile page", () => {
     render(<TutorDetailPage />);
 
     expect(await screen.findByText("Approved teaching bio.")).toBeInTheDocument();
-    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Verified" })).toBeInTheDocument();
 
-    const subjects = screen.getByRole("region", { name: "Subjects and rates" });
+    const subjects = screen.getByRole("region", { name: "Subjects" });
     expect(within(subjects).getByText("฿500.00")).toBeInTheDocument();
     expect(within(subjects).getByText("฿650.50")).toBeInTheDocument();
     expect(within(subjects).getByText(/Next opening/)).toBeInTheDocument();
@@ -172,14 +168,19 @@ describe("DISC-3 tutor profile page", () => {
     expect(embed).toHaveAttribute("referrerpolicy", "strict-origin-when-cross-origin");
   });
 
-  it("points to the subject list from Choose a subject", async () => {
+  it("links each subject row directly to its booking page", async () => {
     respondWith(profile);
 
     render(<TutorDetailPage />);
 
-    expect(await screen.findByRole("link", { name: "Choose a subject" })).toHaveAttribute(
+    const subjects = await screen.findByRole("region", { name: "Subjects" });
+    expect(within(subjects).getByRole("link", { name: /Calculus/ })).toHaveAttribute(
       "href",
-      "#subjects"
+      `/tutors/${TUTOR_ID}/calculus`
+    );
+    expect(within(subjects).getByRole("link", { name: /Physics/ })).toHaveAttribute(
+      "href",
+      `/tutors/${TUTOR_ID}/physics`
     );
   });
 
@@ -255,8 +256,7 @@ describe("DISC-3 tutor profile page", () => {
     expect(screen.getByText("This tutor hasn’t listed any subjects yet.")).toBeInTheDocument();
     expect(screen.getByText(/No open slots in the next two weeks/)).toBeInTheDocument();
     expect(screen.getByText("No reviews yet.")).toBeInTheDocument();
-    const experience = screen.getByRole("region", { name: "Teaching experience" });
-    expect(within(experience).getAllByText("0")).toHaveLength(2);
+    expect(screen.getByText("0 completed lessons, 0 students taught")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Choose a subject" })).not.toBeInTheDocument();
   });
 
@@ -288,7 +288,9 @@ describe("DISC-3 tutor profile page", () => {
     respondWith(profile);
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
 
-    expect(await screen.findByRole("heading", { name: "Anong Pattanakul" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Anong Pattanakul Verified" })
+    ).toBeInTheDocument();
   });
 
   it("asks a signed-out visitor to log in before messaging", async () => {

@@ -18,20 +18,16 @@ export function TutorConsent({
   const fieldErrors = { consentAccepted: error };
   return (
     <>
-      <section
-        className={
-          unframed ? undefined : "rounded-2xl border border-black/[.12] p-6 dark:border-white/[.18]"
-        }
-      >
+      <section className={unframed ? undefined : "rounded-2xl border border-line bg-surface p-6"}>
         <div className="mb-5">
           <h2 className="text-xl font-semibold">Consent to data processing</h2>
-          <p id="tutor-consent-summary" className="mt-1 text-sm text-zinc-500">
+          <p id="tutor-consent-summary" className="mt-1 text-sm text-muted">
             Your identification card is visible only to you and administrators. Approved portfolio
             links are visible to students. Your data will be processed as described below.
           </p>
         </div>
 
-        <label className="flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300">
+        <label className="flex items-start gap-2.5 text-sm text-secondary">
           <input
             type="checkbox"
             name="consentAccepted"
@@ -39,7 +35,7 @@ export function TutorConsent({
             onChange={(event) => setConsentAccepted(event.target.checked)}
             aria-invalid={!!fieldErrors.consentAccepted}
             aria-describedby="tutor-consent-summary tutor-consent-description"
-            className="mt-0.5 h-4 w-4 rounded border-black/[.25] dark:border-white/[.3]"
+            className="mt-0.5 h-4 w-4 rounded border-line"
           />
           <span id="tutor-consent-description">
             I consent to this processing, as described in the{" "}
@@ -75,7 +71,7 @@ export function TutorConsent({
           onClose={() => setOpenDocument(null)}
         >
           {openDocument === "privacy" ? (
-            <div className="mt-5 space-y-4 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+            <div className="mt-5 space-y-4 text-sm leading-6 text-secondary">
               <p>Last updated: September 4, 2026</p>
               <p>
                 Tutor Matcher collects the information you provide, such as your email address,
@@ -94,7 +90,7 @@ export function TutorConsent({
               </p>
             </div>
           ) : (
-            <div className="mt-5 space-y-4 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+            <div className="mt-5 space-y-4 text-sm leading-6 text-secondary">
               <p>Last updated: September 4, 2026</p>
               <p>
                 By using Tutor Matcher, you agree to provide accurate information, keep your account

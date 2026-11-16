@@ -15,18 +15,18 @@ export function SubmissionHistory({ profile }: { profile: TutorProfileState }) {
         <TutorRefreshButton label="Refresh review status" disabled={busy} onClick={refreshStatus} />
       </div>
       {data?.submissions?.length ? (
-        <ul className="mt-4 divide-y divide-black/[.12] dark:divide-white/[.18]">
+        <ul className="mt-4 divide-y divide-line ">
           {data.submissions.map((submission) => (
             <li key={submission.id} className="py-3">
               <details>
                 <summary className="cursor-pointer font-medium">
-                  <TutorSubmissionStatus status={submission.status} />
+                  <TutorSubmissionStatus status={submission.status} plain />
                   {submission.submittedAt &&
                     ` · Submitted ${new Date(submission.submittedAt).toLocaleString()}`}
                 </summary>
                 <div className="mt-4">
                   {submission.status === "PENDING" && (
-                    <p className="mb-4 text-sm text-zinc-500">
+                    <p className="mb-4 text-sm text-muted">
                       {tutor
                         ? "Your current approved profile stays unchanged while these edits are reviewed. You can keep teaching and change publication independently."
                         : "Your application is awaiting admin approval. You remain a student until it is approved."}{" "}
@@ -73,7 +73,7 @@ export function SubmissionHistory({ profile }: { profile: TutorProfileState }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-3 text-sm text-zinc-500">No submissions yet.</p>
+        <p className="mt-3 text-sm text-muted">No submissions yet.</p>
       )}
     </section>
   );

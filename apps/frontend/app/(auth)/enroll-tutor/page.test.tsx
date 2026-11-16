@@ -305,7 +305,7 @@ it("refreshes a pending application to approval without auto-publishing", async 
   render(<EnrollTutorPage />);
   await screen.findByText("Pending Verification");
   fireEvent.click(screen.getByRole("button", { name: "Refresh review status" }));
-  expect(await screen.findByText("Verified")).toBeInTheDocument();
+  expect(await screen.findByRole("img", { name: "Verified" })).toBeInTheDocument();
   expect(screen.getByText("Unpublished", { exact: true })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Manage your Tutor profile" })).toHaveAttribute(
     "href",

@@ -64,7 +64,7 @@ export function EmailForm({ initialEmail }: { initialEmail: string }) {
     <form onSubmit={submit} className={formClass} noValidate>
       <div>
         <h2 className="text-xl font-semibold">Email address</h2>
-        <p className="mt-1 text-sm text-zinc-500">Used to sign in and to reach you.</p>
+        <p className="mt-1 text-sm text-muted">Used to sign in and to reach you.</p>
       </div>
       <AccountField
         name="email"
@@ -85,7 +85,7 @@ export function EmailForm({ initialEmail }: { initialEmail: string }) {
         onChange={setPassword}
       />
       {message && (
-        <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
+        <p role="status" className="text-sm text-secondary">
           {message}
         </p>
       )}

@@ -65,7 +65,7 @@ export function PasswordForm() {
     <form onSubmit={submit} className={formClass} noValidate>
       <div>
         <h2 className="text-xl font-semibold">Password</h2>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-muted">
           Leave both fields empty to keep your current password.
         </p>
       </div>
@@ -99,7 +99,7 @@ export function PasswordForm() {
         onChange={setCurrent}
       />
       {message && (
-        <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
+        <p role="status" className="text-sm text-secondary">
           {message}
         </p>
       )}

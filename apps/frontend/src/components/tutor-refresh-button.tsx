@@ -16,7 +16,7 @@ export function TutorRefreshButton({
       title={label}
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-black/[.12] hover:bg-black/[.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 disabled:opacity-60 dark:border-white/[.18] dark:hover:bg-white/[.08]"
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-brand-link focus-visible:ring-2 focus-visible:ring-foreground/30 disabled:opacity-60"
     >
       <svg
         aria-hidden="true"

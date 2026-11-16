@@ -2,6 +2,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { subscribeToWalletBalance } from "@/src/lib/wallet-api";
 import WalletPayoutPage from "./page";
 
+jest.mock("../../../src/components/payout-accounts-manager", () => ({
+  PayoutAccountsManager: () => <div>Account management</div>,
+}));
+
 const replace = jest.fn();
 
 jest.mock("next/navigation", () => ({
@@ -159,9 +163,9 @@ describe("wallet payout", () => {
     expect(
       await screen.findByRole("heading", { name: "No saved payout account" })
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Go to Wallet settings" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Add a payout account" })).toHaveAttribute(
       "href",
-      "/settings/wallet"
+      "#payout-accounts"
     );
     expect(screen.queryByLabelText("Amount (฿)")).not.toBeInTheDocument();
   });

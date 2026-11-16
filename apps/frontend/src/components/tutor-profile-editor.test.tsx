@@ -286,9 +286,9 @@ it("uses contrasting primary hover styles without secondary hover backgrounds", 
   render(<TutorProfileEditor enrollment />);
   await openTutorEditor();
   const submit = await screen.findByRole("button", { name: "Submit" });
-  expect(submit).toHaveClass("bg-foreground", "text-background", "hover:opacity-80");
-  expect(submit).not.toHaveClass("hover:bg-black/[.04]", "dark:hover:bg-white/[.08]");
-  expect(screen.getByRole("button", { name: "Save draft" })).toHaveClass("hover:bg-black/[.04]");
+  expect(submit).toHaveClass("bg-brand-navy", "text-white", "hover:opacity-80");
+  expect(submit).not.toHaveClass("hover:bg-surface-muted");
+  expect(screen.getByRole("button", { name: "Save draft" })).toHaveClass("hover:bg-surface-muted");
 });
 
 it("starts a new applicant draft empty without changing saved drafts", async () => {
@@ -382,7 +382,7 @@ it("keeps drafting in a modal and uses concise list rows with explicit edit and 
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Tutor bio")).not.toBeInTheDocument();
   const edit = within(list).getByRole("button", { name: "Edit draft 2: Second saved draft" });
-  expect(edit.closest("li")).toHaveClass("rounded-md");
+  expect(edit.closest("li")).toHaveClass("border-b");
   expect(
     within(list).getByRole("button", { name: "Trash draft 2: Second saved draft" })
   ).toBeInTheDocument();

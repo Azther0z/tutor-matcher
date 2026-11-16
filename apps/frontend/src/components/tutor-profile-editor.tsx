@@ -23,14 +23,18 @@ import { useTutorProfile } from "@/src/lib/use-tutor-profile";
 function ProfileLayout({ enrollment, children }: { enrollment: boolean; children: ReactNode }) {
   return (
     <main
+      id="main-content"
+      tabIndex={-1}
       className={
         enrollment
           ? shell
-          : "mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16 sm:flex-row"
+          : "mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:px-8"
       }
     >
       {!enrollment && <SettingsSidebar activeSection="tutor" />}
-      <div className="flex min-w-0 flex-1 flex-col gap-8">{children}</div>
+      <div className={`flex min-w-0 flex-1 flex-col ${enrollment ? "gap-5" : "gap-8"}`}>
+        {children}
+      </div>
     </main>
   );
 }
@@ -79,7 +83,7 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
   if (!data)
     return (
       <ProfileLayout enrollment={enrollment}>
-        <p className="text-zinc-500">Loading your application…</p>
+        <p className="text-muted">Loading your application…</p>
       </ProfileLayout>
     );
 
@@ -93,11 +97,10 @@ function ProfileEditor({ enrollment }: { enrollment: boolean }) {
   return (
     <ProfileLayout enrollment={enrollment}>
       <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Tutor Matcher</p>
-        <h1 className="text-4xl font-semibold tracking-tight">
-          {enrollment ? "Become a Tutor" : "Tutor profile"}
+        <h1 className="text-2xl font-semibold leading-tight tracking-tight">
+          {enrollment ? "Become a tutor" : "Tutor profile"}
         </h1>
-        <p className="text-zinc-600 dark:text-zinc-400">
+        <p className="max-w-2xl text-sm leading-6 text-secondary">
           Subjects and hourly rates are configured separately. Change your name in{" "}
           <Link
             className="underline"

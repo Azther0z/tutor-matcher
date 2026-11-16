@@ -55,7 +55,7 @@ export function DraftDialog({ profile }: { profile: TutorProfileState }) {
           </p>
         )}
         {noChanges && (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted">
             Change at least one profile field before submitting for review.
           </p>
         )}

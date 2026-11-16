@@ -8,26 +8,26 @@ export function SavedDrafts({ profile }: { profile: TutorProfileState }) {
   return (
     <section className={panel} aria-label="Saved drafts">
       <h2 className="text-xl font-semibold">Your drafts</h2>
-      <p className="my-3 text-sm text-zinc-500">
+      <p className="my-3 text-sm text-muted">
         Select one saved snapshot to edit. Pending requests and reviewed versions cannot be edited.
       </p>
       {!data?.drafts.length ? (
         <p>No saved drafts yet.</p>
       ) : (
-        <ul className="divide-y divide-black/[.08] dark:divide-white/[.12]">
+        <ul className="divide-y divide-line ">
           {data.drafts.map((draft, index) => {
             const unchanged = !!tutor && profileContent(draft) === profileContent(tutor);
             const label = `draft ${index + 1}: ${draft.bio?.trim().slice(0, 100) || "Untitled draft"}`;
             return (
               <li
                 key={draft.id}
-                className="flex items-center justify-between gap-4 rounded-md py-3"
+                className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-2 py-3 hover:bg-surface-muted"
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">
                     {draft.bio?.trim().slice(0, 100) || "Untitled draft"}
                   </p>
-                  <time className="text-sm text-zinc-500" dateTime={draft.createdAt}>
+                  <time className="text-sm text-muted" dateTime={draft.createdAt}>
                     {new Date(draft.createdAt).toLocaleString()}
                   </time>
                 </div>
@@ -36,7 +36,7 @@ export function SavedDrafts({ profile }: { profile: TutorProfileState }) {
                     type="button"
                     aria-label={`Edit ${label}`}
                     aria-haspopup="dialog"
-                    className="rounded-md border border-black/[.12] px-3 py-2 text-sm hover:bg-black/[.04] dark:border-white/[.18] dark:hover:bg-white/[.08]"
+                    className="rounded-md border border-line px-3 py-2 text-sm hover:bg-surface-muted"
                     disabled={busy}
                     onClick={() => editSavedDraft(draft)}
                   >
@@ -55,7 +55,7 @@ export function SavedDrafts({ profile }: { profile: TutorProfileState }) {
                   <button
                     type="button"
                     aria-label={`Trash ${label}`}
-                    className="rounded-md border border-black/[.12] px-3 py-2 text-sm text-red-700 hover:bg-red-500/10 dark:border-white/[.18] dark:text-red-300"
+                    className="rounded-md border border-line px-3 py-2 text-sm text-red-700 hover:bg-red-500/10 dark:text-red-300"
                     disabled={busy}
                     onClick={() => {
                       if (!window.confirm(`Permanently discard ${label}? This cannot be undone.`))
@@ -86,7 +86,7 @@ export function SavedDrafts({ profile }: { profile: TutorProfileState }) {
                           ? "Change your profile before submitting for review."
                           : "Submit this draft for review"
                     }
-                    className="rounded-md border border-black/[.12] px-3 py-2 text-sm hover:bg-black/[.04] disabled:opacity-60 dark:border-white/[.18] dark:hover:bg-white/[.08]"
+                    className="rounded-md border border-line px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-60"
                     onClick={() => submitSavedDraft(draft)}
                   >
                     Submit

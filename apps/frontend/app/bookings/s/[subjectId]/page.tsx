@@ -1,206 +1,53 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { SubjectBookingCalendar } from "@/src/components/subject-booking-calendar";
 import { RequireAuth } from "@/src/components/require-auth";
-import { BookingApiError, createBooking, getAvailability } from "@/src/lib/bookings-api";
-import type { AvailabilityResponse } from "@/src/types/booking";
+import { getAvailability } from "@/src/lib/bookings-api";
 
-const TIME_ZONE = "Asia/Bangkok";
-const money = new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" });
-
-function SubjectBookingContent() {
-  // Read the reusable subject id from /bookings/s/[subjectId].
+function LegacyBookingRedirect() {
   const { subjectId } = useParams<{ subjectId: string }>();
   const router = useRouter();
-  const initialDate = useSearchParams().get("date");
-  const [data, setData] = useState<AvailabilityResponse | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      // Refresh slots and remove selections that are no longer available.
-      const next = await getAvailability(subjectId);
-      setData(next);
-      const valid = new Set(
-        next.slots.filter((slot) => slot.available !== false).map((slot) => slot.id)
-      );
-      setSelectedIds((current) => current.filter((id) => valid.has(id)));
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not load available times.");
-    } finally {
-      setLoading(false);
-    }
-  }, [subjectId]);
-
+  const query = useSearchParams().toString();
+  const [error, setError] = useState(false);
   useEffect(() => {
-    // Fetching route-specific server data is the synchronization performed by this effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
-
-  const openSlots = useMemo(
-    () => (data?.slots ?? []).filter((slot) => slot.available !== false),
-    [data]
-  );
-
-  // A 30-minute slot costs half of the tutor's hourly rate.
-  const total = (Number(data?.subject?.hourlyRate ?? 0) * selectedIds.length) / 2;
-  const selectedSlots = openSlots
-    .filter((slot) => selectedIds.includes(slot.id))
-    .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
-  const windowFormat = new Intl.DateTimeFormat("en-GB", {
-    timeZone: TIME_ZONE,
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-
-  async function submit() {
-    // BOOK-1 requires at least one slot before creating the booking.
-    if (!data || data.acceptingBookings === false || selectedIds.length === 0) {
-      setMessage("Choose at least one available time.");
-      return;
-    }
-    setSubmitting(true);
-    setMessage(null);
-    try {
-      // Create the pending booking and continue to its payment/detail page.
-      const booking = await createBooking({
-        subjectId: data.subject.id,
-        availabilityIds: selectedIds,
-        isTrial: false,
+    let cancelled = false;
+    getAvailability(subjectId)
+      .then((data) => {
+        if (!cancelled)
+          router.replace(
+            `/tutors/${data.subject.tutor.id}/${subjectId}${query ? `?${query}` : ""}`
+          );
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
       });
-      router.push(`/bookings/${booking.id}`);
-    } catch (error) {
-      if (error instanceof BookingApiError && error.code === "SLOT_TAKEN") {
-        // Another student took the slot, so show the conflict and reload times.
-        setMessage("That time was just booked by someone else. We refreshed the available times.");
-        await load();
-      } else if (error instanceof BookingApiError && error.code === "INVALID_SLOT_BLOCK") {
-        setMessage("Choose consecutive 30-minute times on the same day.");
-      } else {
-        setMessage(error instanceof Error ? error.message : "Could not create this booking.");
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
+    return () => {
+      cancelled = true;
+    };
+  }, [subjectId, query, router]);
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:px-8">
-      <Link
-        href={`/tutors/${data?.subject.tutor.id ?? ""}/${subjectId}`}
-        className="text-sm text-zinc-600 hover:underline"
-      >
-        ← Back to tutor
-      </Link>
-      <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_340px]">
-        <section>
-          <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">Lesson</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">Choose a time</h1>
-          {data && (
-            <p className="mt-2 text-zinc-600">
-              {data.subject.name} with {data.subject.tutor.name}
-            </p>
-          )}
-
-          {loading ? (
-            <p className="mt-10 text-zinc-500">Loading available times…</p>
-          ) : openSlots.length === 0 ? (
-            <div className="mt-8 rounded-2xl border border-dashed border-zinc-300 p-8 text-center">
-              <p className="font-medium">
-                {data?.acceptingBookings === false
-                  ? "This tutor isn’t accepting bookings"
-                  : "No open times right now"}
-              </p>
-              <button
-                onClick={() => {
-                  setLoading(true);
-                  void load();
-                }}
-                className="mt-3 text-sm font-semibold text-violet-700 hover:underline"
-              >
-                Refresh availability
-              </button>
-            </div>
-          ) : (
-            <div className="mt-6">
-              <SubjectBookingCalendar
-                key={`${subjectId}:${initialDate ?? ""}`}
-                initialDate={initialDate}
-                slots={openSlots}
-                selectedIds={selectedIds}
-                onChange={setSelectedIds}
-                onSelectionMessage={setMessage}
-              />
-            </div>
-          )}
-        </section>
-
-        <aside className="h-fit rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <h2 className="text-lg font-semibold">Booking summary</h2>
-          <dl className="mt-5 space-y-3 text-sm">
-            {selectedSlots.length > 0 && (
-              <div>
-                <dt className="text-zinc-500">Selected time (Bangkok)</dt>
-                <dd>
-                  {windowFormat.format(new Date(selectedSlots[0].startedAt))} –{" "}
-                  {windowFormat.format(
-                    new Date(
-                      new Date(selectedSlots[selectedSlots.length - 1].startedAt).getTime() +
-                        30 * 60_000
-                    )
-                  )}
-                </dd>
-              </div>
-            )}
-            <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Lesson</dt>
-              <dd className="text-right font-medium">{selectedIds.length * 30} min</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Rate</dt>
-              <dd>{money.format(Number(data?.subject?.hourlyRate ?? 0))}/hr</dd>
-            </div>
-            <div className="flex justify-between border-t border-zinc-200 pt-3 text-base font-semibold">
-              <dt>Total</dt>
-              <dd>{money.format(total)}</dd>
-            </div>
-          </dl>
-          {message && (
-            <p role="alert" className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-              {message}
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={() => void submit()}
-            disabled={
-              submitting || loading || data?.acceptingBookings === false || selectedIds.length === 0
-            }
-            className="mt-5 h-12 w-full rounded-full bg-violet-600 font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submitting ? "Booking…" : total > 0 ? "Continue to payment" : "Confirm booking"}
-          </button>
-          <p className="mt-3 text-center text-xs text-zinc-500">
-            These times remain available to others until your payment succeeds.
-          </p>
-        </aside>
-      </div>
+    <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[68rem] flex-1 px-4 py-6">
+      {error ? (
+        <>
+          <p role="alert">This subject is unavailable.</p>
+          <Link href="/search" className="text-brand-link underline">
+            Find a tutor
+          </Link>
+        </>
+      ) : (
+        <p role="status">Opening subject…</p>
+      )}
     </main>
   );
 }
 
 export default function SubjectBookingPage() {
   return (
-    <Suspense fallback={<p>Loading available times…</p>}>
+    <Suspense fallback={<p>Opening subject…</p>}>
       <RequireAuth>
-        <SubjectBookingContent />
+        <LegacyBookingRedirect />
       </RequireAuth>
     </Suspense>
   );

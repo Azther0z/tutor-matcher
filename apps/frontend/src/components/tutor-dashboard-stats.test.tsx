@@ -59,7 +59,7 @@ it("shows lesson status, engagement, published rating and written or rating-only
   });
   render(<TutorDashboardStats />);
   expect(await screen.findByText("4.7 / 5")).toBeInTheDocument();
-  expect(screen.getByText("12 published reviews")).toBeInTheDocument();
+  expect(screen.queryByText("12 published reviews")).not.toBeInTheDocument();
   const status = screen.getByRole("region", { name: "Lesson status" });
   expect(within(status).getByText("4")).toBeInTheDocument();
   expect(within(status).getByText("7")).toBeInTheDocument();

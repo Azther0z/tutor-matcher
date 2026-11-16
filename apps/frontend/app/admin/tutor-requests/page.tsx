@@ -17,8 +17,7 @@ import {
 } from "@/src/lib/tutor-application";
 
 const shell = "mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-16";
-const button =
-  "rounded-full border border-black/[.12] px-5 py-2.5 font-medium disabled:opacity-60 dark:border-white/[.18]";
+const button = "rounded-lg border border-line px-5 py-2.5 font-medium disabled:opacity-60";
 const documentLabels: Record<TutorDocumentIssue["document"], string> = {
   identificationCard: "Identification card",
   certification: "Certification",
@@ -61,11 +60,11 @@ function TutorRequests() {
   }, [reload]);
 
   return (
-    <main className={shell}>
+    <main id="main-content" tabIndex={-1} className={shell}>
       <div>
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">Admin</p>
+        <p className="text-sm font-medium text-muted">Admin</p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight">Tutor requests</h1>
-        <p className="mt-3 text-zinc-500">
+        <p className="mt-3 text-muted">
           Review initial applications and profile edits. Approval applies the submitted version
           automatically; existing publication settings are preserved.
         </p>
@@ -81,9 +80,9 @@ function TutorRequests() {
       {!forbidden && (
         <section
           aria-label="Tutor submissions"
-          className="overflow-hidden rounded-lg border border-black/[.12] dark:border-white/[.18]"
+          className="overflow-hidden rounded-lg border border-line"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[.12] px-4 py-3 dark:border-white/[.18]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
             <TutorRefreshButton
               label="Refresh requests"
               onClick={() => {
@@ -98,7 +97,7 @@ function TutorRequests() {
                 <select
                   value={status}
                   onChange={(event) => setStatus(event.target.value)}
-                  className="appearance-none rounded-md border border-black/[.12] bg-background py-2 pl-3 pr-9 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 dark:border-white/[.18] dark:[color-scheme:dark]"
+                  className="appearance-none rounded-md border border-line bg-background py-2 pl-3 pr-9 text-foreground focus-visible:outline-2 focus-visible:outline-brand-link focus-visible:ring-2 focus-visible:ring-foreground/30 dark:[color-scheme:dark]"
                 >
                   <option value="PENDING">Pending</option>
                   <option value="APPROVED">Approved</option>
@@ -112,7 +111,7 @@ function TutorRequests() {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.5"
-                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
                 >
                   <path d="m6 9 6 6 6-6" />
                 </svg>
@@ -120,15 +119,15 @@ function TutorRequests() {
             </label>
           </div>
           <div className="px-4">
-            {!requests && !error && <p className="py-5 text-sm text-zinc-500">Loading requests…</p>}
+            {!requests && !error && <p className="py-5 text-sm text-muted">Loading requests…</p>}
             {visibleRequests?.length === 0 && (
-              <p className="py-5 text-sm text-zinc-500">
+              <p className="py-5 text-sm text-muted">
                 {status === "PENDING"
                   ? "No pending tutor requests."
                   : "No matching tutor submissions."}
               </p>
             )}
-            <ul className="divide-y divide-black/[.12] dark:divide-white/[.18]">
+            <ul className="divide-y divide-line ">
               {visibleRequests?.map((request) => (
                 <li key={request.id}>
                   <ReviewRow
@@ -213,18 +212,18 @@ function ReviewRow({
   return (
     <section aria-label={`Request from ${request.user.firstName} ${request.user.lastName}`}>
       <details>
-        <summary className="cursor-pointer py-4 marker:text-zinc-500">
+        <summary className="cursor-pointer py-4 marker:text-muted">
           <span className="inline-flex w-[calc(100%_-_1.5rem)] flex-wrap items-center justify-between gap-3 align-middle">
             <span className="min-w-0">
               <span className="block font-medium">
                 {request.user.firstName} {request.user.lastName}
               </span>
-              <span className="block break-all text-sm text-zinc-500">{request.user.email}</span>
+              <span className="block break-all text-sm text-muted">{request.user.email}</span>
             </span>
             <span className="text-sm sm:text-right">
               <TutorSubmissionStatus status={request.status} />
               {request.submittedAt && (
-                <time dateTime={request.submittedAt} className="block text-xs text-zinc-500">
+                <time dateTime={request.submittedAt} className="block text-xs text-muted">
                   Submitted {new Date(request.submittedAt).toLocaleString()}
                 </time>
               )}
@@ -271,7 +270,7 @@ function ReviewRow({
                 onChange={(event) => setReason(event.target.value)}
                 aria-invalid={reasonError}
                 aria-describedby={reasonError ? `reason-error-${request.id}` : undefined}
-                className="rounded-lg border border-black/[.12] bg-transparent p-3 dark:border-white/[.18]"
+                className="rounded-lg border border-line bg-transparent p-3"
               />
               {reasonError && (
                 <p id={`reason-error-${request.id}`} role="alert" className="text-sm text-red-600">
@@ -288,7 +287,7 @@ function ReviewRow({
                   Reject request
                 </button>
                 <button
-                  className={`${button} bg-foreground text-background`}
+                  className={`${button} bg-brand-navy text-white`}
                   disabled={busy || approvalBlocked}
                   aria-describedby={approvalBlocked ? documentIssuesId : undefined}
                   onClick={() => void review("APPROVED")}
