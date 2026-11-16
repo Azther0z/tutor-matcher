@@ -5,13 +5,25 @@ import { nextContinuousSelection } from "./continuous-slot-picker";
 import type { AvailabilitySlot } from "@/src/types/booking";
 
 const ZONE = "Asia/Bangkok";
-const dayKey = (date: Date) =>
-  new Intl.DateTimeFormat("en-CA", {
-    timeZone: ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
+const dayFormat = new Intl.DateTimeFormat("en-CA", {
+  timeZone: ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const monthFormat = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  year: "numeric",
+  timeZone: ZONE,
+});
+const fullDayFormat = new Intl.DateTimeFormat("en-GB", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: ZONE,
+});
+const dayKey = (date: Date) => dayFormat.format(date);
 const atNoon = (day: string) => new Date(`${day}T12:00:00+07:00`);
 
 export function SubjectBookingCalendar({
@@ -61,6 +73,7 @@ export function SubjectBookingCalendar({
   const count = new Date(Date.UTC(viewYear, viewMonth, 0)).getUTCDate();
   const offset = new Date(Date.UTC(viewYear, viewMonth - 1, 1)).getUTCDay();
   const daySlots = available.filter((slot) => dayKey(new Date(slot.startedAt)) === selectedDay);
+  const slotsByTime = new Map(daySlots.map((slot) => [new Date(slot.startedAt).getTime(), slot]));
   function moveMonth(delta: number) {
     setVisibleMonth(
       new Date(Date.UTC(viewYear, viewMonth - 1 + delta, 1)).toISOString().slice(0, 7)
@@ -84,11 +97,7 @@ export function SubjectBookingCalendar({
             ←
           </button>
           <h2 aria-live="polite" className="font-semibold">
-            {new Intl.DateTimeFormat("en-US", {
-              month: "long",
-              year: "numeric",
-              timeZone: ZONE,
-            }).format(atNoon(`${visibleMonth}-01`))}
+            {monthFormat.format(atNoon(`${visibleMonth}-01`))}
           </h2>
           <button
             type="button"
@@ -149,19 +158,13 @@ export function SubjectBookingCalendar({
         {selectedDay ? (
           <fieldset>
             <legend className="mb-2 text-sm font-semibold">
-              {new Intl.DateTimeFormat("en-GB", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-                timeZone: ZONE,
-              }).format(atNoon(selectedDay))}
+              {fullDayFormat.format(atNoon(selectedDay))}
             </legend>
             <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
               {Array.from({ length: 48 }, (_, i) => {
                 const time = `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`;
                 const instant = new Date(`${selectedDay}T${time}:00+07:00`).getTime();
-                const slot = daySlots.find((s) => new Date(s.startedAt).getTime() === instant);
+                const slot = slotsByTime.get(instant);
                 const active = !!slot && selectedIds.includes(slot.id);
                 return (
                   <button

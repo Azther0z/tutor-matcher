@@ -40,6 +40,8 @@
 - Keep `docs/database-schema.md` and `CONTEXT.md` aligned with canonical `docs/user-journeys.md` whenever product behaviour changes.
 
 ### Preferences
+- Refactors must preserve observable behaviour, prioritize performance, keep code names to four
+  words or fewer, and extract reusable code only when it creates a real shared seam.
 - Do not add decorative arrows to links, buttons, or shortcut rows; remove them when updating page UI. Keep directional controls only where they perform a necessary navigation action, such as calendar month controls.
 - Booking date and time selection lives directly on `/tutors/:id/:subjectId`, alongside subject reviews and rating breakdown. Continue creates the pending booking and opens `/bookings/:id` for payment; `/bookings/s/:subjectId` is a legacy redirect, with no separate review page. Confirmed 2026-11-16.
 - Omit standalone “← Back to …” navigation links on pages as they are updated; the user explicitly requested this across future page UI work.

@@ -3,23 +3,23 @@ import { validate } from "../../middleware/validate.ts";
 import { subjectRouter } from "../subject/subject.routes.ts";
 import { availabilityRouter } from "../availability/availability.routes.ts";
 import {
-  enrollTutorForCurrentUser,
-  getAccountForCurrentUser,
+  enrollCurrentTutor,
+  getOwnAccount,
   getLearningAreaSuggestions,
-  getStudentProfileForCurrentUser,
-  getTutorApplicationForCurrentUser,
-  saveStudentProfileForCurrentUser,
-  updateAccountForCurrentUser,
+  getOwnStudentProfile,
+  getOwnTutorApplication,
+  saveOwnStudentProfile,
+  updateOwnAccount,
   updateProfile,
-  saveDraftForCurrentUser,
-  createDraftForCurrentUser,
-  updateDraftForCurrentUser,
-  discardDraftForCurrentUser,
-  submitSelectedDraftForCurrentUser,
-  submitDraftForCurrentUser,
-  withdrawRequestForCurrentUser,
-  copySubmissionForCurrentUser,
-  setPublicationForCurrentUser,
+  saveOwnTutorDraft,
+  createOwnTutorDraft,
+  updateOwnTutorDraft,
+  discardOwnTutorDraft,
+  submitChosenTutorDraft,
+  submitOwnTutorDraft,
+  withdrawTutorProfile,
+  copyOwnSubmission,
+  setOwnTutorPublication,
 } from "./profile.controller.ts";
 import {
   accountUpdateSchema,
@@ -39,60 +39,48 @@ profileRouter.use("/me/tutor/availability", availabilityRouter);
 profileRouter.use("/me/tutor/subjects", subjectRouter);
 
 profileRouter.put("/me", validate(profileRequestSchema), updateProfile);
-profileRouter.get("/me/tutor", getTutorApplicationForCurrentUser);
-profileRouter.put("/me/tutor", validate(tutorEnrollmentRequestSchema), enrollTutorForCurrentUser);
+profileRouter.get("/me/tutor", getOwnTutorApplication);
+profileRouter.put("/me/tutor", validate(tutorEnrollmentRequestSchema), enrollCurrentTutor);
 profileRouter.get(
   "/learning-areas",
   validate(learningAreaSearchSchema, "query"),
   getLearningAreaSuggestions
 );
-profileRouter.get("/me/student", getStudentProfileForCurrentUser);
-profileRouter.put(
-  "/me/student",
-  validate(studentProfileRequestSchema),
-  saveStudentProfileForCurrentUser
-);
-profileRouter.get("/me/account", getAccountForCurrentUser);
-profileRouter.put("/me/account", validate(accountUpdateSchema), updateAccountForCurrentUser);
+profileRouter.get("/me/student", getOwnStudentProfile);
+profileRouter.put("/me/student", validate(studentProfileRequestSchema), saveOwnStudentProfile);
+profileRouter.get("/me/account", getOwnAccount);
+profileRouter.put("/me/account", validate(accountUpdateSchema), updateOwnAccount);
 
-profileRouter.put("/me/tutor/draft", validate(tutorDraftRequestSchema), saveDraftForCurrentUser);
-profileRouter.post(
-  "/me/tutor/submit",
-  validate(tutorSubmitRequestSchema),
-  submitDraftForCurrentUser
-);
-profileRouter.post("/me/tutor/withdraw", withdrawRequestForCurrentUser);
+profileRouter.put("/me/tutor/draft", validate(tutorDraftRequestSchema), saveOwnTutorDraft);
+profileRouter.post("/me/tutor/submit", validate(tutorSubmitRequestSchema), submitOwnTutorDraft);
+profileRouter.post("/me/tutor/withdraw", withdrawTutorProfile);
 profileRouter.patch(
   "/me/tutor/publication",
   validate(tutorPublicationRequestSchema),
-  setPublicationForCurrentUser
+  setOwnTutorPublication
 );
 
-profileRouter.post(
-  "/me/tutor/drafts",
-  validate(tutorDraftRequestSchema),
-  createDraftForCurrentUser
-);
+profileRouter.post("/me/tutor/drafts", validate(tutorDraftRequestSchema), createOwnTutorDraft);
 profileRouter.put(
   "/me/tutor/drafts/:draftId",
   validate(tutorDraftParamsSchema, "params"),
   validate(tutorDraftRequestSchema),
-  updateDraftForCurrentUser
+  updateOwnTutorDraft
 );
 profileRouter.delete(
   "/me/tutor/drafts/:draftId",
   validate(tutorDraftParamsSchema, "params"),
-  discardDraftForCurrentUser
+  discardOwnTutorDraft
 );
 profileRouter.post(
   "/me/tutor/drafts/:draftId/submit",
   validate(tutorDraftParamsSchema, "params"),
   validate(tutorSubmitRequestSchema),
-  submitSelectedDraftForCurrentUser
+  submitChosenTutorDraft
 );
 
 profileRouter.post(
   "/me/tutor/submissions/:draftId/copy",
   validate(tutorDraftParamsSchema, "params"),
-  copySubmissionForCurrentUser
+  copyOwnSubmission
 );

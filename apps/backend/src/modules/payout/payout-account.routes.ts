@@ -9,7 +9,7 @@ import {
   requireTutor,
   setDefault,
 } from "./payout-account.controller.ts";
-import { createPayoutAccountSchema, payoutAccountIdParamsSchema } from "./payout-account.schema.ts";
+import { createPayoutAccountSchema, payoutAccountParamsSchema } from "./payout-account.schema.ts";
 
 export const payoutAccountRouter = Router();
 
@@ -39,12 +39,12 @@ payoutAccountRouter.post(
 );
 payoutAccountRouter.patch(
   "/:id/default",
-  validate(payoutAccountIdParamsSchema, "params"),
+  validate(payoutAccountParamsSchema, "params"),
   setDefault
 );
 payoutAccountRouter.delete(
   "/:id",
   payoutAccountRateLimiter,
-  validate(payoutAccountIdParamsSchema, "params"),
+  validate(payoutAccountParamsSchema, "params"),
   remove
 );

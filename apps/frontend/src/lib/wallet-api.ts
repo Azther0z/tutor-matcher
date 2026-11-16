@@ -1,4 +1,4 @@
-import { getAuthToken } from "@/src/lib/auth";
+import { apiRequest as sharedRequest } from "@/src/lib/api-client";
 
 export type WalletSummary = { balance: string };
 export type TopupStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -43,28 +43,22 @@ export function subscribeToWalletBalance(callback: (balance: string) => void) {
   return () => window.removeEventListener(WALLET_BALANCE_CHANGED_EVENT, handleBalanceChanged);
 }
 
-async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  const token = getAuthToken();
-  const response = await fetch(url, {
+// One request path for the wallet and its admin review endpoints; failures keep the status and code.
+function apiRequest<T>(
+  url: string,
+  init?: Omit<RequestInit, "body"> & { json?: unknown },
+  fallback = "Could not complete the wallet request."
+) {
+  return sharedRequest<T>(url, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
+    auth: "optional",
+    emptyBody: () => ({}) as T,
+    errorMessage: fallback,
+    makeError: ({ body, response }) => {
+      const failure = body as { message?: string; code?: string } | null;
+      return new WalletApiError(failure?.message || fallback, response.status, failure?.code);
     },
   });
-  const body = (await response.json().catch(() => ({}))) as {
-    message?: string;
-    code?: string;
-  } & T;
-  if (!response.ok) {
-    throw new WalletApiError(
-      body.message || "Could not complete the wallet request.",
-      response.status,
-      body.code
-    );
-  }
-  return body;
 }
 
 export function getWallet() {
@@ -78,7 +72,7 @@ export function getMyTopups() {
 export function submitTopup(amount: number, slipUrl: string) {
   return apiRequest<TopupRequest>("/api/wallet/topups", {
     method: "POST",
-    body: JSON.stringify({ amount, slipUrl }),
+    json: { amount, slipUrl },
   });
 }
 
@@ -96,7 +90,7 @@ export function reviewTopup(
 ) {
   return apiRequest<TopupRequest>(`/api/admin/topups/${id}/review`, {
     method: "POST",
-    body: JSON.stringify({ decision, ...(rejectionReason ? { rejectionReason } : {}) }),
+    json: { decision, ...(rejectionReason ? { rejectionReason } : {}) },
   });
 }
 
@@ -149,32 +143,28 @@ export type WalletTransactionPage = {
   total: number;
 };
 
-async function walletRead<T>(path: string, fallback: string): Promise<T> {
-  const token = getAuthToken();
-  const response = await fetch(`/api/wallet${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  const body = (await response.json().catch(() => ({}))) as { message?: string } & T;
-  if (!response.ok) throw new WalletApiError(body.message || fallback, response.status);
-  return body;
-}
-
 export function getWalletOverview() {
-  return walletRead<WalletOverview>("/overview", "Could not load your wallet.");
+  return apiRequest<WalletOverview>(
+    "/api/wallet/overview",
+    undefined,
+    "Could not load your wallet."
+  );
 }
 
 export function getWalletTransactions(type: WalletTransactionType | null, page: number) {
   const query = new URLSearchParams({ page: String(page) });
   if (type) query.set("type", type);
-  return walletRead<WalletTransactionPage>(
-    `/transactions?${query}`,
+  return apiRequest<WalletTransactionPage>(
+    `/api/wallet/transactions?${query}`,
+    undefined,
     "Could not load your transactions."
   );
 }
 
 export function getWalletTransaction(id: string) {
-  return walletRead<WalletTransaction>(
-    `/transactions/${encodeURIComponent(id)}`,
+  return apiRequest<WalletTransaction>(
+    `/api/wallet/transactions/${encodeURIComponent(id)}`,
+    undefined,
     "Could not load this transaction."
   );
 }

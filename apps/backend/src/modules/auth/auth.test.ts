@@ -58,7 +58,7 @@ jest.unstable_mockModule("../../lib/email.ts", () => ({
   sendBookingNotificationEmail: jest.fn(),
   sendMessageNotificationEmail: jest.fn(),
   sendPaymentNotificationEmail: jest.fn(),
-  sendTutorRequestRejectedEmail: jest.fn(),
+  sendTutorRejectionEmail: jest.fn(),
   sendAccountActionEmail: jest.fn(),
   sendReviewModerationEmail: jest.fn(),
 }));
