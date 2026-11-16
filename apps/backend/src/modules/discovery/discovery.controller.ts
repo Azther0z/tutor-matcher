@@ -13,7 +13,7 @@ import {
   TutorUnavailableError,
 } from "./discovery.service.ts";
 
-const SEARCH_REFERENCE_MAX_AGE_MS = 60 * 60 * 1000;
+const SEARCH_MAX_AGE_MS = 60 * 60 * 1000;
 
 export async function getTutorSearch(req: Request, res: Response) {
   res.vary("Authorization");
@@ -22,9 +22,7 @@ export async function getTutorSearch(req: Request, res: Response) {
   const requestedTime = query.asOf ? Date.parse(query.asOf) : now;
   // Keep pagination stable briefly, but refresh bookmarked links and future timestamps.
   const referenceTime =
-    requestedTime <= now && now - requestedTime <= SEARCH_REFERENCE_MAX_AGE_MS
-      ? requestedTime
-      : now;
+    requestedTime <= now && now - requestedTime <= SEARCH_MAX_AGE_MS ? requestedTime : now;
   const result = await searchTutorSubjects(query, new Date(referenceTime), req.user?.sub);
   if (result.recommendationMode === "personalized") {
     res.setHeader("Cache-Control", "private, no-store");
@@ -40,7 +38,7 @@ export async function getLearningAreas(_req: Request, res: Response) {
   res.status(200).json({ learningAreas: await listLearningAreas() });
 }
 
-export async function getTutorProfileById(req: Request, res: Response) {
+export async function getPublicTutorProfile(req: Request, res: Response) {
   const parsedTutorId = z.string().uuid().safeParse(req.params.id);
 
   if (!parsedTutorId.success) {
@@ -60,7 +58,7 @@ export async function getTutorProfileById(req: Request, res: Response) {
   }
 }
 
-export async function getTutorSubjectPageById(req: Request, res: Response) {
+export async function getPublicSubjectPage(req: Request, res: Response) {
   const ids = z
     .object({ id: z.string().uuid(), subjectId: z.string().uuid() })
     .safeParse(req.params);

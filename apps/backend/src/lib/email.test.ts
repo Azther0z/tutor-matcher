@@ -16,7 +16,7 @@ const {
   EmailConfigurationError,
   EmailDeliveryError,
   sendPasswordResetEmail,
-  sendTutorRequestRejectedEmail,
+  sendTutorRejectionEmail,
   sendBookingNotificationEmail,
   sendAccountActionEmail,
   sendReviewModerationEmail,
@@ -344,7 +344,7 @@ describe("sendPasswordResetEmail", () => {
   });
 });
 
-describe("sendTutorRequestRejectedEmail", () => {
+describe("sendTutorRejectionEmail", () => {
   it.each([
     [false, "http://localhost:3000/enroll-tutor"],
     [true, "http://localhost:3000/settings/tutor"],
@@ -359,7 +359,7 @@ describe("sendTutorRequestRejectedEmail", () => {
         frontendUrlConfigured: true,
       });
 
-      await sendTutorRequestRejectedEmail({
+      await sendTutorRejectionEmail({
         to: "ada@example.com",
         firstName: "Ada",
         reason: 'Use a "PDF" <not a .docx> & re-submit',

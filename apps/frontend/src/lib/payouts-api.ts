@@ -1,4 +1,4 @@
-import { getAuthToken } from "@/src/lib/auth";
+import { apiRequest } from "@/src/lib/api-client";
 import type { PayoutAccount } from "@/src/lib/payout-accounts-api";
 import { publishWalletBalance } from "@/src/lib/wallet-api";
 
@@ -27,27 +27,20 @@ export class PayoutApiError extends Error {
 }
 
 async function payoutRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  const token = getAuthToken();
-  const response = await fetch(url, {
+  return apiRequest<T>(url, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
+    auth: "optional",
+    emptyBody: () => ({}) as T,
+    errorMessage: "Could not complete the payout.",
+    makeError: ({ body, response }) => {
+      const data = body as { code?: string; message?: string } | null;
+      return new PayoutApiError(
+        data?.message || "Could not complete the payout.",
+        response.status,
+        data?.code
+      );
     },
   });
-  const body = (await response.json().catch(() => ({}))) as {
-    code?: string;
-    message?: string;
-  } & T;
-  if (!response.ok) {
-    throw new PayoutApiError(
-      body.message || "Could not complete the payout.",
-      response.status,
-      body.code
-    );
-  }
-  return body;
 }
 
 // Payouts are tutor-only. The tutor application reports APPROVED once the user is a Tutor.

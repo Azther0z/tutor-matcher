@@ -1,5 +1,6 @@
 import type { SubjectOffering } from "@/src/lib/subjects";
-import { clearAuthToken, getAuthToken } from "@/src/lib/auth";
+import { getAuthToken } from "@/src/lib/auth";
+import { readApi } from "@/src/lib/api-client";
 
 export type LearningArea = { id: string; name: string };
 
@@ -93,13 +94,11 @@ export function filtersToQuery(filters: TutorSearchFilters) {
 
 async function publicGet<T>(path: string, signal?: AbortSignal, token?: string | null): Promise<T> {
   // Public searches may include a verified token to personalize Recommended results.
-  const response = await fetch(path, {
+  const { body: data, response } = await readApi<T & { message?: string }>(path, {
     signal,
-    ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+    ...(token ? { auth: "optional" as const, clearOnUnauthorized: true } : {}),
   });
-  const data = (await response.json().catch(() => null)) as (T & { message?: string }) | null;
   if (!response.ok || data === null) {
-    if (response.status === 401 && token) clearAuthToken();
     const error = new Error(
       response.status === 400
         ? "Some filters are not valid. Check them and try again."

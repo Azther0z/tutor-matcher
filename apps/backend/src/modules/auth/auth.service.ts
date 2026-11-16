@@ -30,21 +30,21 @@ export class InvalidCredentialsError extends Error {
   }
 }
 
-export class CurrentUserNotFoundError extends Error {
+export class CurrentUserMissingError extends Error {
   constructor() {
     super("User not found");
-    this.name = "CurrentUserNotFoundError";
+    this.name = "CurrentUserMissingError";
   }
 }
 
-export class InvalidPasswordResetTokenError extends Error {
+export class InvalidResetTokenError extends Error {
   constructor(message = "This password reset link is invalid or has expired") {
     super(message);
-    this.name = "InvalidPasswordResetTokenError";
+    this.name = "InvalidResetTokenError";
   }
 }
 
-function hasValidAdminSignupKey(providedKey?: string) {
+function validAdminSignupKey(providedKey?: string) {
   if (!env.adminSignupKey || !providedKey) return false;
 
   const configuredKeyHash = createHash("sha256").update(env.adminSignupKey).digest();
@@ -73,7 +73,7 @@ export async function signup({
         lastName,
         email,
         password: passwordHash,
-        isAdmin: hasValidAdminSignupKey(adminSignupKey),
+        isAdmin: validAdminSignupKey(adminSignupKey),
       },
     });
 
@@ -139,7 +139,7 @@ export async function getCurrentUser(userId: string) {
     },
   });
 
-  if (!user) throw new CurrentUserNotFoundError();
+  if (!user) throw new CurrentUserMissingError();
   return user;
 }
 
@@ -202,7 +202,7 @@ export async function validatePasswordResetToken(token: string) {
   });
 
   if (!resetToken || !isUsableResetToken(resetToken, new Date())) {
-    throw new InvalidPasswordResetTokenError();
+    throw new InvalidResetTokenError();
   }
 
   return { valid: true };
@@ -219,7 +219,7 @@ export async function confirmPasswordReset({ token, password }: PasswordResetCon
     });
 
     if (!resetToken || !isUsableResetToken(resetToken, now)) {
-      throw new InvalidPasswordResetTokenError();
+      throw new InvalidResetTokenError();
     }
 
     const consumed = await transaction.passwordResetToken.updateMany({
@@ -228,7 +228,7 @@ export async function confirmPasswordReset({ token, password }: PasswordResetCon
     });
 
     if (consumed.count !== 1) {
-      throw new InvalidPasswordResetTokenError();
+      throw new InvalidResetTokenError();
     }
 
     const passwordHash = await bcrypt.hash(password, 12);

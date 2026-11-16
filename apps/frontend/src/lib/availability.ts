@@ -19,6 +19,7 @@ export const halfHours = Array.from(
   { length: 48 },
   (_, index) => `${String(Math.floor(index / 2)).padStart(2, "0")}:${index % 2 ? "30" : "00"}`
 );
+const dateFormats = new Map<string, Intl.DateTimeFormat>();
 
 export function bangkokToday() {
   return new Date(Date.now() + 7 * 60 * 60_000).toISOString().slice(0, 10);
@@ -42,7 +43,13 @@ export function calendarDates(date: string, view: CalendarView) {
   return Array.from({ length: view === "week" ? 7 : 42 }, (_, index) => shiftDate(start, index));
 }
 export function formatDate(date: string, options: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat("en-GB", { ...options, timeZone: "UTC" }).format(new Date(date));
+  const key = JSON.stringify(options);
+  let formatter = dateFormats.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-GB", { ...options, timeZone: "UTC" });
+    dateFormats.set(key, formatter);
+  }
+  return formatter.format(new Date(date));
 }
 export function sameSlot(left: EditableSlot, right: EditableSlot) {
   return (
