@@ -41,6 +41,36 @@ export type BookingActions = {
   canCancel: boolean;
   canReschedule: boolean;
   canTutorCancel: boolean;
+  canEditMeetingLink: boolean;
+  canJoin: boolean;
+  canConfirmCompletion: boolean;
+  canReview: boolean;
+  canRequestRefund: boolean;
+};
+
+// PAY-3: every refund request waits for an admin; the reason tells the admin what happened.
+export type RefundRequestReason = "TUTOR_NO_SHOW" | "UNSATISFACTORY_LESSON" | "OTHER";
+export type RefundRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+// The Tutor's copy omits the Student's details and the admin's rejection reason.
+export type BookingRefundRequest = {
+  id: string;
+  reason: RefundRequestReason;
+  status: RefundRequestStatus;
+  amount: string;
+  createdAt: string;
+  reviewedAt: string | null;
+  details: string | null;
+  rejectionReason: string | null;
+};
+
+export type BookingReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  // REV-4: set when an Admin removed the review; it then no longer shows anywhere.
+  removed?: { reason: string; removedAt: string } | null;
 };
 
 export type CancellationQuote = {
@@ -74,14 +104,27 @@ export type Booking = {
   description?: string | null;
   isTrial: boolean;
   totalAmount: string;
+  earnings: {
+    amount: string;
+    status: "PENDING" | "CLEARED";
+    clearsAt: string;
+    holdReason:
+      "AWAITING_COMPLETION" | "CLEARING_PERIOD" | "REFUND_REVIEW" | "READY_TO_CLEAR" | null;
+  } | null;
   startedAt: string;
   endedAt: string;
   paymentExpiresAt: string | null;
   zoomMeetingUrl?: string | null;
+  customMeetingUrl: string | null;
+  effectiveMeetingUrl: string | null;
+  meetingLinkUpdatedAt: string | null;
   createdAt: string;
   cancelledAt?: string | null;
   cancellationReason?: string | null;
   cancelledBy?: "STUDENT" | "TUTOR" | null;
+  refundRequest?: BookingRefundRequest | null;
+  // REV-1: the published review of this lesson, if the Student wrote one.
+  review?: BookingReview | null;
   student: {
     id: string;
     name: string;

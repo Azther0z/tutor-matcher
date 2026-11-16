@@ -70,8 +70,11 @@ function matchingSubjects(
   const needsRating = options.includeStats || options.includeRecommendation || !!query.minRating;
   const reviewsJoin = needsRating
     ? Prisma.sql`LEFT JOIN (
-        SELECT subject_id, COUNT(*) AS review_count, AVG(rating_stars)::float8 AS rating
-        FROM reviews GROUP BY subject_id
+        SELECT rv.subject_id, COUNT(*) AS review_count, AVG(rv.rating_stars)::float8 AS rating
+        FROM reviews rv
+        JOIN bookings rb ON rb.booking_id = rv.booking_id AND rb.status <> 'CANCELLED'
+        WHERE rv.removed_at IS NULL
+        GROUP BY rv.subject_id
       ) r ON r.subject_id = s.subject_id`
     : Prisma.empty;
   const statsJoin = options.includeStats

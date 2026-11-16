@@ -34,6 +34,26 @@ apps/backend/
 
 ## Commands
 
+### PROF-5 teaching overview and public experience
+
+`dashboard.test.ts` covers authenticated owner scoping, Student/applicant rejection,
+Booking status counts, distinct and returning Students, the Bangkok Monday boundary,
+all-review averages and zero/unrated states. Dashboard component tests cover lazy Tutor-tab
+loading, loading/error/retry and role-appropriate content. Discovery/profile tests cover
+public completed-lesson and distinct-learner totals without private identities or earnings.
+These tests mock Prisma or fetch; see [PROF-5 verification](change/prof-5-tutor-dashboard-stats/verification.md)
+for the limits and browser preview evidence.
+
+### REV-2 public Tutor replies
+
+`review-reply.test.ts` covers owner-only reply creation and editing, validation, original
+publication-date preservation, no-op edits, conditional-write conflicts and deletion
+before or during submission. Discovery tests assert public reply and Edited projection.
+Shared reply and public-list frontend tests cover role visibility, draft preservation,
+save/cancel, stale edits, deleted reviews and persisted public markers. These suites mock
+Prisma or fetch; they do not prove PostgreSQL concurrency. See the
+[REV-2 verification report](change/rev-2-public-review-reply/verification.md).
+
 ### BOOK-3 cancellation acceptance
 
 Booking detail page tests cover reviewed server quotes, failed quote loading and retry,
@@ -87,20 +107,23 @@ The decisions are recorded in [BOOK-4 user evidence](sources/book-4-policy-confi
 
 ### PROF-7 payout account acceptance
 
-Payout account unit tests use mocked Prisma. They cover authentication, the bank list, the
+Payout account unit tests use mocked Prisma. They cover authentication, rejecting a user who
+is not a Tutor on every route, the bank list, the
 first account becoming the default, `makeDefault`, input rules (bank from the list, trimmed
 holder name up to 100 characters, 10 to 15 digits after removing spaces and dashes), the
 5 account limit, duplicate accounts, the add and remove rate limit, the retry on a one-default race, owner-only 404s, and soft removal that
 promotes the oldest account. Wallet settings page tests cover the balance and Top up link,
 the empty state, masked rows with the Default badge, form validation, adding, setting the
-default, the inline remove confirm (no `window.confirm`), the limit and the error states.
+default, the inline remove confirm (no `window.confirm`), the limit and the error states,
+and that a user who is not a Tutor sees only the balance and Top up and never loads payout
+accounts.
 
 `payout-account.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true`.
 It refuses any database except `tutor_matcher_prof7_test` on loopback; create that dedicated
-disposable database and synchronize the schema first. It covers a Student who is not a
-Tutor and a Tutor, the first default, `makeDefault`, atomic and concurrent default switches,
+disposable database and synchronize the schema first. It covers rejecting a Student who is
+not a Tutor, a Tutor's first default, `makeDefault`, atomic and concurrent default switches,
 the one-default index, removal that promotes the oldest account, the 5 account limit,
-owner-only access, and that no response contains a full account number. Fixture cleanup is
+owner-only access between two Tutors, and that no response contains a full account number. Fixture cleanup is
 restricted to PROF-7 IDs.
 
 ```powershell
@@ -110,7 +133,8 @@ npm.cmd --prefix apps/backend test -- --runInBand payout-account.integration.tes
 npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/settings/wallet/page.test.tsx"
 ```
 
-The decisions are recorded in [PROF-7 user evidence](sources/prof-7-policy-confirmation.md).
+The decisions are recorded in [PROF-7 user evidence](sources/prof-7-policy-confirmation.md)
+and the [tutor-only change](sources/prof-7-tutor-only-confirmation.md).
 
 ### PAY-7 payout request acceptance
 
@@ -138,6 +162,130 @@ npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/wallet/
 ```
 
 The decisions are recorded in [PAY-7 user evidence](sources/pay-7-policy-confirmation.md).
+
+### PAY-1 slip top-up acceptance
+
+Wallet unit tests mock Prisma. They cover authentication, a pending request that credits
+nothing, amount and slip URL rules (HTTP or HTTPS only), one pending request per user, the
+rate limit, the user's recent requests, admin-only
+listing and review, approval appending one TOP_UP with the request id, a required rejection
+reason with no credit, no self-review, and refusing a request that is no longer pending.
+Top-up page tests cover sending a slip, slip link validation, the pending view with no cancel
+or back button, top-up turned off for an invalid PromptPay ID, recent requests with reasons, the
+booking hold note and the one-pending error. `promptpay.test.ts` compares the QR text with
+reference output from the `promptpay-qr` package. Admin page
+tests cover the 403 state, the slip link, approve, reject with a reason, a stale review and
+the full list by default with its status filter.
+
+`wallet.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true`. Run it on a
+disposable database such as `tutor_matcher_pay1_test` with the schema pushed. It covers two
+admins approving the same request at once (one TOP_UP, one credit), the one-pending index,
+a rejection that credits nothing and approving a request that was already rejected.
+
+```powershell
+$env:RUN_DATABASE_INTEGRATION = "true"
+npm.cmd --prefix apps/backend test -- --runInBand wallet.integration.test.ts
+npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/wallet/topup/page.test.tsx" "app/admin/topups/page.test.tsx"
+```
+
+The decisions are recorded in [PAY-1 slip evidence](sources/pay-1-slip-topup-confirmation.md)
+and the [PAY-1 demo feedback](sources/pay-1-demo-feedback.md).
+
+### PAY-5 wallet page acceptance
+
+Wallet read tests (`wallet-read.test.ts`) mock Prisma. They cover the overview's single
+balance, Tutor-only pending earnings with the 15% fee rounded per booking, the Asia/Bangkok
+month window for earnings this month, all-time paid out, null Tutor-only figures with no
+earnings or payout query for Students, and unexpired Payment due bookings; the list's owner-only query, every type with its derived direction and Completed
+status, the type filter, paging, masked payout accounts, and 400s for an unknown type or bad
+page; and the owner-only detail with 404 for another user's or a missing id and 400 for a
+malformed one. Page tests cover the summary cards and navbar balance, hiding Tutor-only
+figures and the Lesson earnings and Payouts filters from Students (a Tutor-only URL filter
+falls back to All), one list of every type with its signed amount and detail link, the filter and page
+in the URL, the Payment due links to `/bookings/:id`, empty and retry states, and a read-only
+detail page with no actions, the booking link, the payout account and not-found handling.
+CLASS-3 extends the completion integration suite to verify that pending earnings remain
+unchanged after confirmation, available balance and ledger history receive no credit,
+only the booking's Student becomes review-eligible, and retries/concurrent confirmations
+do not duplicate money. It also seeds an actual cleared movement to verify that the
+pending calculation excludes cleared earnings. These tests require the dedicated local
+`tutor_matcher_book4_test` database and `RUN_DATABASE_INTEGRATION=true`.
+
+```powershell
+npm.cmd --prefix apps/backend test -- --runInBand wallet-read.test.ts
+npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath app/wallet/page.test.tsx "app/wallet/transactions/[id]/page.test.tsx"
+```
+
+The decisions are recorded in [PAY-5 user evidence](sources/pay-5-policy-confirmation.md).
+
+### PAY-6 lesson earning settlement
+
+`earning-settlement.test.ts` covers the exact 24-hour boundary, Tutor completion, pending
+refund holds, rejection preserving eligibility, per-booking fee rounding, owner scoping,
+and skipping unpaid, already-cleared or not-yet-eligible lessons. Wallet, booking and payout
+tests cover settlement before wallet reads and balance use. The PAY-3 PostgreSQL integration
+suite covers clearing an older completed lesson, refund approval after a Tutor has withdrawn
+the earning, refund filing and Admin approval racing settlement, and concurrent wallet reads
+or a payout sharing one settlement trigger without duplicating the earning. It requires the
+dedicated local `tutor_matcher_pay3_test` database and `RUN_DATABASE_INTEGRATION=true`.
+
+```powershell
+npm.cmd --prefix apps/backend test -- --runInBand src/modules/wallet/earning-settlement.test.ts src/modules/refund/refund.integration.test.ts
+```
+
+### PAY-3 refund request acceptance
+
+`refund.test.ts` covers requests opening at the lesson's scheduled end with no deadline,
+lessons the Tutor already confirmed, one request per paid, uncancelled lesson, the required
+explanation for an unsatisfactory lesson or Other, and the required rejection reason.
+`serializable.test.ts` covers the shared retry helper, including the retry error (not a raw
+Prisma error) after the last conflicting attempt. Booking unit tests cover `canRequestRefund`
+before and after the end and after completion, blocking Tutor completion while a request is
+pending and hiding the Student's text from the Tutor. Booking page tests cover a no-show going
+to an admin with no balance change, the required explanation for Unsatisfactory and Other,
+no request before the lesson ends, a completed lesson, a refused request, the approved and
+rejected states and the Tutor's note. Admin page tests cover the 403 state, the pending
+default, approve, reject with a reason, a stale review, history and the Other reason.
+
+`refund.integration.test.ts` is opt-in with `RUN_DATABASE_INTEGRATION=true` and refuses any
+database except `tutor_matcher_pay3_test` on loopback; create it and push the schema first.
+It covers each acceptance criterion through the HTTP API: a no-show approved by an admin with
+the REFUND row linked and the unresolved earning removed, the admin queue blocking Tutor
+confirmation, Other, rejection with a reason, a request after the Tutor confirmed, opening at
+the lesson end with no deadline, the Tutor notification, ownership, admin self-review, two
+admins approving at once and a doubled request.
+
+```powershell
+$env:RUN_DATABASE_INTEGRATION = "true"
+$env:EMAIL_DELIVERY_MODE = "log"
+npm.cmd --prefix apps/backend test -- --runInBand src/modules/refund
+npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/bookings/[id]/page.test.tsx" app/admin/refunds/page.test.tsx
+```
+
+The decisions are recorded in [PAY-3 user evidence](sources/pay-3-policy-confirmation.md)
+and the [PR #224 review decisions](sources/pay-3-review-decisions.md); the
+[refunded-lesson review decision](sources/pay-3-refunded-review-decision.md) is covered by
+discovery unit tests (every review query and the ranking SQL skip `CANCELLED` bookings) and
+an integration test where a 1-star review drops out of the subject rating once the refund
+is approved, while its row remains.
+
+### REV-1 review acceptance
+
+`review.test.ts` mocks Prisma and covers authentication, publishing a review of the
+Student's own completed lesson with the subject taken from the booking, an empty comment,
+ratings 0, 6, 4.5, "5" and null rejected with "Choose a rating from 1 to 5 stars.", the
+2,000-character comment limit, another Student's lesson (403), lessons that are not
+completed (409), a missing lesson (404) and one review per lesson, including a race settled
+by the unique `booking_id` key. Booking page tests cover publishing with a star rating and
+comment, the required rating, a server rejection shown as an alert, an existing review shown
+instead of the form, and no form for the Tutor.
+
+```powershell
+npm.cmd --prefix apps/backend test -- --runInBand src/modules/review
+npm.cmd --prefix apps/frontend test -- --runInBand --runTestsByPath "app/bookings/[id]/page.test.tsx"
+```
+
+The decisions are recorded in [REV-1 user evidence](sources/rev-1-policy-confirmation.md).
 
 ### General commands
 
@@ -300,6 +448,38 @@ the two-thumb price slider and its rounding, half-star rating, paging, the no-re
 its broadening suggestions, Clear filters, retry after an error, and the learning-area picker in
 the subject form.
 
+## SAFE-1 acceptance coverage
+
+`user-management.test.ts` covers name search, role filters, paging, literal wildcard
+characters, input validation, live Admin permissions, history, confirmation reasons,
+suspension lengths, duplicate bans, protected Admin accounts, Tutor unpublishing and
+best-effort email delivery. Auth tests verify that an existing valid token and a new login
+are refused with the restriction reason. Email tests check the reason, HTML escaping and
+the suspension end in the outgoing notice without contacting an email provider.
+
+Frontend account-management tests cover search, selection, the Message link, confirmation,
+history and row updates, duplicate-ban errors, retry after failed reads or writes, and
+repeat-submit prevention. Session tests cover navigation checks, restriction reasons and
+ignoring stale checks after another navigation or a different sign-in. Existing navbar,
+wallet and login suites provide regressions.
+
+The PostgreSQL suite refuses any target other than `tutor_matcher_safe1_test`, role `safe1`,
+on `127.0.0.1:55435`. Use a separately authorized disposable database synchronized with
+`schema.prisma`; it creates its own fixtures and deletes only their recorded IDs. It covers
+login/session blocking, expiry including the exact boundary, concurrent bans, suspension
+escalation, audit persistence despite email failure, Admin authorization, messaging and
+literal name searches. Account emails are mocked, so no real notice is sent.
+
+```bash
+npm --prefix apps/backend test -- --runInBand user-management.test.ts auth.test.ts email.test.ts
+npm --prefix apps/frontend test -- --runInBand --runTestsByPath app/admin/users/page.test.tsx src/components/auth-provider.test.tsx src/components/navbar.test.tsx
+
+# Only after authorizing and preparing the dedicated disposable database:
+DATABASE_URL=postgresql://safe1:safe1-test-only@127.0.0.1:55435/tutor_matcher_safe1_test \
+RUN_DATABASE_INTEGRATION=true EMAIL_DELIVERY_MODE=log \
+npm --prefix apps/backend test -- --runInBand user-management.integration.test.ts
+```
+
 ## SAFE-3 acceptance coverage
 
 A database integration test submits a listing and document change (bio and identification
@@ -324,3 +504,57 @@ Not available, none clickable), consecutive open half-hours drawn as one block, 
 opening at the first open time, Book this subject below the calendar with the subject and date
 (and the login hand-off), the disabled button on an empty day, calendar selection through the
 URL, the back link, the unavailable state and retry.
+
+## SAFE-4 acceptance coverage
+
+SAFE-4's criterion ("a dispute submitted for a payment, resolved by an admin, is reflected in
+the wallet ledger") is met by the PAY-3 refund requests. `dispute-ledger.integration.test.ts`
+(opt-in, on its own `tutor_matcher_safe4_test` database) checks it on the ledger through the real
+API: approval appends one `REFUND` row for the paid amount, with the matching `balanceAfter`,
+linked to the dispute and the cancelled booking and shown in the Student's
+`/api/wallet/transactions`, while earlier rows stay byte-for-byte the same; rejection leaves every
+row and the balance unchanged and records the deciding Admin, time and reason; and a resolved
+dispute cannot be resolved again, so there is still one `REFUND`. PAY-3's own suites cover the
+rest: `refund.integration.test.ts` (filing, the admin queue, simultaneous approvals refunding
+once, an admin refused for their own lesson), `refund.test.ts` and the `/admin/refunds` page test.
+
+## REV-3 acceptance coverage
+
+Review tests cover `POST /api/reviews/:id/flags`: the trimmed reason is stored for the signed-in
+member; a missing, comment-less or refunded review is a 404; an author flagging their own review
+is a 403; the same member flagging twice is a 409 `ALREADY_FLAGGED`; a missing, blank or over-500
+reason and a non-UUID id are 400s; and an unrelated database error is not turned into a flag
+error. Discovery and dashboard tests cover the viewer fields: `flaggedByMe` and `isMine` appear
+only for a signed-in viewer, a visitor or invalid token adds no fields and runs no flag query. The
+PostgreSQL suite (opt-in, on its own `tutor_matcher_rev3_test` database) checks the unique
+constraint, that other members can flag the same review, that the author, a comment-less review
+and a refunded review are refused, the per-viewer markers on the public profile, and that a
+flagged review stays public. Frontend tests cover the Flag button (signed-out, own review, already
+flagged, rating-only), the required reason, the request and the Flagged marker, a server-side
+duplicate, a retryable error, and the viewer's token reaching the profile and Subject pages.
+
+## MSG-1 conversation list coverage
+
+Messaging tests cover `GET /api/messages/conversations`: it needs a login, lists each person the
+user wrote to or heard from once, newest first, with the latest message and whether the user
+sent it, and returns an empty list for a user with no messages. Frontend tests cover a
+conversation the user started appearing in the list before any reply (previewed as **You:**),
+and a new conversation from a `?with=` link joining the list after the first message is sent.
+
+## REV-4 acceptance coverage
+
+Review moderation tests cover the Admin queue (`GET /api/admin/review-flags`): pending reviews
+that are still public, longest waiting first, with every flag; decided reviews, most recent
+decision first; a 403 for a non-admin and a 400 for an unknown filter. `POST
+/api/admin/reviews/:id/moderation` tests cover Keep (every pending flag `KEPT`, the review left
+published, each reporter emailed), Remove (the removal fields set, the reporters and the author
+emailed, only the author with the reason), a required trimmed reason of up to 500 characters, a
+409 when nothing is pending or the review was removed, a 404, a non-admin refused before the
+lock, and a failed email logged without undoing the decision. Discovery, dashboard, reply,
+flag and booking tests cover removed reviews leaving lists, averages and the ranking SQL, a 404
+for a reply or flag on a removed review, and the author's removed notice. The PostgreSQL suite
+(opt-in, on its own `tutor_matcher_rev4_test` database) checks Keep then a new member's flag
+re-queuing the review, Remove changing the profile average, Subject page and search ranking, the
+author's booking, and two simultaneous decisions settling as one decision and one 409. Frontend
+tests cover the queue (admin access, flags, Keep, Remove needing a reason, a 409 refreshing the
+queue, the Decided filter), the navbar link and the author's removed notice.

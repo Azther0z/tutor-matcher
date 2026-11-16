@@ -1,3 +1,4 @@
+import type { PublicReviewReply } from "@/src/lib/review-replies-api";
 import type { SubjectOffering } from "@/src/lib/subjects";
 import { readApi } from "@/src/lib/api-client";
 
@@ -11,12 +12,16 @@ export type ProfileSubject = SubjectOffering & {
 export type ProfileOpening = { startedAt: string; subjectIds: string[] };
 
 export type ProfileReview = {
+  reply?: PublicReviewReply | null;
   id: string;
   rating: number;
   text: string | null;
   createdAt: string;
   subjectName: string;
   reviewer: string;
+  // REV-3: present only for a signed-in viewer.
+  flaggedByMe?: boolean;
+  isMine?: boolean;
 };
 
 export type TutorProfile = {
@@ -30,6 +35,7 @@ export type TutorProfile = {
   introVideoUrl: string | null;
   rating: number | null;
   reviewCount: number;
+  teachingStats: { completedLessons: number; studentsTaught: number };
   subjects: ProfileSubject[];
   availability: ProfileOpening[];
   reviews: ProfileReview[];
@@ -41,7 +47,8 @@ export type ProfileResult = { kind: "profile"; profile: TutorProfile } | { kind:
 export async function getTutorProfile(tutorId: string, signal?: AbortSignal) {
   const { body: data, response } = await readApi<TutorProfile>(
     `/api/discovery/tutors/${encodeURIComponent(tutorId)}/profile`,
-    { signal }
+    // A signed-in viewer's token lets the public page mark the comments they flagged.
+    { auth: "optional", signal }
   );
   if (response.status === 404) return { kind: "unavailable" } satisfies ProfileResult;
   if (!response.ok || data === null) throw new Error("Could not load this tutor's profile.");
@@ -70,7 +77,7 @@ export async function getTutorSubjectPage(
   const path = `/api/discovery/tutors/${encodeURIComponent(tutorId)}/subjects/${encodeURIComponent(subjectId)}`;
   const { body: data, response } = await readApi<SubjectPage>(
     date ? `${path}?date=${encodeURIComponent(date)}` : path,
-    { signal }
+    { auth: "optional", signal }
   );
   if (response.status === 404) return { kind: "unavailable" } satisfies SubjectPageResult;
   if (!response.ok || data === null) throw new Error("Could not load this subject.");

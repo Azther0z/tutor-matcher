@@ -24,6 +24,7 @@ export const env = {
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "",
   adminSignupKey: process.env.ADMIN_SIGNUP_KEY ?? "",
+  promptPayId: process.env.PROMPTPAY_ID?.trim() ?? "",
   frontendUrl: process.env.FRONTEND_URL?.trim() || "http://localhost:3000",
   frontendUrlConfigured: Boolean(process.env.FRONTEND_URL?.trim()),
 };

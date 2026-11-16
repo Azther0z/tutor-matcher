@@ -48,6 +48,19 @@ only for ordinary accounts. To disable admin signups after creating the intended
 encrypt an empty `ADMIN_SIGNUP_KEY` in the file. Existing Admin accounts keep their access when the
 signup key is disabled.
 
+`PROMPTPAY_ID` is optional. It is the phone number, national ID or e-wallet ID that top-up QR codes pay. While it is blank, QR codes use the placeholder `0000000000`, which banking apps can scan but cannot pay. Do not commit a real value: this repository is public.
+
 Do not commit plaintext dotenv files.
 
 The production `compose.yaml` is the single source of truth for deployment and image builds. It explicitly builds the frontend with `BACKEND_URL=http://backend:8000`, publishes the frontend on host port `3333`, runs the backend on port `8000`, and stores PostgreSQL data at `/srv/platform/tutor-matcher/postgres`. GitHub Actions executes those Compose build definitions before publishing the image names declared in the same file.
+
+## Database updates at startup
+
+The backend container runs `npm run db:push && npm run db:seed:prod && npm start`.
+`db push` synchronizes the schema without migration files. The seed upserts the fixed learning areas.
+The existing PostgreSQL host directory retains data across container replacement on the same host.
+
+If Prisma reports potential data loss or another error, backend startup stops.
+Review the schema change and back up retained data before a schema update.
+Do not add `--force-reset` or `--accept-data-loss` to deployment startup.
+Removing the reset does not recover data deleted by earlier deployments.

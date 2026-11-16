@@ -14,13 +14,19 @@ jest.mock("next/navigation", () => ({
 const USER_ID = "00000000-0000-4000-8000-000000000001";
 const OTHER_USER_ID = "00000000-0000-4000-8000-000000000002";
 
-const anong = {
+const anongMessage = {
   id: "00000000-0000-4000-8000-000000000010",
   fromUserId: OTHER_USER_ID,
   toUserId: USER_ID,
   message: "See you tomorrow at 9!",
   createdAt: "2026-01-01T09:14:00.000Z",
-  fromUser: { id: OTHER_USER_ID, firstName: "Anong", lastName: "P." },
+};
+const anong = {
+  userId: OTHER_USER_ID,
+  name: "Anong P.",
+  lastMessage: "See you tomorrow at 9!",
+  lastMessageAt: "2026-01-01T09:14:00.000Z",
+  sentByMe: false,
 };
 
 beforeEach(() => {
@@ -53,8 +59,8 @@ describe("MessagesPage", () => {
   it("shows the conversation list and auto-selects the most recent thread", async () => {
     localStorage.setItem("authToken", "token");
     mockFetchRoutes({
-      "/api/messages/inbox": [anong],
-      [`/api/messages/thread/${OTHER_USER_ID}`]: [anong],
+      "/api/messages/conversations": [anong],
+      [`/api/messages/thread/${OTHER_USER_ID}`]: [anongMessage],
     });
 
     render(<MessagesPage />);
@@ -65,7 +71,7 @@ describe("MessagesPage", () => {
 
   it("shows an empty state when there are no conversations", async () => {
     localStorage.setItem("authToken", "token");
-    mockFetchRoutes({ "/api/messages/inbox": [] });
+    mockFetchRoutes({ "/api/messages/conversations": [] });
 
     render(<MessagesPage />);
 
@@ -76,7 +82,7 @@ describe("MessagesPage", () => {
     localStorage.setItem("authToken", "token");
     searchParams = new URLSearchParams({ with: OTHER_USER_ID, name: "Daniel K." });
     mockFetchRoutes({
-      "/api/messages/inbox": [],
+      "/api/messages/conversations": [],
       [`/api/messages/thread/${OTHER_USER_ID}`]: [],
     });
 
@@ -86,12 +92,73 @@ describe("MessagesPage", () => {
     expect(await screen.findByText("No messages yet — say hi!")).toBeInTheDocument();
   });
 
+  it("lists a conversation the user started even before the other person replies", async () => {
+    localStorage.setItem("authToken", "token");
+    mockFetchRoutes({
+      "/api/messages/conversations": [
+        {
+          userId: OTHER_USER_ID,
+          name: "Daniel K.",
+          lastMessage: "Hi Daniel!",
+          lastMessageAt: "2026-01-02T10:00:00.000Z",
+          sentByMe: true,
+        },
+      ],
+      [`/api/messages/thread/${OTHER_USER_ID}`]: [],
+    });
+
+    render(<MessagesPage />);
+
+    const entry = await screen.findByRole("button", { name: /Daniel K\./ });
+    expect(entry).toHaveTextContent("You: Hi Daniel!");
+    expect(screen.queryByText("No messages yet.")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("/api/messages/conversations", expect.anything());
+  });
+
+  it("adds a new conversation to the list once the first message is sent", async () => {
+    localStorage.setItem("authToken", "token");
+    searchParams = new URLSearchParams({ with: OTHER_USER_ID, name: "Daniel K." });
+    let sent = false;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/api/messages/conversations")) {
+        const list = sent
+          ? [
+              {
+                userId: OTHER_USER_ID,
+                name: "Daniel K.",
+                lastMessage: "Hi Daniel!",
+                lastMessageAt: "2026-01-02T10:00:00.000Z",
+                sentByMe: true,
+              },
+            ]
+          : [];
+        return Promise.resolve({ ok: true, json: async () => list });
+      }
+      if (init?.method === "POST") {
+        sent = true;
+        return Promise.resolve({ ok: true, json: async () => ({ id: 1 }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(<MessagesPage />);
+    expect(await screen.findByText("Start the conversation")).toBeInTheDocument();
+
+    fireEvent.change(await screen.findByPlaceholderText("Write a message…"), {
+      target: { value: "Hi Daniel!" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByText("You: Hi Daniel!")).toBeInTheDocument();
+    expect(screen.queryByText("Start the conversation")).not.toBeInTheDocument();
+  });
+
   it("sends a message and refreshes the thread", async () => {
     localStorage.setItem("authToken", "token");
     searchParams = new URLSearchParams({ with: OTHER_USER_ID, name: "Daniel K." });
 
     fetchMock.mockImplementation((url: string, init?: RequestInit) => {
-      if (url.includes("/api/messages/inbox")) {
+      if (url.includes("/api/messages/conversations")) {
         return Promise.resolve({ ok: true, json: async () => [] });
       }
       if (init?.method === "POST" && url.includes("/api/messages")) {
@@ -152,7 +219,10 @@ describe("MessagesPage", () => {
   it("does not send on Shift+Enter, leaving room for a newline", async () => {
     localStorage.setItem("authToken", "token");
     searchParams = new URLSearchParams({ with: OTHER_USER_ID, name: "Daniel K." });
-    mockFetchRoutes({ "/api/messages/inbox": [], [`/api/messages/thread/${OTHER_USER_ID}`]: [] });
+    mockFetchRoutes({
+      "/api/messages/conversations": [],
+      [`/api/messages/thread/${OTHER_USER_ID}`]: [],
+    });
 
     render(<MessagesPage />);
 

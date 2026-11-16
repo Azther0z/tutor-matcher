@@ -25,7 +25,7 @@ place.
 2. Let students search and filter tutors, evaluate a specific subject, book one
    continuous 1-1 block from published availability, and pay from wallet balance.
 3. Confirm lessons instantly on payment, deliver them through an attached online meeting
-   link, and complete them automatically so settlement and reviewing can start.
+   link, and let the assigned Tutor confirm completion so settlement and reviewing can start.
 4. Hold all money in one wallet per user — top-ups in, lesson payments out, cleared
    earnings in, refunds in, payouts out — with the transaction ledger as the source of
    truth for every balance.
@@ -49,7 +49,7 @@ certification documents; admin-reviewed public listings; per-tutor subjects; per
 30-minute availability with subject assignment; tutor and subject discovery with
 filters; subject-locked 1-1 booking of a continuous block; wallet top-up by PromptPay,
 wallet-funded lesson payment, earnings, refunds, and payouts for tutors; online lesson
-delivery by meeting link and automatic completion; student ⇄ tutor messaging and
+delivery by meeting link and Tutor-confirmed completion; student ⇄ tutor messaging and
 notification preferences; reviews scoped to a tutor and a subject, with tutor replies
 and flagging; admin queues for applications, moderation, disputes, and account safety.
 
@@ -108,15 +108,18 @@ Guards run before render, not after.
 | `/bookings/:id`            | One booking — payment, confirmation, meeting link, review               | Requires login |
 | `/messages/:id`            | Conversation thread with student ⇄ tutor context switch                 | Requires login |
 | `/wallet`                  | Combined ledger: top-ups, lesson payments, earnings, refunds, payouts   | Requires login |
-| `/wallet/topup`            | Add money by PromptPay QR (Thai mobile-banking QR payment)              | Requires login |
+| `/wallet/topup`            | Add money by PromptPay transfer and slip link, checked by an admin      | Requires login |
 | `/wallet/payout`           | Request a simulated payout to a saved payout account                    | Requires login |
 | `/wallet/transactions/:id` | Read-only transaction detail                                            | Requires login |
 | `/settings/account`        | Email, password, deactivate account                                     | Requires login |
 | `/settings/notifications`  | Per-event email and push preferences                                    | Requires login |
-| `/settings/wallet`         | Balance shortcut and payout account details                             | Requires login |
+| `/settings/wallet`         | Balance shortcut; payout account details for Tutors                     | Requires login |
 | `/settings/tutor`          | Tutor profile — public listing, verification, subjects                  | Role: tutor    |
 | `/reviews/:tutorId`        | Read-only review list for a tutor                                       | Requires login |
 | `/admin/tutor-requests`    | Tutor application queue — approve or reject                             | Role: admin    |
+| `/admin/topups`            | Top-up slip queue — approve or reject                                   | Role: admin    |
+| `/admin/users`             | Search accounts, message users, suspend or ban with a reason            | Role: admin    |
+| `/admin/reviews`           | Flagged reviews — keep, or remove with a reason                         | Role: admin    |
 
 ### Access rules
 
@@ -211,6 +214,12 @@ and Vimeo play inline, video files use a player, other links open separately). A
 is unpublished, has no approved current profile, or does not exist shows an unavailable
 message and none of their details. Messaging stays available to logged-in visitors.
 
+PROF-5 also shows public Teaching experience: the number of Tutor-confirmed COMPLETED
+Bookings and distinct Students with those completed lessons. Students and visitors can
+use this together with published ratings and reviews to evaluate a Tutor. These activity
+counts do not claim to measure teaching quality. Student identities, individual bookings,
+pending/cancelled status counts and earnings remain private to the Tutor dashboard.
+
 **Subject page (`/tutors/:id/:subjectId`).** The bookable unit. It shows that
 subject's description, hourly rate, format, and next opening; a month calendar; a day
 calendar for the selected day; and **only that subject's reviews**.
@@ -258,14 +267,14 @@ student never picks the subject twice. **No booking record exists in this step.*
   back-to-back"_ and the selection restarts from that slot.
 - The summary shows the selected window, the duration, and the price. **Price = number
   of 30-minute slots × hourly rate ÷ 2.**
-- A free-text note — _"What do you want to learn?"_ — is captured for the tutor.
+- The booking form does not collect a free-text learning note. Lessons have no Trial tier.
 - There is no weekly or recurring option, and no way to add another student.
 
 ### Step 2 — Payment due (`/bookings/:id`)
 
 Continuing creates the booking record and its booking number, and opens the booking
 page with the subject, date, time, duration, and price locked. The tutor's slots are
-locked to this booking while payment is outstanding.
+not reserved while payment is outstanding: other Students may select and pay for them.
 
 - Payment is a debit from **wallet balance**, taken on this page. Wallet history never
   accepts payment.
@@ -273,15 +282,19 @@ locked to this booking while payment is outstanding.
   **Top up ฿<shortfall>**, returning the student to this booking afterwards.
 - Creating the pending booking writes no wallet row; the amount due is Booking.totalAmount.
 - Paying atomically deducts the amount, appends one LESSON_PAYMENT row and changes
-  PENDING_PAYMENT to CONFIRMED. Failure leaves the booking and wallet unchanged.
+  PENDING_PAYMENT to CONFIRMED, claiming every open slot in the stored subject/time interval
+  in the same serializable transaction. If any slot is taken, closed or reassigned, payment
+  fails without a debit. Concurrent payers cannot both claim the same slot.
 - Cancelling or expiring an unpaid booking writes no wallet row.
-- If payment never completes, no confirmed booking exists and the slots are released.
+- The existing 15-minute payment deadline expires the request only; it never reserves slots.
+  If payment never completes, no confirmed booking exists.
 
 ### Step 3 — Confirmed
 
-The booking shows the lesson, when, where (Online · Zoom), and the **meeting link**,
-plus what was paid and the payment reference. Actions are Join, Message the tutor, and
-Cancel.
+The booking shows the lesson, when, where (Online), and the meeting link when one is
+available, plus what was paid and the payment reference. When the Tutor has supplied a
+custom link, it is used for the single **Join lesson** action; otherwise the generated
+link is used. A confirmed booking stays confirmed while its link is unavailable.
 
 **There is no tutor accept step.** The tutor published the slot as available, so a paid
 booking is auto-confirmed onto the tutor's schedule. If the slot was taken first, the
@@ -289,8 +302,17 @@ booking is blocked _before_ payment is captured.
 
 ### Step 4 — Completed
 
-The planned completion action atomically changes CONFIRMED to COMPLETED and credits
-the tutor's LESSON_EARNING after the fee; see §4. Completion is not implemented by PAY-1.
+`CONFIRMED` means the lesson is paid and scheduled; it does not mean the session happened.
+At the scheduled end time, a confirmed lesson appears in the Tutor dashboard's separate
+**Needs confirmation** list. The assigned Tutor opens the booking and confirms completion
+in a one-way dialog. The booking then changes to `COMPLETED`. Until the Tutor confirms,
+the booking stays `CONFIRMED` and remains in the list; the system does not complete or
+expire it automatically. While the Student's refund request waits for an admin (PAY-3,
+§4), the Tutor cannot confirm it. CLASS-3 keeps the net earning pending after completion and
+exposes review eligibility only to the booking's Student, provided no review exists.
+It does not credit available balance or write a pending ledger entry. PAY-6 owns
+earnings clearing; REV-1 owns the review form and submission. See the
+[CLASS-3 confirmation](sources/class-3-policy-confirmation.md).
 
 ### Cancellation
 
@@ -313,9 +335,20 @@ See the [BOOK-4 confirmation](sources/book-4-policy-confirmation.md).
 
 ### `/bookings`
 
-Tabs: **All**, **Upcoming** (confirmed and paid), **Payment due** (slots held, booking
-number issued, not yet paid), and **Past** (completed and cancelled). Each row opens
-the booking in its correct state.
+Approved Tutors can switch between **Student** and **Tutor** views; everyone else sees the
+Student view only. Each view has **All**, **Upcoming** (all confirmed and paid lessons,
+including lessons in progress and ended lessons awaiting Tutor confirmation), and **Past**
+(completed and cancelled) tabs. Confirmed lessons show an in-progress or awaiting-completion
+label when appropriate. Tutor rows identify the Student; Student rows identify the Tutor.
+Unpaid booking attempts, including attempts cancelled because payment expired, do not appear in
+this list or in the Tutor's Upcoming classes. The Student continues to the payment detail
+immediately after choosing a time; only successful payment makes the lesson visible in booking
+lists.
+Each row and booking detail show the lesson start and end time in Asia/Bangkok. The booking
+detail heading shows the subject name rather than the booking identifier; Tutor details identify
+the Student and lesson format.
+Bookings can be cancelled under the cancellation policy; rescheduling is not supported.
+There are no Trial labels or separate trial lessons. Each row opens the booking in its correct state.
 
 Related stories: US4-1 … US4-8, US11-1, US11-2.
 
@@ -329,7 +362,7 @@ one balance, not two.
 
 | Movement           | Direction | Where it starts                      |
 | ------------------ | --------- | ------------------------------------ |
-| **Top-up**         | in        | `/wallet/topup` — PromptPay QR       |
+| **Top-up**         | in        | `/wallet/topup` — slip, admin check  |
 | **Lesson payment** | out       | `/bookings/:id` in payment-due state |
 | **Lesson earning** | in        | settlement after a completed lesson  |
 | **Refund**         | in        | eligible cancellation or dispute     |
@@ -339,6 +372,20 @@ one balance, not two.
 earnings this month, and all-time paid out, above one transaction list filterable by
 All / Top-ups / Lesson payments / Lesson earnings / Payouts / Refunds. There are no
 separate Payments and Earnings pages.
+
+PAY-5 details: the available balance is the same stored balance the navbar shows, and
+loading `/wallet` refreshes the navbar with it. Pending earnings, earnings this month and
+all-time paid out (shown as **Total paid out**: every payout sent from the wallet to the
+Tutor's bank account) appear only for Tutors, because only Tutors earn and pay out. For
+the same reason a Student's filter shows only All / Top-ups / Lesson payments / Refunds,
+and a Tutor-only filter in a Student's URL falls back to All.
+Earnings this month sum LESSON_EARNING rows in the current Asia/Bangkok calendar month;
+all-time paid out sums every PAYOUT row. The list is newest first, 20 per page, and keeps
+its filter and page in the URL; each row shows the signed amount and resulting balance and
+opens its detail. Unpaid booking attempts do not appear on the Wallet page; payment remains on the
+booking detail reached immediately after choosing a time. The account menu
+links to `/wallet`. See the [PAY-5 confirmation](sources/pay-5-policy-confirmation.md)
+and the [PAY-5 review comments](sources/pay-5-review-comments.md).
 
 The approved [ledger decision](sources/tutormatcher-wallet-ledger-decision.md) and
 [implementation guide](sources/tutormatcher-wallet-ledger-implementation.md) supersede
@@ -351,20 +398,49 @@ LESSON_PAYMENT and PAYOUT subtract. Entries are never updated or deleted by appl
 flows; failures and zero movements write no entry.
 
 **`/wallet/transactions/:id`** is read-only history of completed movements.
-Unpaid bookings appear only on `/bookings`, not in wallet history.
+Unpaid bookings appear only on `/bookings`, not in wallet history. Only the owner can open
+a transaction; any other id shows "not found". The page shows the type, amount, direction
+(In or Out, derived from the type), status (always Completed), date, resulting balance,
+reference, the related booking (if any) and, for a payout, the masked payout account. It
+has no actions; a lesson payment tells the user that payment is made only on its booking
+page.
 
-**Top-up.** Preset or custom amounts followed by simulated confirmation in PAY-1.
-The QR is a non-payable demonstration, explicitly labelled; do not send real money.
-Success atomically credits balance and appends TOP_UP. Failure writes nothing.
-Retrying the same reference cannot credit twice. Simulation is disabled in production;
-a verified payment provider is required before real-money use.
+**Top-up (PAY-1, slip check since 2026-11-03).** The user picks a preset or custom
+amount, sees a real PromptPay QR with that amount locked and pastes a link to the transfer
+slip. The QR uses the PromptPay ID in the backend's `PROMPTPAY_ID` setting. While that is
+blank it uses the placeholder `0000000000`, which a banking app can scan and show but cannot
+pay. Sending the slip creates a
+pending top-up request and credits nothing. `/admin/topups` lists every request, pending first, and can filter by status. An admin
+opens the slip there and
+approves or rejects it; a rejection needs a reason the user sees, and the amount cannot be
+changed. Approval appends one TOP_UP row whose id is the request id and credits the balance
+in the same serializable transaction, so a request is credited at most once. A user can
+have one pending request at a time. `/wallet/topup` shows the pending request as pending
+approval with its slip link and the recent requests with their status and reason; it has
+no cancel or back button, so a wrong slip waits for an admin to reject it. After a rejection
+the user can send a new request. An admin
+cannot review their own top-up. The same flow runs in development and production; there
+is no simulation. A booking's payment request can expire while a slip waits for review. See
+the [PAY-1 slip confirmation](sources/pay-1-slip-topup-confirmation.md) and the
+[PAY-1 demo feedback](sources/pay-1-demo-feedback.md).
 
-**Lesson earnings (planned, outside PAY-1).** Student confirmation of delivery, or
-automatic completion 24 hours after the lesson ends, credits the tutor's share and
-changes CONFIRMED to COMPLETED atomically. The provisional fee is 15%.
-Pending earnings are computed from CONFIRMED bookings minus the fee; no pending
-ledger row exists. Until settlement, the money is held by the platform for that booking,
-not in the tutor's available wallet.
+**Lesson earnings.** Tutor confirmation leaves earnings pending. The Tutor's net share
+uses the existing 15% fee calculation against the booking's agreed total, with the fee
+rounded to cents per booking. A paid lesson can clear only after the Tutor confirms it
+as COMPLETED and 24 hours have passed since its scheduled end. A pending refund request
+keeps the earning pending after that deadline; rejection preserves the original deadline,
+and approval before clearing means no Tutor earning is credited. Pending earnings include
+CONFIRMED and COMPLETED bookings without a LESSON_EARNING row and leave the calculation
+once cleared. This also applies to existing eligible completed lessons.
+
+Settlement runs for the wallet owner before their balance, summary or transaction history
+is read, and before their wallet is used to pay for a lesson or request a payout. It does
+not run when a booking detail is opened. The Tutor's booking page shows the net amount,
+the time it becomes eligible to clear and its current hold reason; actual credit appears
+the next time the Tutor views or uses the wallet. The Student does not see Tutor earnings.
+There is no pending ledger row or schema field for settlement. This implements the
+[PAY-6 confirmation](sources/pay-6-policy-confirmation.md) and preserves the
+[CLASS-3 confirmation](sources/class-3-policy-confirmation.md).
 
 **Refunds.** Paid cancellation appends REFUND and leaves LESSON_PAYMENT unchanged.
 PAY-1 retains the existing configurable cancellation window and late-refund rate,
@@ -372,6 +448,41 @@ whose approved defaults are 24 hours and 70%. No late-cancellation tutor share i
 The earlier prototype's 12-hour window is superseded for BOOK-3 by the
 [user confirmation](sources/book-3-policy-confirmation.md); late-cancellation allocation
 remains separate work.
+
+**Refund requests (PAY-3).** Once a paid lesson's scheduled end has passed, the Student can
+ask for a refund from `/bookings/:id`, with no deadline, whether or not the Tutor has
+confirmed the lesson. There is no refund request before the lesson ends; the Student
+cancels instead (BOOK-3). One request is allowed per booking. The Student picks **My tutor
+didn't show up**, **The lesson was unsatisfactory** or **Other**; the last two need an
+explanation (up to 1,000 characters), a no-show may add one. Changed on 2026-11-10 after
+review of PR #224: every request now waits for an admin, because a no-show claim cannot be
+verified, and requests open at the lesson end instead of at payment.
+
+- Every request waits for an admin at `/admin/refunds` (pending first, filter by status).
+  Approval refunds the full paid amount as one REFUND row, links that row to the request
+  and changes the booking from `CONFIRMED` or `COMPLETED` to `CANCELLED`, in one
+  serializable transaction. Rejection needs a reason the Student sees on the booking; a
+  lesson that was completed successfully is rejected this way. Neither decision can be
+  undone, and the Student cannot file again. An admin cannot decide a refund for a lesson
+  they booked or taught.
+- The Tutor is notified with a booking update email when a request is filed, after it is
+  saved; a failed email does not fail the request.
+- While a request waits, the Tutor cannot confirm completion and sees **Refund requested**
+  on the booking, with the reason but not the Student's text. After a rejection the Tutor
+  can confirm it as usual.
+- Approving before earnings clear cancels the booking and removes its pending earning.
+  If earnings already cleared, the platform covers the full Student refund and leaves the
+  Tutor's earning untouched, including after payout.
+- A completed lesson may already have a review, and the Student may still publish one while
+  the request waits. Once approval cancels the booking, its review no longer counts: it is
+  left out of tutor and subject ratings, review lists and search ranking, but it is kept,
+  not deleted. A rejected request leaves the review counted. Decided on 2026-11-12 after
+  review of PR #224.
+
+See the [PAY-3 confirmation](sources/pay-3-policy-confirmation.md), the
+[timing change](sources/pay-3-refund-timing-change.md), the
+[PR #224 review decisions](sources/pay-3-review-decisions.md) and the
+[refunded-lesson review decision](sources/pay-3-refunded-review-decision.md).
 
 **Payouts (PAY-7).** A Tutor with available balance can request a payout on
 `/wallet/payout`. Payouts are tutor-only: the server rejects anyone else and the page tells
@@ -385,12 +496,15 @@ nothing. Repeating the same request reference does not pay out twice. The payout
 simulated, labelled "Simulated payout, no real money is transferred", and turned off in
 production like top-up. With no saved payout account the page asks the user to add one in
 Wallet settings. An asynchronous provider would need a separate request table, not a ledger
-status. The full wallet dashboard and lesson completion remain separate work. See the [PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
+status. PAY-6 settles eligible lesson earnings before the Tutor requests a payout. See the
+[PAY-7 confirmation](sources/pay-7-policy-confirmation.md).
 
 **Payout accounts (`/settings/wallet`, PROF-7).** Any logged-in user can open Wallet
-settings from the Settings navigation, not only Tutors (PROF-7). Requesting a payout is tutor-only (PAY-7).
-The page starts with the wallet balance and a **Top up** link to `/wallet/topup`. Below it,
-the user's saved payout accounts are listed with bank, account holder name, masked number
+settings from the Settings navigation. The page starts with the wallet balance and a **Top up**
+link to `/wallet/topup`. Payout accounts are tutor-only, like requesting a payout (PAY-7): a
+user who is not a Tutor sees only the balance and Top up, and the server rejects their payout
+account requests (changed 2026-11-03, see the [tutor-only confirmation](sources/prof-7-tutor-only-confirmation.md)).
+For a Tutor, the saved payout accounts are listed with bank, account holder name, masked number
 (`•••• 1234`). The default has a **Default** badge, the others a **Set default** action,
 and every row has **Remove**, which asks for an inline confirm. An **Add account** form takes a Thai bank from the list, the account
 holder name and a 10 to 15 digit account number (spaces and dashes are ignored). A user can
@@ -408,10 +522,19 @@ Related stories: US5-1 … US5-8, US11-3.
 
 ## 5 · Lesson delivery
 
-A confirmed online booking gets a meeting link, visible to the student on
-`/bookings/:id` and to the tutor in the tutor view of the same booking. The tutor's
+A confirmed online booking shows its effective meeting link on `/bookings/:id` to both
+participants. The assigned Tutor can add, replace, or remove a custom HTTPS link until
+the scheduled lesson end. A custom link takes priority over the generated-link field;
+removing it restores the generated link when one is available. The booking page shows
+the time it was last changed, without a full history. The app offers Join as soon
+as a confirmed booking has a link and until its scheduled end; cancelled and completed
+bookings have no Join action. Links are not checked with their provider. The Tutor's
 view additionally shows the student, the subject, the format, the lesson description
 the student wrote, the duration, and the payout for that class.
+
+Google Meet room creation and its recovery are not implemented in this slice. Until a
+later provider integration replaces the existing generated-link field, a Tutor-provided
+link can be used independently of generated meeting creation.
 
 Joining before the room opens explains when it opens or opens the configured waiting
 room. Planned completion follows the ledger rule in §4: student confirmation or the
@@ -475,19 +598,33 @@ Related stories: US1-4, US9-1.
 **Dashboard (`/dashboard`).** Every logged-in user sees the Student dashboard, including
 Student profile setup and learning links. Only approved Tutors see the Student and Tutor
 tabs; Student accounts and pending applicants never receive Tutor dashboard content. The
-Tutor tab contains **Upcoming classes** (BOOK-4: each class that has not started, with its
-student and time, opening `/bookings/:id`), the availability editor and links to `/settings/tutor`, which owns
-subject and listing management. The navbar keeps **Become a tutor** visible for Student
-accounts and applicants.
+Tutor tab contains **Needs confirmation** (CLASS-2: confirmed lessons at or past their
+scheduled end, opening `/bookings/:id`), **Upcoming classes** (BOOK-4: each class that has not
+started, with its student and time, opening `/bookings/:id`), the availability editor and links
+to `/settings/tutor`, which owns subject and listing management. The navbar keeps
+**Become a tutor** visible for Student accounts and applicants.
 
 **Tutor dashboard (Tutor tab on `/dashboard`).** Ordered by operational priority: compact
 stat cards (classes this week, earnings this month, paid bookings, rating), then the wallet
-and earnings preview, then **Upcoming classes** ("what you need to teach next", each
-with View and Start), then **New paid bookings** ("already confirmed from your
+and earnings preview, then **Needs confirmation** (ended lessons awaiting a Tutor decision),
+then **Upcoming classes** ("what you need to teach next", each with View and Start), then
+**New paid bookings** ("already confirmed from your
 availability"), then subjects, then the availability editor. Long sections scroll
 inside their own card rather than pushing the page. Subject **Update** links to
 `/settings/tutor`, which owns subject editing. The former `/dashboard/tutor` URL redirects
 to `/dashboard?tab=tutor` for existing links and bookmarks.
+
+PROF-5 adds a teaching overview on the Tutor tab only. Classes this week counts confirmed
+and completed Bookings starting Monday–Sunday in Bangkok time; every Booking is one
+lesson regardless of its number of half-hour slots. Completed lessons require the Tutor's
+completion confirmation. Status counts distinguish confirmed, completed, awaiting payment
+and cancelled bookings. Students counts distinct learners with confirmed or completed
+bookings; Students taught counts those with completed lessons. Returning students have
+completed at least two lessons with the Tutor, and their rate uses Students taught as its
+denominator. No completed learners produces an unavailable rate rather than a misleading
+percentage. Rating and review count cover all published reviews across the Tutor's
+Subjects, while Recent reviews shows the latest five. A Tutor with no reviews is Unrated.
+Failures show an error with Refresh overview, rather than zero statistics.
 
 **Tutor profile (`/settings/tutor`).** Available from the shared Settings navigation as
 **Tutor profile**. Published toggle, photo, display name, headline, bio,
@@ -545,7 +682,7 @@ values already overwritten before this feature cannot be recovered.
 30-minute slot they can teach, and
 assigns which subject(s) each open slot covers — so one slot can advertise several
 subjects and a student browsing a subject sees only slots that carry it. Slots already
-attached to a paid booking or an active payment hold are **locked** and cannot be closed
+attached to a paid booking are **locked** and cannot be closed
 or reassigned. Subject assignment uses
 compact toggle boxes that scroll inside their own area. Availability is per date, not a
 recurring weekly pattern. Approved Tutors can manage it while unpublished; publication
@@ -557,7 +694,7 @@ summarizes availability; clicking a date opens its week for slot editing. Tutors
 open any future date, close free future
 slots, and change their subject assignments. An open slot requires at least one owned
 subject. The same Tutor cannot have overlapping slots, including across different subjects.
-Past slots are read-only. Expired payment holds release through the booking lifecycle.
+Past slots are read-only. Pending payment requests do not lock slots; Tutors may still edit them.
 
 Each slot has its own **Save slot** and **Close slot** actions. There is no day or week
 save step. If another edit or booking changes that slot, its save is rejected and its draft
@@ -582,6 +719,11 @@ marker on the Messages navigation link on every other page. A user with both
 capabilities flips the **Student ⇄ Tutor** switch to change which side of their
 conversations they are reading, without leaving the page and without a second account.
 
+The conversation list (`GET /api/messages/conversations`) has one entry for everyone the
+user has written to or heard from, newest first, so a conversation the user started appears
+straight away, before the other person replies. Each entry previews the latest message,
+prefixed **You:** when the user sent it.
+
 Notification preferences (`/settings/notifications`) are a grid of **Email** and **Push**
 per event group: booking updates, lesson reminders (1 hour and 10 minutes before start),
 new messages, wallet and payments, and product news. A disabled event type is skipped at
@@ -595,15 +737,49 @@ Related stories: US7-1 … US7-3, US2-2.
 
 - A review can only be written **from the reviewer's own completed booking** on
   `/bookings/:id`. Attempting to review a lesson that is not completed is blocked.
-- A review carries a star rating (1–5), an optional headline, and text, and is attached
+- A review carries a star rating (1–5), an optional headline (not built yet), and text, and is attached
   to the tutor **and the subject**.
 - `/tutors/:id/:subjectId` shows only that subject's reviews; `/tutors/:id` shows recent
   reviews across subjects with a link to write one from a completed booking.
 - `/reviews/:tutorId` is a read-only list with a rating distribution summary. It never
   accepts a new review.
-- A tutor may reply publicly to a review; the reply appears under it.
+- A tutor may publish one public reply per review; the reply appears under it on the Tutor
+  profile and Subject page. Only the reviewed Tutor sees reply controls, including on the
+  Tutor dashboard. Replies contain 1–2000 characters after trimming. The reviewed Tutor
+  can edit the existing reply; its original publication date is preserved and an Edited
+  marker shows the most recent edit time to all viewers. A stale edit from another tab
+  is rejected rather than silently overwriting a newer reply. If a review is deleted before submission, the draft is preserved and an
+  error explains that the review no longer exists.
 - Any user can flag a review with a reason, which sends it to admin moderation. A
   duplicate flag from the same user is rejected.
+
+**Implemented by REV-3.** A signed-in member sees **Flag** under a review's comment on the
+Tutor profile, the Subject page and the Tutor dashboard's recent reviews. It asks for a reason
+(up to 500 characters) and sends it for admin moderation. The comment stays visible to
+everyone while it waits; the member who flagged it sees a **Flagged** marker instead of the
+button. A member can flag a review once, however many others have flagged it, and a second
+attempt is rejected. Reviews without a comment, refunded reviews and a member's own review
+cannot be flagged. The admin decision is REV-4.
+
+**Implemented by REV-4.** Admins see flagged reviews at `/admin/reviews`, with the comment,
+rating, author, Tutor and subject, and every reporter's reason. A Pending / Decided filter keeps
+past decisions visible. **Keep review** leaves it published and tells each reporter; other
+members can still flag it, which puts it back in the queue. **Remove review** needs a reason and
+removes the whole review from the Tutor profile, Subject page, ratings, search ranking and Tutor
+dashboard. Each reporter is told it was removed, and the author is emailed the reason. The
+author's booking page then says the review was removed and why; each lesson is reviewed once,
+so they cannot write another. One decision covers every pending flag, and a second Admin's
+decision on the same flags is refused.
+
+**Implemented by REV-1.** On `/bookings/:id` of their own `COMPLETED` booking, the
+Student picks 1 to 5 stars and may add a comment (up to 2,000 characters), then
+**Publish review**. The review is published at once for that booking's tutor and
+subject, and shows on the subject page. If an approved refund (PAY-3) later cancels the
+booking, its review stops counting in public ratings, review lists and ranking. One review
+per booking; a Student whose lesson is not completed, or who is not the booking's Student, is refused with the reason shown,
+and so is a rating that is not a whole number from 1 to 5. After publishing, the booking
+page shows **Your review** instead of the form. A headline, editing or deleting a review,
+tutor replies, flags and `/reviews/:tutorId` are not part of REV-1.
 
 Related stories: US8-1 … US8-4.
 
@@ -611,15 +787,48 @@ Related stories: US8-1 … US8-4.
 
 ## 10 · Admin, trust, and safety
 
-| Queue                        | Admin decision                                                    |
-| ---------------------------- | ----------------------------------------------------------------- |
-| Tutor applications           | Approve → tutor capability granted · Reject → applicant told why  |
-| Listing and document changes | Approve → public listing updates · Reject → tutor revises         |
-| Flagged reviews and messages | Keep, hide, or remove, with an audit trail                        |
-| Payment disputes and refunds | Resolve, and the wallet ledger reflects the decision              |
-| Policy violations            | Suspend or ban; protected actions are blocked with a reason shown |
+| Queue                        | Admin decision                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------ |
+| Tutor applications           | Approve → tutor capability granted · Reject → applicant told why                                 |
+| Listing and document changes | Approve → public listing updates · Reject → tutor revises                                        |
+| Flagged reviews and messages | Reviews: keep, or remove the whole review, with an audit trail (REV-4) · Messages: not built yet |
+| Payment disputes and refunds | `/admin/refunds`: approve a full refund or reject with a reason                                  |
+| Policy violations            | Suspend or ban; protected actions are blocked with a reason shown                                |
 
 Related stories: US9-1 … US9-5.
+
+**Payment disputes (SAFE-4, [#175](https://github.com/Azther0z/tutor-matcher/issues/175)).** A
+payment dispute is the PAY-3 refund request; SAFE-4 adds no new behaviour. The Student disputes a
+paid lesson after its scheduled end, and an Admin resolves it at `/admin/refunds`. Approval
+appends exactly one `REFUND` row for the full paid amount, linked to the request and the
+cancelled booking; rejection, with a reason the Student sees, leaves the ledger unchanged. Earlier
+rows are never edited, a resolved dispute cannot be resolved again, and the request keeps the
+deciding Admin and time, so every money movement traces back to the decision.
+
+**User management (`/admin/users`, [SAFE-1 #172](https://github.com/Azther0z/tutor-matcher/issues/172)).**
+The Admin account menu links to **Users**. Search matches every typed word against first
+or last name, case-insensitively, with literal `%` and `_` characters. Results are paged
+20 at a time. **All** includes every account; **Tutor** selects accounts with the approved
+Tutor capability; **Student** selects accounts without that capability. This filter does
+not create separate accounts or remove a Tutor's Student capability.
+
+Selecting an account shows its status and administration history, with **Message** opening
+the existing conversation page. **Suspend** and **Ban** require confirmation and a trimmed
+reason of at most 500 characters. Suspensions last 1, 7 or 30 days; bans have no end date.
+The Admin cannot restrict their own account or another Admin. A duplicate ban is rejected;
+an active suspension cannot be repeated, but can be escalated to a ban.
+
+Each successful action records the Admin, reason, creation time and suspension end, and
+emails the reason to the affected user regardless of notification preferences. Email failure
+is logged without undoing the action. A restricted Tutor's listing becomes unpublished;
+existing bookings remain. Login and protected API requests reject an active restriction with
+its reason, including tokens issued before the action. The frontend checks open sessions
+again on navigation and shows the reason on the login page. A suspension ends at its stored
+end time without a scheduled job; the Tutor must publish their listing again after access
+returns. Public pages remain accessible as public pages.
+
+Search and account-detail failures offer a retry. A pending restriction disables repeat
+submission and dialog dismissal; a failed request preserves the reason for retry.
 
 ---
 

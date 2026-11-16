@@ -49,6 +49,7 @@ function validate(bankCode: string, accountHolderName: string, accountNumber: st
 function WalletSettings() {
   const [balance, setBalance] = useState<string | null>(null);
   const [balanceError, setBalanceError] = useState<string | null>(null);
+  const [tutor, setTutor] = useState(false);
   const [showPayoutLink, setShowPayoutLink] = useState(false);
   const [accounts, setAccounts] = useState<PayoutAccount[] | null>(null);
   const [banks, setBanks] = useState<PayoutBank[]>([]);
@@ -69,18 +70,27 @@ function WalletSettings() {
     getWallet()
       .then((wallet) => setBalance(wallet.balance))
       .catch(() => setBalanceError("Could not load your wallet balance."));
-    // A failed check still shows the link; the payout page checks again and explains.
+    const showLoadError = () =>
+      setLoadError("We could not load your payout accounts. Please refresh and try again.");
+    // Only Tutors are paid out, so only Tutors see payout accounts.
     isTutor()
-      .then(setShowPayoutLink)
-      .catch(() => setShowPayoutLink(true));
-    Promise.all([getPayoutAccounts(), getPayoutBanks()])
-      .then(([savedAccounts, bankList]) => {
-        setAccounts(savedAccounts);
-        setBanks(bankList);
+      .then((isApprovedTutor) => {
+        setTutor(isApprovedTutor);
+        setShowPayoutLink(isApprovedTutor);
+        if (!isApprovedTutor) return;
+        return Promise.all([getPayoutAccounts(), getPayoutBanks()]).then(
+          ([savedAccounts, bankList]) => {
+            setAccounts(savedAccounts);
+            setBanks(bankList);
+          },
+          showLoadError
+        );
       })
-      .catch(() =>
-        setLoadError("We could not load your payout accounts. Please refresh and try again.")
-      );
+      .catch(() => {
+        // A failed check still shows the link; the payout page checks again and explains.
+        setShowPayoutLink(true);
+        showLoadError();
+      });
   }, []);
 
   async function run(
@@ -142,7 +152,9 @@ function WalletSettings() {
           </p>
           <h1 className="text-4xl font-semibold tracking-tight">Wallet settings</h1>
           <p className="max-w-2xl text-base leading-7 text-zinc-600 dark:text-zinc-400">
-            Choose the bank accounts your wallet balance is paid out to.
+            {tutor
+              ? "Choose the bank accounts your wallet balance is paid out to."
+              : "Check your wallet balance and top up."}
           </p>
         </div>
 

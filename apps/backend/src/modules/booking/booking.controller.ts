@@ -3,6 +3,7 @@ import {
   BookingDomainError,
   cancelBooking,
   cancelBookingAsTutor,
+  confirmBookingCompletionAsTutor,
   confirmBookingPayment,
   createBooking,
   getBooking,
@@ -11,13 +12,15 @@ import {
   getTutorCancellationQuote,
   listBookings,
   listTutorUpcomingBookings,
-  rescheduleBooking,
+  listTutorBookingsNeedingConfirmation,
+  updateBookingMeetingLink,
 } from "./booking.service.ts";
 import type {
+  BookingListQuery,
   CancelBookingInput,
   CreateBookingInput,
-  RescheduleBookingInput,
   TutorCancelBookingInput,
+  UpdateMeetingLinkInput,
 } from "./booking.schema.ts";
 
 async function sendError(error: unknown, res: Response) {
@@ -69,7 +72,9 @@ export async function detail(req: Request, res: Response) {
 
 export async function list(req: Request, res: Response) {
   try {
-    res.json({ bookings: await listBookings(req.user!.sub) });
+    res.json({
+      bookings: await listBookings(req.user!.sub, req.query as unknown as BookingListQuery),
+    });
   } catch (error) {
     await sendError(error, res);
   }
@@ -83,13 +88,13 @@ export async function confirmPayment(req: Request, res: Response) {
   }
 }
 
-export async function reschedule(req: Request, res: Response) {
+export async function updateMeetingLink(req: Request, res: Response) {
   try {
     res.json({
-      booking: await rescheduleBooking(
+      booking: await updateBookingMeetingLink(
         req.user!.sub,
         req.params.id as string,
-        req.body as RescheduleBookingInput
+        (req.body as UpdateMeetingLinkInput).customMeetingUrl
       ),
     });
   } catch (error) {
@@ -118,6 +123,24 @@ export async function cancel(req: Request, res: Response) {
 export async function tutorUpcoming(req: Request, res: Response) {
   try {
     res.json({ bookings: await listTutorUpcomingBookings(req.user!.sub) });
+  } catch (error) {
+    await sendError(error, res);
+  }
+}
+
+export async function tutorNeedsConfirmation(req: Request, res: Response) {
+  try {
+    res.json({ bookings: await listTutorBookingsNeedingConfirmation(req.user!.sub) });
+  } catch (error) {
+    await sendError(error, res);
+  }
+}
+
+export async function tutorConfirmCompletion(req: Request, res: Response) {
+  try {
+    res.json({
+      booking: await confirmBookingCompletionAsTutor(req.user!.sub, req.params.id as string),
+    });
   } catch (error) {
     await sendError(error, res);
   }

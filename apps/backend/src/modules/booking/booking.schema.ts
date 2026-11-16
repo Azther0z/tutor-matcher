@@ -1,3 +1,4 @@
+import { URL } from "node:url";
 import { z } from "zod";
 
 const availabilityIds = z
@@ -9,14 +10,29 @@ const availabilityIds = z
 
 export const subjectIdParamsSchema = z.object({ subjectId: z.uuid() });
 export const bookingIdParamsSchema = z.object({ id: z.uuid() });
+export const bookingListQuerySchema = z.object({
+  role: z.enum(["STUDENT", "TUTOR"]).default("STUDENT"),
+});
 // BOOK-1 accepts the chosen subject, slots, and an optional learning goal.
 export const createBookingSchema = z.object({
   subjectId: z.uuid(),
   availabilityIds,
   description: z.string().trim().max(2000).optional(),
-  isTrial: z.boolean().default(true),
+  isTrial: z.boolean().default(false),
 });
-export const rescheduleBookingSchema = z.object({ availabilityIds });
+export const updateMeetingLinkSchema = z.object({
+  customMeetingUrl: z
+    .url()
+    .max(2048)
+    .refine((value) => {
+      try {
+        return new URL(value).protocol === "https:";
+      } catch {
+        return false;
+      }
+    }, "Meeting link must use HTTPS")
+    .nullable(),
+});
 // BOOK-3 allows the student to optionally record why the lesson was cancelled.
 export const cancelBookingSchema = z.object({
   reason: z.string().trim().max(500).optional(),
@@ -35,6 +51,7 @@ export const tutorCancelBookingSchema = z.object({
 });
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
-export type RescheduleBookingInput = z.infer<typeof rescheduleBookingSchema>;
+export type BookingListQuery = z.infer<typeof bookingListQuerySchema>;
+export type UpdateMeetingLinkInput = z.infer<typeof updateMeetingLinkSchema>;
 export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;
 export type TutorCancelBookingInput = z.infer<typeof tutorCancelBookingSchema>;

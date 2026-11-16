@@ -9,7 +9,10 @@ const sendMessageNotificationEmail = jest.fn<(args: unknown) => Promise<void>>()
 const sendPaymentNotificationEmail = jest.fn<(args: unknown) => Promise<void>>();
 
 jest.unstable_mockModule("../../lib/db.ts", () => ({
-  prisma: { user: { findUnique: userFindUnique, update: userUpdate } },
+  prisma: {
+    user: { findUnique: userFindUnique, update: userUpdate },
+    accountAction: { findFirst: async () => null },
+  },
 }));
 
 jest.unstable_mockModule("../../lib/email.ts", () => ({
@@ -21,6 +24,8 @@ jest.unstable_mockModule("../../lib/email.ts", () => ({
   sendMessageNotificationEmail,
   sendPaymentNotificationEmail,
   sendTutorRejectionEmail: jest.fn(),
+  sendAccountActionEmail: jest.fn(),
+  sendReviewModerationEmail: jest.fn(),
 }));
 
 const { app } = await import("../../app.ts");

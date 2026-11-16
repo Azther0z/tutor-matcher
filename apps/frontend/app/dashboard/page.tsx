@@ -2,7 +2,9 @@
 
 import { RequireAuth } from "@/src/components/require-auth";
 import { TutorAvailabilityEditor } from "@/src/components/tutor-availability-editor";
+import { TutorNeedsConfirmation } from "@/src/components/tutor-needs-confirmation";
 import { TutorUpcomingClasses } from "@/src/components/tutor-upcoming-classes";
+import { TutorDashboardStats } from "@/src/components/tutor-dashboard-stats";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -240,6 +242,8 @@ export default function DashboardPage() {
                 Manage subjects and listing
               </Link>
             </div>
+            {activeTab === "tutor" && <TutorDashboardStats />}
+            <TutorNeedsConfirmation />
             <TutorUpcomingClasses />
             <TutorAvailabilityEditor />
           </section>

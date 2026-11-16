@@ -93,10 +93,12 @@ export async function tutorApi<T>(path: string, options: RequestInit = {}): Prom
     errorMessage: "Could not complete the request. Please try again.",
     makeError: ({ body, response }) => {
       if (response.ok) return new Error("The server returned an empty response. Please refresh.");
-      const serverMessage = (body as { message?: unknown } | null)?.message;
+      const failure = body as { message?: unknown; code?: string } | null;
+      const serverMessage = failure?.message;
       const message = Array.isArray(serverMessage) ? serverMessage.join(" ") : serverMessage;
+      // SAFE-1: a suspended or banned account is told why, not just that it is refused.
       return new TutorApiError(
-        response.status === 403
+        response.status === 403 && failure?.code !== "ACCOUNT_RESTRICTED"
           ? "You do not have permission to perform this action."
           : typeof message === "string"
             ? message

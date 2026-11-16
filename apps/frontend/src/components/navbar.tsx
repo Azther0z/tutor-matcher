@@ -206,6 +206,13 @@ export function Navbar() {
                     Signed in as <strong className="text-zinc-200">{displayName(user)}</strong>
                   </p>
                   <Link
+                    href="/wallet"
+                    onClick={() => setMenuOpen(false)}
+                    className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
+                  >
+                    Wallet
+                  </Link>
+                  <Link
                     href="/settings/account"
                     onClick={() => setMenuOpen(false)}
                     className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
@@ -213,12 +220,48 @@ export function Navbar() {
                     Settings
                   </Link>
                   {user.isAdmin && (
+                    <>
+                      <Link
+                        href="/admin/tutor-requests"
+                        onClick={() => setMenuOpen(false)}
+                        className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
+                      >
+                        Tutor requests
+                      </Link>
+                      <Link
+                        href="/admin/users"
+                        onClick={() => setMenuOpen(false)}
+                        className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
+                      >
+                        Users
+                      </Link>
+                    </>
+                  )}
+                  {user.isAdmin && (
                     <Link
-                      href="/admin/tutor-requests"
+                      href="/admin/topups"
                       onClick={() => setMenuOpen(false)}
                       className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
                     >
-                      Tutor requests
+                      Top-up requests
+                    </Link>
+                  )}
+                  {user.isAdmin && (
+                    <Link
+                      href="/admin/refunds"
+                      onClick={() => setMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
+                    >
+                      Refund requests
+                    </Link>
+                  )}
+                  {user.isAdmin && (
+                    <Link
+                      href="/admin/reviews"
+                      onClick={() => setMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-sm text-zinc-200 hover:bg-[#202020] hover:text-white"
+                    >
+                      Flagged reviews
                     </Link>
                   )}
                   <div className="my-2 border-t border-zinc-700" />

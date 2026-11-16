@@ -1,6 +1,6 @@
 import { Prisma, type PayoutAccount } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
-import { isTransactionConflict } from "../../lib/transaction-conflict.ts";
+import { runSerializable } from "../../lib/serializable.ts";
 import type { CreatePayoutAccountInput } from "./payout-account.schema.ts";
 import { maskAccountNumber, payoutBankName } from "./payout-banks.ts";
 
@@ -41,20 +41,13 @@ function notFound() {
   return new PayoutAccountDomainError("PAYOUT_ACCOUNT_NOT_FOUND", "Payout account not found", 404);
 }
 
-// The one-default index can reject a concurrent change, so retry like confirmTopup.
-async function inSerializableTransaction(work: (tx: Prisma.TransactionClient) => Promise<void>) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      return await prisma.$transaction(work, {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-      });
-    } catch (error) {
-      const code = (error as { code?: string }).code;
-      if (attempt < 2 && (isTransactionConflict(error) || code === "P2002")) continue;
-      throw error;
-    }
-  }
-  throw new PayoutAccountDomainError("PAYOUT_ACCOUNT_RETRY", "Please try again in a moment", 409);
+// The one-default index can reject a concurrent change, so a unique violation is retried too.
+function inSerializableTransaction(work: (tx: Prisma.TransactionClient) => Promise<void>) {
+  return runSerializable(work, {
+    retryOnUniqueViolation: true,
+    retryError: () =>
+      new PayoutAccountDomainError("PAYOUT_ACCOUNT_RETRY", "Please try again in a moment", 409),
+  });
 }
 
 export async function createPayoutAccount(userId: string, input: CreatePayoutAccountInput) {

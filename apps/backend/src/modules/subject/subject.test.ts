@@ -19,7 +19,7 @@ const transaction = jest.fn<
   (callback: (client: typeof tx) => Promise<unknown>, options?: unknown) => Promise<unknown>
 >(async (callback) => callback(tx));
 jest.unstable_mockModule("../../lib/db.ts", () => ({
-  prisma: { ...tx, $transaction: transaction },
+  prisma: { ...tx, accountAction: { findFirst: async () => null }, $transaction: transaction },
 }));
 const { app } = await import("../../app.ts");
 const { signAuthToken } = await import("../../lib/jwt.ts");

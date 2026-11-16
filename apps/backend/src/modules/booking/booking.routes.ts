@@ -7,20 +7,25 @@ import {
   create,
   detail,
   list,
-  reschedule,
   subjectAvailability,
   tutorCancel,
+  tutorConfirmCompletion,
+  tutorNeedsConfirmation,
   tutorCancellationQuote,
   tutorUpcoming,
+  updateMeetingLink,
 } from "./booking.controller.ts";
 import {
   bookingIdParamsSchema,
+  bookingListQuerySchema,
   cancelBookingSchema,
   createBookingSchema,
-  rescheduleBookingSchema,
   subjectIdParamsSchema,
   tutorCancelBookingSchema,
+  updateMeetingLinkSchema,
 } from "./booking.schema.ts";
+import { requestRefund } from "../refund/refund.controller.ts";
+import { createRefundRequestSchema } from "../refund/refund.schema.ts";
 
 export const bookingRouter = Router();
 // BOOK-1 endpoints: browse availability, create a booking, view it, and pay.
@@ -29,9 +34,10 @@ bookingRouter.get(
   validate(subjectIdParamsSchema, "params"),
   subjectAvailability
 );
-bookingRouter.get("/", list);
+bookingRouter.get("/", validate(bookingListQuerySchema, "query"), list);
 // BOOK-4: the tutor's upcoming classes; registered before /:id so "tutor" is never read as an id.
 bookingRouter.get("/tutor/upcoming", tutorUpcoming);
+bookingRouter.get("/tutor/needs-confirmation", tutorNeedsConfirmation);
 bookingRouter.post("/", validate(createBookingSchema), create);
 bookingRouter.get("/:id", validate(bookingIdParamsSchema, "params"), detail);
 bookingRouter.get(
@@ -44,12 +50,17 @@ bookingRouter.post(
   validate(bookingIdParamsSchema, "params"),
   confirmPayment
 );
-// BOOK-3 endpoints: reschedule or cancel an existing student booking.
-bookingRouter.patch(
-  "/:id/reschedule",
+bookingRouter.post(
+  "/:id/confirm-completion",
   validate(bookingIdParamsSchema, "params"),
-  validate(rescheduleBookingSchema),
-  reschedule
+  tutorConfirmCompletion
+);
+// BOOK-3 endpoints: cancel an existing student booking.
+bookingRouter.patch(
+  "/:id/meeting-link",
+  validate(bookingIdParamsSchema, "params"),
+  validate(updateMeetingLinkSchema),
+  updateMeetingLink
 );
 bookingRouter.post(
   "/:id/cancel",
@@ -68,4 +79,11 @@ bookingRouter.post(
   validate(bookingIdParamsSchema, "params"),
   validate(tutorCancelBookingSchema),
   tutorCancel
+);
+// PAY-3: the Student asks for a refund after the lesson's scheduled end.
+bookingRouter.post(
+  "/:id/refund-request",
+  validate(bookingIdParamsSchema, "params"),
+  validate(createRefundRequestSchema),
+  requestRefund
 );

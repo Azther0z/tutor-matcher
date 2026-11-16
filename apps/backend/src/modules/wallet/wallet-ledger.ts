@@ -9,13 +9,20 @@ export class InsufficientWalletBalance extends Error {
   }
 }
 
-const signs: Record<WalletTransactionType, 1 | -1> = {
+// PAY-5 reads direction from the same map, because the ledger stores no direction.
+export const walletTransactionSigns: Record<WalletTransactionType, 1 | -1> = {
   TOP_UP: 1,
   LESSON_EARNING: 1,
   REFUND: 1,
   LESSON_PAYMENT: -1,
   PAYOUT: -1,
 };
+
+export const PLATFORM_FEE_RATE = new Prisma.Decimal("0.15");
+
+export function tutorShare(totalAmount: Prisma.Decimal) {
+  return totalAmount.minus(totalAmount.times(PLATFORM_FEE_RATE).toDecimalPlaces(2));
+}
 
 // The caller must supply a serializable transaction covering the business state change too.
 // This is the only runtime writer of User.balance. Ledger entries are append-only.
@@ -35,7 +42,7 @@ export async function appendWalletMovement(
     throw new Error("Wallet amounts must be non-negative finite values with at most two decimals");
   }
   if (amount.isZero()) return null;
-  const debit = signs[input.type] === -1;
+  const debit = walletTransactionSigns[input.type] === -1;
   const updated = await tx.user.updateMany({
     where: { id: input.userId, ...(debit ? { balance: { gte: amount } } : {}) },
     data: { balance: debit ? { decrement: amount } : { increment: amount } },

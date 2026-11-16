@@ -189,13 +189,13 @@ Index: `learning_area_id`. The one-to-three limit is enforced by the subject API
 
 ### availabilities
 
-| Column          | Type      | Constraints                                        | Notes                                     |
-| --------------- | --------- | -------------------------------------------------- | ----------------------------------------- |
-| availability_id | UUID      | PK                                                 |                                           |
-| started_at      | TIMESTAMP | NOT NULL                                           | Start of a 30-minute slot                 |
-| tutor_id        | UUID      | NOT NULL, FK → tutors.tutor_id, ON DELETE RESTRICT | Explicit slot owner                       |
-| is_open         | BOOLEAN   | NOT NULL, DEFAULT true                             | Tutor permits new bookings when true      |
-| booking_id      | UUID      | NULL, FK → bookings.booking_id, ON DELETE SET NULL | Set = locked to a booking or payment hold |
+| Column          | Type      | Constraints                                        | Notes                                                                  |
+| --------------- | --------- | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| availability_id | UUID      | PK                                                 |                                                                        |
+| started_at      | TIMESTAMP | NOT NULL                                           | Start of a 30-minute slot                                              |
+| tutor_id        | UUID      | NOT NULL, FK → tutors.tutor_id, ON DELETE RESTRICT | Explicit slot owner                                                    |
+| is_open         | BOOLEAN   | NOT NULL, DEFAULT true                             | Tutor permits new bookings when true                                   |
+| booking_id      | UUID      | NULL, FK → bookings.booking_id, ON DELETE SET NULL | Set = claimed by a paid booking; pending requests do not reserve slots |
 
 PROF-3 adds a unique `(tutor_id, started_at)` constraint and retains the `booking_id` index.
 The application enforces Bangkok-local :00/:30 starts, so unique Tutor/start also prevents
@@ -216,24 +216,32 @@ subject page show subject-filtered availability.
 
 ### bookings
 
-| Column              | Type          | Constraints                                            | Notes                                                        |
-| ------------------- | ------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
-| booking_id          | UUID          | PK                                                     |                                                              |
-| description         | TEXT          | NULL                                                   | The student's "what do you want to learn" note               |
-| zoom_meeting_url    | TEXT          | NULL                                                   | Meeting link for the lesson                                  |
-| created_at          | TIMESTAMP     | NOT NULL, DEFAULT now()                                |                                                              |
-| user_id             | UUID          | NOT NULL, FK → users.user_id, ON DELETE RESTRICT       | The student                                                  |
-| subject_id          | UUID          | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Identifies the tutor through the subject                     |
-| status              | BookingStatus | NOT NULL, DEFAULT `PENDING_PAYMENT`                    | `PENDING_PAYMENT`, `CONFIRMED`, `COMPLETED`, `CANCELLED`     |
-| started_at          | TIMESTAMP     | NOT NULL                                               | Agreed first-slot start                                      |
-| ended_at            | TIMESTAMP     | NOT NULL                                               | Agreed last-slot end                                         |
-| total_amount        | NUMERIC(12,2) | NOT NULL                                               | Agreed price                                                 |
-| payment_expires_at  | TIMESTAMP     | NULL                                                   | Active payment-hold deadline                                 |
-| cancelled_at        | TIMESTAMP     | NULL                                                   | Cancellation time                                            |
-| cancellation_reason | TEXT          | NULL                                                   | Cancellation reason                                          |
-| is_trial            | BOOLEAN       | NOT NULL, DEFAULT true                                 | Existing booking API field; no trial flow is added by PROF-3 |
+| Column                  | Type          | Constraints                                            | Notes                                                                               |
+| ----------------------- | ------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| booking_id              | UUID          | PK                                                     |                                                                                     |
+| description             | TEXT          | NULL                                                   | The student's "what do you want to learn" note                                      |
+| zoom_meeting_url        | TEXT          | NULL                                                   | Existing generated-link fallback field                                              |
+| custom_meeting_url      | TEXT          | NULL                                                   | Tutor-provided override; takes precedence when present                              |
+| meeting_link_updated_at | TIMESTAMP     | NULL                                                   | Time the Tutor last set or removed a custom link                                    |
+| created_at              | TIMESTAMP     | NOT NULL, DEFAULT now()                                |                                                                                     |
+| user_id                 | UUID          | NOT NULL, FK → users.user_id, ON DELETE RESTRICT       | The student                                                                         |
+| subject_id              | UUID          | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Identifies the tutor through the subject                                            |
+| status                  | BookingStatus | NOT NULL, DEFAULT `PENDING_PAYMENT`                    | `PENDING_PAYMENT`, `CONFIRMED`, `COMPLETED`, `CANCELLED`                            |
+| started_at              | TIMESTAMP     | NOT NULL                                               | Agreed first-slot start                                                             |
+| ended_at                | TIMESTAMP     | NOT NULL                                               | Agreed last-slot end                                                                |
+| total_amount            | NUMERIC(12,2) | NOT NULL                                               | Agreed price                                                                        |
+| payment_expires_at      | TIMESTAMP     | NULL                                                   | Payment-request expiry (does not reserve slots)                                     |
+| cancelled_at            | TIMESTAMP     | NULL                                                   | Cancellation time                                                                   |
+| cancellation_reason     | TEXT          | NULL                                                   | Cancellation reason                                                                 |
+| is_trial                | BOOLEAN       | NOT NULL, DEFAULT true                                 | Legacy compatibility field; new bookings explicitly store false, with no Trial tier |
 
 Indexes: `user_id`, `subject_id`.
+
+When a custom link is set or removed, its update timestamp is refreshed; previous
+values are not retained as a history. The current effective link is
+`custom_meeting_url` when non-NULL, otherwise `zoom_meeting_url`. Google Meet room
+creation is deferred, so `zoom_meeting_url` remains the current generated-link field in
+the application schema for now.
 
 PROF-6 also adds the following nullable subject snapshot columns to `bookings`:
 
@@ -252,9 +260,9 @@ first subject edit. Values overwritten before this feature are not reconstructib
 
 BOOK-4 also adds a nullable column to `bookings` saying who cancelled:
 
-| Column       | Type               | Purpose                                                      |
-| ------------ | ------------------ | ------------------------------------------------------------ |
-| cancelled_by | BookingCancelledBy | `STUDENT` or `TUTOR`; NULL for payment-hold expiry and older |
+| Column       | Type               | Purpose                                                                                 |
+| ------------ | ------------------ | --------------------------------------------------------------------------------------- |
+| cancelled_by | BookingCancelledBy | `STUDENT` or `TUTOR`; NULL for payment-hold expiry, an approved PAY-3 refund, and older |
 
 ### wallet_transactions
 
@@ -286,9 +294,11 @@ Refunds append a new row without changing the lesson payment. BookingStatus is u
 The booking API's legacy `payment.status` is derived presentation compatibility, not
 a stored ledger status.
 
-PAY-1 implements simulated TOP_UP plus existing LESSON_PAYMENT/REFUND paths.
-LESSON_EARNING is an enum value for separate future work. The wallet
-dashboard and calculated pending earnings are not implemented by this change.
+PAY-1 writes TOP_UP when an admin approves a top-up request (the row id is the request id),
+plus the existing LESSON_PAYMENT/REFUND paths. PAY-6 appends LESSON_EARNING after Tutor
+completion and the 24-hour hold from scheduled end, unless a refund request is pending.
+Settlement uses the shared serializable wallet writer before the owner's wallet is read
+or used; no pending ledger row or additional schema field is stored.
 
 PAY-7 writes PAYOUT rows for simulated payouts and adds a nullable column saying where
 each payout was sent. The debit and the row commit in one serializable transaction.
@@ -300,10 +310,58 @@ each payout was sent. The debit and the row commit in one serializable transacti
 Do not synchronize an existing populated database with an unattended destructive
 `db push`. See [safe rollout](change/pay-1-wallet-ledger/design.md).
 
+### topup_requests
+
+PAY-1 keeps each top-up here until an admin checks its transfer slip (since 2026-11-03).
+
+| Column           | Type          | Constraints                              | Meaning                                    |
+| ---------------- | ------------- | ---------------------------------------- | ------------------------------------------ |
+| topup_request_id | UUID          | PK                                       | Prisma `id`; also the TOP_UP row id        |
+| amount           | DECIMAL(12,2) | NOT NULL                                 | Requested amount, 0.01 to 100,000          |
+| slip_url         | TEXT          | NOT NULL                                 | HTTP(S) link to the transfer slip          |
+| status           | ENUM          | NOT NULL, DEFAULT PENDING                | PENDING, APPROVED or REJECTED              |
+| created_at       | TIMESTAMP     | NOT NULL, DEFAULT now()                  | When the slip was sent                     |
+| reviewed_at      | TIMESTAMP     | NULL                                     | When an admin approved or rejected it      |
+| rejection_reason | TEXT          | NULL                                     | Required on rejection, shown to the user   |
+| user_id          | UUID          | NOT NULL, FK → users, ON DELETE RESTRICT | Requester                                  |
+| reviewed_by_id   | UUID          | NULL, FK → users, ON DELETE RESTRICT     | Admin who reviewed it; never the requester |
+
+Partial unique index `topup_requests_one_pending_per_user` on `(user_id) WHERE status =
+'PENDING'` allows one pending request per user. Indexes: `(user_id, created_at)` and
+`(status, created_at)`. Approval changes the status from PENDING and appends the TOP_UP row
+in one serializable transaction, so a request is credited at most once. Rows are never
+deleted.
+
+### refund_requests
+
+PAY-3 keeps a Student's request for a refund after a lesson's scheduled end.
+
+| Column                | Type                | Constraints                                                | Meaning                                               |
+| --------------------- | ------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| refund_request_id     | UUID                | PK                                                         | Prisma `id`                                           |
+| reason                | RefundRequestReason | NOT NULL                                                   | `TUTOR_NO_SHOW`, `UNSATISFACTORY_LESSON` or `OTHER`   |
+| details               | TEXT                | NULL                                                       | Student's explanation; required unless a no-show      |
+| amount                | DECIMAL(12,2)       | NOT NULL                                                   | The booking's LESSON_PAYMENT amount, refunded in full |
+| status                | RefundRequestStatus | NOT NULL, DEFAULT PENDING                                  | PENDING, APPROVED or REJECTED                         |
+| created_at            | TIMESTAMP           | NOT NULL, DEFAULT now()                                    | When the Student filed it                             |
+| reviewed_at           | TIMESTAMP           | NULL                                                       | When it was approved or rejected                      |
+| rejection_reason      | TEXT                | NULL                                                       | Required on rejection, shown to the Student           |
+| booking_id            | UUID                | NOT NULL, UNIQUE, FK → bookings, ON DELETE RESTRICT        | One request per booking                               |
+| user_id               | UUID                | NOT NULL, FK → users, ON DELETE RESTRICT                   | The Student                                           |
+| reviewed_by_id        | UUID                | NULL, FK → users, ON DELETE RESTRICT                       | Deciding admin; NULL while pending                    |
+| wallet_transaction_id | UUID                | NULL, UNIQUE, FK → wallet_transactions, ON DELETE RESTRICT | The REFUND row an approval appended                   |
+
+Indexes: `(user_id, created_at)` and `(status, created_at)`. Every request is filed
+PENDING after the lesson's scheduled end. Approval appends one REFUND row for `amount`,
+stores its id in `wallet_transaction_id` and changes the booking from `CONFIRMED` or
+`COMPLETED` to `CANCELLED` in the same serializable transaction; the `(booking_id, type)`
+unique key on `wallet_transactions` also limits a booking to one REFUND. Rows are never
+deleted.
+
 ### payout_accounts
 
-PROF-7 adds each user's saved Thai bank accounts for payouts. Any user can have them, not
-only Tutors.
+PROF-7 adds each Tutor's saved Thai bank accounts for payouts. Only Tutors can manage them
+(changed 2026-11-03); the rows still reference `users`, not `tutors`.
 
 | Column              | Type      | Constraints                              | Meaning                                                  |
 | ------------------- | --------- | ---------------------------------------- | -------------------------------------------------------- |
@@ -325,21 +383,67 @@ be edited; the user removes one and adds it again.
 
 ### reviews
 
-| Column       | Type      | Constraints                                            | Notes                            |
-| ------------ | --------- | ------------------------------------------------------ | -------------------------------- |
-| review_id    | SERIAL    | PK                                                     |                                  |
-| rating_stars | INT       | NOT NULL, CHECK BETWEEN 1 AND 5                        | `reviews_rating_stars_range`     |
-| text         | TEXT      | NULL                                                   |                                  |
-| created_at   | TIMESTAMP | NOT NULL, DEFAULT now()                                |                                  |
-| user_id      | INT       | NOT NULL, FK → users.user_id, ON DELETE RESTRICT       | The reviewing student            |
-| subject_id   | INT       | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT | Makes reviews subject-scoped     |
-| booking_id   | INT       | NOT NULL, FK → bookings.booking_id, ON DELETE RESTRICT | Reviews originate from a booking |
+| Column          | Type      | Constraints                                                    | Notes                                                     |
+| --------------- | --------- | -------------------------------------------------------------- | --------------------------------------------------------- |
+| review_id       | UUID      | PK                                                             | Prisma `id`                                               |
+| rating_stars    | INT       | NOT NULL                                                       | 1 to 5, enforced by the REV-1 API only                    |
+| text            | TEXT      | NULL                                                           |                                                           |
+| reply_text      | TEXT      | NULL                                                           | One public reply by the reviewed Tutor                    |
+| replied_at      | TIMESTAMP | NULL                                                           | Written together with reply_text                          |
+| reply_edited_at | TIMESTAMP | NULL                                                           | Latest actual text edit; original replied_at is preserved |
+| created_at      | TIMESTAMP | NOT NULL, DEFAULT now()                                        |                                                           |
+| user_id         | UUID      | NOT NULL, FK → users.user_id, ON DELETE RESTRICT               | The reviewing student                                     |
+| subject_id      | UUID      | NOT NULL, FK → subjects.subject_id, ON DELETE RESTRICT         | Makes reviews subject-scoped                              |
+| booking_id      | UUID      | NOT NULL, UNIQUE, FK → bookings.booking_id, ON DELETE RESTRICT | One review per completed booking (REV-1)                  |
+| removed_at      | TIMESTAMP | NULL                                                           | Set when an Admin removed the review (REV-4)              |
+| removal_reason  | TEXT      | NULL                                                           | Sent to the author; 1 to 500 characters (API)             |
+| removed_by_id   | UUID      | NULL, FK → users.user_id, ON DELETE RESTRICT                   | The deciding Admin                                        |
 
-Indexes: `user_id`, `subject_id`, `booking_id`.
+Indexes: `user_id`, `subject_id`; unique `reviews_booking_id_key` on `booking_id`.
 
-The CHECK constraint lives in
-`prisma/migrations/20260831093000_add_review_rating_range_check/migration.sql` because
-Prisma cannot express it in the schema.
+REV-1 writes a review only for the Student's own `COMPLETED` booking, copying `subject_id`
+from that booking. Public ratings, review lists and search ranking count only reviews whose
+booking is not `CANCELLED`, so a lesson cancelled by an approved PAY-3 refund keeps its
+review row but no longer affects the Tutor's rating. The rating range was once a CHECK in
+a migration file, but the project now synchronizes with `prisma db push` and keeps no
+migrations, so a pushed database has no CHECK; the REV-1 API rejects ratings outside whole
+numbers 1 to 5.
+
+REV-2 adds nullable reply fields; the endpoint enforces Tutor
+ownership. Creation updates only an unreplied row; editing conditionally updates the
+current text and revision timestamp, preventing stale overwrites. Public readers receive
+the latest reply and its Edited timestamp. Database
+synchronization remains a separate authorized action; no database was changed for the preview.
+
+REV-4 removes a review by setting `removed_at`, `removal_reason` and `removed_by_id`; the row
+stays, so the booking still has its one review. Public lists, ratings, ranking and the Tutor
+dashboard leave out removed reviews, as they leave out refunded ones, and a removed review can
+no longer be flagged or replied to.
+
+### review_flags
+
+| Column         | Type      | Constraints                                          | Notes                               |
+| -------------- | --------- | ---------------------------------------------------- | ----------------------------------- |
+| review_flag_id | UUID      | PK                                                   | Prisma `id`                         |
+| reason         | TEXT      | NOT NULL                                             | 1 to 500 characters, trimmed (API)  |
+| created_at     | TIMESTAMP | NOT NULL, DEFAULT now()                              |                                     |
+| review_id      | UUID      | NOT NULL, FK → reviews.review_id, ON DELETE RESTRICT | The flagged review's comment        |
+| reporter_id    | UUID      | NOT NULL, FK → users.user_id, ON DELETE RESTRICT     | The member who flagged it           |
+| outcome        | ENUM      | NULL                                                 | `ReviewFlagOutcome`; NULL = pending |
+| decided_at     | TIMESTAMP | NULL                                                 | When an Admin decided (REV-4)       |
+| decided_by_id  | UUID      | NULL, FK → users.user_id, ON DELETE RESTRICT         | The deciding Admin                  |
+
+Indexes: unique `(review_id, reporter_id)`, so a member can flag a review only once; `reporter_id`;
+`(outcome, created_at)` for the Admin queue.
+
+REV-3 inserts one row per member and review. A review can have many flags from different
+members. Only a public review with a comment can be flagged (booking not `CANCELLED`), and
+never by its author. Flagging changes nothing public: the comment stays visible, and only the
+flagger sees a Flagged marker.
+
+REV-4 decides every pending flag on a review at once, recording the outcome, time and Admin,
+which keeps an audit trail. `KEPT` leaves the review published; other members can still flag
+it, which puts it back in the queue. `REMOVED` comes with the removal fields on `reviews`.
 
 ### messages
 
@@ -367,6 +471,28 @@ Indexes: `from_user_id`, `to_user_id`. A conversation is derived from the user p
 
 Indexes: `admin_user_id`, `reporter_user_id`, `reported_user_id`.
 
+### account_actions
+
+SAFE-1 stores each Admin suspension or ban as its own audit record. Current access is
+derived from these records, rather than a separate mutable flag on `users`.
+
+| Column            | Type              | Constraints                              | Notes                                 |
+| ----------------- | ----------------- | ---------------------------------------- | ------------------------------------- |
+| account_action_id | UUID              | PK, DEFAULT uuid()                       |                                       |
+| type              | AccountActionType | NOT NULL                                 | `SUSPEND` or `BAN`                    |
+| reason            | TEXT              | NOT NULL                                 | API requires 1–500 trimmed characters |
+| created_at        | TIMESTAMP         | NOT NULL, DEFAULT now()                  |                                       |
+| ends_at           | TIMESTAMP         | NULL                                     | Required for suspension; null for ban |
+| user_id           | UUID              | NOT NULL, FK → users, ON DELETE RESTRICT | Affected account                      |
+| admin_id          | UUID              | NOT NULL, FK → users, ON DELETE RESTRICT | Admin who acted                       |
+
+Indexes: `(user_id, created_at)` and `admin_id`. The service locks the affected User row
+before checking and writing an action, so concurrent bans produce one record and a conflict
+for the duplicate. A ban always restricts access; a suspension restricts access only while
+`ends_at` is later than the current time. The service enforces action durations and forbids
+restrictions of Admin accounts. There is no action-edit or delete API. See
+[Admin user management](user-journeys.md#10--admin-trust-and-safety).
+
 ### Enums
 
 | Enum                        | Values                                                           |
@@ -375,6 +501,10 @@ Indexes: `admin_user_id`, `reporter_user_id`, `reported_user_id`.
 | `TutorProfileVersionStatus` | `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED`          |
 | `WalletTransactionType`     | `TOP_UP`, `LESSON_PAYMENT`, `LESSON_EARNING`, `REFUND`, `PAYOUT` |
 | `BookingCancelledBy`        | `STUDENT`, `TUTOR`                                               |
+| `RefundRequestReason`       | `TUTOR_NO_SHOW`, `UNSATISFACTORY_LESSON`, `OTHER`                |
+| `RefundRequestStatus`       | `PENDING`, `APPROVED`, `REJECTED`                                |
+| `AccountActionType`         | `SUSPEND`, `BAN`                                                 |
+| `ReviewFlagOutcome`         | `KEPT`, `REMOVED`                                                |
 
 ---
 
@@ -384,20 +514,20 @@ These come from [`user-journeys.md`](user-journeys.md#invariants). Each one has 
 enforced somewhere — a constraint, a transaction, or a service-layer check — and the
 "Enforced today" column says where it stands.
 
-| #   | Rule                                                                                    | Enforced today                                                                                         |
-| --- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| 1   | A rating is between 1 and 5                                                             | ✅ CHECK `reviews_rating_stars_range`                                                                  |
-| 2   | An availability slot is locked to at most one booking                                   | ✅ one nullable booking FK per slot; atomic serializable claims                                        |
-| 3   | A booking has at most one lesson payment                                                | ✅ `wallet_transactions(booking_id, type)` UNIQUE                                                      |
-| 4   | A user's subjects, bookings, and payments survive referential deletes                   | ✅ `ON DELETE RESTRICT` across the domain                                                              |
-| 5   | A booking occupies a **continuous run** of slots for one subject                        | ✅ booking service validates assigned, consecutive slots on one Bangkok day                            |
-| 6   | A booking carries a lifecycle status (payment due → confirmed → completed/cancelled)    | ✅ `BookingStatus`; completion processing remains separate work                                        |
-| 7   | Booking price is fixed at creation from the subject rate and the slot count             | ✅ stored total and PROF-6 subject snapshots                                                           |
-| 8   | A slot cannot be double-sold — the check happens before payment capture                 | ✅ serializable booking claims and payment confirmation                                                |
-| 9   | Exactly one review per booking                                                          | ❌ `reviews.booking_id` is not UNIQUE                                                                  |
-| 10  | Each successful movement records one owner, type, positive amount and resulting balance | ✅ shared atomic writer; no status/direction columns                                                   |
-| 11  | Available balance excludes pending tutor earnings                                       | ✅ no tutor credit at payment; calculated pending-earnings dashboard and settlement remain future work |
-| 12  | A tutor cannot open two overlapping slots                                               | ✅ PROF-3: unique Tutor/start plus half-hour grid validation                                           |
+| #   | Rule                                                                                    | Enforced today                                                                                    |
+| --- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 1   | A rating is between 1 and 5                                                             | ✅ REV-1 API validation; no database CHECK under `db push`                                        |
+| 2   | An availability slot is locked to at most one booking                                   | ✅ one nullable booking FK per slot; atomic serializable claims                                   |
+| 3   | A booking has at most one lesson payment                                                | ✅ `wallet_transactions(booking_id, type)` UNIQUE                                                 |
+| 4   | A user's subjects, bookings, and payments survive referential deletes                   | ✅ `ON DELETE RESTRICT` across the domain                                                         |
+| 5   | A booking occupies a **continuous run** of slots for one subject                        | ✅ booking service validates assigned, consecutive slots on one Bangkok day                       |
+| 6   | A booking carries a lifecycle status (payment due → confirmed → completed/cancelled)    | ✅ `BookingStatus`; Tutor confirms completion, PAY-6 settles earnings and reviews remain separate |
+| 7   | Booking price is fixed at creation from the subject rate and the slot count             | ✅ stored total and PROF-6 subject snapshots                                                      |
+| 8   | A slot cannot be double-sold — the check happens before payment capture                 | ✅ serializable booking claims and payment confirmation                                           |
+| 9   | Exactly one review per booking                                                          | ✅ REV-1: `reviews.booking_id` UNIQUE                                                             |
+| 10  | Each successful movement records one owner, type, positive amount and resulting balance | ✅ shared atomic writer; no status/direction columns                                              |
+| 11  | Available balance excludes pending tutor earnings                                       | ✅ Tutor earnings clear only after completion and the hold period through a LESSON_EARNING row    |
+| 12  | A tutor cannot open two overlapping slots                                               | ✅ PROF-3: unique Tutor/start plus half-hour grid validation                                      |
 
 ---
 
@@ -411,35 +541,36 @@ that the current schema is wrong to have shipped.
 
 ### Gaps that block a documented journey
 
-| ID  | Gap                                                                                                                                                  | Journey it blocks                               |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| G1  | Resolved in existing booking code: a Booking has multiple Availability rows and validates a continuous block.                                        | §3 Booking — multi-slot blocks, duration, price |
-| G2  | Status storage is implemented by `BookingStatus`; automatic completion remains separate work.                                                        | §3 Booking, `/bookings` tabs, §5 completion     |
-| G3  | Resolved in existing booking/PROF-6 code: stored start, end, total and subject snapshots preserve the agreement.                                     | §3 Payment due, §4 ledger amounts               |
-| G4  | Storage resolved: WalletTransaction has all five types, one owner and balance_after. Full wallet history UI remains future work.                     | §4 Money                                        |
-| G5  | Storage resolved: pending earnings are derived from CONFIRMED bookings, not ledger rows. Calculation UI and settlement are not implemented in PAY-1. | §4 pending earnings                             |
-| G6  | Resolved in existing booking code: `zoom_meeting_url` is nullable while awaiting lesson delivery.                                                    | §3 Step 2                                       |
-| G7  | Resolved by PROF-3: every availability has a required Tutor owner, an open state and unique Tutor/start.                                             | §7 Availability editor                          |
+| ID  | Gap                                                                                                                                                                        | Journey it blocks                               |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| G1  | Resolved in existing booking code: a Booking has multiple Availability rows and validates a continuous block.                                                              | §3 Booking — multi-slot blocks, duration, price |
+| G2  | Status storage is implemented by `BookingStatus`; CLASS-2 adds assigned-Tutor completion confirmation. No time-based or automatic completion is stored.                    | §3 Booking, `/bookings` tabs, §5 completion     |
+| G3  | Resolved in existing booking/PROF-6 code: stored start, end, total and subject snapshots preserve the agreement.                                                           | §3 Payment due, §4 ledger amounts               |
+| G4  | Storage resolved: WalletTransaction has all five types, one owner and balance_after. Full wallet history UI remains future work.                                           | §4 Money                                        |
+| G5  | Resolved by PAY-6: pending earnings are derived from paid CONFIRMED and COMPLETED bookings without LESSON_EARNING rows; eligible earnings clear through the wallet ledger. | §4 pending earnings                             |
+| G6  | Resolved in existing booking code: `zoom_meeting_url` is nullable while awaiting lesson delivery.                                                                          | §3 Step 2                                       |
+| G7  | Resolved by PROF-3: every availability has a required Tutor owner, an open state and unique Tutor/start.                                                                   | §7 Availability editor                          |
 
 ### Entities the product needs that do not exist yet
 
-| ID  | Missing                                                                                                                              | Journey                        |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
-| G10 | Resolved by PROF-7: `payout_accounts` stores each user's bank accounts with one default.                                             | §4 Payouts, `/settings/wallet` |
-| G11 | **Notification preference** per user and event type, with email and push flags                                                       | §8 Notifications               |
-| G12 | **Review reply** from the tutor, and a moderation status on reviews and messages                                                     | §9 Reviews, §10 Admin          |
-| G13 | **Account suspension / ban** state on `users`                                                                                        | §10 Admin                      |
-| G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                        | §2 Search filters, §7 Subjects |
-| G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up | §10 Admin queues               |
-| G18 | **Audit log** for admin decisions on content and money                                                                               | §10 Admin                      |
+| ID  | Missing                                                                                                                                                                                               | Journey                        |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| G10 | Resolved by PROF-7: `payout_accounts` stores each user's bank accounts with one default.                                                                                                              | §4 Payouts, `/settings/wallet` |
+| G11 | **Notification preference** per user and event type, with email and push flags                                                                                                                        | §8 Notifications               |
+| G12 | Moderation status on messages remains missing; reviews are flagged (REV-3) and kept or removed by Admins (REV-4); Tutor replies by REV-2                                                              | §9 Reviews, §10 Admin          |
+| G13 | Resolved by SAFE-1: `account_actions` stores suspension/ban history and determines current account restrictions.                                                                                      | §10 Admin                      |
+| G14 | **Subject format** (online / in-person) and **subject status** (draft / published / archived)                                                                                                         | §2 Search filters, §7 Subjects |
+| G16 | `reports` has no type, status, or timestamps, and `admin_user_id` is NOT NULL — a report cannot be filed before an admin picks it up. Review flags use `review_flags` instead; `reports` stays unused | §10 Admin queues               |
+| G18 | **Audit log** for admin decisions on money; review moderation decisions are recorded on `review_flags` (REV-4) and account actions on `account_actions` (SAFE-1)                                      | §10 Admin                      |
 
 ---
 
 ## Indexes
 
-Present today: `subjects(tutor_id)`, `bookings(user_id)`, `bookings(subject_id)`,
+Present today: `account_actions(user_id, created_at)`, `account_actions(admin_id)`,
+`subjects(tutor_id)`, `bookings(user_id)`, `bookings(subject_id)`,
 `wallet_transactions(user_id, created_at)`, `reviews(user_id)`,
-`reviews(subject_id)`, `reviews(booking_id)`,
+`reviews(subject_id)`, `reviews(booking_id)`, `review_flags(reporter_id)`,
 `tutor_profile_version_certifications(profile_version_id)`,
 `tutor_profile_versions(user_id, created_at)`,
 `tutor_profile_versions(status, submitted_at)`,

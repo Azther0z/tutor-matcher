@@ -1,6 +1,16 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { Prisma } from "../../generated/prisma/client.ts";
-import { createBookingSchema, tutorCancelBookingSchema } from "./booking.schema.ts";
+jest.unstable_mockModule("../wallet/earning-settlement.service.ts", () => ({
+  lessonEarningClearsAt: (endedAt: Date) => new Date(endedAt.getTime() + 24 * 60 * 60_000),
+  lessonEarningHoldReason: (status: string) =>
+    status === "COMPLETED" ? "CLEARING_PERIOD" : "AWAITING_COMPLETION",
+  settleTutorEarnings: async () => 0,
+}));
+import {
+  createBookingSchema,
+  tutorCancelBookingSchema,
+  updateMeetingLinkSchema,
+} from "./booking.schema.ts";
 import {
   assertSlotBlock,
   BookingDomainError,
@@ -12,6 +22,31 @@ import {
 const SUBJECT_ID = "11111111-1111-4111-8111-111111111111";
 const SLOT_A = "22222222-2222-4222-8222-222222222222";
 const SLOT_B = "33333333-3333-4333-8333-333333333333";
+
+describe("Tutor meeting link rules", () => {
+  it("accepts HTTPS URLs up to 2048 characters and rejects longer URLs", () => {
+    const prefix = "https://meet.example.com/";
+    const maxLengthUrl = prefix + "a".repeat(2048 - prefix.length);
+
+    expect(updateMeetingLinkSchema.safeParse({ customMeetingUrl: maxLengthUrl }).success).toBe(
+      true
+    );
+    expect(
+      updateMeetingLinkSchema.safeParse({ customMeetingUrl: `${maxLengthUrl}a` }).success
+    ).toBe(false);
+  });
+
+  it("allows removing a Tutor URL and rejects non-HTTPS URLs", () => {
+    expect(updateMeetingLinkSchema.safeParse({ customMeetingUrl: null }).success).toBe(true);
+    expect(
+      updateMeetingLinkSchema.safeParse({ customMeetingUrl: "http://meet.example.com/room" })
+        .success
+    ).toBe(false);
+    expect(updateMeetingLinkSchema.safeParse({ customMeetingUrl: "not a URL" }).success).toBe(
+      false
+    );
+  });
+});
 
 it("bounds notification waiting and logs late lookup failures without private details", async () => {
   jest.useFakeTimers();
@@ -137,6 +172,8 @@ describe("trial booking rules", () => {
       subjectId: SUBJECT_ID,
       description: "Algebra",
       zoomMeetingUrl: null,
+      customMeetingUrl: null,
+      meetingLinkUpdatedAt: null,
       createdAt: now,
       status: "PENDING_PAYMENT",
       isTrial: true,
@@ -180,6 +217,8 @@ describe("trial booking rules", () => {
       },
       availabilities: [],
       walletTransactions: [],
+      refundRequest: null,
+      review: null,
     } satisfies Parameters<typeof mapBookingResponse>[0];
     const booking = mapBookingResponse(record, SUBJECT_ID, now);
 
@@ -233,6 +272,8 @@ describe("trial booking rules", () => {
       subjectId: SUBJECT_ID,
       description: null,
       zoomMeetingUrl: null,
+      customMeetingUrl: null,
+      meetingLinkUpdatedAt: null,
       createdAt: now,
       status: "CONFIRMED",
       isTrial: true,
@@ -267,26 +308,195 @@ describe("trial booking rules", () => {
       },
       availabilities: [],
       walletTransactions: [],
+      refundRequest: null,
+      review: null,
     } satisfies Parameters<typeof mapBookingResponse>[0];
 
     const asTutor = mapBookingResponse(record, SLOT_B, now);
     expect(asTutor.viewerRole).toBe("TUTOR");
-    expect(asTutor.actions).toMatchObject({ canTutorCancel: true, canCancel: false });
+    expect(asTutor.actions).toMatchObject({
+      canTutorCancel: true,
+      canCancel: false,
+      canConfirmCompletion: false,
+    });
     expect(asTutor.payment.walletBalance).toBeNull();
 
     const asStudent = mapBookingResponse(record, SUBJECT_ID, now);
     expect(asStudent.viewerRole).toBe("STUDENT");
-    expect(asStudent.actions).toMatchObject({ canTutorCancel: false, canCancel: true });
+    expect(asStudent.actions).toMatchObject({
+      canTutorCancel: false,
+      canCancel: true,
+      canConfirmCompletion: false,
+    });
+
+    const ended = { ...record, endedAt: now };
+    expect(mapBookingResponse(ended, SLOT_B, now).actions.canConfirmCompletion).toBe(true);
+    expect(mapBookingResponse(ended, SUBJECT_ID, now).actions.canConfirmCompletion).toBe(false);
+
+    const withMeetingLinks = {
+      ...record,
+      zoomMeetingUrl: "https://meet.example.com/generated",
+      customMeetingUrl: "https://meet.example.com/custom",
+    };
+    const activeAsTutor = mapBookingResponse(withMeetingLinks, SLOT_B, now);
+    const activeAsStudent = mapBookingResponse(withMeetingLinks, SUBJECT_ID, now);
+    expect(activeAsTutor).toMatchObject({
+      effectiveMeetingUrl: "https://meet.example.com/custom",
+      actions: { canEditMeetingLink: true, canJoin: true },
+    });
+    expect(activeAsStudent).toMatchObject({
+      effectiveMeetingUrl: "https://meet.example.com/custom",
+      actions: { canEditMeetingLink: false, canJoin: true },
+    });
 
     const started = mapBookingResponse({ ...record, startedAt: now }, SLOT_B, now);
     expect(started.actions.canTutorCancel).toBe(false);
+    expect(mapBookingResponse(record, SLOT_B, now).actions.canConfirmCompletion).toBe(false);
+    expect(
+      mapBookingResponse({ ...withMeetingLinks, endedAt: now }, SLOT_B, now).actions
+    ).toMatchObject({
+      canEditMeetingLink: false,
+      canJoin: false,
+    });
     const cancelled = mapBookingResponse(
-      { ...record, status: "CANCELLED", cancelledBy: "TUTOR", cancellationReason: "Sick" },
+      {
+        ...withMeetingLinks,
+        status: "CANCELLED",
+        cancelledBy: "TUTOR",
+        cancellationReason: "Sick",
+      },
       SUBJECT_ID,
       now
     );
     expect(cancelled).toMatchObject({ cancelledBy: "TUTOR", cancellationReason: "Sick" });
-    expect(cancelled.actions.canTutorCancel).toBe(false);
+    expect(cancelled.actions).toMatchObject({
+      canTutorCancel: false,
+      canEditMeetingLink: false,
+      canJoin: false,
+    });
+    const completed = mapBookingResponse({ ...withMeetingLinks, status: "COMPLETED" }, SLOT_B, now);
+    expect(completed.actions).toMatchObject({
+      canEditMeetingLink: false,
+      canJoin: false,
+      canConfirmCompletion: false,
+      canReview: false,
+    });
+    expect(completed.earnings).toBeNull();
+    const completedForStudent = mapBookingResponse(
+      { ...record, status: "COMPLETED" },
+      SUBJECT_ID,
+      now
+    );
+    expect(completedForStudent.actions.canReview).toBe(true);
+    expect(completedForStudent.earnings).toBeNull();
+    expect(asStudent.actions.canReview).toBe(false);
+    expect(cancelled.actions.canReview).toBe(false);
+    expect(cancelled.earnings).toBeNull();
+    expect(
+      mapBookingResponse(
+        {
+          ...record,
+          status: "COMPLETED",
+          review: {
+            id: SLOT_A,
+            ratingStars: 5,
+            text: null,
+            createdAt: now,
+            removedAt: null,
+            removalReason: null,
+          },
+        },
+        SUBJECT_ID,
+        now
+      ).actions.canReview
+    ).toBe(false);
+
+    // REV-4: a removed review hides its comment, says why, and still blocks a second review.
+    const removedAt = new Date("2026-11-12T08:00:00.000Z");
+    const removed = mapBookingResponse(
+      {
+        ...record,
+        status: "COMPLETED",
+        review: {
+          id: SLOT_A,
+          ratingStars: 1,
+          text: "Abusive comment",
+          createdAt: now,
+          removedAt,
+          removalReason: "Harassment",
+        },
+      },
+      SUBJECT_ID,
+      now
+    );
+    expect(removed.review).toEqual({
+      id: SLOT_A,
+      rating: 1,
+      comment: null,
+      createdAt: now.toISOString(),
+      removed: { reason: "Harassment", removedAt: removedAt.toISOString() },
+    });
+    expect(removed.actions.canReview).toBe(false);
+
+    // PAY-3: a paid lesson can be refunded once its scheduled end passes, with no deadline.
+    const payment = {
+      id: SLOT_A,
+      type: "LESSON_PAYMENT" as const,
+      amount: new Prisma.Decimal("75.00"),
+      balanceAfter: new Prisma.Decimal("0.00"),
+      createdAt: now,
+      userId: SUBJECT_ID,
+      bookingId: record.id,
+      payoutAccountId: null,
+    };
+    // Before the lesson ends there is no refund request, only cancellation.
+    const upcomingPaid = { ...record, walletTransactions: [payment] };
+    expect(mapBookingResponse(upcomingPaid, SUBJECT_ID, now).actions.canRequestRefund).toBe(false);
+    expect(mapBookingResponse(record, SUBJECT_ID, now).actions.canRequestRefund).toBe(false);
+    const endedPaid = { ...ended, startedAt: now, walletTransactions: [payment] };
+    expect(mapBookingResponse(endedPaid, SUBJECT_ID, now).actions.canRequestRefund).toBe(true);
+    expect(mapBookingResponse(endedPaid, SLOT_B, now).actions.canRequestRefund).toBe(false);
+    const yearLater = new Date("2027-09-12T00:00:00.000Z");
+    expect(mapBookingResponse(endedPaid, SUBJECT_ID, yearLater).actions.canRequestRefund).toBe(
+      true
+    );
+    // A lesson the Tutor confirmed can still be refunded; an admin decides.
+    expect(
+      mapBookingResponse({ ...endedPaid, status: "COMPLETED" }, SUBJECT_ID, now).actions
+        .canRequestRefund
+    ).toBe(true);
+
+    const refundRequest = {
+      id: SLOT_B,
+      reason: "UNSATISFACTORY_LESSON" as const,
+      details: "The tutor left after ten minutes",
+      amount: new Prisma.Decimal("75.00"),
+      status: "PENDING" as const,
+      createdAt: now,
+      reviewedAt: null,
+      rejectionReason: null,
+      bookingId: record.id,
+      userId: SUBJECT_ID,
+      reviewedById: null,
+      walletTransactionId: null,
+    };
+    const underReview = { ...endedPaid, refundRequest };
+    expect(mapBookingResponse(underReview, SLOT_B, now).actions.canConfirmCompletion).toBe(false);
+    expect(mapBookingResponse(underReview, SUBJECT_ID, now).actions.canRequestRefund).toBe(false);
+    expect(mapBookingResponse(underReview, SUBJECT_ID, now).refundRequest).toMatchObject({
+      status: "PENDING",
+      details: "The tutor left after ten minutes",
+    });
+    // The Tutor sees that a refund was requested, not the Student's complaint text.
+    expect(mapBookingResponse(underReview, SLOT_B, now).refundRequest).toMatchObject({
+      status: "PENDING",
+      details: null,
+    });
+    const rejected = {
+      ...underReview,
+      refundRequest: { ...refundRequest, status: "REJECTED" as const },
+    };
+    expect(mapBookingResponse(rejected, SLOT_B, now).actions.canConfirmCompletion).toBe(true);
   });
 
   it("refunds the full credit more than 24 hours before the lesson", () => {

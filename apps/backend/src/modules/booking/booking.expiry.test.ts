@@ -22,15 +22,20 @@ beforeEach(() => {
   releaseSlots.mockReset();
 });
 
-it("skips writes when no payment holds expired", async () => {
+it("skips booking writes when no payment holds expired", async () => {
   findExpired.mockResolvedValue([]);
 
   await expect(releaseExpiredBookings()).resolves.toBe(0);
   expect(cancelExpired).not.toHaveBeenCalled();
-  expect(releaseSlots).not.toHaveBeenCalled();
+  // Only the legacy pending-slot cleanup runs; no expired batch is released.
+  expect(releaseSlots).toHaveBeenCalledTimes(1);
+  expect(releaseSlots).toHaveBeenCalledWith({
+    where: { booking: { status: "PENDING_PAYMENT" } },
+    data: { bookingId: null },
+  });
 });
 
-it("cancels and releases an expiry batch with two writes", async () => {
+it("cancels and releases an expiry batch with one cancel and one release", async () => {
   const now = new Date("2026-10-29T10:00:00.000Z");
   findExpired.mockResolvedValue([{ id: "booking-a" }, { id: "booking-b" }]);
   cancelExpired.mockResolvedValue({ count: 2 });
@@ -44,8 +49,9 @@ it("cancels and releases an expiry batch with two writes", async () => {
       data: expect.objectContaining({ status: "CANCELLED", cancelledAt: now }),
     })
   );
-  expect(releaseSlots).toHaveBeenCalledTimes(1);
-  expect(releaseSlots).toHaveBeenCalledWith(
+  // One legacy pending-slot cleanup, then one release for the whole batch.
+  expect(releaseSlots).toHaveBeenCalledTimes(2);
+  expect(releaseSlots).toHaveBeenLastCalledWith(
     expect.objectContaining({
       where: expect.objectContaining({ bookingId: { in: ["booking-a", "booking-b"] } }),
       data: { bookingId: null },

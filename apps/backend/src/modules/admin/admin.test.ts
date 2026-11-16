@@ -15,6 +15,8 @@ const tx = {
 };
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
+    // SAFE-1: requireAuth checks for a suspension or ban on every request.
+    accountAction: { findFirst: async () => null },
     ...tx,
     $transaction: async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx),
   },

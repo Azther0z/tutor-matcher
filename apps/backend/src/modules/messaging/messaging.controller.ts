@@ -1,6 +1,12 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { getInbox, getThread, RecipientNotFoundError, sendMessage } from "./messaging.service.ts";
+import {
+  getConversations,
+  getInbox,
+  getThread,
+  RecipientNotFoundError,
+  sendMessage,
+} from "./messaging.service.ts";
 import type { SendMessageRequest } from "./messaging.schema.ts";
 
 export async function postMessage(req: Request, res: Response) {
@@ -20,6 +26,10 @@ export async function postMessage(req: Request, res: Response) {
 export async function getMessagingInbox(req: Request, res: Response) {
   const inbox = await getInbox(req.user!.sub);
   res.status(200).json(inbox);
+}
+
+export async function getMessagingConversations(req: Request, res: Response) {
+  res.status(200).json(await getConversations(req.user!.sub));
 }
 
 export async function getMessagingThread(req: Request, res: Response) {

@@ -40,8 +40,8 @@ function mockLoad(
   return jest
     .fn()
     .mockResolvedValueOnce(respond({ balance }))
-    .mockResolvedValueOnce(respond({ accounts }))
-    .mockResolvedValueOnce(respond({ status: tutorStatus }));
+    .mockResolvedValueOnce(respond({ status: tutorStatus }))
+    .mockResolvedValueOnce(respond({ accounts }));
 }
 
 describe("wallet payout", () => {
@@ -189,12 +189,18 @@ describe("wallet payout", () => {
   });
 
   it("tells a user who is not a Tutor that payouts are for Tutors", async () => {
-    global.fetch = mockLoad("500.00", [defaultAccount], "NONE");
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(respond({ balance: "500.00" }))
+      .mockResolvedValueOnce(respond({ status: "NONE" }));
     render(<WalletPayoutPage />);
 
     expect(
       await screen.findByRole("heading", { name: "Payouts are for Tutors" })
     ).toBeInTheDocument();
+    // Payout accounts are tutor-only, so the page never asks for them.
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(global.fetch).not.toHaveBeenCalledWith("/api/payout-accounts", expect.anything());
     expect(screen.queryByLabelText("Amount (฿)")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "No saved payout account" })
@@ -205,7 +211,6 @@ describe("wallet payout", () => {
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce(respond({ balance: "500.00" }))
-      .mockResolvedValueOnce(respond({ accounts: [defaultAccount] }))
       .mockResolvedValueOnce(respond({ message: "Server error" }, false));
     render(<WalletPayoutPage />);
 

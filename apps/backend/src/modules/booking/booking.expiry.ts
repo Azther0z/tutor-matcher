@@ -16,6 +16,11 @@ export async function releaseExpiredBookings(now = new Date(), filter: ExpiryFil
     try {
       return await prisma.$transaction(
         async (tx) => {
+          // Release legacy pending-slot links; serializable isolation protects concurrent payments.
+          await tx.availability.updateMany({
+            where: { booking: { status: "PENDING_PAYMENT" } },
+            data: { bookingId: null },
+          });
           const expired = await tx.booking.findMany({
             where: {
               ...bookingFilter,

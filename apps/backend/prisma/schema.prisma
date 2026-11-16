@@ -16,6 +16,25 @@ enum WalletTransactionType {
   PAYOUT
 }
 
+enum TopupRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// PAY-3: why a Student asks for a refund after the lesson's scheduled end.
+enum RefundRequestReason {
+  TUTOR_NO_SHOW
+  UNSATISFACTORY_LESSON
+  OTHER
+}
+
+enum RefundRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum TutorStatus {
   UNPUBLISHED
   PUBLISHED
@@ -55,6 +74,12 @@ enum StudentEducationLevel {
   WORKING_ADULT
 }
 
+// SAFE-1: an Admin's restriction of an account. A ban is permanent; a suspension ends at endsAt.
+enum AccountActionType {
+  SUSPEND
+  BAN
+}
+
 enum PreferredLearningPeriod {
   MORNING
   AFTERNOON
@@ -84,20 +109,29 @@ model User {
   profileVersions         TutorProfileVersion[] @relation("ProfileVersionOwner")
   reviewedProfileVersions TutorProfileVersion[] @relation("ProfileVersionReviewer")
 
-  bookings Booking[]
-  reviews  Review[]
-
+  bookings            Booking[]
+  reviews             Review[]
+  reviewFlagsMade     ReviewFlag[]         @relation("ReviewFlagsMade")
+  reviewFlagsDecided  ReviewFlag[]         @relation("ReviewFlagsDecided")
+  reviewsRemoved      Review[]             @relation("ReviewsRemoved")
   passwordResetTokens PasswordResetToken[]
 
   sentMessages     Message[] @relation("MessagesSent")
   receivedMessages Message[] @relation("MessagesReceived")
 
-  walletTransactions WalletTransaction[]
-  payoutAccounts     PayoutAccount[]
+  walletTransactions     WalletTransaction[]
+  payoutAccounts         PayoutAccount[]
+  topupRequests          TopupRequest[]      @relation("TopupRequestOwner")
+  reviewedTopupRequests  TopupRequest[]      @relation("TopupRequestReviewer")
+  refundRequests         RefundRequest[]     @relation("RefundRequestOwner")
+  reviewedRefundRequests RefundRequest[]     @relation("RefundRequestReviewer")
 
   reportsFiledAsAdmin Report[] @relation("ReportsHandledByAdmin")
   reportsMade         Report[] @relation("ReportsMadeByReporter")
   reportsReceived     Report[] @relation("ReportsAgainstUser")
+
+  accountActionsReceived AccountAction[] @relation("AccountActionsReceived")
+  accountActionsTaken    AccountAction[] @relation("AccountActionsTaken")
 
   @@map("users")
 }
@@ -250,18 +284,20 @@ model AvailabilitySubject {
 }
 
 model Booking {
-  id                 String        @id @default(uuid()) @map("booking_id") @db.Uuid
-  description        String?
-  zoomMeetingUrl     String?       @map("zoom_meeting_url")
-  createdAt          DateTime      @default(now()) @map("created_at")
-  status             BookingStatus @default(PENDING_PAYMENT)
-  isTrial            Boolean       @default(true) @map("is_trial")
-  totalAmount        Decimal       @map("total_amount") @db.Decimal(12, 2)
-  startedAt          DateTime      @map("started_at")
-  endedAt            DateTime      @map("ended_at")
-  paymentExpiresAt   DateTime?     @map("payment_expires_at")
-  cancelledAt        DateTime?     @map("cancelled_at")
-  cancellationReason String?       @map("cancellation_reason")
+  id                   String        @id @default(uuid()) @map("booking_id") @db.Uuid
+  description          String?
+  zoomMeetingUrl       String?       @map("zoom_meeting_url")
+  customMeetingUrl     String?       @map("custom_meeting_url")
+  meetingLinkUpdatedAt DateTime?     @map("meeting_link_updated_at")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  status               BookingStatus @default(PENDING_PAYMENT)
+  isTrial              Boolean       @default(true) @map("is_trial")
+  totalAmount          Decimal       @map("total_amount") @db.Decimal(12, 2)
+  startedAt            DateTime      @map("started_at")
+  endedAt              DateTime      @map("ended_at")
+  paymentExpiresAt     DateTime?     @map("payment_expires_at")
+  cancelledAt          DateTime?     @map("cancelled_at")
+  cancellationReason   String?       @map("cancellation_reason")
 
   // BOOK-4: null for payment-hold expiry and bookings cancelled before this field existed.
   cancelledBy BookingCancelledBy? @map("cancelled_by")
@@ -280,7 +316,8 @@ model Booking {
 
   availabilities     Availability[]
   walletTransactions WalletTransaction[]
-  reviews            Review[]
+  refundRequest      RefundRequest?
+  review             Review?
 
   @@index([userId])
   @@index([subjectId])
@@ -304,12 +341,65 @@ model WalletTransaction {
   payoutAccountId String?        @map("payout_account_id") @db.Uuid
   payoutAccount   PayoutAccount? @relation(fields: [payoutAccountId], references: [id], onDelete: Restrict)
 
+  // PAY-3: the approved refund request that appended this REFUND row.
+  refundRequest RefundRequest?
+
   @@unique([bookingId, type])
   @@index([userId, createdAt])
   @@map("wallet_transactions")
 }
 
-// PROF-7: any user's saved bank accounts for payouts. Removed accounts stay for payout history.
+// PAY-1: a top-up waits here until an admin checks the transfer slip. Approval appends the
+// TOP_UP ledger row with this request's id; the ledger itself has no status.
+model TopupRequest {
+  id              String             @id @default(uuid()) @map("topup_request_id") @db.Uuid
+  amount          Decimal            @db.Decimal(12, 2)
+  slipUrl         String             @map("slip_url")
+  status          TopupRequestStatus @default(PENDING)
+  createdAt       DateTime           @default(now()) @map("created_at")
+  reviewedAt      DateTime?          @map("reviewed_at")
+  rejectionReason String?            @map("rejection_reason")
+
+  userId       String  @map("user_id") @db.Uuid
+  user         User    @relation("TopupRequestOwner", fields: [userId], references: [id], onDelete: Restrict)
+  reviewedById String? @map("reviewed_by_id") @db.Uuid
+  reviewedBy   User?   @relation("TopupRequestReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  @@unique([userId], map: "topup_requests_one_pending_per_user", where: { status: "PENDING" })
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("topup_requests")
+}
+
+// PAY-3: one refund request per booking, filed after the lesson's scheduled end. Every request
+// waits for an admin; approval appends one REFUND row and links it here.
+model RefundRequest {
+  id              String              @id @default(uuid()) @map("refund_request_id") @db.Uuid
+  reason          RefundRequestReason
+  details         String?
+  amount          Decimal             @db.Decimal(12, 2)
+  status          RefundRequestStatus @default(PENDING)
+  createdAt       DateTime            @default(now()) @map("created_at")
+  reviewedAt      DateTime?           @map("reviewed_at")
+  rejectionReason String?             @map("rejection_reason")
+
+  bookingId    String  @unique @map("booking_id") @db.Uuid
+  booking      Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  userId       String  @map("user_id") @db.Uuid
+  user         User    @relation("RefundRequestOwner", fields: [userId], references: [id], onDelete: Restrict)
+  reviewedById String? @map("reviewed_by_id") @db.Uuid
+  reviewedBy   User?   @relation("RefundRequestReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  // The REFUND row an approval appended; NULL while pending or after a rejection.
+  walletTransactionId String?            @unique @map("wallet_transaction_id") @db.Uuid
+  walletTransaction   WalletTransaction? @relation(fields: [walletTransactionId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("refund_requests")
+}
+
+// PROF-7: a Tutor's saved bank accounts for payouts. Removed accounts stay for payout history.
 model PayoutAccount {
   id                String    @id @default(uuid()) @map("payout_account_id") @db.Uuid
   bankCode          String    @map("bank_code")
@@ -330,10 +420,13 @@ model PayoutAccount {
 }
 
 model Review {
-  id          String   @id @default(uuid()) @map("review_id") @db.Uuid
-  ratingStars Int      @map("rating_stars")
-  text        String?
-  createdAt   DateTime @default(now()) @map("created_at")
+  id            String    @id @default(uuid()) @map("review_id") @db.Uuid
+  ratingStars   Int       @map("rating_stars")
+  text          String?
+  replyText     String?   @map("reply_text")
+  repliedAt     DateTime? @map("replied_at")
+  replyEditedAt DateTime? @map("reply_edited_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
 
   userId String @map("user_id") @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -341,13 +434,51 @@ model Review {
   subjectId String  @map("subject_id") @db.Uuid
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
-  bookingId String  @map("booking_id") @db.Uuid
+  // REV-1: one review per completed booking.
+  bookingId String  @unique @map("booking_id") @db.Uuid
   booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+
+  flags ReviewFlag[]
+
+  // REV-4: an Admin removed the whole review; it no longer shows or counts anywhere.
+  removedAt     DateTime? @map("removed_at")
+  removalReason String?   @map("removal_reason")
+  removedById   String?   @map("removed_by_id") @db.Uuid
+  removedBy     User?     @relation("ReviewsRemoved", fields: [removedById], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([subjectId])
-  @@index([bookingId])
   @@map("reviews")
+}
+
+// REV-3: one member's flag on a review's comment, with the reason, queued for Admin moderation.
+model ReviewFlag {
+  id        String   @id @default(uuid()) @map("review_flag_id") @db.Uuid
+  reason    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  reviewId   String @map("review_id") @db.Uuid
+  review     Review @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+  reporterId String @map("reporter_id") @db.Uuid
+  reporter   User   @relation("ReviewFlagsMade", fields: [reporterId], references: [id], onDelete: Restrict)
+
+  // REV-4: the Admin's decision; a null outcome means the flag still waits in the queue.
+  outcome     ReviewFlagOutcome?
+  decidedAt   DateTime?          @map("decided_at")
+  decidedById String?            @map("decided_by_id") @db.Uuid
+  decidedBy   User?              @relation("ReviewFlagsDecided", fields: [decidedById], references: [id], onDelete: Restrict)
+
+  // A member can flag a given review only once.
+  @@unique([reviewId, reporterId])
+  @@index([reporterId])
+  @@index([outcome, createdAt])
+  @@map("review_flags")
+}
+
+// REV-4: an Admin keeps a flagged review or removes the whole review.
+enum ReviewFlagOutcome {
+  KEPT
+  REMOVED
 }
 
 model TutorProfileVersionCertification {
@@ -395,4 +526,24 @@ model Report {
   @@index([reporterUserId])
   @@index([reportedUserId])
   @@map("reports")
+}
+
+// SAFE-1: every Admin suspension or ban. Each row is the audit record of who acted, when and why;
+// while it applies (any ban, or a suspension before endsAt) it also restricts the account.
+model AccountAction {
+  id        String            @id @default(uuid()) @map("account_action_id") @db.Uuid
+  type      AccountActionType
+  reason    String
+  createdAt DateTime          @default(now()) @map("created_at")
+  // When a suspension ends; null for a ban.
+  endsAt    DateTime?         @map("ends_at")
+
+  userId  String @map("user_id") @db.Uuid
+  user    User   @relation("AccountActionsReceived", fields: [userId], references: [id], onDelete: Restrict)
+  adminId String @map("admin_id") @db.Uuid
+  admin   User   @relation("AccountActionsTaken", fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([adminId])
+  @@map("account_actions")
 }

@@ -5,13 +5,13 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/src/components/require-auth";
 import { getAuthToken } from "@/src/lib/auth";
 
-type InboxMessage = {
-  id: string;
-  fromUserId: string;
-  toUserId: string;
-  message: string;
-  createdAt: string;
-  fromUser: { id: string; firstName: string; lastName: string };
+// MSG-1: one entry per person the user wrote to or heard from, newest first.
+type ConversationSummary = {
+  userId: string;
+  name: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  sentByMe: boolean;
 };
 
 type ThreadMessage = {
@@ -20,13 +20,6 @@ type ThreadMessage = {
   toUserId: string;
   message: string;
   createdAt: string;
-};
-
-type Conversation = {
-  userId: string;
-  name: string;
-  preview: string;
-  timestamp: string;
 };
 
 function initials(name: string) {
@@ -62,8 +55,8 @@ function MessagesView() {
   const withUserId = searchParams.get("with");
   const withName = searchParams.get("name");
 
-  const [inbox, setInbox] = useState<InboxMessage[] | null>(null);
-  const [inboxError, setInboxError] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
 
   const [selected, setSelected] = useState<{ userId: string; name: string } | null>(
     withUserId ? { userId: withUserId, name: withName ?? "Tutor" } : null
@@ -78,33 +71,28 @@ function MessagesView() {
 
   // Bumped after a successful send to re-trigger the fetch effects below
   // without calling them by reference from inside an effect.
-  const [inboxVersion, setInboxVersion] = useState(0);
+  const [listVersion, setListVersion] = useState(0);
   const [threadVersion, setThreadVersion] = useState(0);
 
   useEffect(() => {
     const token = getAuthToken();
     if (!token) return;
 
-    fetch("/api/messages/inbox", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/messages/conversations", { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
         if (!res.ok) throw new Error();
-        return res.json() as Promise<InboxMessage[]>;
+        return res.json() as Promise<ConversationSummary[]>;
       })
       .then((data) => {
-        setInbox(data);
+        setConversations(data);
         setSelected((current) => {
           if (current) return current;
           const [first] = data;
-          return first
-            ? {
-                userId: first.fromUserId,
-                name: `${first.fromUser.firstName} ${first.fromUser.lastName}`,
-              }
-            : null;
+          return first ? { userId: first.userId, name: first.name } : null;
         });
       })
-      .catch(() => setInboxError("Could not load your messages. Please refresh and try again."));
-  }, [inboxVersion]);
+      .catch(() => setListError("Could not load your messages. Please refresh and try again."));
+  }, [listVersion]);
 
   useEffect(() => {
     if (!selected) return;
@@ -157,7 +145,7 @@ function MessagesView() {
 
       setDraft("");
       setThreadVersion((v) => v + 1);
-      setInboxVersion((v) => v + 1);
+      setListVersion((v) => v + 1);
     } catch {
       setSendError("Could not reach the server. Please try again.");
     } finally {
@@ -165,24 +153,9 @@ function MessagesView() {
     }
   }
 
-  const conversations: Conversation[] = [];
-  if (inbox) {
-    const seen = new Set<string>();
-    for (const item of inbox) {
-      if (seen.has(item.fromUserId)) continue;
-      seen.add(item.fromUserId);
-      conversations.push({
-        userId: item.fromUserId,
-        name: `${item.fromUser.firstName} ${item.fromUser.lastName}`,
-        preview: item.message,
-        timestamp: item.createdAt,
-      });
-    }
-  }
-
   const selectedIsNew =
     selected !== null &&
-    !conversations.some((c) => c.userId === selected.userId) &&
+    !conversations?.some((c) => c.userId === selected.userId) &&
     (thread === null || thread.length === 0);
 
   return (
@@ -192,15 +165,15 @@ function MessagesView() {
         <h1 className="text-3xl font-semibold tracking-tight">Messages</h1>
       </div>
 
-      {inboxError && (
+      {listError && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-          {inboxError}
+          {listError}
         </p>
       )}
 
       <div className="flex h-[36rem] overflow-hidden rounded-2xl border border-black/[.12] dark:border-white/[.18]">
         <aside className="flex w-72 min-h-0 shrink-0 flex-col overflow-y-auto border-r border-black/[.12] dark:border-white/[.18]">
-          {inbox === null ? (
+          {conversations === null ? (
             <p className="p-4 text-sm text-zinc-500">Loading…</p>
           ) : conversations.length === 0 && !selected ? (
             <p className="p-4 text-sm text-zinc-500">No messages yet.</p>
@@ -225,11 +198,12 @@ function MessagesView() {
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="truncate font-medium">{conversation.name}</span>
                     <span className="shrink-0 text-xs text-zinc-500">
-                      {formatTime(conversation.timestamp)}
+                      {formatTime(conversation.lastMessageAt)}
                     </span>
                   </span>
                   <span className="truncate text-sm text-zinc-600 dark:text-zinc-400">
-                    {conversation.preview}
+                    {conversation.sentByMe && "You: "}
+                    {conversation.lastMessage}
                   </span>
                 </span>
               </button>

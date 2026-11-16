@@ -2,6 +2,7 @@ import { Prisma } from "../../generated/prisma/client.ts";
 import { prisma } from "../../lib/db.ts";
 import { publicPortfolioSelect, publicCertificationUrls } from "../profile/profile.public.ts";
 import { mapSubject, subjectSelect } from "../subject/subject.public.ts";
+import { countedReview } from "../review/review-visibility.ts";
 
 export class TutorNotFoundError extends Error {
   constructor() {
@@ -74,6 +75,10 @@ const bangkokDayStart = (date: string) =>
   new Date(Date.parse(`${date}T00:00:00.000Z`) - BANGKOK_OFFSET_MS);
 
 const publicReviewSelect = {
+  userId: true,
+  replyEditedAt: true,
+  replyText: true,
+  repliedAt: true,
   id: true,
   ratingStars: true,
   text: true,
@@ -82,10 +87,38 @@ const publicReviewSelect = {
   user: { select: { firstName: true, lastName: true } },
 } as const satisfies Prisma.ReviewSelect;
 
-function publicReview(review: Prisma.ReviewGetPayload<{ select: typeof publicReviewSelect }>) {
+// REV-3: a signed-in viewer also learns which comments they flagged and which review is theirs.
+type ReviewViewer = { id: string; flagged: Set<string> };
+
+async function reviewViewer(viewerId: string | undefined, reviews: Array<{ id: string }>) {
+  if (!viewerId) return undefined;
+  const flags = reviews.length
+    ? await prisma.reviewFlag.findMany({
+        where: { reporterId: viewerId, reviewId: { in: reviews.map(({ id }) => id) } },
+        select: { reviewId: true },
+      })
+    : [];
+  return { id: viewerId, flagged: new Set(flags.map(({ reviewId }) => reviewId)) };
+}
+
+function publicReview(
+  review: Prisma.ReviewGetPayload<{ select: typeof publicReviewSelect }>,
+  viewer?: ReviewViewer
+) {
   const lastInitial = Array.from(review.user.lastName.trim())[0];
   return {
     id: review.id,
+    ...(viewer
+      ? { flaggedByMe: viewer.flagged.has(review.id), isMine: review.userId === viewer.id }
+      : {}),
+    reply:
+      review.replyText && review.repliedAt
+        ? {
+            text: review.replyText,
+            repliedAt: review.repliedAt.toISOString(),
+            ...(review.replyEditedAt ? { editedAt: review.replyEditedAt.toISOString() } : {}),
+          }
+        : null,
     rating: review.ratingStars,
     text: review.text,
     createdAt: review.createdAt.toISOString(),
@@ -100,7 +133,7 @@ const roundedRating = (average: number | null) =>
 
 // DISC-3: the public profile page. Only a published tutor with an approved current profile
 // is shown; anything else is "unavailable" and leaks none of its details.
-export async function getTutorProfile(tutorId: string, now = new Date()) {
+export async function getTutorProfile(tutorId: string, now = new Date(), viewerId?: string) {
   const tutor = await prisma.tutor.findUnique({
     where: { id: tutorId },
     select: {
@@ -125,8 +158,8 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
   // This public read does not mutate bookings. Existing booking flows release expired holds.
   const listedUntil = new Date(now.getTime() + OPENINGS_LISTED_DAYS * DAY_MS);
   const openingsUntil = new Date(now.getTime() + OPENINGS_WINDOW_DAYS * DAY_MS);
-  const reviewWhere = { subject: { tutorId } };
-  const [aggregate, reviews, slots, subjectRatings, nextOpenings] = await Promise.all([
+  const reviewWhere = { subject: { tutorId }, ...countedReview };
+  const [aggregate, reviews, slots, subjectRatings, nextOpenings, [teaching]] = await Promise.all([
     prisma.review.aggregate({ where: reviewWhere, _avg: { ratingStars: true }, _count: true }),
     prisma.review.findMany({
       where: reviewWhere,
@@ -161,10 +194,18 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
         AND slots.started_at > ${now} AND slots.started_at < ${openingsUntil}
       GROUP BY links.subject_id
     `,
+    // Return only the totals, without transferring one row per Student to Node.
+    prisma.$queryRaw<Array<{ lessons: bigint; students: bigint }>>`
+      SELECT COUNT(*) AS lessons, COUNT(DISTINCT bookings.user_id) AS students
+      FROM bookings
+      JOIN subjects ON subjects.subject_id = bookings.subject_id
+      WHERE subjects.tutor_id = ${tutorId}::uuid AND bookings.status = 'COMPLETED'
+    `,
   ]);
 
   const ratingBySubject = new Map(subjectRatings.map((row) => [row.subjectId, row]));
   const nextOpening = new Map(nextOpenings.map((slot) => [slot.subjectId, slot.startedAt]));
+  const viewer = await reviewViewer(viewerId, reviews);
 
   return {
     id: tutor.id,
@@ -177,6 +218,10 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
     introVideoUrl: tutor.currentProfileVersion.introVideoUrl,
     rating: roundedRating(aggregate._avg.ratingStars),
     reviewCount: aggregate._count,
+    teachingStats: {
+      completedLessons: Number(teaching?.lessons ?? 0),
+      studentsTaught: Number(teaching?.students ?? 0),
+    },
     subjects: tutor.subjects.map((subject) => {
       const stats = ratingBySubject.get(subject.id);
       return {
@@ -190,7 +235,7 @@ export async function getTutorProfile(tutorId: string, now = new Date()) {
       startedAt: slot.startedAt.toISOString(),
       subjectIds: slot.availabilitySubjects.map(({ subjectId }) => subjectId).sort(),
     })),
-    reviews: reviews.map(publicReview),
+    reviews: reviews.map((review) => publicReview(review, viewer)),
   };
 }
 
@@ -200,7 +245,8 @@ export async function getTutorSubjectPage(
   tutorId: string,
   subjectId: string,
   date?: string,
-  now = new Date()
+  now = new Date(),
+  viewerId?: string
 ) {
   const subject = await prisma.subject.findFirst({
     where: { id: subjectId, tutorId },
@@ -240,15 +286,20 @@ export async function getTutorSubjectPage(
       GROUP BY 1
       ORDER BY 1
     `,
-    prisma.review.aggregate({ where: { subjectId }, _avg: { ratingStars: true }, _count: true }),
+    prisma.review.aggregate({
+      where: { subjectId, ...countedReview },
+      _avg: { ratingStars: true },
+      _count: true,
+    }),
     prisma.review.findMany({
-      where: { subjectId },
+      where: { subjectId, ...countedReview },
       select: publicReviewSelect,
       orderBy: [{ createdAt: "desc" }, { id: "asc" }],
       take: RECENT_REVIEW_LIMIT,
     }),
   ]);
 
+  const viewer = await reviewViewer(viewerId, reviews);
   const nextOpening = openDays[0]?.firstAt ?? null;
   const day = date ?? bangkokDate(nextOpening ?? now);
   const dayStart = bangkokDayStart(day);
@@ -281,6 +332,6 @@ export async function getTutorSubjectPage(
     date: day,
     openDates: openDays.map((row) => row.date),
     openSlots: daySlots.map((slot) => slot.startedAt.toISOString()),
-    reviews: reviews.map(publicReview),
+    reviews: reviews.map((review) => publicReview(review, viewer)),
   };
 }

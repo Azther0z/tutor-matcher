@@ -1,4 +1,5 @@
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
+import { prisma } from "../../lib/db.ts";
 import { createPayoutAccountSchema } from "./payout-account.schema.ts";
 import {
   createPayoutAccount,
@@ -12,6 +13,22 @@ import { payoutBanks } from "./payout-banks.ts";
 function sendError(error: unknown, res: Response) {
   if (!(error instanceof PayoutAccountDomainError)) throw error;
   return res.status(error.status).json({ code: error.code, message: error.message });
+}
+
+// Only Tutors are paid out, so only Tutors keep payout accounts.
+export async function requireTutor(req: Request, res: Response, next: NextFunction) {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.sub },
+    select: { tutorId: true },
+  });
+  if (!user?.tutorId) {
+    res.status(403).json({
+      code: "PAYOUT_ACCOUNT_TUTOR_ONLY",
+      message: "Only Tutors can have payout accounts",
+    });
+    return;
+  }
+  next();
 }
 
 export async function list(req: Request, res: Response) {

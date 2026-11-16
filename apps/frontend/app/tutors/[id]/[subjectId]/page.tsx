@@ -234,7 +234,7 @@ function SubjectView({
           </h2>
           <Rating rating={subject.rating} count={subject.reviewCount} />
         </div>
-        <ReviewList reviews={page.reviews} />
+        <ReviewList tutorId={page.tutor.id} reviews={page.reviews} />
       </section>
     </main>
   );

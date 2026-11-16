@@ -134,6 +134,18 @@ it("opens the calendar at the first open time", async () => {
   expect((await findDayCalendar()).scrollTop).toBe(17 * 32);
 });
 
+it("sends a signed-in viewer's token and offers Flag on the subject's comments", async () => {
+  localStorage.setItem("authToken", "member-token");
+  respond(subjectPage());
+  render(<TutorSubjectPage />);
+
+  expect(await screen.findByRole("button", { name: "Flag review by Bob S." })).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledWith(apiPath, {
+    headers: { Authorization: "Bearer member-token" },
+    signal: expect.anything(),
+  });
+});
+
 it("puts Book this subject below the calendar, carrying the subject and the selected date", async () => {
   respond(subjectPage());
   render(<TutorSubjectPage />);
@@ -185,8 +197,11 @@ it("lets any upcoming day be picked, marks open days and keeps the day in the UR
   const pastDay = dates.find((date) => date < today);
   if (pastDay) expect(screen.getByRole("button", { name: pastDay })).toBeDisabled();
   const previousMonth = screen.getByRole("button", { name: "Previous month" });
-  if (day.slice(0, 7) === today.slice(0, 7)) expect(previousMonth).toBeDisabled();
-  else expect(previousMonth).toBeEnabled();
+  if (month === today.slice(0, 7)) {
+    expect(previousMonth).toBeDisabled();
+  } else {
+    expect(previousMonth).toBeEnabled();
+  }
 
   fireEvent.click(screen.getByRole("button", { name: `${otherDay}, has open times` }));
   expect(mockReplace).toHaveBeenCalledWith(`/tutors/${TUTOR_ID}/${SUBJECT_ID}?date=${otherDay}`, {
@@ -199,13 +214,13 @@ it("loads the day named in the URL and ignores a malformed one", async () => {
   respond(subjectPage({ date: otherDay, openSlots: [] }));
   const view = render(<TutorSubjectPage />);
   await findDayCalendar();
-  expect(fetchMock).toHaveBeenLastCalledWith(`${apiPath}?date=${otherDay}`, expect.anything());
+  expect(fetchMock).toHaveBeenCalledWith(`${apiPath}?date=${otherDay}`, expect.anything());
   view.unmount();
 
   mockSearchParams = new URLSearchParams({ date: "tomorrow" });
   render(<TutorSubjectPage />);
   await findDayCalendar();
-  expect(fetchMock).toHaveBeenLastCalledWith(apiPath, expect.anything());
+  expect(fetchMock).toHaveBeenCalledWith(apiPath, expect.anything());
 });
 
 it("shows only an unavailable message when the subject is not public", async () => {

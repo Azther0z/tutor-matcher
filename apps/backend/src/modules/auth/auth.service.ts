@@ -1,4 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { AccountRestrictedError, findAccountRestriction } from "../admin/account-actions.ts";
 import bcrypt from "bcryptjs";
 import { prisma } from "../../lib/db.ts";
 import { buildPasswordResetUrl, sendPasswordResetEmail } from "../../lib/email.ts";
@@ -105,6 +106,9 @@ export async function login({ email, password }: LoginInput) {
   if (!user || !passwordMatches) {
     throw new InvalidCredentialsError();
   }
+
+  const restriction = await findAccountRestriction(user.id);
+  if (restriction) throw new AccountRestrictedError(restriction);
 
   if (!isBcryptPassword) {
     const passwordHash = await bcrypt.hash(password, 12);

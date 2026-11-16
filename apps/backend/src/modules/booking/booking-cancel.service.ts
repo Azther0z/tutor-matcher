@@ -132,7 +132,7 @@ export async function listTutorUpcomingBookings(userId: string) {
   const bookings = await prisma.booking.findMany({
     where: {
       subject: { tutorId: user.tutorId },
-      status: { in: ["PENDING_PAYMENT", "CONFIRMED"] },
+      status: "CONFIRMED",
       startedAt: { gt: now },
     },
     include: detailInclude,

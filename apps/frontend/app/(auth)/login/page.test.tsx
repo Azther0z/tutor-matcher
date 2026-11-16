@@ -1,11 +1,13 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LoginPage from "./page";
+import { AuthProvider } from "@/src/components/auth-provider";
 
 const mockPush = jest.fn();
 const fetchMock = jest.fn();
 let nextParam: string | null = null;
 
 jest.mock("next/navigation", () => ({
+  usePathname: () => "/login",
   useRouter: () => ({ push: mockPush }),
   useSearchParams: () => ({ get: (key: string) => (key === "next" ? nextParam : null) }),
 }));
@@ -70,5 +72,47 @@ describe("LoginPage", () => {
     submitLogin();
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/dashboard"));
+  });
+  it("shows why a suspended or banned account can't log in", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        code: "ACCOUNT_RESTRICTED",
+        message: "This account has been banned. Reason: Fraud",
+      }),
+    });
+
+    render(<LoginPage />);
+    submitLogin();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This account has been banned. Reason: Fraud"
+    );
+    expect(localStorage.getItem("authToken")).toBeNull();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("explains why an open session was ended", async () => {
+    localStorage.setItem("authToken", "old-token");
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        code: "ACCOUNT_RESTRICTED",
+        message: "This account is suspended until 2 Nov 2026, 14:00 (Bangkok time). Reason: Spam",
+      }),
+    });
+
+    render(
+      <AuthProvider>
+        <LoginPage />
+      </AuthProvider>
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This account is suspended until 2 Nov 2026, 14:00 (Bangkok time). Reason: Spam"
+    );
+    expect(localStorage.getItem("authToken")).toBeNull();
   });
 });

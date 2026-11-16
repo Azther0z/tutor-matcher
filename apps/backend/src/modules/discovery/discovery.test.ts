@@ -11,9 +11,11 @@ const profileTutorFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 const reviewAggregate = jest.fn<(args: unknown) => Promise<unknown>>();
 const reviewFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const reviewGroupBy = jest.fn<(args: unknown) => Promise<unknown[]>>();
+const reviewFlagFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const availabilityFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
 // Assert that public profile reads never invoke booking cleanup or its write transaction.
 const bookingFindMany = jest.fn<(args: unknown) => Promise<unknown[]>>();
+const bookingGroupBy = jest.fn<(args: unknown) => Promise<unknown[]>>();
 const transaction = jest.fn(async (run: (tx: unknown) => unknown) =>
   run({ booking: { findMany: bookingFindMany } })
 );
@@ -21,6 +23,8 @@ const studentFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 
 jest.unstable_mockModule("../../lib/db.ts", () => ({
   prisma: {
+    // SAFE-1: requireAuth checks for a suspension or ban on every request.
+    accountAction: { findFirst: async () => null },
     user: { findUnique: tutorFindUnique },
     subject: { findMany: subjectFindMany, findFirst: subjectFindFirst },
     $queryRaw: queryRaw,
@@ -28,8 +32,10 @@ jest.unstable_mockModule("../../lib/db.ts", () => ({
     learningArea: { findMany: learningAreaFindMany },
     tutor: { findUnique: profileTutorFindUnique },
     review: { aggregate: reviewAggregate, findMany: reviewFindMany, groupBy: reviewGroupBy },
+    reviewFlag: { findMany: reviewFlagFindMany },
     availability: { findMany: availabilityFindMany },
     student: { findUnique: studentFindUnique },
+    booking: { groupBy: bookingGroupBy },
   },
 }));
 
@@ -360,6 +366,18 @@ describe("DISC-1 tutor search", () => {
     expect(rawQuery(0).sql).toContain(`ORDER BY ${order}, name, first_name, last_name, subject_id`);
   });
 
+  it("ranks and filters by ratings that leave out reviews of cancelled lessons and removed reviews", async () => {
+    await request(app).get("/api/discovery/tutors").query({ minRating: "4" }).expect(200);
+    for (const index of [0, 1]) {
+      expect(rawQuery(index).sql).toContain("FROM reviews rv");
+      expect(rawQuery(index).sql).toContain(
+        "JOIN bookings rb ON rb.booking_id = rv.booking_id AND rb.status <> 'CANCELLED'"
+      );
+      // REV-4: a review an Admin removed no longer counts toward ranking.
+      expect(rawQuery(index).sql).toContain("WHERE rv.removed_at IS NULL");
+    }
+  });
+
   it("asks the database for only the requested page", async () => {
     await request(app).get("/api/discovery/tutors").query({ page: "3", pageSize: "5" }).expect(200);
     const page = rawQuery(0);
@@ -507,6 +525,7 @@ describe("DISC-3 tutor profile", () => {
   const url = `/api/discovery/tutors/${TUTOR_ID}/profile`;
   const soon = new Date(Date.now() + 2 * 86_400_000);
   const later = new Date(Date.now() + 40 * 86_400_000);
+  let teachingCounts = { lessons: 0n, students: 0n };
 
   function publishedTutor(overrides: Record<string, unknown> = {}) {
     return {
@@ -544,10 +563,15 @@ describe("DISC-3 tutor profile", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     bookingFindMany.mockResolvedValue([]);
-    queryRaw.mockReset().mockResolvedValue([
-      { subjectId: "calculus", startedAt: soon },
-      { subjectId: "physics", startedAt: soon },
-    ]);
+    bookingGroupBy.mockResolvedValue([]);
+    teachingCounts = { lessons: 0n, students: 0n };
+    queryRaw.mockReset().mockImplementation(async (strings) => {
+      if (strings.join("").includes("COUNT(DISTINCT bookings.user_id)")) return [teachingCounts];
+      return [
+        { subjectId: "calculus", startedAt: soon },
+        { subjectId: "physics", startedAt: soon },
+      ];
+    });
     profileTutorFindUnique.mockResolvedValue(publishedTutor());
     reviewAggregate.mockResolvedValue({ _avg: { ratingStars: 4.25 }, _count: 4 });
     reviewGroupBy.mockResolvedValue([
@@ -556,6 +580,9 @@ describe("DISC-3 tutor profile", () => {
     reviewFindMany.mockResolvedValue([
       {
         id: "review-1",
+        replyText: "Thank you for your review",
+        repliedAt: new Date("2026-11-12T01:00:00Z"),
+        replyEditedAt: new Date("2026-11-12T02:00:00Z"),
         ratingStars: 5,
         text: "Clear explanations.",
         createdAt: new Date("2026-09-01T10:00:00.000Z"),
@@ -571,6 +598,61 @@ describe("DISC-3 tutor profile", () => {
     ]);
   });
 
+  it("tells a signed-in viewer which review comments they flagged and which review is theirs", async () => {
+    const review = (id: string, userId: string) => ({
+      id,
+      userId,
+      ratingStars: 2,
+      text: "Rude comment.",
+      createdAt: new Date("2026-09-01T10:00:00.000Z"),
+      replyText: null,
+      repliedAt: null,
+      replyEditedAt: null,
+      subject: { name: "Calculus" },
+      user: { firstName: "Bob", lastName: "Student" },
+    });
+    reviewFindMany.mockResolvedValue([
+      review("review-1", "someone-else"),
+      review("review-2", "someone-else"),
+      review("review-3", USER_ID),
+    ]);
+    reviewFlagFindMany.mockResolvedValue([{ reviewId: "review-2" }]);
+
+    const response = await request(app)
+      .get(url)
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .expect(200);
+
+    expect(
+      response.body.reviews.map((item: { id: string; flaggedByMe: boolean; isMine: boolean }) => [
+        item.id,
+        item.flaggedByMe,
+        item.isMine,
+      ])
+    ).toEqual([
+      ["review-1", false, false],
+      ["review-2", true, false],
+      ["review-3", false, true],
+    ]);
+    expect(reviewFlagFindMany).toHaveBeenCalledWith({
+      where: { reporterId: USER_ID, reviewId: { in: ["review-1", "review-2", "review-3"] } },
+      select: { reviewId: true },
+    });
+    expect(JSON.stringify(response.body)).not.toContain("someone-else");
+  });
+
+  it("adds no viewer fields and looks up no flags for a visitor or an invalid token", async () => {
+    await request(app).get(url).expect(200);
+    const response = await request(app)
+      .get(url)
+      .set("Authorization", "Bearer not-a-token")
+      .expect(200);
+
+    expect(response.body.reviews[0]).not.toHaveProperty("flaggedByMe");
+    expect(response.body.reviews[0]).not.toHaveProperty("isMine");
+    expect(reviewFlagFindMany).not.toHaveBeenCalled();
+  });
+
   it("is public and shows bio, rating, rates, availability, video and reviews", async () => {
     const response = await request(app).get(url).expect(200);
 
@@ -584,6 +666,7 @@ describe("DISC-3 tutor profile", () => {
       introVideoUrl: "https://www.youtube.com/watch?v=abc",
       rating: 4.3,
       reviewCount: 4,
+      teachingStats: { completedLessons: 0, studentsTaught: 0 },
     });
     expect(response.body.subjects).toEqual([
       expect.objectContaining({
@@ -609,8 +692,43 @@ describe("DISC-3 tutor profile", () => {
         createdAt: "2026-09-01T10:00:00.000Z",
         subjectName: "Calculus",
         reviewer: "Bob S.",
+        reply: {
+          text: "Thank you for your review",
+          repliedAt: "2026-11-12T01:00:00.000Z",
+          editedAt: "2026-11-12T02:00:00.000Z",
+        },
       },
     ]);
+  });
+
+  it("publishes only completed-lesson and unique-Student totals scoped to this Tutor", async () => {
+    teachingCounts = { lessons: 4n, students: 2n };
+    const response = await request(app).get(url).expect(200);
+    expect(bookingGroupBy).not.toHaveBeenCalled();
+    const teaching = rawQuery(1);
+    expect(teaching.sql).toContain("COUNT(*) AS lessons");
+    expect(teaching.sql).toContain("COUNT(DISTINCT bookings.user_id) AS students");
+    expect(teaching.sql).toContain("JOIN subjects ON subjects.subject_id = bookings.subject_id");
+    expect(teaching.sql).toContain("subjects.tutor_id = ?::uuid");
+    expect(teaching.sql).toContain("bookings.status = 'COMPLETED'");
+    expect(teaching.sql).not.toMatch(/GROUP BY|SELECT \*/);
+    expect(teaching.sql).not.toContain(TUTOR_ID);
+    expect(teaching.values).toEqual([TUTOR_ID]);
+    expect(response.body.teachingStats).toEqual({ completedLessons: 4, studentsTaught: 2 });
+    const serialized = JSON.stringify(response.body);
+    expect(serialized).not.toContain("private-learner");
+    for (const field of [
+      "lessons",
+      "students",
+      "balance",
+      "earnings",
+      "revenue",
+      "pendingPayment",
+      "returningRate",
+    ]) {
+      expect(response.body).not.toHaveProperty(field);
+      expect(response.body.teachingStats).not.toHaveProperty(field);
+    }
   });
 
   it("lists only the next two weeks of openings, each with its subjects", async () => {
@@ -639,7 +757,7 @@ describe("DISC-3 tutor profile", () => {
   });
 
   it("bounds detailed slots to 14 days and groups the 92-day next openings in SQL", async () => {
-    queryRaw.mockResolvedValue([
+    queryRaw.mockResolvedValueOnce([
       { subjectId: "calculus", startedAt: soon },
       { subjectId: "physics", startedAt: later },
     ]);
@@ -650,7 +768,7 @@ describe("DISC-3 tutor profile", () => {
     expect(details.where.startedAt.lt.getTime() - details.where.startedAt.gt.getTime()).toBe(
       14 * 86_400_000
     );
-    expect(queryRaw).toHaveBeenCalledTimes(1);
+    expect(queryRaw).toHaveBeenCalledTimes(2);
     const grouped = rawQuery();
     expect(grouped.sql).toContain("MIN(slots.started_at)");
     expect(grouped.sql).toContain("GROUP BY links.subject_id");
@@ -685,6 +803,18 @@ describe("DISC-3 tutor profile", () => {
       expect(response.body.reviews[0].reviewer).toBe(expected);
     }
   );
+
+  it("leaves reviews of cancelled lessons out of the rating, subject ratings and review list", async () => {
+    await request(app).get(url).expect(200);
+    const counted = {
+      subject: { tutorId: TUTOR_ID },
+      booking: { status: { not: "CANCELLED" } },
+      removedAt: null,
+    };
+    expect(reviewAggregate).toHaveBeenCalledWith(expect.objectContaining({ where: counted }));
+    expect(reviewGroupBy).toHaveBeenCalledWith(expect.objectContaining({ where: counted }));
+    expect(reviewFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: counted }));
+  });
 
   it("shows no rating for a tutor without reviews", async () => {
     reviewAggregate.mockResolvedValue({ _avg: { ratingStars: null }, _count: 0 });
@@ -737,6 +867,8 @@ describe("DISC-3 tutor profile", () => {
     expect(response.body).toEqual({ message: "This tutor profile is unavailable" });
     expect(reviewFindMany).not.toHaveBeenCalled();
     expect(availabilityFindMany).not.toHaveBeenCalled();
+    expect(bookingGroupBy).not.toHaveBeenCalled();
+    expect(queryRaw).not.toHaveBeenCalled();
   });
 
   it("is unavailable when the tutor does not exist or the id is not a UUID", async () => {
@@ -747,6 +879,8 @@ describe("DISC-3 tutor profile", () => {
     const response = await request(app).get("/api/discovery/tutors/not-a-uuid/profile").expect(404);
     expect(response.body).toEqual({ message: "This tutor profile is unavailable" });
     expect(profileTutorFindUnique).not.toHaveBeenCalled();
+    expect(bookingGroupBy).not.toHaveBeenCalled();
+    expect(queryRaw).not.toHaveBeenCalled();
   });
 });
 
@@ -797,6 +931,21 @@ describe("DISC-4 subject page", () => {
     availabilityFindMany.mockResolvedValue([{ startedAt: opening }, { startedAt: following }]);
   });
 
+  it("tells a signed-in viewer which review comments they flagged", async () => {
+    reviewFlagFindMany.mockResolvedValue([{ reviewId: "review-1" }]);
+
+    const response = await request(app)
+      .get(url)
+      .set("Authorization", `Bearer ${tokenFor()}`)
+      .expect(200);
+
+    expect(response.body.reviews[0]).toMatchObject({
+      id: "review-1",
+      flaggedByMe: true,
+      isMine: false,
+    });
+  });
+
   it("is public and shows only this subject's details, openings and reviews", async () => {
     const response = await request(app).get(url).expect(200);
 
@@ -824,17 +973,22 @@ describe("DISC-4 subject page", () => {
           createdAt: "2026-09-01T10:00:00.000Z",
           subjectName: "Calculus",
           reviewer: "Bob S.",
+          reply: null,
         },
       ],
     });
     expect(subjectFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: SUBJECT_ID, tutorId: TUTOR_ID } })
     );
-    expect(reviewAggregate).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { subjectId: SUBJECT_ID } })
-    );
+    // PAY-3: reviews of lessons cancelled by an approved refund do not count.
+    const counted = {
+      subjectId: SUBJECT_ID,
+      booking: { status: { not: "CANCELLED" } },
+      removedAt: null,
+    };
+    expect(reviewAggregate).toHaveBeenCalledWith(expect.objectContaining({ where: counted }));
     expect(reviewFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { subjectId: SUBJECT_ID }, take: 10 })
+      expect.objectContaining({ where: counted, take: 10 })
     );
   });
 

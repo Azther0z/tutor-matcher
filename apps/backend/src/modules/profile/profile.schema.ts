@@ -13,7 +13,7 @@ const studentEducationLevels = [
 
 const preferredLearningPeriods = ["MORNING", "AFTERNOON", "EVENING", "FLEXIBLE"] as const;
 
-const httpUrl = z.url().refine((value) => {
+export const httpUrl = z.url().refine((value) => {
   try {
     const protocol = new URL(value).protocol;
     return protocol === "http:" || protocol === "https:";

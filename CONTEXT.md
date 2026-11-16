@@ -83,14 +83,19 @@ _Avoid_: Class, course, category, topic
 A 30-minute window on a specific date that a tutor has opened for teaching. The slot
 belongs to the tutor, and the tutor assigns one or more of their subjects to it, so a
 student browsing a subject sees only the slots that advertise that subject. A slot is
-locked to one booking during an active payment hold or after payment.
+locked to one booking only after successful payment. Pending payment requests never reserve slots.
 _Avoid_: Time slot, open slot, schedule entry, recurring availability schedule
 
 **Booking**:
 One student and one tutor, one subject, and one continuous block of back-to-back
 availability slots. A booking exists only once a time has been chosen; before that,
 the student is still in the subject booking flow with no booking record. Statuses are
-`payment due`, `confirmed`, `completed`, and `cancelled`.
+`payment due`, `confirmed`, `completed`, and `cancelled`. `Confirmed` means paid and
+scheduled; after the lesson's scheduled end, it remains confirmed until the assigned
+Tutor manually confirms completion, which changes it to `completed`.
+Payment-due records support only the immediate payment step and stay out of Student booking lists,
+Tutor upcoming-class lists, and the Wallet page, including after payment expiry. They never reserve
+availability.
 _Avoid_: Reservation, appointment, order, class booking
 
 **Lesson**:
@@ -113,9 +118,14 @@ The signed ledger reconciles to the user's available balance; unpaid bookings ha
 _Avoid_: Payment record, ledger line, charge
 
 **Top-up**:
-Money entering a wallet, intended to be paid by PromptPay QR. PAY-1 currently simulates
-confirmation only; no real transfer is accepted. A successful confirmation appends TOP_UP.
+Money entering a wallet by PromptPay transfer. The user sends a slip link as a **Top-up
+Request**; an admin checks the slip and approval appends TOP_UP. Nothing is credited before.
 _Avoid_: Deposit, recharge, buying credits
+
+**Top-up Request**:
+A user's pending top-up with its amount and slip link, waiting for an admin. It ends
+approved or rejected (with a reason); one may be pending per user.
+_Avoid_: Transfer proof, deposit request
 
 **Lesson Payment**:
 The debit that a student makes from wallet balance on the booking page to confirm a
@@ -124,10 +134,11 @@ difference and come back; the slot stays locked to the booking meanwhile.
 _Avoid_: Checkout, transfer proof, invoice
 
 **Lesson Earning**:
-The tutor's share after the platform fee. The planned settlement appends LESSON_EARNING
-when the student confirms delivery or the clearing deadline passes. Until then, pending
-earnings are calculated from CONFIRMED bookings, with no tutor ledger row. Settlement
-is outside PAY-1; see the approved ledger design in docs/user-journeys.md §4.
+The Tutor's share after the platform fee. Pending earnings are calculated from
+CONFIRMED and COMPLETED bookings without a LESSON_EARNING row. Tutor confirmation
+keeps the amount pending until 24 hours after the scheduled lesson end. A pending
+refund request holds the earning until an Admin decides; settlement appends
+LESSON_EARNING when the Tutor next reads or uses their wallet. See docs/user-journeys.md §4.
 _Avoid_: Income, revenue, salary
 
 **Payout**:
@@ -136,8 +147,8 @@ tutor-only: a Tutor with available balance can request one; students cannot with
 _Avoid_: Withdrawal request, cash-out, transfer
 
 **Payout Account**:
-The bank account a user's payouts are sent to. A user may hold more than one and marks
-one as default.
+The bank account a Tutor's payouts are sent to. Only Tutors hold them; a Tutor may hold
+more than one and marks one as default.
 _Avoid_: Payment method, bank details
 
 **Refund**:
@@ -145,11 +156,30 @@ A credit returned to a student's wallet when an eligible booking is cancelled or
 dispute is resolved in the student's favour.
 _Avoid_: Chargeback, reversal, credit note
 
+**Refund Request**:
+A Student's request, after a paid lesson's scheduled end, for the full paid amount back.
+The reason is a Tutor no-show, an unsatisfactory lesson or another problem. An admin
+approves every request or rejects it with a reason; approval refunds and cancels the
+booking. One per booking.
+_Avoid_: Dispute ticket, claim, chargeback request
+
 **Review**:
 A rating and comment a student writes from their own completed booking. A review is
 attached to that tutor and that subject, so subject pages show only their own reviews.
-A tutor may publicly reply to a review once.
+A review has one public Tutor reply. The reviewed Tutor can edit that reply; edited
+replies show an Edited marker. Public Tutor and Subject pages show its current text.
 _Avoid_: Feedback, rating, testimonial
+
+**Review Flag**:
+A signed-in member's report that a review's comment is inappropriate, with a reason. A
+member flags a review once; it stays public while an admin decides, and only the flagger sees
+it marked Flagged. An admin keeps the review or removes it, and the flaggers are told.
+_Avoid_: Report, complaint, abuse report
+
+**Removed Review**:
+A review an admin removed after it was flagged. It no longer shows or counts in ratings and
+ranking, the author is told why, and the lesson cannot be reviewed again.
+_Avoid_: Deleted review, hidden comment
 
 **Conversation**:
 The message thread between one student and one tutor. A user with both capabilities
@@ -161,6 +191,12 @@ A complaint filed by one user against another, or a flag raised on a review or
 message, routed to an admin who keeps, hides, or removes the content and records the
 outcome.
 _Avoid_: Ticket, complaint, issue
+
+**Account Action**:
+An Admin's recorded suspension or ban of a user, including who acted, the reason, the
+time and, for a suspension, when it ends. An active action blocks login and protected
+requests. It is separate from a Report or a tutor-profile review decision.
+_Avoid_: User deletion, report status
 
 **Notification Preference**:
 A user's per-event choice of which channels may notify them. Event groups are booking

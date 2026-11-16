@@ -22,35 +22,56 @@ const SUBJECT_ID = "41000000-0000-4000-8000-000000000004";
 const PENDING_SLOT_ID = "41000000-0000-4000-8000-000000000005";
 const PAID_SLOT_ID = "41000000-0000-4000-8000-000000000006";
 const INVALID_EXPIRY_SLOT_ID = "41000000-0000-4000-8000-000000000007";
+const LINK_STUDENT_ID = "41000000-0000-4000-8000-000000000008";
+const RESCHEDULE_SLOT_ID = "41000000-0000-4000-8000-000000000009";
 
 const token = signAuthToken({
   sub: STUDENT_ID,
   email: "booking-integration-student@example.com",
   isAdmin: false,
 });
+const tutorToken = signAuthToken({
+  sub: TUTOR_USER_ID,
+  email: "booking-integration-tutor@example.com",
+  isAdmin: false,
+});
+const linkStudentToken = signAuthToken({
+  sub: LINK_STUDENT_ID,
+  email: "meeting-link-integration-student@example.com",
+  isAdmin: false,
+});
 const authorize = (test: request.Test) => test.set("Authorization", `Bearer ${token}`);
+const authorizeTutor = (test: request.Test) => test.set("Authorization", `Bearer ${tutorToken}`);
+const authorizeLinkStudent = (test: request.Test) =>
+  test.set("Authorization", `Bearer ${linkStudentToken}`);
 
 async function cleanFixtures() {
   await prisma.message.deleteMany({
     where: { OR: [{ fromUserId: STUDENT_ID }, { fromUserId: TUTOR_USER_ID }] },
   });
   await prisma.walletTransaction.deleteMany({
-    where: { userId: { in: [STUDENT_ID, TUTOR_USER_ID] } },
+    where: { userId: { in: [STUDENT_ID, TUTOR_USER_ID, LINK_STUDENT_ID] } },
   });
   await prisma.availability.updateMany({
-    where: { id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID] } },
+    where: {
+      tutorId: TUTOR_ID,
+    },
     data: { bookingId: null },
   });
   await prisma.booking.deleteMany({ where: { subjectId: SUBJECT_ID } });
   await prisma.availabilitySubject.deleteMany({ where: { subjectId: SUBJECT_ID } });
   await prisma.availability.deleteMany({
-    where: { id: { in: [PENDING_SLOT_ID, PAID_SLOT_ID, INVALID_EXPIRY_SLOT_ID] } },
+    where: {
+      tutorId: TUTOR_ID,
+    },
   });
   await prisma.subject.deleteMany({ where: { id: SUBJECT_ID } });
   await prisma.user.updateMany({ where: { id: TUTOR_USER_ID }, data: { tutorId: null } });
   await prisma.tutor.deleteMany({ where: { id: TUTOR_ID } });
   await prisma.tutorProfileVersion.deleteMany({ where: { userId: TUTOR_USER_ID } });
-  await prisma.user.deleteMany({ where: { id: { in: [STUDENT_ID, TUTOR_USER_ID] } } });
+  await prisma.user.deleteMany({
+    where: { id: { in: [STUDENT_ID, TUTOR_USER_ID, LINK_STUDENT_ID] } },
+  });
 }
 
 const describeWithDatabase =
@@ -79,15 +100,28 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
           password: "fixture",
           balance: "0.00",
         },
+        {
+          id: LINK_STUDENT_ID,
+          firstName: "Meeting Link",
+          lastName: "Student",
+          email: "meeting-link-integration-student@example.com",
+          password: "fixture",
+        },
       ],
     });
     await prisma.$transaction(
-      (tx) =>
-        appendWalletMovement(tx, {
+      async (tx) => {
+        await appendWalletMovement(tx, {
           userId: STUDENT_ID,
           type: "TOP_UP",
           amount: 500,
-        }),
+        });
+        await appendWalletMovement(tx, {
+          userId: LINK_STUDENT_ID,
+          type: "TOP_UP",
+          amount: 500,
+        });
+      },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
     await prisma.tutor.create({
@@ -117,11 +151,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     const pendingStartsAt = new Date(Date.now() + 48 * 60 * 60_000);
     const paidStartsAt = new Date(Date.now() + 12 * 60 * 60_000);
     const invalidExpiryStartsAt = new Date(Date.now() + 72 * 60 * 60_000);
+    const rescheduleStartsAt = new Date(Date.now() + 96 * 60 * 60_000);
     await prisma.availability.createMany({
       data: [
         { id: PENDING_SLOT_ID, startedAt: pendingStartsAt, tutorId: TUTOR_ID },
         { id: PAID_SLOT_ID, startedAt: paidStartsAt, tutorId: TUTOR_ID },
         { id: INVALID_EXPIRY_SLOT_ID, startedAt: invalidExpiryStartsAt, tutorId: TUTOR_ID },
+        { id: RESCHEDULE_SLOT_ID, startedAt: rescheduleStartsAt, tutorId: TUTOR_ID },
       ],
     });
     await prisma.availabilitySubject.createMany({
@@ -129,6 +165,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         { availabilityId: PENDING_SLOT_ID, subjectId: SUBJECT_ID },
         { availabilityId: PAID_SLOT_ID, subjectId: SUBJECT_ID },
         { availabilityId: INVALID_EXPIRY_SLOT_ID, subjectId: SUBJECT_ID },
+        { availabilityId: RESCHEDULE_SLOT_ID, subjectId: SUBJECT_ID },
       ],
     });
   });
@@ -173,6 +210,70 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
     expect(booking.status).toBe("CANCELLED");
     expect(transfer).toEqual([]);
     expect(slot.bookingId).toBeNull();
+  });
+
+  it("keeps meeting links unchanged when the removed reschedule endpoint is called", async () => {
+    const created = await authorizeLinkStudent(
+      request(app)
+        .post("/api/bookings")
+        .send({
+          subjectId: SUBJECT_ID,
+          availabilityIds: [PENDING_SLOT_ID],
+          isTrial: true,
+        })
+    ).expect(201);
+    const bookingId = created.body.booking.id as string;
+    await authorizeLinkStudent(
+      request(app).post(`/api/bookings/${bookingId}/confirm-payment`)
+    ).expect(200);
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { zoomMeetingUrl: "https://meet.example.com/old-room" },
+    });
+
+    await authorizeLinkStudent(
+      request(app)
+        .patch(`/api/bookings/${bookingId}/meeting-link`)
+        .send({ customMeetingUrl: "https://meet.example.com/custom-room" })
+    ).expect(403);
+    await authorizeTutor(
+      request(app)
+        .patch(`/api/bookings/${bookingId}/meeting-link`)
+        .send({ customMeetingUrl: "http://meet.example.com/insecure" })
+    ).expect(400);
+
+    const overridden = await authorizeTutor(
+      request(app)
+        .patch(`/api/bookings/${bookingId}/meeting-link`)
+        .send({ customMeetingUrl: "https://meet.example.com/custom-room" })
+    ).expect(200);
+    expect(overridden.body.booking).toMatchObject({
+      zoomMeetingUrl: "https://meet.example.com/old-room",
+      customMeetingUrl: "https://meet.example.com/custom-room",
+      effectiveMeetingUrl: "https://meet.example.com/custom-room",
+      actions: { canEditMeetingLink: true, canJoin: true },
+    });
+    expect(overridden.body.booking.meetingLinkUpdatedAt).toEqual(expect.any(String));
+
+    const restored = await authorizeTutor(
+      request(app).patch(`/api/bookings/${bookingId}/meeting-link`).send({ customMeetingUrl: null })
+    ).expect(200);
+    expect(restored.body.booking.effectiveMeetingUrl).toBe("https://meet.example.com/old-room");
+
+    await authorizeTutor(
+      request(app)
+        .patch(`/api/bookings/${bookingId}/meeting-link`)
+        .send({ customMeetingUrl: "https://meet.example.com/custom-room" })
+    ).expect(200);
+    await authorizeLinkStudent(
+      request(app)
+        .patch(`/api/bookings/${bookingId}/reschedule`)
+        .send({ availabilityIds: [RESCHEDULE_SLOT_ID] })
+    ).expect(404);
+    const persisted = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
+    expect(persisted.zoomMeetingUrl).toBe("https://meet.example.com/old-room");
+    expect(persisted.customMeetingUrl).toBe("https://meet.example.com/custom-room");
+    expect(persisted.meetingLinkUpdatedAt).toBeInstanceOf(Date);
   });
 
   it("refunds from Platform while keeping the original payment and tutor wallet unchanged", async () => {
@@ -256,6 +357,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         endedAt: new Date(Date.now() + 88_200_000),
       },
     });
+    await prisma.availability.create({
+      data: {
+        tutorId: TUTOR_ID,
+        startedAt: booking.startedAt,
+        availabilitySubjects: { create: { subjectId: SUBJECT_ID } },
+      },
+    });
     const before = await prisma.user.findUniqueOrThrow({ where: { id: STUDENT_ID } });
     await authorize(request(app).post(`/api/bookings/${booking.id}/confirm-payment`)).expect(402);
     expect(bookingEmail).not.toHaveBeenCalled();
@@ -313,6 +421,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
           endedAt: new Date(Date.now() + 88_200_000),
         },
       });
+      await prisma.availability.create({
+        data: {
+          tutorId: TUTOR_ID,
+          startedAt: booking.startedAt,
+          availabilitySubjects: { create: { subjectId: SUBJECT_ID } },
+        },
+      });
       bookingEmail.mockRejectedValueOnce(new Error("Email delivery unavailable"));
       const paid = await authorize(
         request(app).post(`/api/bookings/${booking.id}/confirm-payment`)
@@ -343,6 +458,13 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         endedAt: new Date(Date.now() + 88_200_000),
       },
     });
+    await prisma.availability.create({
+      data: {
+        tutorId: TUTOR_ID,
+        startedAt: booking.startedAt,
+        availabilitySubjects: { create: { subjectId: SUBJECT_ID } },
+      },
+    });
     const lookup = jest
       .spyOn(prisma.user, "findUnique")
       .mockRejectedValue(new Error("notification DB unavailable"));
@@ -365,7 +487,7 @@ describeWithDatabase("booking HTTP and database lifecycle", () => {
         .post("/api/bookings")
         .send({
           subjectId: SUBJECT_ID,
-          availabilityIds: [PENDING_SLOT_ID],
+          availabilityIds: [RESCHEDULE_SLOT_ID],
           isTrial: true,
         })
     ).expect(201);

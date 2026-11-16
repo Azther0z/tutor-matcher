@@ -22,9 +22,15 @@ if (enabled) {
 const STUDENT = "47000000-0000-4000-8000-000000000001";
 const TEACHER = "47000000-0000-4000-8000-000000000002";
 const TUTOR = "47000000-0000-4000-8000-000000000003";
-const userIds = [STUDENT, TEACHER];
+const OTHER_TEACHER = "47000000-0000-4000-8000-000000000004";
+const OTHER_TUTOR = "47000000-0000-4000-8000-000000000005";
+const userIds = [STUDENT, TEACHER, OTHER_TEACHER];
+const tutors = [
+  { userId: TEACHER, tutorId: TUTOR },
+  { userId: OTHER_TEACHER, tutorId: OTHER_TUTOR },
+];
 const NUMBERS = ["1112223334", "5556667778", "9990001112"];
-const authorize = (test: request.Test, userId = STUDENT) =>
+const authorize = (test: request.Test, userId = TEACHER) =>
   test.set(
     "Authorization",
     `Bearer ${signAuthToken({ sub: userId, email: `${userId}@example.com`, isAdmin: false })}`
@@ -45,7 +51,7 @@ function expectNoFullNumber(body: unknown) {
   for (const number of NUMBERS) expect(text).not.toContain(number);
 }
 
-async function addAccount(accountNumber: string, userId = STUDENT, makeDefault?: boolean) {
+async function addAccount(accountNumber: string, userId = TEACHER, makeDefault?: boolean) {
   const response = await authorize(
     request(app)
       .post("/api/payout-accounts")
@@ -57,21 +63,22 @@ async function addAccount(accountNumber: string, userId = STUDENT, makeDefault?:
   return accounts.find((account) => account.maskedAccountNumber.endsWith(accountNumber.slice(-4)))!;
 }
 
-async function listAccounts(userId = STUDENT) {
+async function listAccounts(userId = TEACHER) {
   const response = await authorize(request(app).get("/api/payout-accounts"), userId).expect(200);
   expectNoFullNumber(response.body);
   return response.body.accounts as AccountResponse[];
 }
 
-async function defaults(userId = STUDENT) {
+async function defaults(userId = TEACHER) {
   return prisma.payoutAccount.findMany({ where: { userId, isDefault: true } });
 }
 
 async function cleanFixtures() {
   await prisma.payoutAccount.deleteMany({ where: { userId: { in: userIds } } });
-  await prisma.user.updateMany({ where: { id: TEACHER }, data: { tutorId: null } });
-  await prisma.tutor.deleteMany({ where: { id: TUTOR } });
-  await prisma.tutorProfileVersion.deleteMany({ where: { userId: TEACHER } });
+  const tutorUserIds = tutors.map((tutor) => tutor.userId);
+  await prisma.user.updateMany({ where: { id: { in: tutorUserIds } }, data: { tutorId: null } });
+  await prisma.tutor.deleteMany({ where: { id: { in: tutors.map((tutor) => tutor.tutorId) } } });
+  await prisma.tutorProfileVersion.deleteMany({ where: { userId: { in: tutorUserIds } } });
   await prisma.user.deleteMany({ where: { id: { in: userIds } } });
 }
 
@@ -82,25 +89,42 @@ async function cleanFixtures() {
     await prisma.user.createMany({
       data: userIds.map((id, index) => ({
         id,
-        firstName: ["Student", "Tutor"][index],
+        firstName: ["Student", "Tutor", "Other Tutor"][index],
         lastName: "PROF7",
         email: `prof7-${index}@example.com`,
         password: "unused-fixture",
       })),
     });
-    await prisma.tutor.create({
-      data: {
-        id: TUTOR,
-        status: "PUBLISHED",
-        currentProfileVersion: { create: { userId: TEACHER, status: "APPROVED" } },
-      },
-    });
-    await prisma.user.update({ where: { id: TEACHER }, data: { tutorId: TUTOR } });
+    for (const { userId, tutorId } of tutors) {
+      await prisma.tutor.create({
+        data: {
+          id: tutorId,
+          status: "PUBLISHED",
+          currentProfileVersion: { create: { userId, status: "APPROVED" } },
+        },
+      });
+      await prisma.user.update({ where: { id: userId }, data: { tutorId } });
+    }
   });
   afterAll(cleanFixtures);
 
-  it("lets a Student who is not a Tutor save an account, which becomes the default", async () => {
+  it("rejects a Student who is not a Tutor without saving anything", async () => {
     expect((await prisma.user.findUniqueOrThrow({ where: { id: STUDENT } })).tutorId).toBeNull();
+    const attempts = [
+      request(app).get("/api/payout-accounts"),
+      request(app).get("/api/payout-accounts/banks"),
+      request(app)
+        .post("/api/payout-accounts")
+        .send({ bankCode: "SCB", accountHolderName: "Student PROF7", accountNumber: NUMBERS[0] }),
+    ];
+    for (const attempt of attempts) {
+      const response = await authorize(attempt, STUDENT).expect(403);
+      expect(response.body.code).toBe("PAYOUT_ACCOUNT_TUTOR_ONLY");
+    }
+    expect(await prisma.payoutAccount.count({ where: { userId: STUDENT } })).toBe(0);
+  });
+
+  it("lets a Tutor save an account, which becomes the default", async () => {
     expect(await listAccounts()).toEqual([]);
     const banks = await authorize(request(app).get("/api/payout-accounts/banks")).expect(200);
     expect(banks.body.banks).toContainEqual({ code: "SCB", name: "Siam Commercial Bank" });
@@ -108,7 +132,7 @@ async function cleanFixtures() {
     const response = await authorize(
       request(app).post("/api/payout-accounts").send({
         bankCode: "SCB",
-        accountHolderName: "  Student PROF7 ",
+        accountHolderName: "  Tutor PROF7 ",
         accountNumber: "111-2-22333-4",
       })
     ).expect(201);
@@ -116,25 +140,20 @@ async function cleanFixtures() {
     expect(response.body.accounts).toEqual([
       expect.objectContaining({
         bankName: "Siam Commercial Bank",
-        accountHolderName: "Student PROF7",
+        accountHolderName: "Tutor PROF7",
         maskedAccountNumber: "•••• 3334",
         isDefault: true,
       }),
     ]);
-    const stored = await prisma.payoutAccount.findFirstOrThrow({ where: { userId: STUDENT } });
+    const stored = await prisma.payoutAccount.findFirstOrThrow({ where: { userId: TEACHER } });
     expect(stored).toMatchObject({ accountNumber: NUMBERS[0], isDefault: true, removedAt: null });
-  });
-
-  it("works the same for a Tutor", async () => {
-    await addAccount(NUMBERS[0], TEACHER);
-    expect(await listAccounts(TEACHER)).toEqual([expect.objectContaining({ isDefault: true })]);
   });
 
   it("keeps the default when adding more and lets makeDefault replace it", async () => {
     const first = await addAccount(NUMBERS[0]);
     const second = await addAccount(NUMBERS[1]);
     expect(second.isDefault).toBe(false);
-    const third = await addAccount(NUMBERS[2], STUDENT, true);
+    const third = await addAccount(NUMBERS[2], TEACHER, true);
     expect(third.isDefault).toBe(true);
     expect((await defaults()).map((row) => row.id)).toEqual([third.id]);
     expect((await listAccounts()).map((account) => account.id)).toEqual([
@@ -169,7 +188,7 @@ async function cleanFixtures() {
     await expect(
       prisma.payoutAccount.create({
         data: {
-          userId: STUDENT,
+          userId: TEACHER,
           bankCode: "KTB",
           accountHolderName: "Second Default",
           accountNumber: NUMBERS[1],
@@ -177,7 +196,7 @@ async function cleanFixtures() {
         },
       })
     ).rejects.toMatchObject({ code: "P2002" });
-    await addAccount(NUMBERS[0], TEACHER);
+    await addAccount(NUMBERS[0], OTHER_TEACHER);
     expect(
       await prisma.payoutAccount.count({ where: { isDefault: true, userId: { in: userIds } } })
     ).toBe(2);
@@ -186,7 +205,7 @@ async function cleanFixtures() {
   it("soft-removes the default and promotes the oldest remaining account", async () => {
     const first = await addAccount(NUMBERS[0]);
     const second = await addAccount(NUMBERS[1]);
-    const third = await addAccount(NUMBERS[2], STUDENT, true);
+    const third = await addAccount(NUMBERS[2], TEACHER, true);
     const response = await authorize(
       request(app).delete(`/api/payout-accounts/${third.id}`)
     ).expect(200);
@@ -203,7 +222,7 @@ async function cleanFixtures() {
     await authorize(request(app).delete(`/api/payout-accounts/${first.id}`)).expect(200);
     await authorize(request(app).delete(`/api/payout-accounts/${second.id}`)).expect(200);
     expect(await listAccounts()).toEqual([]);
-    expect(await prisma.payoutAccount.count({ where: { userId: STUDENT } })).toBe(3);
+    expect(await prisma.payoutAccount.count({ where: { userId: TEACHER } })).toBe(3);
     await authorize(request(app).delete(`/api/payout-accounts/${second.id}`)).expect(404);
     expect((await addAccount(NUMBERS[1])).isDefault).toBe(true);
   });
@@ -243,11 +262,14 @@ async function cleanFixtures() {
     });
     await authorize(
       request(app).patch(`/api/payout-accounts/${account.id}/default`),
-      TEACHER
+      OTHER_TEACHER
     ).expect(404);
-    await authorize(request(app).delete(`/api/payout-accounts/${account.id}`), TEACHER).expect(404);
+    await authorize(
+      request(app).delete(`/api/payout-accounts/${account.id}`),
+      OTHER_TEACHER
+    ).expect(404);
     await request(app).delete(`/api/payout-accounts/${account.id}`).expect(401);
-    expect(await listAccounts(TEACHER)).toEqual([]);
+    expect(await listAccounts(OTHER_TEACHER)).toEqual([]);
     expect(
       await prisma.payoutAccount.findMany({
         where: { userId: { in: userIds } },

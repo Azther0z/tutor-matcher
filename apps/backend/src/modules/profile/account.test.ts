@@ -5,7 +5,10 @@ const userFindUnique = jest.fn<(args: unknown) => Promise<unknown>>();
 const userUpdate = jest.fn<(args: unknown) => Promise<unknown>>();
 
 jest.unstable_mockModule("../../lib/db.ts", () => ({
-  prisma: { user: { findUnique: userFindUnique, update: userUpdate } },
+  prisma: {
+    user: { findUnique: userFindUnique, update: userUpdate },
+    accountAction: { findFirst: async () => null },
+  },
 }));
 
 const { app } = await import("../../app.ts");

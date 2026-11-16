@@ -79,3 +79,98 @@ Current source-backed documentation is maintained directly under `docs/`.
 - Raw: docs/sources/pay-7-policy-confirmation.md
 - Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
 - Scope: Tutor-only payout (issue #161 changed 2026-10-25), simulated and off in production, `/wallet/payout` page with a saved payout account (default picked first), one PAYOUT row with `payoutAccountId` per payout, no status or request table
+
+## [2026-10-30] ingest | PAY-5 wallet page decisions
+
+- Disposition: Update
+- Raw: docs/sources/pay-5-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Direction derived from type and status always Completed, a Payment due box on `/wallet` linking to `/bookings/:id` with no pending ledger row, and four summary figures with Tutor-only pending earnings at the provisional 15% fee
+
+## [2026-11-03] ingest | PROF-7 payout accounts become tutor-only
+
+- Disposition: Update; supersedes the PROF-7 answer that any logged-in user manages payout accounts
+- Raw: docs/sources/prof-7-tutor-only-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Only Tutors list, add, set default or remove payout accounts; Wallet settings keeps the balance and Top up for everyone
+
+## [2026-11-03] ingest | PAY-1 top-up by slip and admin approval
+
+- Disposition: Update; supersedes the simulated top-up confirmation
+- Raw: docs/sources/pay-1-slip-topup-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Slip URL top-up requests, one pending per user, admin approve or reject with a reason, new `topup_requests` table; no simulation, placeholder QR, no PromptPay API
+
+## [2026-11-03] ingest | PAY-5 review comments
+
+- Disposition: Update
+- Raw: docs/sources/pay-5-review-comments.md
+- Updated: docs/user-journeys.md, docs/testing.md, AGENTS.md Wiki Memory
+- Scope: Students no longer see Earnings this month, All-time paid out, or the Lesson earnings and Payouts filters; Tutors keep All-time paid out, labelled Total paid out
+
+## [2026-11-06] ingest | CLASS-3 pending earnings and review eligibility
+
+- Disposition: Update; the user's correction supersedes immediate wallet release in issue #212
+- Raw: docs/sources/class-3-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Completion preserves calculated pending earnings at the existing 15% fee; no available-balance credit, pending ledger row or historical reconciliation. PAY-6 owns clearing; REV-1 owns review submission, with eligibility exposed by CLASS-3.
+## [2026-11-06] ingest | PAY-1 demo feedback
+
+- Disposition: Update; supersedes the placeholder QR and the cancel button in the PAY-1 slip confirmation
+- Raw: docs/sources/pay-1-demo-feedback.md
+- Updated: docs/user-journeys.md, docs/testing.md, deploy/README.md, AGENTS.md Wiki Memory
+- Scope: Scannable PromptPay QR with the amount locked, using `PROMPTPAY_ID` or the placeholder `0000000000`; no cancel or back button on a pending top-up; CANCELLED status and the cancel route removed; the admin page lists every request by default
+
+## [2026-11-09] ingest | PAY-3 refund requests
+
+- Disposition: Update
+- Raw: docs/sources/pay-3-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: New `refund_requests` table; a Tutor no-show is refunded in full at once, an unsatisfactory lesson goes to `/admin/refunds`; requests open from the lesson end for 3 days, one per booking; completed lessons are rejected with the reason shown; approval cancels the booking and blocks Tutor completion while pending
+
+## [2026-11-10] ingest | PAY-3 refund timing change
+
+- Disposition: Update; supersedes the 3-day window in docs/sources/pay-3-policy-confirmation.md
+- Raw: docs/sources/pay-3-refund-timing-change.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Refund requests open when payment succeeds with no deadline; a Tutor no-show only once the lesson starts, otherwise admin review; completed lessons still rejected; a cancellation closes a pending request
+
+## [2026-11-10] ingest | PAY-3 review decisions (PR #224)
+
+- Disposition: Update; supersedes the instant no-show refund and the any-time-after-payment timing
+- Raw: docs/sources/pay-3-review-decisions.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, CONTEXT.md, AGENTS.md Wiki Memory
+- Scope: Requests open after the lesson ends with no deadline, including completed lessons; reasons no-show, unsatisfactory or Other; every request goes to an admin; approval links its REFUND row; the Tutor is notified; shared serializable retry helper
+
+## [2026-11-10] ingest | REV-1 review a completed lesson
+
+- Disposition: Update
+- Raw: docs/sources/rev-1-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Students publish a 1-5 star review with an optional comment from their own completed booking, scoped to its tutor and subject; one review per booking via a UNIQUE `reviews.booking_id`; the stale rating CHECK note corrected
+
+## [2026-11-12] ingest | PAY-3 refunded-lesson reviews (PR #224)
+
+- Disposition: Update
+- Raw: docs/sources/pay-3-refunded-review-decision.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Reviews of bookings cancelled by an approved refund are kept but left out of public ratings, review lists and search ranking; a Student may still review while a request is pending
+
+## [2026-11-12] compile | Tutor overview and public evaluation
+
+- Evidence: GitHub issue #165 and docs/sources/rev-2-editable-reply-confirmation.md
+- Updated: docs/user-journeys.md, docs/testing.md, docs/index.md
+- Scope: Owner-only teaching overview with status/engagement and published reviews. Public Tutor profiles expose only aggregate completed lessons and distinct Students taught, alongside existing ratings/reviews; these metric definitions are the implementation choices previewed for the user. Private bookings, identities and earnings remain owner-only.
+
+## [2026-11-12] compile | Application and deployment diagrams
+
+- Evidence: apps/backend/src/routes.ts, apps/backend/src/lib/db.ts, apps/frontend/next.config.ts, .github/workflows/, .doco-cd.yaml, deploy/compose.yaml, deploy/README.md
+- Updated: docs/architecture.md, docs/cicd.md, docs/index.md
+- Scope: Mermaid component diagram and CI/CD deployment flow from the current source files. Live deployment state is not tested.
+
+## [2026-11-12] ingest | PAY-6 lesson earning settlement
+
+- Disposition: Update
+- Raw: docs/sources/pay-6-policy-confirmation.md
+- Updated: docs/user-journeys.md, docs/database-schema.md, CONTEXT.md, docs/testing.md, docs/index.md, AGENTS.md Wiki Memory
+- Scope: Paid completed lessons clear after Tutor confirmation and 24 hours from scheduled end; pending refund requests pause clearing; prior eligible completions are included; wallet access triggers settlement; the platform covers approved refunds after clearing without clawing back Tutor earnings

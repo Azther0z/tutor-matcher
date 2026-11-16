@@ -118,6 +118,15 @@ type TutorRequestRejectedEmail = {
   hasTutor: boolean;
 };
 
+type AccountActionEmail = {
+  to: string;
+  firstName: string;
+  type: "SUSPEND" | "BAN";
+  reason: string;
+  // The suspension end, already formatted for the reader; null for a ban.
+  until: string | null;
+};
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -126,6 +135,17 @@ function escapeHtml(value: string) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 }
+
+type ReviewModerationEmail = {
+  to: string;
+  firstName: string;
+  // A reporter learns the outcome; the review's author learns it was removed and why.
+  audience: "REPORTER" | "AUTHOR";
+  outcome: "KEPT" | "REMOVED";
+  subjectName: string;
+  tutorName: string;
+  reason?: string | null;
+};
 
 async function deliverEmail(payload: EmailPayload, deliveryErrorMessage: string) {
   const client = createResendClient();
@@ -246,5 +266,85 @@ export async function sendTutorRejectionEmail({
       text: `Hi ${firstName},\n\nAn admin reviewed your tutor request and did not approve it.\n\nReason: ${reason}\n\nRevise and submit again: ${reviseUrl}`,
     },
     "Could not send tutor request notification email"
+  );
+}
+
+// SAFE-1: account notices go out whatever the Student's notification preferences are.
+export async function sendAccountActionEmail({
+  to,
+  firstName,
+  type,
+  reason,
+  until,
+}: AccountActionEmail) {
+  const summary =
+    type === "BAN"
+      ? "An admin has banned your Tutor Matcher account."
+      : `An admin has suspended your Tutor Matcher account until ${until}.`;
+
+  if (getEmailDeliveryMode() === "log") {
+    console.info(`[notification:account] ${to}: ${summary} Reason: ${reason}`);
+    return;
+  }
+
+  await deliverEmail(
+    {
+      from: env.resendFromEmail,
+      to: [to],
+      subject:
+        type === "BAN"
+          ? "Your Tutor Matcher account has been banned"
+          : "Your Tutor Matcher account has been suspended",
+      html: `<p>Hi ${escapeHtml(firstName)},</p>
+      <p>${escapeHtml(summary)}</p>
+      <p><strong>Reason:</strong> ${escapeHtml(reason)}</p>`,
+      text: `Hi ${firstName},\n\n${summary}\n\nReason: ${reason}`,
+    },
+    "Could not send account notice email"
+  );
+}
+
+// REV-4: tells a reporter what an Admin decided about a flagged review, and tells the author
+// when their review was removed and why.
+export async function sendReviewModerationEmail({
+  to,
+  firstName,
+  audience,
+  outcome,
+  subjectName,
+  tutorName,
+  reason,
+}: ReviewModerationEmail) {
+  const lesson = `the ${subjectName} review on ${tutorName}'s profile`;
+  const summary =
+    audience === "AUTHOR"
+      ? `An admin removed your review of ${subjectName} with ${tutorName} after it was flagged.`
+      : outcome === "KEPT"
+        ? `Thanks for your report. An admin checked ${lesson} and found it follows our rules, so it stays published.`
+        : `Thanks for your report. An admin checked ${lesson} and removed it.`;
+  const shownReason = audience === "AUTHOR" && reason ? reason : null;
+
+  if (getEmailDeliveryMode() === "log") {
+    console.info(
+      `[notification:review] ${to}: ${summary}${shownReason ? ` Reason: ${shownReason}` : ""}`
+    );
+    return;
+  }
+
+  await deliverEmail(
+    {
+      from: env.resendFromEmail,
+      to: [to],
+      subject:
+        audience === "AUTHOR"
+          ? "Your Tutor Matcher review was removed"
+          : "Update on the review you flagged",
+      html: `<p>Hi ${escapeHtml(firstName)},</p>
+      <p>${escapeHtml(summary)}</p>${
+        shownReason ? `\n      <p><strong>Reason:</strong> ${escapeHtml(shownReason)}</p>` : ""
+      }`,
+      text: `Hi ${firstName},\n\n${summary}${shownReason ? `\n\nReason: ${shownReason}` : ""}`,
+    },
+    "Could not send review moderation email"
   );
 }
