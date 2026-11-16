@@ -39,6 +39,12 @@ errors="$(
       "docker.io/azther0z/tutor-matcher-backend:latest"),
     equals("services.backend.ports[0].target"; $config.services.backend.ports[0].target; 8000),
     equals("services.backend.ports[0].published"; $config.services.backend.ports[0].published; "8000"),
+    equals("services.backend.command"; $source.services.backend.command;
+      ["sh", "-c", "npm run db:push && npm run db:seed:prod && npm start"]),
+    check(any($config.services.postgres.volumes[]?;
+      .type == "bind" and .source == "/srv/platform/tutor-matcher/postgres"
+      and .target == "/var/lib/postgresql/data" and (.read_only != true));
+      "services.postgres.volumes must keep the writable PostgreSQL data bind mount"),
     env_files_check("backend"; ["database-url.enc.env", "resend.enc.env"]; ["admin-signup-key.enc.env"]),
     env_files_check("postgres"; ["postgres-password.enc.env"]; [])
   '
@@ -50,4 +56,4 @@ if [ -n "$errors" ]; then
   done <<< "$errors"
   exit 1
 fi
-echo "deploy/compose.yaml keeps the expected images, ports, build args and env files."
+echo "deploy/compose.yaml keeps the expected images, ports, build args, env files and database persistence settings."

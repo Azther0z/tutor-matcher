@@ -25,7 +25,7 @@ flowchart TD
 
 The backend workflow runs behavior tests through `test:bdd` after Jest.
 The container workflow builds images without publishing them.
-The deployment validation workflow tests image names, service addresses, ports, and environment file paths.
+The deployment validation workflow tests image names, service addresses, ports, environment file paths, backend startup, and PostgreSQL storage.
 The workflow files do not establish which results the repository requires before a merge.
 
 The source files define the exact triggers and steps:
@@ -63,8 +63,9 @@ flowchart TD
   Stack --> Backend[Backend: host 8000 to container 8000]
   Stack --> Postgres[PostgreSQL: host data directory]
   Frontend -->|HTTP on internal network| Backend
-  Backend --> Reset[prisma db push --force-reset]
-  Reset --> Seed[Seed production data]
+  Backend --> Sync[prisma db push]
+  Sync -->|Success| Seed[Upsert reference data]
+  Sync -->|Error or data-loss warning| Stop[Stop backend startup]
   Seed --> Start[Start Express]
   Start --> Postgres
 ```
@@ -83,10 +84,13 @@ The frontend build uses `BACKEND_URL=http://backend:8000`.
 PostgreSQL stores data at `/srv/platform/tutor-matcher/postgres` on the host.
 Service updates stop the old task first and select rollback on update failure.
 
-The backend startup command resets the configured database, seeds data, and starts Express.
-The reset can delete stored data each time a backend task starts.
-The exact command is `npm run db:push -- --force-reset && npm run db:seed:prod && npm start`.
+The backend container runs `db push` against PostgreSQL at startup, upserts reference data, and starts Express.
+The exact command is `npm run db:push && npm run db:seed:prod && npm start`.
+It does not reset the database or automatically accept data loss.
+If schema synchronization fails or requires accepting data loss, startup stops before seeding or starting Express.
+Review the schema change before retrying. Do not add `--force-reset` or `--accept-data-loss` to bypass the failure.
+This workflow keeps `schema.prisma` as its source of truth and does not maintain migration files.
 See the [backend scripts](../apps/backend/package.json) for each command.
 
 Live workflow results, registry images, Doco-CD logs, and running services require separate inspection.
-This documentation task does not test those systems.
+Local configuration checks do not test those systems.
