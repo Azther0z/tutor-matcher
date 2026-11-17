@@ -20,7 +20,10 @@ export type NewPayoutAccount = {
 
 export const MAX_PAYOUT_ACCOUNTS = 5;
 
-async function payoutAccountsRequest<T>(path: string, init?: RequestInit): Promise<T> {
+async function payoutAccountsRequest<T>(
+  path: string,
+  init?: { method?: string; json?: unknown }
+): Promise<T> {
   return apiRequest<T>(`/api/payout-accounts${path}`, {
     ...init,
     auth: "optional",
@@ -45,7 +48,7 @@ export async function addPayoutAccount(input: NewPayoutAccount) {
   return (
     await payoutAccountsRequest<{ accounts: PayoutAccount[] }>("", {
       method: "POST",
-      body: JSON.stringify(input),
+      json: input,
     })
   ).accounts;
 }

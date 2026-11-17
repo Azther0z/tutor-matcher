@@ -26,7 +26,10 @@ export class PayoutApiError extends Error {
   }
 }
 
-async function payoutRequest<T>(url: string, init?: RequestInit): Promise<T> {
+async function payoutRequest<T>(
+  url: string,
+  init?: { method?: string; json?: unknown }
+): Promise<T> {
   return apiRequest<T>(url, {
     ...init,
     auth: "optional",
@@ -53,7 +56,7 @@ export async function isTutor() {
 export async function requestPayout(amount: number, payoutAccountId: string, reference: string) {
   const payout = await payoutRequest<CompletedPayout>("/api/payouts", {
     method: "POST",
-    body: JSON.stringify({ amount, payoutAccountId, reference }),
+    json: { amount, payoutAccountId, reference },
   });
 
   publishWalletBalance(payout.balance);

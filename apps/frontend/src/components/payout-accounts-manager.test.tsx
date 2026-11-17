@@ -125,6 +125,8 @@ describe("PayoutAccountsManager", () => {
       "/api/payout-accounts",
       expect.objectContaining({
         method: "POST",
+        // Without this header the backend's JSON parser skips the body and answers 400.
+        headers: expect.objectContaining({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           bankCode: "KBANK",
           accountHolderName: "Student One",
